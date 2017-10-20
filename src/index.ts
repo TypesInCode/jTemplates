@@ -32,4 +32,4 @@ console.log(div.innerHTML);
 obj.Class = "garbage-person";
 console.log(div.innerHTML);
 obj.Arr = ["sec3", "sec4", "sec5"];
-console.log(div.innerHTML);
+console.log(div.innerHTML); 
