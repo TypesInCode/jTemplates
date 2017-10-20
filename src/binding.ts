@@ -1,25 +1,23 @@
 import Observable from "./Observable/observable";
+import Syntax from "./Utils/syntax";
 
-interface BindingFunction {
+/* interface BindingFunction {
     ($model: any): any;
 }
 
 interface BindingFactoryMethod<T> {
     (boundTo: {}, model: any): Array<Binding<T>>;
-}
+} */
 
 abstract class Binding<T> {
-    private model: any;
     private boundTo: T;
     private value: any;
-    private bindingFunction: BindingFunction;
-    private parameters: { [name: string]: any };
-    private parameterNames: Array<string>;
-    private parameterValues: Array<any>;
+    private bindingFunction: () => any;
     private observables: Array<Observable>;
     private setCallback: (obs: Observable) => void;
     private applyCallback: () => void;
     private scheduleUpdate: (callback: () => void) => void;
+    private staticBinding: boolean;
 
     public get BindsChildren(): boolean {
         return false;
@@ -33,25 +31,30 @@ abstract class Binding<T> {
         return this.boundTo;
     }
 
-    protected get Parameters(): { [name: string]: any } {
-        return this.parameters;
-    }
-
-    constructor(boundTo: T, expression: string, parameters: { [name: string]: any }, scheduleUpdate: (callback: () => void) =>  void ) {
+    constructor(boundTo: T, binding: any, scheduleUpdate: (callback: () => void) => void) {
         this.boundTo = boundTo;
-        this.observables = [];
-        this.setCallback = (obs) => { this.Update(); };
-        this.applyCallback = () => { this.Apply() };
         this.scheduleUpdate = scheduleUpdate;
+        this.applyCallback = () => { this.Apply() };
 
-        this.parameters = parameters;
-        this.parameterNames = [];
-        this.parameterValues = [];
-        for(var key in parameters) {
-            this.parameterNames.push(key);
-            this.parameterValues.push(parameters[key]);
+        if(typeof binding == 'function') {
+            this.observables = [];
+            this.setCallback = (obs) => { this.Update(); };
+
+            /* this.parameters = parameters;
+            this.parameterNames = [];
+            this.parameterValues = [];
+            for(var key in parameters) {
+                this.parameterNames.push(key);
+                this.parameterValues.push(parameters[key]);
+            } */
+            
+            this.bindingFunction = binding; //Binding.ParseExpression(expression, this.parameterNames);
+            this.staticBinding = false;
         }
-        this.bindingFunction = Binding.ParseExpression(expression, this.parameterNames);
+        else {
+            this.value = binding;
+            this.staticBinding = true;
+        }
     }
 
     public Destroy(): void {
@@ -76,10 +79,15 @@ abstract class Binding<T> {
     protected abstract Apply(): void;
 
     public Update() {
+        if(this.staticBinding) {
+            this.ScheduleUpdate(this.applyCallback)
+            return;
+        }
+
         var obs = Observable.Watch("get", () => {
-            this.value = this.bindingFunction.apply(this, this.parameterValues);
-            if(this.value instanceof Observable)
-                this.value.Fire("get", this.value);
+            this.value = this.bindingFunction();
+            if(this.value)
+                this.value = this.value.valueOf();
         });
 
         var curObs = this.observables;
@@ -98,35 +106,6 @@ abstract class Binding<T> {
         
         this.observables = obs;
         this.ScheduleUpdate(this.applyCallback);
-    }
-}
-
-namespace Binding {
-    var expRgx = /{{(.+?)}}/;
-    export function ParseExpression(expression: string, parameters: Array<string>): BindingFunction {
-        if(!expression)
-            expression = "null";
-
-        var params = parameters.slice();
-        var parts = expression.split(expRgx);
-        if(parts.length > 1) {
-            parts = expression.split(expRgx).map((c, i) => {
-                if( i % 2 == 0 )
-                    return `"${c}"`;
-                else
-                    return `(${c})`;
-            });
-        }
-        
-        var merge = parts.join(" + ").replace(/[\n\r]/g, "");
-        var funcStr = `return ${merge};`;
-        params.push(funcStr);
-        var Func = Function.bind(null, ...params);
-        return new Func() as BindingFunction;
-    }
-
-    export function IsExpression(expression: string): boolean {
-        return expRgx.test(expression);
     }
 }
 

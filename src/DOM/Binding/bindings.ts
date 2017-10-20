@@ -14,10 +14,11 @@ namespace Bindings {
         return [
             require("./textBinding").default.Create,
             require("./componentBinding").default.Create,
-            require("./attributeBinding").default.Create,
+            //require("./attributeBinding").default.Create,
             require("./eventBinding").default.Create,
             require("./eventBinding").default.Create,
-            require("./arrayBinding").default.Create
+            require("./arrayBinding").default.Create,
+            require("./propertyBinding").default.Create
         ];
     }
 

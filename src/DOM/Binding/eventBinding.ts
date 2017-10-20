@@ -1,15 +1,12 @@
-import Binding from "../../binding";
-import AttributeBinding from "./attributeBinding";
+import NodeBinding from "./nodeBinding";
 
-var eventRgx = /j-on(.+)/;
-
-class EventBinding extends AttributeBinding {
+class EventBinding extends NodeBinding {
     private eventName: string;
     private eventCallback: (e: Event) => void;
 
-    constructor(element: Node, attributeName: string, parameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void) {
-        super(element, attributeName, parameters, scheduleUpdate);
-        this.eventName = eventRgx.exec(attributeName)[1];
+    constructor(element: Node, eventName: string, bindingFunction: () => any) {
+        super(element, bindingFunction);
+        this.eventName = eventName;
     }
 
     protected Apply() {
@@ -21,18 +18,18 @@ class EventBinding extends AttributeBinding {
     }
 }
 
-namespace EventBinding {
-    export function Create(element: any, bindingParameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void): Array<Binding<Node>> {
-        var ret: Array<Binding<Node>> = [];
+/* namespace EventBinding {
+    export function Create(element: any, bindingParameters: {[name: string]: any}): Array<NodeBinding> {
+        var ret: Array<NodeBinding> = [];
         if(element.nodeType == element.ELEMENT_NODE) {
             for(var x=0; x<element.attributes.length; x++) {
                 var att = element.attributes[x];
                 if(eventRgx.test(att.name))
-                    ret.push(new EventBinding(element, att.name, bindingParameters, scheduleUpdate));
+                    ret.push(new EventBinding(element, att.name, bindingParameters));
             }
         }
         return ret;
     }
-}
+} */
 
 export default EventBinding;

@@ -18,9 +18,11 @@ class ComponentSimple extends ComponentBase {
 
     protected BindingParameters(): {} {
         var params = super.BindingParameters();
-        params["$data"] = this.Data;
+        
         for(var key in this.parameterOverrides)
             params[key] = this.parameterOverrides[key];
+
+        params["$data"] = this.Data;
         
         return params;
     }

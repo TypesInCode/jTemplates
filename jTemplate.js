@@ -1,1 +1,1405 @@
-!function(e){function t(n){if(r[n])return r[n].exports;var o=r[n]={exports:{},id:n,loaded:!1};return e[n].call(o.exports,o,o.exports,t),o.loaded=!0,o.exports}var r={};return t.m=e,t.c=r,t.p="",t(0)}([function(e,t,r){"use strict";var n=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},o=r(3),i=r(1),a=r(6),s=function(e){function t(){e.apply(this,arguments),this.state=o.default.Create({parentProp1:"parentValue",parentProp2:"second value",fontColor:"red",array:["first","second","third"]})}return n(t,e),Object.defineProperty(t.prototype,"State",{get:function(){return this.state},enumerable:!0,configurable:!0}),Object.defineProperty(t.prototype,"Template",{get:function(){return"\n<div>\n    {{ $comp.State.parentProp1 }}\n    <"+u+' j-parent="{ pValue: $comp.State.parentProp1, color: $comp.State.fontColor, array: $comp.State.array }">\n        <header>\n            {{ $parent.pValue }}\n        </header>\n        <content>\n            <div>{{ $parent.color }} <b>{{ $data }}</b></div>\n        </content>\n    </'+u+">\n</div>"},enumerable:!0,configurable:!0}),t}(a.default),u=function(e){function t(){e.apply(this,arguments),this.state=o.default.Create({prop1:"Test",prop2:"test2",color:"green",array:[]})}return n(t,e),Object.defineProperty(t,"Name",{get:function(){return"Sub-Comp"},enumerable:!0,configurable:!0}),Object.defineProperty(t.prototype,"State",{get:function(){return this.state},enumerable:!0,configurable:!0}),Object.defineProperty(t.prototype,"Template",{get:function(){return'\n<header/>\n<div j-onclick="$comp.OnDivClick" style="color: {{$state.color}}" j-array="[\'default\'].concat($state.array.valueOf())">\n    <div>Component name is: {{ $data }}</div>\n    <content />\n</div>'},enumerable:!0,configurable:!0}),t.prototype.SetParentData=function(t){e.prototype.SetParentData.call(this,t),this.State.prop2=t.pValue,this.State.color=t.color,this.State.array=t.array},t.prototype.BindingParameters=function(){var t=e.prototype.BindingParameters.call(this);return t.$state=this.State,t},t.prototype.OnDivClick=function(e){console.log("div has been clicked")},t}(a.default);i.default.window.Comp=s,i.default.window.SubComp=u,i.default.window.Observable=o.default;var l=i.default.window.document.createElement("div"),c=new s;c.AttachTo(l),console.log(l.outerHTML);var p=new o.default(["first","second","third"]),h=["prefix"].concat(p.valueOf());console.log(h.length)},function(e,t,r){"use strict";function n(e){return e(),0}function o(e){if("string"==typeof e){e=e.replace(s,function(e,t,r){return"<"+t+r+"></"+t+">"});var t=new i.DOMParser,r=t.parseFromString(e,"text/html");return o(r.body)}for(var n=i.document.createDocumentFragment();e&&e.childNodes.length>0;)n.appendChild(e.childNodes[0]);return n}var i=null;i="undefined"!=typeof window?window:new(r(!function(){var e=new Error('Cannot find module "jsdom"');throw e.code="MODULE_NOT_FOUND",e}()).JSDOM)("").window;var a=!1,s=/<([^\s]+)([^>]*)\/>/g,u={window:i,get immediateAnimationFrames(){return a},set immediateAnimationFrames(e){a=e,this.requestAnimationFrame=(a?n:i.requestAnimationFrame||n).bind(i)},requestAnimationFrame:null,createDocumentFragment:o};u.immediateAnimationFrames=!1,Object.defineProperty(t,"__esModule",{value:!0}),t.default=u},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(4),n=function(e){function t(t,r,n,o){e.call(this,t,t.getAttribute(r),n,o),this.attributeName=r}return o(t,e),t.prototype.Init=function(){this.attributeName},t.prototype.Apply=function(){this.BoundTo.setAttribute(this.attributeName,this.Value)},t}(i.default);!function(e){function t(t,r,n){var o=[];if(t.nodeType==t.ELEMENT_NODE)for(var a=0;a<t.attributes.length;a++){var s=t.attributes[a];i.default.IsExpression(s.value)&&o.push(new e(t,s.name,r,n))}return o}e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(15),a=r(14),s=new i.default,n=function(e){function t(t){e.call(this),this.SetValue(t)}return o(t,e),Object.defineProperty(t.prototype,"IsArray",{get:function(){return Array.isArray(this.observableValue.valueOf())},enumerable:!0,configurable:!0}),t.prototype.Fire=function(t){for(var r=[],n=1;n<arguments.length;n++)r[n-1]=arguments[n];e.prototype.Fire.apply(this,[t].concat(r)),s.Fire.apply(s,[t].concat(r))},t.prototype.SetValue=function(e){if(e instanceof t){var r=e.GetValue();r!==this.observableValue&&(this.observableValue&&this.observableValue.RemoveNode(this),this.observableValue=r,this.observableValue.AddNode(this))}else this.observableValue?this.observableValue.Value=e:(this.observableValue=new a.default(e),this.observableValue.AddNode(this))},t.prototype.GetValue=function(){return this.observableValue},t.prototype.valueOf=function(){return this.Fire("get",this),this.observableValue.valueOf()},t.prototype.toString=function(){return this.valueOf().toString()},t}(i.default);!function(e){function t(t){return new e(t)}function r(e){return a.default.Unwrap(e.GetValue())}function n(e,t){var r=[],n=function(e){var t=r.indexOf(e);t<0&&r.push(e)};return s.AddListener(e,n),t(),s.RemoveListener(e,n),r}e.Create=t,e.Unwrap=r,e.Watch=n}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=r(3),n=function(){function e(t,r,n,o){var i=this;this.boundTo=t,this.observables=[],this.setCallback=function(e){i.Update()},this.applyCallback=function(){i.Apply()},this.scheduleUpdate=o,this.parameters=n,this.parameterNames=[],this.parameterValues=[];for(var a in n)this.parameterNames.push(a),this.parameterValues.push(n[a]);this.bindingFunction=e.ParseExpression(r,this.parameterNames)}return Object.defineProperty(e.prototype,"BindsChildren",{get:function(){return!1},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"Value",{get:function(){return this.value},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"BoundTo",{get:function(){return this.boundTo},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"Parameters",{get:function(){return this.parameters},enumerable:!0,configurable:!0}),e.prototype.Destroy=function(){var e=this;this.observables.forEach(function(t){t.RemoveListener("set",e.setCallback)}),this.value=null},e.prototype.AddListeners=function(e){e.AddListener("set",this.setCallback)},e.prototype.RemoveListeners=function(e){e.RemoveListener("set",this.setCallback)},e.prototype.ScheduleUpdate=function(e){this.scheduleUpdate(e)},e.prototype.Update=function(){for(var e=this,t=o.default.Watch("get",function(){e.value=e.bindingFunction.apply(e,e.parameterValues),e.value instanceof o.default&&e.value.Fire("get",e.value)}),r=this.observables,n=0;n<t.length;n++){var i=r.indexOf(t[n]);i<0?this.AddListeners(t[n]):r.splice(i,1)}for(var a=0;a<r.length;a++)this.RemoveListeners(r[a]);this.observables=t,this.ScheduleUpdate(this.applyCallback)},e}();!function(e){function t(e,t){e||(e="null");var r=t.slice(),o=e.split(n);o.length>1&&(o=e.split(n).map(function(e,t){return t%2==0?'"'+e+'"':"("+e+")"}));var i=o.join(" + ").replace(/[\n\r]/g,""),a="return "+i+";";r.push(a);var s=Function.bind.apply(Function,[null].concat(r));return new s}function r(e){return n.test(e)}var n=/{{(.+?)}}/;e.ParseExpression=t,e.IsExpression=r}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(2),a=/j-on(.+)/,n=function(e){function t(t,r,n,o){e.call(this,t,r,n,o),this.eventName=a.exec(r)[1]}return o(t,e),t.prototype.Apply=function(){this.eventCallback&&this.BoundTo.removeEventListener(this.eventName,this.eventCallback),this.eventCallback=this.Value,this.BoundTo.addEventListener(this.eventName,this.eventCallback)},t}(i.default);!function(e){function t(t,r,n){var o=[];if(t.nodeType==t.ELEMENT_NODE)for(var i=0;i<t.attributes.length;i++){var s=t.attributes[i];a.test(s.name)&&o.push(new e(t,s.name,r,n))}return o}e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(7),n=function(e){function t(){e.call(this),this.SetTemplate(this.Template)}return o(t,e),Object.defineProperty(t,"Name",{get:function(){return null},enumerable:!0,configurable:!0}),Object.defineProperty(t.prototype,"Template",{get:function(){},enumerable:!0,configurable:!0}),t.prototype.SetParentData=function(e){this.parentData=e},t.prototype.BindingParameters=function(){var t=e.prototype.BindingParameters.call(this);return t.$parent=this.parentData,t},t.toString=function(){return t.Register(this),this.Name},t}(i.default);!function(e){function t(e){var t=e.Name.toLowerCase(),r=o[t];r||(o[t]=e)}function r(e){var t=o[e.toLowerCase()];return t}function n(e){return!!r(e)}var o={};e.Register=t,e.Get=r,e.Exists=n}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n=r(10),o=r(8),i=function(){function e(){this.destroyed=!1,this.bound=!1}return Object.defineProperty(e.prototype,"Attached",{get:function(){return this.template.Attached},enumerable:!0,configurable:!0}),e.prototype.AttachTo=function(e){if(this.destroyed)throw"Can't attach destroyed component";this.bound||(this.bindings=n.default.Bind(this.template.DocumentFragment,this.BindingParameters()),this.bindings.forEach(function(e){return e.Update()}),this.bound=!0),this.template.AttachTo(e)},e.prototype.Detach=function(){this.template.Detach()},e.prototype.Destroy=function(){this.Detach(),this.bindings.forEach(function(e){e.Destroy()}),this.destroyed=!0},e.prototype.SetChildElements=function(e){if(this.bound)throw"Child elements can't be set after component is bound";this.template.OverwriteChildElements(e)},e.prototype.SetTemplate=function(e){this.template=o.default.Create(e)},e.prototype.BindingParameters=function(){return{$comp:this}},e}();Object.defineProperty(t,"__esModule",{value:!0}),t.default=i},function(e,t,r){"use strict";var n,o=r(1),n=function(){function e(e){this.documentFragment=e,this.elements=new Array(this.documentFragment.childNodes.length);for(var t=0;t<this.documentFragment.childNodes.length;t++)this.elements.push(this.documentFragment.childNodes[t])}return Object.defineProperty(e.prototype,"DocumentFragment",{get:function(){return this.documentFragment},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"Attached",{get:function(){return!!this.attachedTo},enumerable:!0,configurable:!0}),e.prototype.AttachTo=function(e){this.attachedTo&&this.Detach(),this.attachedTo=e,e.appendChild(this.documentFragment)},e.prototype.Detach=function(){var e=this;this.Attached&&(this.attachedTo=null,this.elements.forEach(function(t){return e.documentFragment.appendChild(t)}))},e.prototype.Clone=function(){if(this.Attached)throw"Template cannot be cloned while attached";var t=this.documentFragment.cloneNode(!0);return new e(t)},e.prototype.OverwriteChildElements=function(e){if(this.Attached)throw"Can't set child elements while attached";for(var t in e)for(var r=this.DocumentFragment.querySelectorAll(t),n=0;n<r.length;n++)r[n].innerHTML="",r[n].appendChild(e[t])},e}();!function(e){function t(t){if(t instanceof e)return t.Clone();var r=o.default.createDocumentFragment(t);return new e(r)}e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(8),a=r(1),s=r(2),u=r(13),l=/j-array/,n=function(e){function t(t,r,n){e.call(this,t,"j-array",r,n),this.template=i.default.Create(this.BoundTo),this.childComponents=[]}return o(t,e),Object.defineProperty(t.prototype,"BindsChildren",{get:function(){return!0},enumerable:!0,configurable:!0}),t.prototype.Apply=function(){var e=this.childComponents.length,t=this.Value||[];if(e>t.length){var r=this.childComponents.splice(t.length);r.forEach(function(e){e.Destroy()})}else{for(var n=a.default.createDocumentFragment(),o=e;o<t.length;o++){var i=new u.default(this.template,t[o],this.Parameters);i.AttachTo(n),this.childComponents.push(i)}this.BoundTo.appendChild(n)}},t}(s.default);!function(e){function t(t,r,n){var o=[];if(t.nodeType==t.ELEMENT_NODE)for(var i=0;i<t.attributes.length;i++){var a=t.attributes[i];l.test(a.name)&&o.push(new e(t,r,n))}return o}e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=r(1);!function(e){function t(){return[r(12).default.Create,r(11).default.Create,r(2).default.Create,r(5).default.Create,r(5).default.Create,r(9).default.Create]}function n(e){var t=a.indexOf(e);t<0&&a.push(e),s||(s=!0,o.default.requestAnimationFrame(function(){for(s=!1;a.length>0;)a.shift()()}))}function i(e,r){var o=t(),a=[],s=!1;if(e.nodeType!=e.DOCUMENT_FRAGMENT_NODE)for(var u=0;u<o.length;u++)for(var l=o[u](e,r,n),c=0;c<l.length;c++)s=s||l[c].BindsChildren,a.push(l[c]);for(var p=0;p<e.childNodes.length&&!s;p++)for(var h=i(e.childNodes[p],r),f=0;f<h.length;f++)a.push(h[f]);return a}var a=[],s=!1;e.ScheduleUpdate=n,e.Bind=i}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(4),a=r(1),s=r(6),n=function(e){function t(t,r,n){for(var o=a.default.createDocumentFragment(t),i={},u=0;u<o.childNodes.length;u++){var l=o.childNodes[u];i[l.nodeName]=a.default.createDocumentFragment(l)}var c=t.getAttribute("j-parent");e.call(this,t,c,r,n);var p=s.default.Get(this.BoundTo.nodeName);this.component=new p,this.component.SetChildElements(i)}return o(t,e),Object.defineProperty(t.prototype,"BindsChildren",{get:function(){return!0},enumerable:!0,configurable:!0}),t.prototype.Apply=function(){this.component.SetParentData(this.Value),this.component.Attached||this.component.AttachTo(this.BoundTo)},t}(i.default);!function(e){function t(t,n,o){return t.nodeType==t.ELEMENT_NODE&&r.test(t.nodeName)&&s.default.Exists(t.nodeName)?[new e(t,n,o)]:[]}var r=/[^-]+-[^-]+/;e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n,o=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},i=r(4),n=function(e){function t(t,r,n){e.call(this,t,t.textContent,r,n)}return o(t,e),t.prototype.Apply=function(){this.BoundTo.textContent=this.Value},t}(i.default);!function(e){function t(t,r,n){return t.nodeType==t.TEXT_NODE&&i.default.IsExpression(t.textContent)?[new e(t,r,n)]:[]}e.Create=t}(n||(n={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=n},function(e,t,r){"use strict";var n=this&&this.__extends||function(e,t){function r(){this.constructor=e}for(var n in t)t.hasOwnProperty(n)&&(e[n]=t[n]);e.prototype=null===t?Object.create(t):(r.prototype=t.prototype,new r)},o=r(7),i=function(e){function t(t,r,n){e.call(this),this.data=r,this.parameterOverrides=n,this.SetTemplate(t)}return n(t,e),Object.defineProperty(t.prototype,"Data",{get:function(){return this.data},enumerable:!0,configurable:!0}),t.prototype.BindingParameters=function(){var t=e.prototype.BindingParameters.call(this);t.$data=this.Data;for(var r in this.parameterOverrides)t[r]=this.parameterOverrides[r];return t},t}(o.default);Object.defineProperty(t,"__esModule",{value:!0}),t.default=i},function(e,t,r){"use strict";var n,o=r(3);!function(e){e[e.Value=0]="Value",e[e.Object=1]="Object",e[e.Array=2]="Array"}(n||(n={}));var i,i=function(){function e(e){this.objectProperties=[],this.arrayProperties=[],this.parentNodes=[],this.valueType=n.Value,this.Value=e}return Object.defineProperty(e.prototype,"Properties",{get:function(){var e=null;switch(this.valueType){case n.Array:if(this.arrayProperties.length!==this.value.length){this.arrayProperties=[];for(var t=0;t<this.value.length;t++)this.arrayProperties.push(t)}e=this.arrayProperties;break;case n.Object:e=this.objectProperties;break;case n.Value:e=[]}return e},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"ValueType",{get:function(){return this.valueType},enumerable:!0,configurable:!0}),Object.defineProperty(e.prototype,"Value",{get:function(){return this.value},set:function(e){var t=!1,r=this.Properties;if(Array.isArray(e)){this.ConvertToArray();for(var n=Array.isArray(this.value)?this.value:new Array,i=0;i<e.length;i++){var a=e[i],s=n[i];s?s.SetValue(a):n[i]=new o.default(a)}e.length<n.length&&n.splice(e.length),this.value=n}else if(null!=e&&void 0!=e&&"object"==typeof e){this.ConvertToObject();var u="object"==typeof this.value?this.value:{},l=new Array;for(var c in e){var a=e[c],s=u[c];s?s.SetValue(a):u[c]=new o.default(a),l.push(c)}this.value=u,this.objectProperties=l}else this.ConvertToValue(),this.value===e?t=!0:this.value=e;this.ReconcileProperties(r),t||this.FireEvent("set")},enumerable:!0,configurable:!0}),e.prototype.valueOf=function(){return this.Value},e.prototype.toString=function(){var e=this.valueOf();return e&&e.toString()},e.prototype.RemoveNode=function(e){var t=this.parentNodes.indexOf(e);t>=0&&(this.parentNodes.splice(t,1),this.RemoveProperties(e,this.Properties),this.valueType==n.Array&&this.RemoveArrayMixin(e))},e.prototype.AddNode=function(e){var t=this.parentNodes.indexOf(e);t<0&&(this.parentNodes.push(e),this.AddProperties(e,this.Properties),this.valueType==n.Array&&this.AddArrayMixin(e),e.Fire("set",e))},e.prototype.FireEvent=function(e){for(var t=0;t<this.parentNodes.length;t++)this.parentNodes[t].Fire(e,this.parentNodes[t])},e.prototype.ReconcileProperties=function(e){for(var t=e.slice(),r=this.Properties.slice(),n=new Array,o=0;o<r.length;o++){var i=t.indexOf(r[o]);i>=0?t.splice(i,1):n.push(r[o])}this.RemovePropertiesFromParents(t),this.AddPropertiesToParents(n)},e.prototype.ConvertToArray=function(){this.valueType!=n.Array&&(this.valueType==n.Object&&(this.RemovePropertiesFromParents(this.Properties),this.objectProperties=[]),this.AddArrayMixinToParents(),this.valueType=n.Array)},e.prototype.ConvertToObject=function(){this.valueType!=n.Object&&(this.valueType==n.Array&&(this.RemoveArrayMixinFromParents(),this.RemovePropertiesFromParents(this.Properties),this.arrayProperties=[]),this.valueType=n.Object)},e.prototype.ConvertToValue=function(){this.valueType!=n.Value&&(this.valueType==n.Array?(this.RemoveArrayMixinFromParents(),this.RemovePropertiesFromParents(this.Properties),this.arrayProperties=[]):this.valueType==n.Object&&(this.RemovePropertiesFromParents(this.Properties),this.objectProperties=[]),this.valueType=n.Value)},e.prototype.AddPropertiesToParents=function(e){for(var t=0;t<this.parentNodes.length;t++)this.AddProperties(this.parentNodes[t],e)},e.prototype.AddProperties=function(e,t){var r=this;t.forEach(function(t,n){Object.defineProperty(e,t,{get:function(){return r.value[t]},set:function(e){r.value[t].SetValue(e)},enumerable:!0,configurable:!0})})},e.prototype.RemovePropertiesFromParents=function(e){for(var t=0;t<this.parentNodes.length;t++)this.RemoveProperties(this.parentNodes[t],e)},e.prototype.RemoveProperties=function(e,t){for(var r=0;r<t.length;r++)delete e[t[r]]},e.prototype.AddArrayMixinToParents=function(){for(var e=0;e<this.parentNodes.length;e++)this.AddArrayMixin(this.parentNodes[e])},e.prototype.AddArrayMixin=function(e){var t=this;Object.defineProperty(e,"length",{get:function(){return t.value.length},enumerable:!1,configurable:!0}),Object.defineProperty(e,"push",{value:function(e){t.AddPropertiesToParents([t.value.length]);var r=new o.default(e);t.value.push(r),t.FireEvent("set")},enumerable:!1,configurable:!0}),Object.defineProperty(e,"splice",{value:function(e,r){for(var n=[],i=2;i<arguments.length;i++)n[i-2]=arguments[i];void 0===r&&(r=t.value.length-e),e=t.value.length<e?t.value.length:e;for(var a=t.Properties,s=[],u=0;u<r&&u+e<t.value.length;u++)s.push(t.value[e+u].GetValue().valueOf());for(var l=0;l<n.length;l++)e+l<t.value.length?t.value[e+l].SetValue(n[l]):t.value.push(new o.default(n[l]));return r>n.length&&t.value.splice(e+n.length,r-n.length),t.ReconcileProperties(a),t.FireEvent("set"),s},enumerable:!1,configurable:!0})},e.prototype.RemoveArrayMixinFromParents=function(){for(var e=0;e<this.parentNodes.length;e++)this.RemoveArrayMixin(this.parentNodes[e])},e.prototype.RemoveArrayMixin=function(e){delete e.length,delete e.push,delete e.splice},e}();!function(e){function t(e){if(e.ValueType==n.Value)return e.Value;for(var t=e.ValueType==n.Array?[]:{},r=e.Properties,i=0;i<r.length;i++)t[r[i]]=o.default.Unwrap(e.Value[r[i]]);return t}e.Unwrap=t}(i||(i={})),Object.defineProperty(t,"__esModule",{value:!0}),t.default=i},function(e,t){"use strict";var r=function(){function e(){this.callbackMap={}}return e.prototype.AddListener=function(e,t){var r=this.callbackMap[e]||[],n=r.indexOf(t);if(n>=0)throw"Event already registered";r.push(t),this.callbackMap[e]=r},e.prototype.RemoveListener=function(e,t){var r=this.callbackMap[e]||[],n=r.indexOf(t);n>=0&&(r.splice(n,1),this.callbackMap[e]=r)},e.prototype.Fire=function(e){for(var t=[],r=1;r<arguments.length;r++)t[r-1]=arguments[r];var n=this.callbackMap[e]||[];n.forEach(function(e){e.apply(void 0,t)})},e.prototype.Clear=function(e){this.callbackMap[e]=null},e}();Object.defineProperty(t,"__esModule",{value:!0}),t.default=r}]);
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId])
+/******/ 			return installedModules[moduleId].exports;
+
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			exports: {},
+/******/ 			id: moduleId,
+/******/ 			loaded: false
+/******/ 		};
+
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
+
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+
+
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(0);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var observable_1 = __webpack_require__(1);
+	var browser_1 = __webpack_require__(5);
+	var component_1 = __webpack_require__(6);
+	var Comp = (function (_super) {
+	    __extends(Comp, _super);
+	    function Comp() {
+	        _super.apply(this, arguments);
+	        this.state = observable_1.default.Create({
+	            parentProp1: "parentValue",
+	            parentProp2: "second value",
+	            fontColor: "red",
+	            array: ["first", "second", "third"]
+	        });
+	    }
+	    Object.defineProperty(Comp.prototype, "State", {
+	        get: function () {
+	            return this.state;
+	        },
+	        set: function (val) {
+	            this.state.SetValue(val);
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Comp.prototype, "Template", {
+	        get: function () {
+	            return "\n<div>\n    <style type=\"text/css\">\n        .line-item {\n            color: {{ $comp.State.fontColor }};\n        }\n    </style>\n    {{ $comp.State.parentProp1 }}\n    <" + SubComp + " j-parent=\"{ pValue: $comp.State.parentProp1, color: $comp.State.fontColor, array: $comp.State.array }\">\n        <header>\n            HEADER {{ $parent.pValue }}\n        </header>\n        <content>\n            <div>{{ $parent.color }} <b>{{ $data }}</b></div>\n        </content>\n    </" + SubComp + ">\n</div>";
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    return Comp;
+	}(component_1.default));
+	var SubComp = (function (_super) {
+	    __extends(SubComp, _super);
+	    function SubComp() {
+	        _super.apply(this, arguments);
+	        this.state = observable_1.default.Create({
+	            prop1: "Test",
+	            prop2: "test2",
+	            color: "green",
+	            array: []
+	        });
+	    }
+	    Object.defineProperty(SubComp, "Name", {
+	        get: function () {
+	            return "Sub-Comp";
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(SubComp.prototype, "State", {
+	        get: function () {
+	            return this.state;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(SubComp.prototype, "Template", {
+	        get: function () {
+	            return "\n<header />\n<div>Parent pValue is: {{ $parent.pValue }}</div>\n<div j-onclick=\"$comp.OnDivClick\" j-array=\"['default'].concat($state.array.valueOf())\">\n    <div class=\"line-item\">Component name is: {{ $data }} - index is: {{ $index }}</div>\n    <content />\n</div>";
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    SubComp.prototype.SetParentData = function (data) {
+	        _super.prototype.SetParentData.call(this, data);
+	        this.State.prop2 = data.pValue;
+	        this.State.color = data.color;
+	        this.State.array = data.array;
+	    };
+	    SubComp.prototype.BindingParameters = function () {
+	        var params = _super.prototype.BindingParameters.call(this);
+	        params["$state"] = this.State;
+	        return params;
+	    };
+	    SubComp.prototype.OnDivClick = function (e) {
+	        console.log("div has been clicked");
+	    };
+	    return SubComp;
+	}(component_1.default));
+	browser_1.default.window.Comp = Comp;
+	browser_1.default.window.SubComp = SubComp;
+	browser_1.default.window.Observable = observable_1.default;
+	var divElem = browser_1.default.window.document.createElement("div");
+	var comp = new Comp();
+	comp.AttachTo(divElem);
+	console.log(divElem.outerHTML);
+	var obsArr = new observable_1.default(["first", "second", "third"]);
+	var test = ["prefix"].concat(obsArr);
+	console.log(test.length);
+
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var emitter_1 = __webpack_require__(2);
+	var observableValue_1 = __webpack_require__(3);
+	var sharedEmitter = new emitter_1.default();
+	var Observable = (function (_super) {
+	    __extends(Observable, _super);
+	    function Observable(initialValue) {
+	        _super.call(this);
+	        this.SetValue(initialValue);
+	    }
+	    Object.defineProperty(Observable.prototype, "IsArray", {
+	        get: function () {
+	            return Array.isArray(this.observableValue.valueOf());
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Observable.prototype.Fire = function (name) {
+	        var args = [];
+	        for (var _i = 1; _i < arguments.length; _i++) {
+	            args[_i - 1] = arguments[_i];
+	        }
+	        _super.prototype.Fire.apply(this, [name].concat(args));
+	        sharedEmitter.Fire.apply(sharedEmitter, [name].concat(args));
+	    };
+	    Observable.prototype.SetValue = function (value) {
+	        if (value instanceof Observable) {
+	            var newValue = value.GetValue();
+	            if (newValue !== this.observableValue) {
+	                if (this.observableValue)
+	                    this.observableValue.RemoveNode(this);
+	                this.observableValue = newValue;
+	                this.observableValue.AddNode(this);
+	            }
+	        }
+	        else {
+	            if (this.observableValue)
+	                this.observableValue.Value = value;
+	            else {
+	                this.observableValue = new observableValue_1.default(value);
+	                this.observableValue.AddNode(this);
+	            }
+	        }
+	    };
+	    Observable.prototype.GetValue = function () {
+	        return this.observableValue;
+	    };
+	    Observable.prototype.valueOf = function () {
+	        this.Fire("get", this);
+	        return this.observableValue.valueOf();
+	    };
+	    Observable.prototype.toString = function () {
+	        return this.valueOf().toString();
+	    };
+	    return Observable;
+	}(emitter_1.default));
+	var Observable;
+	(function (Observable) {
+	    function Create(initialValue) {
+	        return new Observable(initialValue);
+	    }
+	    Observable.Create = Create;
+	    function Unwrap(node) {
+	        return observableValue_1.default.Unwrap(node.GetValue());
+	    }
+	    Observable.Unwrap = Unwrap;
+	    function Watch(event, action) {
+	        var ret = [];
+	        var callback = function (obs) {
+	            var ind = ret.indexOf(obs);
+	            if (ind < 0)
+	                ret.push(obs);
+	        };
+	        sharedEmitter.AddListener(event, callback);
+	        action();
+	        sharedEmitter.RemoveListener(event, callback);
+	        return ret;
+	    }
+	    Observable.Watch = Watch;
+	})(Observable || (Observable = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Observable;
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	var Emitter = (function () {
+	    function Emitter() {
+	        this.callbackMap = {};
+	    }
+	    Emitter.prototype.AddListener = function (name, callback) {
+	        var events = this.callbackMap[name] || [];
+	        var ind = events.indexOf(callback);
+	        if (ind >= 0)
+	            throw "Event already registered";
+	        events.push(callback);
+	        this.callbackMap[name] = events;
+	    };
+	    Emitter.prototype.RemoveListener = function (name, callback) {
+	        var events = this.callbackMap[name] || [];
+	        var ind = events.indexOf(callback);
+	        if (ind >= 0) {
+	            events.splice(ind, 1);
+	            this.callbackMap[name] = events;
+	        }
+	    };
+	    Emitter.prototype.Fire = function (name) {
+	        var args = [];
+	        for (var _i = 1; _i < arguments.length; _i++) {
+	            args[_i - 1] = arguments[_i];
+	        }
+	        var events = this.callbackMap[name] || [];
+	        events.forEach(function (c) {
+	            c.apply(void 0, args);
+	        });
+	    };
+	    Emitter.prototype.Clear = function (name) {
+	        this.callbackMap[name] = null;
+	    };
+	    return Emitter;
+	}());
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Emitter;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var observable_1 = __webpack_require__(1);
+	var symbol_1 = __webpack_require__(4);
+	var ObservableValueType;
+	(function (ObservableValueType) {
+	    ObservableValueType[ObservableValueType["Value"] = 0] = "Value";
+	    ObservableValueType[ObservableValueType["Object"] = 1] = "Object";
+	    ObservableValueType[ObservableValueType["Array"] = 2] = "Array";
+	})(ObservableValueType || (ObservableValueType = {}));
+	var ObservableValue = (function () {
+	    function ObservableValue(initialValue) {
+	        this.objectProperties = [];
+	        this.arrayProperties = [];
+	        this.parentNodes = [];
+	        this.valueType = ObservableValueType.Value;
+	        this.Value = initialValue;
+	    }
+	    Object.defineProperty(ObservableValue.prototype, "Properties", {
+	        get: function () {
+	            var props = null;
+	            switch (this.valueType) {
+	                case ObservableValueType.Array:
+	                    if (this.arrayProperties.length !== this.value.length) {
+	                        this.arrayProperties = [];
+	                        for (var x = 0; x < this.value.length; x++)
+	                            this.arrayProperties.push(x);
+	                    }
+	                    props = this.arrayProperties;
+	                    break;
+	                case ObservableValueType.Object:
+	                    props = this.objectProperties;
+	                    break;
+	                case ObservableValueType.Value:
+	                    props = [];
+	                    break;
+	            }
+	            return props;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(ObservableValue.prototype, "ValueType", {
+	        get: function () {
+	            return this.valueType;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(ObservableValue.prototype, "Value", {
+	        get: function () {
+	            return this.value;
+	        },
+	        set: function (val) {
+	            var skipEventFiring = false;
+	            var startProperties = this.Properties;
+	            if (Array.isArray(val)) {
+	                this.ConvertToArray();
+	                var nextArr = Array.isArray(this.value) ? this.value : new Array();
+	                for (var x = 0; x < val.length; x++) {
+	                    var newVal = val[x];
+	                    var curVal = nextArr[x];
+	                    if (curVal)
+	                        curVal.SetValue(newVal);
+	                    else
+	                        nextArr[x] = new observable_1.default(newVal);
+	                }
+	                if (val.length < nextArr.length)
+	                    nextArr.splice(val.length);
+	                this.value = nextArr;
+	            }
+	            else if (val != null && val != undefined && typeof val === "object") {
+	                this.ConvertToObject();
+	                var nextObject = typeof this.value === "object" ? this.value : {};
+	                var props = new Array();
+	                for (var key in val) {
+	                    var newVal = val[key];
+	                    var curVal = nextObject[key];
+	                    if (curVal) {
+	                        curVal.SetValue(newVal);
+	                    }
+	                    else {
+	                        nextObject[key] = new observable_1.default(newVal);
+	                    }
+	                    props.push(key);
+	                }
+	                this.value = nextObject;
+	                this.objectProperties = props;
+	            }
+	            else {
+	                this.ConvertToValue();
+	                if (this.value === val)
+	                    skipEventFiring = true;
+	                else
+	                    this.value = val;
+	            }
+	            this.ReconcileProperties(startProperties);
+	            if (!skipEventFiring) {
+	                this.FireEvent("set");
+	            }
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ObservableValue.prototype.valueOf = function () {
+	        return this.Value;
+	    };
+	    ObservableValue.prototype.toString = function () {
+	        var val = this.valueOf();
+	        return val && val.toString();
+	    };
+	    ObservableValue.prototype.RemoveNode = function (node) {
+	        var ind = this.parentNodes.indexOf(node);
+	        if (ind >= 0) {
+	            this.parentNodes.splice(ind, 1);
+	            this.RemoveProperties(node, this.Properties);
+	            if (this.valueType == ObservableValueType.Array)
+	                this.RemoveArrayMixin(node);
+	        }
+	    };
+	    ObservableValue.prototype.AddNode = function (node) {
+	        var ind = this.parentNodes.indexOf(node);
+	        if (ind < 0) {
+	            this.parentNodes.push(node);
+	            this.AddProperties(node, this.Properties);
+	            if (this.valueType == ObservableValueType.Array)
+	                this.AddArrayMixin(node);
+	            node.Fire("set", node);
+	        }
+	    };
+	    ObservableValue.prototype.FireEvent = function (event) {
+	        for (var x = 0; x < this.parentNodes.length; x++)
+	            this.parentNodes[x].Fire(event, this.parentNodes[x]);
+	    };
+	    ObservableValue.prototype.ReconcileProperties = function (actualProperties) {
+	        var lostProperties = actualProperties.slice();
+	        var newProperties = this.Properties.slice();
+	        var addedProperties = new Array();
+	        for (var x = 0; x < newProperties.length; x++) {
+	            var ind = lostProperties.indexOf(newProperties[x]);
+	            if (ind >= 0)
+	                lostProperties.splice(ind, 1);
+	            else
+	                addedProperties.push(newProperties[x]);
+	        }
+	        this.RemovePropertiesFromParents(lostProperties);
+	        this.AddPropertiesToParents(addedProperties);
+	    };
+	    ObservableValue.prototype.ConvertToArray = function () {
+	        if (this.valueType == ObservableValueType.Array)
+	            return;
+	        if (this.valueType == ObservableValueType.Object) {
+	            this.RemovePropertiesFromParents(this.Properties);
+	            this.objectProperties = [];
+	        }
+	        this.AddArrayMixinToParents();
+	        this.valueType = ObservableValueType.Array;
+	    };
+	    ObservableValue.prototype.ConvertToObject = function () {
+	        if (this.valueType == ObservableValueType.Object)
+	            return;
+	        if (this.valueType == ObservableValueType.Array) {
+	            this.RemoveArrayMixinFromParents();
+	            this.RemovePropertiesFromParents(this.Properties);
+	            this.arrayProperties = [];
+	        }
+	        this.valueType = ObservableValueType.Object;
+	    };
+	    ObservableValue.prototype.ConvertToValue = function () {
+	        if (this.valueType == ObservableValueType.Value)
+	            return;
+	        if (this.valueType == ObservableValueType.Array) {
+	            this.RemoveArrayMixinFromParents();
+	            this.RemovePropertiesFromParents(this.Properties);
+	            this.arrayProperties = [];
+	        }
+	        else if (this.valueType == ObservableValueType.Object) {
+	            this.RemovePropertiesFromParents(this.Properties);
+	            this.objectProperties = [];
+	        }
+	        this.valueType = ObservableValueType.Value;
+	    };
+	    ObservableValue.prototype.AddPropertiesToParents = function (properties) {
+	        for (var x = 0; x < this.parentNodes.length; x++)
+	            this.AddProperties(this.parentNodes[x], properties);
+	    };
+	    ObservableValue.prototype.AddProperties = function (object, properties) {
+	        var self = this;
+	        properties.forEach(function (c, i) {
+	            Object.defineProperty(object, c, {
+	                get: function () {
+	                    return self.value[c];
+	                },
+	                set: function (val) {
+	                    self.value[c].SetValue(val);
+	                },
+	                enumerable: true,
+	                configurable: true
+	            });
+	        });
+	    };
+	    ObservableValue.prototype.RemovePropertiesFromParents = function (properties) {
+	        for (var x = 0; x < this.parentNodes.length; x++)
+	            this.RemoveProperties(this.parentNodes[x], properties);
+	    };
+	    ObservableValue.prototype.RemoveProperties = function (object, properties) {
+	        for (var x = 0; x < properties.length; x++) {
+	            delete object[properties[x]];
+	        }
+	    };
+	    ObservableValue.prototype.AddArrayMixinToParents = function () {
+	        for (var x = 0; x < this.parentNodes.length; x++) {
+	            this.AddArrayMixin(this.parentNodes[x]);
+	        }
+	    };
+	    ObservableValue.prototype.AddArrayMixin = function (object) {
+	        var self = this;
+	        Object.defineProperty(object, "length", {
+	            get: function () {
+	                return self.value.length;
+	            },
+	            enumerable: false,
+	            configurable: true
+	        });
+	        Object.defineProperty(object, "push", {
+	            value: function (newVal) {
+	                self.AddPropertiesToParents([self.value.length]);
+	                var newObs = new observable_1.default(newVal);
+	                var ret = self.value.push(newObs);
+	                self.FireEvent("set");
+	                return ret;
+	            },
+	            enumerable: false,
+	            configurable: true
+	        });
+	        Object.defineProperty(object, "splice", {
+	            value: function (startIndex, count) {
+	                var args = [];
+	                for (var _i = 2; _i < arguments.length; _i++) {
+	                    args[_i - 2] = arguments[_i];
+	                }
+	                var startProperties = self.Properties;
+	                startIndex = startIndex || 0;
+	                count = count || self.value.length - startIndex;
+	                if (startIndex + count > self.value.length)
+	                    count = self.value.length - startIndex;
+	                var tailLength = self.value.length - (startIndex + count);
+	                var tail = [];
+	                for (var x = 0; x < tailLength; x++)
+	                    tail.push(self.value[startIndex + count + x]);
+	                var ret = [];
+	                for (var x = 0; x < count; x++)
+	                    ret.push(self.value[startIndex + x].valueOf());
+	                for (var x = 0; x < args.length + tailLength; x++) {
+	                    var index = x + startIndex;
+	                    var value = x < args.length ? args[x] : tail[x - args.length];
+	                    if (index < self.value.length)
+	                        self.value[index].SetValue(value);
+	                    else
+	                        self.value.push(new observable_1.default(value));
+	                }
+	                self.value.splice(startIndex + args.length + tailLength);
+	                self.ReconcileProperties(startProperties);
+	                self.FireEvent("set");
+	                return ret;
+	            },
+	            enumerable: false,
+	            configurable: true
+	        });
+	        Object.defineProperty(object, symbol_1.default.iterator, {
+	            get: function () {
+	                return self.valueOf()[symbol_1.default.iterator];
+	            },
+	            enumerable: false,
+	            configurable: true
+	        });
+	    };
+	    ObservableValue.prototype.RemoveArrayMixinFromParents = function () {
+	        for (var x = 0; x < this.parentNodes.length; x++) {
+	            this.RemoveArrayMixin(this.parentNodes[x]);
+	        }
+	    };
+	    ObservableValue.prototype.RemoveArrayMixin = function (object) {
+	        delete object["length"];
+	        delete object["push"];
+	        delete object["splice"];
+	        delete object[symbol_1.default.iterator];
+	    };
+	    return ObservableValue;
+	}());
+	var ObservableValue;
+	(function (ObservableValue) {
+	    function Unwrap(value) {
+	        if (value.ValueType == ObservableValueType.Value)
+	            return value.Value;
+	        var returnValue = value.ValueType == ObservableValueType.Array ? [] : {};
+	        var properties = value.Properties;
+	        for (var x = 0; x < properties.length; x++) {
+	            returnValue[properties[x]] = observable_1.default.Unwrap(value.Value[properties[x]]);
+	        }
+	        return returnValue;
+	    }
+	    ObservableValue.Unwrap = Unwrap;
+	})(ObservableValue || (ObservableValue = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ObservableValue;
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	var supported = typeof Symbol != "undefined";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = {
+	    get __supported() {
+	        return supported;
+	    },
+	    get iterator() {
+	        if (supported)
+	            return Symbol.iterator;
+	        return "Symbol.iterator";
+	    }
+	};
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var glbl = null;
+	if (typeof window != "undefined")
+	    glbl = window;
+	else {
+	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
+	}
+	function ImmediateRequestAnimationFrame(callback) {
+	    callback();
+	    return 0;
+	}
+	var immediateAnimationFrames = false;
+	var selfClosingTagRgx = /<([^\s]+)([^>]*)\/>/g;
+	function CreateDocumentFragment(node) {
+	    if (typeof node === "string") {
+	        node = node.replace(selfClosingTagRgx, function (substr, g1, g2) {
+	            return "<" + g1 + g2 + "></" + g1 + ">";
+	        });
+	        var parser = new glbl.DOMParser();
+	        var doc = parser.parseFromString(node, "text/html");
+	        return CreateDocumentFragment(doc.body);
+	    }
+	    var fragment = glbl.document.createDocumentFragment();
+	    while (node && node.childNodes.length > 0)
+	        fragment.appendChild(node.childNodes[0]);
+	    return fragment;
+	}
+	var config = {
+	    window: glbl,
+	    get immediateAnimationFrames() {
+	        return immediateAnimationFrames;
+	    },
+	    set immediateAnimationFrames(val) {
+	        immediateAnimationFrames = val;
+	        this.requestAnimationFrame = (immediateAnimationFrames ? ImmediateRequestAnimationFrame : glbl.requestAnimationFrame || ImmediateRequestAnimationFrame).bind(glbl);
+	    },
+	    requestAnimationFrame: null,
+	    createDocumentFragment: CreateDocumentFragment
+	};
+	config.immediateAnimationFrames = false;
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = config;
+
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var componentBase_1 = __webpack_require__(7);
+	var Component = (function (_super) {
+	    __extends(Component, _super);
+	    function Component() {
+	        _super.call(this);
+	        this.SetTemplate(this.Template);
+	    }
+	    Object.defineProperty(Component, "Name", {
+	        get: function () {
+	            return null;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Component.prototype, "Template", {
+	        get: function () { },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Component.prototype.SetParentData = function (data) {
+	        this.parentData = data;
+	    };
+	    Component.prototype.BindingParameters = function () {
+	        var params = _super.prototype.BindingParameters.call(this);
+	        params["$parent"] = this.parentData;
+	        return params;
+	    };
+	    Component.toString = function () {
+	        Component.Register(this);
+	        return this.Name;
+	    };
+	    return Component;
+	}(componentBase_1.default));
+	var Component;
+	(function (Component) {
+	    var componentMap = {};
+	    function Register(constructor) {
+	        var name = constructor.Name.toLowerCase();
+	        var comp = componentMap[name];
+	        if (!comp)
+	            componentMap[name] = constructor;
+	    }
+	    Component.Register = Register;
+	    function Get(name) {
+	        var comp = componentMap[name.toLowerCase()];
+	        return comp;
+	    }
+	    Component.Get = Get;
+	    function Exists(name) {
+	        return !!Get(name);
+	    }
+	    Component.Exists = Exists;
+	})(Component || (Component = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Component;
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var bindings_1 = __webpack_require__(8);
+	var template_1 = __webpack_require__(16);
+	var ComponentBase = (function () {
+	    function ComponentBase() {
+	        this.destroyed = false;
+	        this.bound = false;
+	    }
+	    Object.defineProperty(ComponentBase.prototype, "Attached", {
+	        get: function () {
+	            return this.template.Attached;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ComponentBase.prototype.AttachTo = function (element) {
+	        if (this.destroyed)
+	            throw "Can't attach destroyed component";
+	        if (!this.bound) {
+	            this.bindings = bindings_1.default.Bind(this.template.DocumentFragment, this.BindingParameters());
+	            this.bindings.forEach(function (c) { return c.Update(); });
+	            this.bound = true;
+	        }
+	        this.template.AttachTo(element);
+	    };
+	    ComponentBase.prototype.Detach = function () {
+	        this.template.Detach();
+	    };
+	    ComponentBase.prototype.Destroy = function () {
+	        this.Detach();
+	        this.bindings.forEach(function (c) {
+	            c.Destroy();
+	        });
+	        this.destroyed = true;
+	    };
+	    ComponentBase.prototype.SetChildElements = function (fragments) {
+	        if (this.bound)
+	            throw "Child elements can't be set after component is bound";
+	        this.template.OverwriteChildElements(fragments);
+	    };
+	    ComponentBase.prototype.SetTemplate = function (template) {
+	        this.template = template_1.default.Create(template);
+	    };
+	    ComponentBase.prototype.BindingParameters = function () {
+	        return {
+	            $comp: this
+	        };
+	    };
+	    return ComponentBase;
+	}());
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ComponentBase;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var browser_1 = __webpack_require__(5);
+	var Bindings;
+	(function (Bindings) {
+	    var pendingUpdates = [];
+	    var updateScheduled = false;
+	    function BindingMethods() {
+	        return [
+	            __webpack_require__(9).default.Create,
+	            __webpack_require__(12).default.Create,
+	            __webpack_require__(13).default.Create,
+	            __webpack_require__(13).default.Create,
+	            __webpack_require__(15).default.Create,
+	            __webpack_require__(18).default.Create
+	        ];
+	    }
+	    function ScheduleUpdate(callback) {
+	        var ind = pendingUpdates.indexOf(callback);
+	        if (ind < 0) {
+	            pendingUpdates.push(callback);
+	        }
+	        if (!updateScheduled) {
+	            updateScheduled = true;
+	            browser_1.default.requestAnimationFrame(function () {
+	                updateScheduled = false;
+	                while (pendingUpdates.length > 0)
+	                    pendingUpdates.shift()();
+	            });
+	        }
+	    }
+	    Bindings.ScheduleUpdate = ScheduleUpdate;
+	    function Bind(element, parameters) {
+	        var bindingMethods = BindingMethods();
+	        var ret = [];
+	        var skipChildren = false;
+	        if (element.nodeType != element.DOCUMENT_FRAGMENT_NODE) {
+	            for (var x = 0; x < bindingMethods.length; x++) {
+	                var bindings = bindingMethods[x](element, parameters, ScheduleUpdate);
+	                for (var y = 0; y < bindings.length; y++) {
+	                    skipChildren = skipChildren || bindings[y].BindsChildren;
+	                    ret.push(bindings[y]);
+	                }
+	            }
+	        }
+	        for (var z = 0; z < element.childNodes.length && !skipChildren; z++) {
+	            var childBindings = Bind(element.childNodes[z], parameters);
+	            for (var i = 0; i < childBindings.length; i++)
+	                ret.push(childBindings[i]);
+	        }
+	        return ret;
+	    }
+	    Bindings.Bind = Bind;
+	})(Bindings || (Bindings = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Bindings;
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var binding_1 = __webpack_require__(10);
+	var TextBinding = (function (_super) {
+	    __extends(TextBinding, _super);
+	    function TextBinding(element, parameters, scheduleUpdate) {
+	        _super.call(this, element, element.textContent, parameters, scheduleUpdate);
+	    }
+	    TextBinding.prototype.Apply = function () {
+	        this.BoundTo.textContent = this.Value;
+	    };
+	    return TextBinding;
+	}(binding_1.default));
+	var TextBinding;
+	(function (TextBinding) {
+	    function Create(element, bindingParameters, scheduleUpdate) {
+	        if (element.nodeType == element.TEXT_NODE && binding_1.default.IsExpression(element.textContent))
+	            return [new TextBinding(element, bindingParameters, scheduleUpdate)];
+	        return [];
+	    }
+	    TextBinding.Create = Create;
+	})(TextBinding || (TextBinding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = TextBinding;
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var observable_1 = __webpack_require__(1);
+	var syntax_1 = __webpack_require__(11);
+	var Binding = (function () {
+	    function Binding(boundTo, expression, parameters, scheduleUpdate) {
+	        var _this = this;
+	        this.boundTo = boundTo;
+	        this.observables = [];
+	        this.setCallback = function (obs) { _this.Update(); };
+	        this.applyCallback = function () { _this.Apply(); };
+	        this.scheduleUpdate = scheduleUpdate;
+	        this.parameters = parameters;
+	        this.parameterNames = [];
+	        this.parameterValues = [];
+	        for (var key in parameters) {
+	            this.parameterNames.push(key);
+	            this.parameterValues.push(parameters[key]);
+	        }
+	        this.bindingFunction = Binding.ParseExpression(expression, this.parameterNames);
+	    }
+	    Object.defineProperty(Binding.prototype, "BindsChildren", {
+	        get: function () {
+	            return false;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Binding.prototype, "Value", {
+	        get: function () {
+	            return this.value;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Binding.prototype, "BoundTo", {
+	        get: function () {
+	            return this.boundTo;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Binding.prototype, "Parameters", {
+	        get: function () {
+	            return this.parameters;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Binding.prototype.Destroy = function () {
+	        var _this = this;
+	        this.observables.forEach(function (c) {
+	            c.RemoveListener("set", _this.setCallback);
+	        });
+	        this.value = null;
+	    };
+	    Binding.prototype.AddListeners = function (observable) {
+	        observable.AddListener("set", this.setCallback);
+	    };
+	    Binding.prototype.RemoveListeners = function (observable) {
+	        observable.RemoveListener("set", this.setCallback);
+	    };
+	    Binding.prototype.ScheduleUpdate = function (updateCallback) {
+	        this.scheduleUpdate(updateCallback);
+	    };
+	    Binding.prototype.ProcessValue = function (value) {
+	        return value;
+	    };
+	    Binding.prototype.Update = function () {
+	        var _this = this;
+	        var obs = observable_1.default.Watch("get", function () {
+	            var bindingResult = _this.bindingFunction.apply(_this, _this.parameterValues);
+	            _this.value = _this.ProcessValue(bindingResult);
+	        });
+	        var curObs = this.observables;
+	        for (var x = 0; x < obs.length; x++) {
+	            var ind = curObs.indexOf(obs[x]);
+	            if (ind < 0) {
+	                this.AddListeners(obs[x]);
+	            }
+	            else
+	                curObs.splice(ind, 1);
+	        }
+	        for (var y = 0; y < curObs.length; y++) {
+	            this.RemoveListeners(curObs[y]);
+	        }
+	        this.observables = obs;
+	        this.ScheduleUpdate(this.applyCallback);
+	    };
+	    return Binding;
+	}());
+	var Binding;
+	(function (Binding) {
+	    var spreadArrayRgx = /\[(.*\.\.\..*)\]/;
+	    var spreadOpRgx = /\.\.\.([^,]+)/g;
+	    function FixSyntax(codeStr) {
+	        var retStr = codeStr;
+	        if (!syntax_1.default.spread && spreadArrayRgx.test(codeStr)) {
+	            retStr = retStr.replace(spreadArrayRgx, function (match, g1) {
+	                var retArr = g1.replace(spreadOpRgx, function (match, g1) {
+	                    return g1 + ".valueOf()";
+	                });
+	                return "Array.prototype.concat.call(" + retArr + ")";
+	            });
+	        }
+	        return retStr;
+	    }
+	    var expRgx = /{{(.+?)}}/;
+	    function ParseExpression(expression, parameters) {
+	        if (!expression)
+	            expression = "null";
+	        var parts = expression.split(expRgx);
+	        if (parts.length > 1) {
+	            parts = expression.split(expRgx).map(function (c, i) {
+	                if (i % 2 == 0)
+	                    return "\"" + c + "\"";
+	                else
+	                    return FixSyntax("(" + c + ")");
+	            });
+	        }
+	        else
+	            parts[0] = FixSyntax(parts[0]);
+	        var merge = parts.join(" + ").replace(/[\n\r]/g, "");
+	        var funcStr = "return " + merge + ";";
+	        var Func = Function.bind.apply(Function, [null].concat(parameters.concat([funcStr])));
+	        return new Func();
+	    }
+	    Binding.ParseExpression = ParseExpression;
+	    function IsExpression(expression) {
+	        return expRgx.test(expression);
+	    }
+	    Binding.IsExpression = IsExpression;
+	})(Binding || (Binding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Binding;
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var symbol_1 = __webpack_require__(4);
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = {
+	    spread: symbol_1.default.__supported
+	};
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var binding_1 = __webpack_require__(10);
+	var browser_1 = __webpack_require__(5);
+	var component_1 = __webpack_require__(6);
+	var ComponentBinding = (function (_super) {
+	    __extends(ComponentBinding, _super);
+	    function ComponentBinding(element, parameters, scheduleUpdate) {
+	        var documentFragment = browser_1.default.createDocumentFragment(element);
+	        var childFragments = {};
+	        for (var x = 0; x < documentFragment.childNodes.length; x++) {
+	            var node = documentFragment.childNodes[x];
+	            childFragments[node.nodeName] = browser_1.default.createDocumentFragment(node);
+	        }
+	        var expression = element.getAttribute("j-parent");
+	        _super.call(this, element, expression, parameters, scheduleUpdate);
+	        var compType = component_1.default.Get(this.BoundTo.nodeName);
+	        this.component = new compType();
+	        this.component.SetChildElements(childFragments);
+	    }
+	    Object.defineProperty(ComponentBinding.prototype, "BindsChildren", {
+	        get: function () {
+	            return true;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ComponentBinding.prototype.Apply = function () {
+	        this.component.SetParentData(this.Value);
+	        if (!this.component.Attached)
+	            this.component.AttachTo(this.BoundTo);
+	    };
+	    return ComponentBinding;
+	}(binding_1.default));
+	var ComponentBinding;
+	(function (ComponentBinding) {
+	    var componentRgx = /[^-]+-[^-]+/;
+	    function Create(element, bindingParameters, scheduleUpdate) {
+	        if (element.nodeType == element.ELEMENT_NODE && componentRgx.test(element.nodeName) && component_1.default.Exists(element.nodeName))
+	            return [new ComponentBinding(element, bindingParameters, scheduleUpdate)];
+	        return [];
+	    }
+	    ComponentBinding.Create = Create;
+	})(ComponentBinding || (ComponentBinding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ComponentBinding;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var attributeBinding_1 = __webpack_require__(14);
+	var eventRgx = /j-on(.+)/;
+	var EventBinding = (function (_super) {
+	    __extends(EventBinding, _super);
+	    function EventBinding(element, attributeName, parameters, scheduleUpdate) {
+	        _super.call(this, element, attributeName, parameters, scheduleUpdate);
+	        this.eventName = eventRgx.exec(attributeName)[1];
+	    }
+	    EventBinding.prototype.Apply = function () {
+	        if (this.eventCallback)
+	            this.BoundTo.removeEventListener(this.eventName, this.eventCallback);
+	        this.eventCallback = this.Value;
+	        this.BoundTo.addEventListener(this.eventName, this.eventCallback);
+	    };
+	    return EventBinding;
+	}(attributeBinding_1.default));
+	var EventBinding;
+	(function (EventBinding) {
+	    function Create(element, bindingParameters, scheduleUpdate) {
+	        var ret = [];
+	        if (element.nodeType == element.ELEMENT_NODE) {
+	            for (var x = 0; x < element.attributes.length; x++) {
+	                var att = element.attributes[x];
+	                if (eventRgx.test(att.name))
+	                    ret.push(new EventBinding(element, att.name, bindingParameters, scheduleUpdate));
+	            }
+	        }
+	        return ret;
+	    }
+	    EventBinding.Create = Create;
+	})(EventBinding || (EventBinding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = EventBinding;
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var binding_1 = __webpack_require__(10);
+	var AttributeBinding = (function (_super) {
+	    __extends(AttributeBinding, _super);
+	    function AttributeBinding(element, attributeName, parameters, scheduleUpdate) {
+	        _super.call(this, element, element.getAttribute(attributeName), parameters, scheduleUpdate);
+	        this.attributeName = attributeName;
+	    }
+	    AttributeBinding.prototype.Apply = function () {
+	        this.BoundTo.setAttribute(this.attributeName, this.Value);
+	    };
+	    return AttributeBinding;
+	}(binding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = AttributeBinding;
+
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var template_1 = __webpack_require__(16);
+	var browser_1 = __webpack_require__(5);
+	var observable_1 = __webpack_require__(1);
+	var attributeBinding_1 = __webpack_require__(14);
+	var componentSimple_1 = __webpack_require__(17);
+	var arrayRgx = /j-array/;
+	var ArrayBinding = (function (_super) {
+	    __extends(ArrayBinding, _super);
+	    function ArrayBinding(element, parameters, scheduleUpdate) {
+	        _super.call(this, element, "j-array", parameters, scheduleUpdate);
+	        this.template = template_1.default.Create(this.BoundTo);
+	        this.childComponents = [];
+	        this.indexObservables = observable_1.default.Create([]);
+	    }
+	    Object.defineProperty(ArrayBinding.prototype, "BindsChildren", {
+	        get: function () {
+	            return true;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ArrayBinding.prototype.Apply = function () {
+	        var currentLength = this.childComponents.length;
+	        var newValue = this.Value || [];
+	        if (currentLength > newValue.length) {
+	            var oldComponents = this.childComponents.splice(newValue.length);
+	            oldComponents.forEach(function (c) {
+	                c.Destroy();
+	            });
+	        }
+	        else {
+	            var frag = browser_1.default.createDocumentFragment();
+	            for (var x = currentLength; x < newValue.length; x++) {
+	                var params = {};
+	                for (var key in this.Parameters)
+	                    params[key] = this.Parameters[key];
+	                params["$index"] = x;
+	                var newComponent = new componentSimple_1.default(this.template, newValue[x], params);
+	                newComponent.AttachTo(frag);
+	                this.childComponents.push(newComponent);
+	            }
+	            this.BoundTo.appendChild(frag);
+	        }
+	    };
+	    return ArrayBinding;
+	}(attributeBinding_1.default));
+	var ArrayBinding;
+	(function (ArrayBinding) {
+	    function Create(element, bindingParameters, scheduleUpdate) {
+	        var ret = [];
+	        if (element.nodeType == element.ELEMENT_NODE) {
+	            for (var x = 0; x < element.attributes.length; x++) {
+	                var att = element.attributes[x];
+	                if (arrayRgx.test(att.name))
+	                    ret.push(new ArrayBinding(element, bindingParameters, scheduleUpdate));
+	            }
+	        }
+	        return ret;
+	    }
+	    ArrayBinding.Create = Create;
+	})(ArrayBinding || (ArrayBinding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ArrayBinding;
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var browser_1 = __webpack_require__(5);
+	var Template = (function () {
+	    function Template(documentFragment) {
+	        this.documentFragment = documentFragment;
+	        this.elements = new Array(this.documentFragment.childNodes.length);
+	        for (var x = 0; x < this.documentFragment.childNodes.length; x++) {
+	            this.elements.push(this.documentFragment.childNodes[x]);
+	        }
+	    }
+	    Object.defineProperty(Template.prototype, "DocumentFragment", {
+	        get: function () {
+	            return this.documentFragment;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Template.prototype, "Attached", {
+	        get: function () {
+	            return !!this.attachedTo;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Template.prototype.AttachTo = function (element) {
+	        if (this.attachedTo)
+	            this.Detach();
+	        this.attachedTo = element;
+	        element.appendChild(this.documentFragment);
+	    };
+	    Template.prototype.Detach = function () {
+	        var _this = this;
+	        if (!this.Attached)
+	            return;
+	        this.attachedTo = null;
+	        this.elements.forEach(function (c) {
+	            return _this.documentFragment.appendChild(c);
+	        });
+	    };
+	    Template.prototype.Clone = function () {
+	        if (this.Attached)
+	            throw "Template cannot be cloned while attached";
+	        var fragment = this.documentFragment.cloneNode(true);
+	        return new Template(fragment);
+	    };
+	    Template.prototype.OverwriteChildElements = function (childFragments) {
+	        if (this.Attached)
+	            throw "Can't set child elements while attached";
+	        for (var key in childFragments) {
+	            var elements = this.DocumentFragment.querySelectorAll(key);
+	            for (var x = 0; x < elements.length; x++) {
+	                elements[x].innerHTML = "";
+	                elements[x].appendChild(childFragments[key]);
+	            }
+	        }
+	    };
+	    return Template;
+	}());
+	var Template;
+	(function (Template) {
+	    function Create(template) {
+	        if (template instanceof Template)
+	            return template.Clone();
+	        var frag = browser_1.default.createDocumentFragment(template);
+	        return new Template(frag);
+	    }
+	    Template.Create = Create;
+	})(Template || (Template = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Template;
+
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var componentBase_1 = __webpack_require__(7);
+	var ComponentSimple = (function (_super) {
+	    __extends(ComponentSimple, _super);
+	    function ComponentSimple(template, data, parameterOverrides) {
+	        _super.call(this);
+	        this.data = data;
+	        this.parameterOverrides = parameterOverrides;
+	        this.SetTemplate(template);
+	    }
+	    Object.defineProperty(ComponentSimple.prototype, "Data", {
+	        get: function () {
+	            return this.data;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ComponentSimple.prototype.BindingParameters = function () {
+	        var params = _super.prototype.BindingParameters.call(this);
+	        for (var key in this.parameterOverrides)
+	            params[key] = this.parameterOverrides[key];
+	        params["$data"] = this.Data;
+	        return params;
+	    };
+	    return ComponentSimple;
+	}(componentBase_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ComponentSimple;
+
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var attributeBinding_1 = __webpack_require__(14);
+	var propRgx = /j-prop.(.*)/;
+	var PropertyBinding = (function (_super) {
+	    __extends(PropertyBinding, _super);
+	    function PropertyBinding(element, attributeName, parameters, scheduleUpdate) {
+	        _super.call(this, element, attributeName, parameters, scheduleUpdate);
+	        var matches = propRgx.exec(attributeName);
+	        var propPath = matches[1].split(".");
+	        this.parentObject = this.BoundTo;
+	        var x = 0;
+	        for (; x < propPath.length - 1; x++)
+	            this.parentObject = this.parentObject[propPath[x]];
+	        this.propName = propPath[x];
+	    }
+	    PropertyBinding.prototype.Apply = function () {
+	        var newValue = this.Value;
+	        if (newValue != null && typeof newValue == "object") {
+	            for (var key in newValue)
+	                this.parentObject[this.propName][key] = newValue[key].valueOf();
+	        }
+	        else
+	            this.parentObject[this.propName] = newValue;
+	    };
+	    return PropertyBinding;
+	}(attributeBinding_1.default));
+	var PropertyBinding;
+	(function (PropertyBinding) {
+	    function Create(element, bindingParameters, scheduleUpdate) {
+	        var ret = [];
+	        if (element.nodeType == element.ELEMENT_NODE) {
+	            for (var x = 0; x < element.attributes.length; x++) {
+	                var att = element.attributes[x];
+	                if (propRgx.test(att.name))
+	                    ret.push(new PropertyBinding(element, att.name, bindingParameters, scheduleUpdate));
+	            }
+	        }
+	        return ret;
+	    }
+	    PropertyBinding.Create = Create;
+	})(PropertyBinding || (PropertyBinding = {}));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = PropertyBinding;
+
+
+/***/ })
+/******/ ]);

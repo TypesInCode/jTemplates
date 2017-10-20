@@ -1,5 +1,6 @@
 import Emitter from "../emitter";
 import Observable from "./observable";
+import Symbol from "../Utils/symbol";
 
 enum ObservableValueType {
     Value,
@@ -218,7 +219,7 @@ class ObservableValue {
         var self = this;
         properties.forEach((c, i) => {
             Object.defineProperty(object, c, {
-                get: () => {               
+                get: () => {
                     return self.value[c];
                 },
                 set: (val) => {
@@ -250,7 +251,7 @@ class ObservableValue {
     private AddArrayMixin(object: Observable) {
         var self = this;
         Object.defineProperty(object, "length", {
-            get: () => {
+            get: function() {
                 return self.value.length;
             },
             enumerable: false,
@@ -260,21 +261,42 @@ class ObservableValue {
             value: function(newVal: any) {
                 self.AddPropertiesToParents([self.value.length]);
                 var newObs = new Observable(newVal);
-                self.value.push(newObs);
+                var ret = self.value.push(newObs);
                 self.FireEvent("set");
+                return ret;
             },
             enumerable: false,
             configurable: true
         });
         Object.defineProperty(object, "splice", {
             value: function(startIndex: number, count: number, ...args: Array<any>) {
-                if(count === undefined)
+                var startProperties = self.Properties;
+                startIndex = startIndex || 0;
+                count = count || self.value.length - startIndex;
+                if(startIndex + count > self.value.length)
                     count = self.value.length - startIndex;
 
-                startIndex = self.value.length < startIndex ? self.value.length : startIndex;
-                var startProperties = self.Properties;
-
+                var tailLength = self.value.length - (startIndex + count);
+                var tail: Array<Observable> = [];
+                for(var x=0; x<tailLength; x++)
+                    tail.push(self.value[startIndex + count + x]);
+                
                 var ret: Array<Observable> = [];
+                for(var x=0; x<count; x++)
+                    ret.push(self.value[startIndex + x].valueOf());
+
+                for(var x=0; x<args.length + tailLength; x++) {
+                    var index = x + startIndex;
+                    var value = x < args.length ? args[x] : tail[x-args.length];
+                    if(index < self.value.length)
+                        self.value[index].SetValue(value);
+                    else
+                        self.value.push(new Observable(value));
+                }
+
+                self.value.splice(startIndex + args.length + tailLength);
+
+                /* var ret: Array<Observable> = [];
                 for(var i=0; i<count && i + startIndex < self.value.length; i++) {
                     ret.push(self.value[startIndex + i].GetValue().valueOf());
                 }
@@ -287,11 +309,18 @@ class ObservableValue {
                 }
 
                 if(count > args.length)
-                    self.value.splice(startIndex + args.length, count - args.length);
+                    self.value.splice(startIndex + args.length, count - args.length); */
 
                 self.ReconcileProperties(startProperties);
                 self.FireEvent("set");
                 return ret;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(object, Symbol.iterator, {
+            get: function() {
+                return self.valueOf()[Symbol.iterator];
             },
             enumerable: false,
             configurable: true
@@ -308,6 +337,7 @@ class ObservableValue {
         delete (object as any)["length"];
         delete (object as any)["push"];
         delete (object as any)["splice"];
+        delete (object as any)[Symbol.iterator];
     }
 }
 

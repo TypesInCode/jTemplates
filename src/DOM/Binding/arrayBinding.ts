@@ -10,16 +10,17 @@ var arrayRgx = /j-array/;
 class ArrayBinding extends AttributeBinding {
     private template: Template;
     private childComponents: Array<ComponentSimple>;
-    private pushCallback: (obs: Observable, newVal: Observable) => void;
+    private indexObservables: Observable;
 
     public get BindsChildren(): boolean {
         return true;
     }
 
-    constructor(element: Node, parameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void) {
-        super(element, "j-array", parameters, scheduleUpdate);
+    constructor(element: Node, parameters: {[name: string]: any}) {
+        super(element, "j-array", parameters);
         this.template = Template.Create(this.BoundTo);
         this.childComponents = [];
+        this.indexObservables = Observable.Create([]);
     }
 
     protected Apply() {
@@ -34,7 +35,11 @@ class ArrayBinding extends AttributeBinding {
         else {
             var frag = browser.createDocumentFragment();
             for(var x=currentLength; x<newValue.length; x++) {
-                var newComponent = new ComponentSimple(this.template, newValue[x], this.Parameters);
+                var params: { [name: string]: any } = {};
+                /* for(var key in this.Parameters)
+                    params[key] = this.Parameters[key]; */
+                params["$index"] = x;
+                var newComponent = new ComponentSimple(this.template, newValue[x], params);
                 newComponent.AttachTo(frag);
                 this.childComponents.push(newComponent);
             }
@@ -43,18 +48,18 @@ class ArrayBinding extends AttributeBinding {
     }
 }
 
-namespace ArrayBinding {
-    export function Create(element: any, bindingParameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void): Array<Binding<Node>> {
+/* namespace ArrayBinding {
+    export function Create(element: any, bindingParameters: {[name: string]: any}): Array<Binding<Node>> {
         var ret: Array<Binding<Node>> = [];
         if(element.nodeType == element.ELEMENT_NODE) {
             for(var x=0; x<element.attributes.length; x++) {
                 var att = element.attributes[x];
                 if(arrayRgx.test(att.name))
-                    ret.push(new ArrayBinding(element, bindingParameters, scheduleUpdate));
+                    ret.push(new ArrayBinding(element, bindingParameters));
             }
         }
         return ret;
     }
-}
+} */
 
 export default ArrayBinding;

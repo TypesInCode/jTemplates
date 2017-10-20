@@ -1,8 +1,8 @@
-import Binding from "../../binding";
+import NodeBinding from "./nodeBinding";
 
-class TextBinding extends Binding<Node> {
-    constructor(element: Node, parameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void) {
-        super(element, element.textContent, parameters, scheduleUpdate);
+class TextBinding extends NodeBinding {
+    constructor(element: Node, binding: string | { (): string }) {
+        super(element, binding);
     }
 
     protected Apply() {
@@ -10,13 +10,13 @@ class TextBinding extends Binding<Node> {
     }
 }
 
-namespace TextBinding {
+/* namespace TextBinding {
     export function Create(element: any, bindingParameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void): Array<Binding<Node>> {
         if(element.nodeType == element.TEXT_NODE && Binding.IsExpression(element.textContent))
             return [new TextBinding(element, bindingParameters, scheduleUpdate)];
 
         return [];
     }
-}
+} */
 
 export default TextBinding;

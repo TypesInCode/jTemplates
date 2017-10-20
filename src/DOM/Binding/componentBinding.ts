@@ -1,17 +1,17 @@
-import Binding from "../../binding";
+import NodeBinding from "./nodeBinding";
 import browser from "../browser";
 import Template from "../template";
 import Component from "../Component/component";
 
 
-class ComponentBinding extends Binding<Node> {
+class ComponentBinding extends NodeBinding {
     private component: Component;
 
     public get BindsChildren(): boolean {
         return true;
     }
 
-    constructor(element: Node, parameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void) {
+    constructor(element: Node, parameters: {[name: string]: any}) {
         var documentFragment = browser.createDocumentFragment(element);
         var childFragments: { [name: string]: DocumentFragment } = {};
         for(var x=0; x<documentFragment.childNodes.length; x++) {
@@ -20,7 +20,8 @@ class ComponentBinding extends Binding<Node> {
         }
 
         var expression = (element as any).getAttribute("j-parent");
-        super(element, expression, parameters, scheduleUpdate);
+        //super(element, expression, parameters);
+        super(element, ():any => null);
         var compType = Component.Get(this.BoundTo.nodeName);
         this.component = new compType();
         this.component.SetChildElements(childFragments);
@@ -34,15 +35,15 @@ class ComponentBinding extends Binding<Node> {
     }
 }
 
-namespace ComponentBinding {
+/* namespace ComponentBinding {
     var componentRgx = /[^-]+-[^-]+/;
 
-    export function Create(element: any, bindingParameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void): Array<Binding<Node>> {
+    export function Create(element: any, bindingParameters: {[name: string]: any}): Array<NodeBinding> {
         if(element.nodeType == element.ELEMENT_NODE && componentRgx.test(element.nodeName) && Component.Exists(element.nodeName))
-            return [new ComponentBinding(element, bindingParameters, scheduleUpdate)];
+            return [new ComponentBinding(element, bindingParameters)];
 
         return [];
     }
-}
+} */
 
 export default ComponentBinding;
