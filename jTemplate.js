@@ -50,101 +50,191 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var observable_1 = __webpack_require__(1);
-	var browser_1 = __webpack_require__(5);
+	var browser_1 = __webpack_require__(1);
+	var observable_1 = __webpack_require__(2);
 	var component_1 = __webpack_require__(6);
-	var Comp = (function (_super) {
-	    __extends(Comp, _super);
-	    function Comp() {
+	var date = null;
+	var MyComp = (function (_super) {
+	    __extends(MyComp, _super);
+	    function MyComp() {
 	        _super.apply(this, arguments);
 	        this.state = observable_1.default.Create({
-	            parentProp1: "parentValue",
-	            parentProp2: "second value",
-	            fontColor: "red",
-	            array: ["first", "second", "third"]
+	            Prop1: "test",
+	            Prop2: "blue",
+	            Class: "garbage-man",
+	            Font: "verdana",
+	            Arr: ["obs1", "obs2"],
+	            Component: SubComp
 	        });
 	    }
-	    Object.defineProperty(Comp.prototype, "State", {
+	    Object.defineProperty(MyComp.prototype, "State", {
 	        get: function () {
 	            return this.state;
 	        },
-	        set: function (val) {
-	            this.state.SetValue(val);
-	        },
 	        enumerable: true,
 	        configurable: true
 	    });
-	    Object.defineProperty(Comp.prototype, "Template", {
+	    Object.defineProperty(MyComp.prototype, "Template", {
 	        get: function () {
-	            return "\n<div>\n    <style type=\"text/css\">\n        .line-item {\n            color: {{ $comp.State.fontColor }};\n        }\n    </style>\n    {{ $comp.State.parentProp1 }}\n    <" + SubComp + " j-parent=\"{ pValue: $comp.State.parentProp1, color: $comp.State.fontColor, array: $comp.State.array }\">\n        <header>\n            HEADER {{ $parent.pValue }}\n        </header>\n        <content>\n            <div>{{ $parent.color }} <b>{{ $data }}</b></div>\n        </content>\n    </" + SubComp + ">\n</div>";
+	            var _this = this;
+	            return [
+	                { style: { type: "text/css" }, children: function () {
+	                        return { text: function () { return (".garbage-man { color: " + _this.State.Prop2 + "; }"); } };
+	                    } },
+	                { div: { className: function () { return _this.State.Class; }, style: { fontFamily: function () { return _this.State.Font; } } }, data: function () { return _this.State.Arr; },
+	                    on: { click: function () { return function (e) { return alert("click"); }; } }, children: function (c, i) {
+	                        return {
+	                            div: {}, children: [
+	                                { text: function () { return ("value is: " + c + ", index is " + i); } },
+	                                { div: {}, component: function () { return _this.state.Component; }, data: c }
+	                            ] };
+	                    }
+	                },
+	                { div: {}, component: function () { return _this.state.Component; }, data: function () { return _this.state.Prop1; }, templates: {
+	                        header: { div: {}, children: { text: function () { return ("header of MyComp " + _this.State.Class); } } }
+	                    } }
+	            ];
 	        },
 	        enumerable: true,
 	        configurable: true
 	    });
-	    return Comp;
+	    MyComp.prototype.Updating = function () {
+	        date = new Date();
+	        console.log("updating");
+	    };
+	    MyComp.prototype.Updated = function () {
+	        var date2 = new Date();
+	        console.log("updated " + (date2.getTime() - date.getTime()));
+	    };
+	    return MyComp;
 	}(component_1.default));
 	var SubComp = (function (_super) {
 	    __extends(SubComp, _super);
 	    function SubComp() {
 	        _super.apply(this, arguments);
 	        this.state = observable_1.default.Create({
-	            prop1: "Test",
-	            prop2: "test2",
-	            color: "green",
-	            array: []
+	            Name: "NAME"
 	        });
 	    }
-	    Object.defineProperty(SubComp, "Name", {
+	    Object.defineProperty(SubComp.prototype, "DefaultTemplates", {
 	        get: function () {
-	            return "Sub-Comp";
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    Object.defineProperty(SubComp.prototype, "State", {
-	        get: function () {
-	            return this.state;
+	            return {
+	                header: function () { return null; }
+	            };
 	        },
 	        enumerable: true,
 	        configurable: true
 	    });
 	    Object.defineProperty(SubComp.prototype, "Template", {
 	        get: function () {
-	            return "\n<header />\n<div>Parent pValue is: {{ $parent.pValue }}</div>\n<div j-onclick=\"$comp.OnDivClick\" j-array=\"['default'].concat($state.array.valueOf())\">\n    <div class=\"line-item\">Component name is: {{ $data }} - index is: {{ $index }}</div>\n    <content />\n</div>";
+	            var _this = this;
+	            return {
+	                div: {}, children: [
+	                    { text: "SubComp Header" },
+	                    { header: {}, children: this.Templates.header() },
+	                    { text: function () { return ("Subcomp name: " + _this.state.Name); } }
+	                ]
+	            };
 	        },
 	        enumerable: true,
 	        configurable: true
 	    });
 	    SubComp.prototype.SetParentData = function (data) {
-	        _super.prototype.SetParentData.call(this, data);
-	        this.State.prop2 = data.pValue;
-	        this.State.color = data.color;
-	        this.State.array = data.array;
-	    };
-	    SubComp.prototype.BindingParameters = function () {
-	        var params = _super.prototype.BindingParameters.call(this);
-	        params["$state"] = this.State;
-	        return params;
-	    };
-	    SubComp.prototype.OnDivClick = function (e) {
-	        console.log("div has been clicked");
+	        this.state.Name = data;
 	    };
 	    return SubComp;
 	}(component_1.default));
-	browser_1.default.window.Comp = Comp;
+	var SubComp2 = (function (_super) {
+	    __extends(SubComp2, _super);
+	    function SubComp2() {
+	        _super.apply(this, arguments);
+	        this.state = observable_1.default.Create({
+	            Name: "NAME"
+	        });
+	    }
+	    Object.defineProperty(SubComp2.prototype, "DefaultTemplates", {
+	        get: function () {
+	            return {
+	                header: function () { return null; }
+	            };
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(SubComp2.prototype, "Template", {
+	        get: function () {
+	            var _this = this;
+	            return {
+	                div: {}, children: [
+	                    { text: "SubComp2 Header" },
+	                    { header: {} },
+	                    { text: function () { return ("Subcomp2 name: " + _this.state.Name); } }
+	                ]
+	            };
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    SubComp2.prototype.SetParentData = function (data) {
+	        this.state.Name = data;
+	    };
+	    return SubComp2;
+	}(component_1.default));
+	browser_1.default.window.MyComp = MyComp;
 	browser_1.default.window.SubComp = SubComp;
-	browser_1.default.window.Observable = observable_1.default;
-	var divElem = browser_1.default.window.document.createElement("div");
-	var comp = new Comp();
-	comp.AttachTo(divElem);
-	console.log(divElem.outerHTML);
-	var obsArr = new observable_1.default(["first", "second", "third"]);
-	var test = ["prefix"].concat(obsArr);
-	console.log(test.length);
+	browser_1.default.window.SubComp2 = SubComp2;
 
 
 /***/ }),
 /* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var glbl = null;
+	if (typeof window != "undefined")
+	    glbl = window;
+	else {
+	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
+	}
+	function ImmediateRequestAnimationFrame(callback) {
+	    callback();
+	    return 0;
+	}
+	var immediateAnimationFrames = false;
+	var selfClosingTagRgx = /<([^\s]+)([^>]*)\/>/g;
+	function CreateDocumentFragment(node) {
+	    if (typeof node === "string") {
+	        node = node.replace(selfClosingTagRgx, function (substr, g1, g2) {
+	            return "<" + g1 + g2 + "></" + g1 + ">";
+	        });
+	        var parser = new glbl.DOMParser();
+	        var doc = parser.parseFromString(node, "text/html");
+	        return CreateDocumentFragment(doc.body);
+	    }
+	    var fragment = glbl.document.createDocumentFragment();
+	    while (node && node.childNodes.length > 0)
+	        fragment.appendChild(node.childNodes[0]);
+	    return fragment;
+	}
+	var config = {
+	    window: glbl,
+	    get immediateAnimationFrames() {
+	        return immediateAnimationFrames;
+	    },
+	    set immediateAnimationFrames(val) {
+	        immediateAnimationFrames = val;
+	        this.requestAnimationFrame = (immediateAnimationFrames ? ImmediateRequestAnimationFrame : glbl.requestAnimationFrame || ImmediateRequestAnimationFrame).bind(glbl);
+	    },
+	    requestAnimationFrame: null,
+	    createDocumentFragment: CreateDocumentFragment
+	};
+	config.immediateAnimationFrames = false;
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = config;
+
+
+/***/ }),
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -153,8 +243,8 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var emitter_1 = __webpack_require__(2);
-	var observableValue_1 = __webpack_require__(3);
+	var emitter_1 = __webpack_require__(3);
+	var observableValue_1 = __webpack_require__(4);
 	var sharedEmitter = new emitter_1.default();
 	var Observable = (function (_super) {
 	    __extends(Observable, _super);
@@ -237,7 +327,7 @@
 
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -274,6 +364,10 @@
 	    Emitter.prototype.Clear = function (name) {
 	        this.callbackMap[name] = null;
 	    };
+	    Emitter.prototype.ClearAll = function () {
+	        for (var key in this.callbackMap)
+	            this.Clear(key);
+	    };
 	    return Emitter;
 	}());
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -281,12 +375,12 @@
 
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var observable_1 = __webpack_require__(1);
-	var symbol_1 = __webpack_require__(4);
+	var observable_1 = __webpack_require__(2);
+	var symbol_1 = __webpack_require__(5);
 	var ObservableValueType;
 	(function (ObservableValueType) {
 	    ObservableValueType[ObservableValueType["Value"] = 0] = "Value";
@@ -470,14 +564,14 @@
 	            this.AddProperties(this.parentNodes[x], properties);
 	    };
 	    ObservableValue.prototype.AddProperties = function (object, properties) {
-	        var self = this;
+	        var _this = this;
 	        properties.forEach(function (c, i) {
 	            Object.defineProperty(object, c, {
 	                get: function () {
-	                    return self.value[c];
+	                    return _this.value[c];
 	                },
 	                set: function (val) {
-	                    self.value[c].SetValue(val);
+	                    _this.value[c].SetValue(val);
 	                },
 	                enumerable: true,
 	                configurable: true
@@ -499,20 +593,18 @@
 	        }
 	    };
 	    ObservableValue.prototype.AddArrayMixin = function (object) {
-	        var self = this;
+	        var _this = this;
 	        Object.defineProperty(object, "length", {
-	            get: function () {
-	                return self.value.length;
-	            },
+	            get: function () { return _this.value.length; },
 	            enumerable: false,
 	            configurable: true
 	        });
 	        Object.defineProperty(object, "push", {
 	            value: function (newVal) {
-	                self.AddPropertiesToParents([self.value.length]);
+	                _this.AddPropertiesToParents([_this.value.length]);
 	                var newObs = new observable_1.default(newVal);
-	                var ret = self.value.push(newObs);
-	                self.FireEvent("set");
+	                var ret = _this.value.push(newObs);
+	                _this.FireEvent("set");
 	                return ret;
 	            },
 	            enumerable: false,
@@ -524,29 +616,29 @@
 	                for (var _i = 2; _i < arguments.length; _i++) {
 	                    args[_i - 2] = arguments[_i];
 	                }
-	                var startProperties = self.Properties;
+	                var startProperties = _this.Properties;
 	                startIndex = startIndex || 0;
-	                count = count || self.value.length - startIndex;
-	                if (startIndex + count > self.value.length)
-	                    count = self.value.length - startIndex;
-	                var tailLength = self.value.length - (startIndex + count);
+	                count = typeof count == 'undefined' ? _this.value.length - startIndex : count;
+	                if (startIndex + count > _this.value.length)
+	                    count = _this.value.length - startIndex;
+	                var tailLength = _this.value.length - (startIndex + count);
 	                var tail = [];
 	                for (var x = 0; x < tailLength; x++)
-	                    tail.push(self.value[startIndex + count + x]);
+	                    tail.push(_this.value[startIndex + count + x].valueOf());
 	                var ret = [];
 	                for (var x = 0; x < count; x++)
-	                    ret.push(self.value[startIndex + x].valueOf());
+	                    ret.push(_this.value[startIndex + x].valueOf());
 	                for (var x = 0; x < args.length + tailLength; x++) {
 	                    var index = x + startIndex;
 	                    var value = x < args.length ? args[x] : tail[x - args.length];
-	                    if (index < self.value.length)
-	                        self.value[index].SetValue(value);
+	                    if (index < _this.value.length)
+	                        _this.value[index].SetValue(value);
 	                    else
-	                        self.value.push(new observable_1.default(value));
+	                        _this.value.push(new observable_1.default(value));
 	                }
-	                self.value.splice(startIndex + args.length + tailLength);
-	                self.ReconcileProperties(startProperties);
-	                self.FireEvent("set");
+	                _this.value.splice(startIndex + args.length + tailLength);
+	                _this.ReconcileProperties(startProperties);
+	                _this.FireEvent("set");
 	                return ret;
 	            },
 	            enumerable: false,
@@ -554,7 +646,7 @@
 	        });
 	        Object.defineProperty(object, symbol_1.default.iterator, {
 	            get: function () {
-	                return self.valueOf()[symbol_1.default.iterator];
+	                return _this.valueOf()[symbol_1.default.iterator];
 	            },
 	            enumerable: false,
 	            configurable: true
@@ -592,7 +684,7 @@
 
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -611,73 +703,26 @@
 
 
 /***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var glbl = null;
-	if (typeof window != "undefined")
-	    glbl = window;
-	else {
-	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
-	}
-	function ImmediateRequestAnimationFrame(callback) {
-	    callback();
-	    return 0;
-	}
-	var immediateAnimationFrames = false;
-	var selfClosingTagRgx = /<([^\s]+)([^>]*)\/>/g;
-	function CreateDocumentFragment(node) {
-	    if (typeof node === "string") {
-	        node = node.replace(selfClosingTagRgx, function (substr, g1, g2) {
-	            return "<" + g1 + g2 + "></" + g1 + ">";
-	        });
-	        var parser = new glbl.DOMParser();
-	        var doc = parser.parseFromString(node, "text/html");
-	        return CreateDocumentFragment(doc.body);
-	    }
-	    var fragment = glbl.document.createDocumentFragment();
-	    while (node && node.childNodes.length > 0)
-	        fragment.appendChild(node.childNodes[0]);
-	    return fragment;
-	}
-	var config = {
-	    window: glbl,
-	    get immediateAnimationFrames() {
-	        return immediateAnimationFrames;
-	    },
-	    set immediateAnimationFrames(val) {
-	        immediateAnimationFrames = val;
-	        this.requestAnimationFrame = (immediateAnimationFrames ? ImmediateRequestAnimationFrame : glbl.requestAnimationFrame || ImmediateRequestAnimationFrame).bind(glbl);
-	    },
-	    requestAnimationFrame: null,
-	    createDocumentFragment: CreateDocumentFragment
-	};
-	config.immediateAnimationFrames = false;
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = config;
-
-
-/***/ }),
 /* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var __extends = (this && this.__extends) || function (d, b) {
-	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-	    function __() { this.constructor = d; }
-	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-	};
-	var componentBase_1 = __webpack_require__(7);
-	var Component = (function (_super) {
-	    __extends(Component, _super);
+	var bindingTemplate_1 = __webpack_require__(7);
+	function CreateFunction(value) {
+	    return function () { return value; };
+	}
+	var Component = (function () {
 	    function Component() {
-	        _super.call(this);
-	        this.SetTemplate(this.Template);
+	        this.parentTemplates = this.DefaultTemplates;
 	    }
-	    Object.defineProperty(Component, "Name", {
+	    Object.defineProperty(Component.prototype, "BindingTemplate", {
 	        get: function () {
-	            return null;
+	            if (!this.bindingTemplate) {
+	                this.bindingTemplate = new bindingTemplate_1.BindingTemplate(this.Template);
+	                this.bindingTemplate.AddListener("updating", this.Updating.bind(this));
+	                this.bindingTemplate.AddListener("updated", this.Updated.bind(this));
+	            }
+	            return this.bindingTemplate;
 	        },
 	        enumerable: true,
 	        configurable: true
@@ -687,40 +732,49 @@
 	        enumerable: true,
 	        configurable: true
 	    });
-	    Component.prototype.SetParentData = function (data) {
-	        this.parentData = data;
+	    Object.defineProperty(Component.prototype, "DefaultTemplates", {
+	        get: function () {
+	            return {};
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Component.prototype, "Templates", {
+	        get: function () {
+	            return this.parentTemplates;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Object.defineProperty(Component.prototype, "Attached", {
+	        get: function () {
+	            return this.BindingTemplate.Attached;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Component.prototype.SetParentData = function (data) { };
+	    Component.prototype.SetParentTemplates = function (parentTemplates) {
+	        for (var key in parentTemplates) {
+	            if (typeof parentTemplates[key] != 'function')
+	                this.parentTemplates[key] = CreateFunction(parentTemplates[key]);
+	            else
+	                this.parentTemplates[key] = parentTemplates[key];
+	        }
 	    };
-	    Component.prototype.BindingParameters = function () {
-	        var params = _super.prototype.BindingParameters.call(this);
-	        params["$parent"] = this.parentData;
-	        return params;
+	    Component.prototype.AttachTo = function (element) {
+	        this.BindingTemplate.AttachTo(element);
 	    };
-	    Component.toString = function () {
-	        Component.Register(this);
-	        return this.Name;
+	    Component.prototype.Detach = function () {
+	        this.BindingTemplate.Detach();
 	    };
+	    Component.prototype.Destroy = function () {
+	        this.BindingTemplate.Destroy();
+	    };
+	    Component.prototype.Updating = function () { };
+	    Component.prototype.Updated = function () { };
 	    return Component;
-	}(componentBase_1.default));
-	var Component;
-	(function (Component) {
-	    var componentMap = {};
-	    function Register(constructor) {
-	        var name = constructor.Name.toLowerCase();
-	        var comp = componentMap[name];
-	        if (!comp)
-	            componentMap[name] = constructor;
-	    }
-	    Component.Register = Register;
-	    function Get(name) {
-	        var comp = componentMap[name.toLowerCase()];
-	        return comp;
-	    }
-	    Component.Get = Get;
-	    function Exists(name) {
-	        return !!Get(name);
-	    }
-	    Component.Exists = Exists;
-	})(Component || (Component = {}));
+	}());
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = Component;
 
@@ -730,57 +784,169 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var bindings_1 = __webpack_require__(8);
-	var template_1 = __webpack_require__(16);
-	var ComponentBase = (function () {
-	    function ComponentBase() {
-	        this.destroyed = false;
-	        this.bound = false;
-	    }
-	    Object.defineProperty(ComponentBase.prototype, "Attached", {
-	        get: function () {
-	            return this.template.Attached;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    ComponentBase.prototype.AttachTo = function (element) {
-	        if (this.destroyed)
-	            throw "Can't attach destroyed component";
-	        if (!this.bound) {
-	            this.bindings = bindings_1.default.Bind(this.template.DocumentFragment, this.BindingParameters());
-	            this.bindings.forEach(function (c) { return c.Update(); });
-	            this.bound = true;
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var browser_1 = __webpack_require__(1);
+	var template_1 = __webpack_require__(8);
+	var textBinding_1 = __webpack_require__(9);
+	var propertyBinding_1 = __webpack_require__(12);
+	var dataBinding_1 = __webpack_require__(13);
+	var eventBinding_1 = __webpack_require__(14);
+	var componentBinding_1 = __webpack_require__(15);
+	var TemplateType;
+	(function (TemplateType) {
+	    TemplateType[TemplateType["Element"] = 0] = "Element";
+	    TemplateType[TemplateType["Text"] = 1] = "Text";
+	})(TemplateType || (TemplateType = {}));
+	function GetTemplateType(template) {
+	    if (template.text)
+	        return TemplateType.Text;
+	    return TemplateType.Element;
+	}
+	function AppendText(template, node) {
+	    var text = template.text;
+	    var textNode = browser_1.default.window.document.createTextNode("");
+	    node.appendChild(textNode);
+	    return new textBinding_1.default(textNode, text);
+	}
+	function ReadElementProperties(node, properties, parentProperties) {
+	    parentProperties = parentProperties || [];
+	    var bindings = [];
+	    for (var key in properties) {
+	        var value = properties[key];
+	        if (typeof value == 'object') {
+	            var childBindings = ReadElementProperties(node, value, parentProperties.concat([key]));
+	            for (var x = 0; x < childBindings.length; x++)
+	                bindings.push(childBindings[x]);
 	        }
-	        this.template.AttachTo(element);
+	        else {
+	            bindings.push(new propertyBinding_1.default(node, parentProperties.concat([key]), value));
+	        }
+	    }
+	    return bindings;
+	}
+	function AppendElement(template, node) {
+	    var data = null;
+	    var children = null;
+	    var events;
+	    var component;
+	    var elementName = null;
+	    var properties = null;
+	    var templates = null;
+	    for (var key in template) {
+	        switch (key) {
+	            case "children":
+	                children = template.children;
+	                break;
+	            case "data":
+	                data = template.data;
+	                break;
+	            case "on":
+	                events = template.on;
+	                break;
+	            case "component":
+	                component = template.component;
+	                break;
+	            case "templates":
+	                templates = template.templates;
+	                break;
+	            default:
+	                elementName = key;
+	                properties = template[key];
+	                break;
+	        }
+	    }
+	    var elementNode = browser_1.default.window.document.createElement(elementName);
+	    node.appendChild(elementNode);
+	    var bindings = ReadElementProperties(elementNode, properties);
+	    for (var key in events)
+	        bindings.push(new eventBinding_1.default(elementNode, key, events[key]));
+	    if (component) {
+	        bindings.push(new componentBinding_1.default(elementNode, data, component, templates));
+	    }
+	    else if (children) {
+	        bindings.push(new dataBinding_1.default(elementNode, data, children));
+	    }
+	    return bindings;
+	}
+	function ReadBindingTemplate(template, rootNode, bindings) {
+	    if (!template)
+	        return [];
+	    if (!Array.isArray(template))
+	        template = [template];
+	    bindings = bindings || [];
+	    for (var x = 0; x < template.length; x++) {
+	        var tempObj = template[x];
+	        var type = GetTemplateType(tempObj);
+	        switch (type) {
+	            case TemplateType.Text:
+	                var textBinding = AppendText(tempObj, rootNode);
+	                if (textBinding)
+	                    bindings.push(textBinding);
+	                break;
+	            case TemplateType.Element:
+	                var elementBindings = AppendElement(tempObj, rootNode);
+	                for (var y = 0; y < elementBindings.length; y++)
+	                    bindings.push(elementBindings[y]);
+	                break;
+	        }
+	    }
+	    return bindings;
+	}
+	var BindingTemplate = (function (_super) {
+	    __extends(BindingTemplate, _super);
+	    function BindingTemplate(template) {
+	        var documentFragment = browser_1.default.createDocumentFragment();
+	        var bindings = ReadBindingTemplate(template, documentFragment);
+	        _super.call(this, documentFragment);
+	        this.bindings = bindings;
+	        this.updatingBindings = [];
+	        this.updatingCallback = this.Updating.bind(this);
+	        this.updatedCallback = this.Updated.bind(this);
+	    }
+	    BindingTemplate.prototype.AttachTo = function (element) {
+	        if (this.destroyed)
+	            throw "Cannot attach destroyed BindingTemplate";
+	        this.Bind();
+	        _super.prototype.AttachTo.call(this, element);
 	    };
-	    ComponentBase.prototype.Detach = function () {
-	        this.template.Detach();
-	    };
-	    ComponentBase.prototype.Destroy = function () {
-	        this.Detach();
+	    BindingTemplate.prototype.Bind = function () {
+	        var _this = this;
+	        if (this.bound)
+	            return;
 	        this.bindings.forEach(function (c) {
-	            c.Destroy();
+	            c.AddListener("updating", _this.updatingCallback);
+	            c.AddListener("updated", _this.updatedCallback);
+	            c.Update();
 	        });
+	        this.bound = true;
+	    };
+	    BindingTemplate.prototype.Destroy = function () {
+	        this.ClearAll();
+	        this.Detach();
+	        this.bindings.forEach(function (c) { return c.Destroy(); });
 	        this.destroyed = true;
 	    };
-	    ComponentBase.prototype.SetChildElements = function (fragments) {
-	        if (this.bound)
-	            throw "Child elements can't be set after component is bound";
-	        this.template.OverwriteChildElements(fragments);
+	    BindingTemplate.prototype.Updating = function (binding) {
+	        var index = this.updatingBindings.indexOf(binding);
+	        if (index < 0)
+	            this.updatingBindings.push(binding);
+	        if (this.updatingBindings.length == 1 && index < 0)
+	            this.Fire("updating", this);
 	    };
-	    ComponentBase.prototype.SetTemplate = function (template) {
-	        this.template = template_1.default.Create(template);
+	    BindingTemplate.prototype.Updated = function (binding) {
+	        var index = this.updatingBindings.indexOf(binding);
+	        if (index >= 0)
+	            this.updatingBindings.splice(index, 1);
+	        if (this.updatingBindings.length == 0)
+	            this.Fire("updated", this);
 	    };
-	    ComponentBase.prototype.BindingParameters = function () {
-	        return {
-	            $comp: this
-	        };
-	    };
-	    return ComponentBase;
-	}());
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ComponentBase;
+	    return BindingTemplate;
+	}(template_1.default));
+	exports.BindingTemplate = BindingTemplate;
 
 
 /***/ }),
@@ -788,458 +954,17 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var browser_1 = __webpack_require__(5);
-	var Bindings;
-	(function (Bindings) {
-	    var pendingUpdates = [];
-	    var updateScheduled = false;
-	    function BindingMethods() {
-	        return [
-	            __webpack_require__(9).default.Create,
-	            __webpack_require__(12).default.Create,
-	            __webpack_require__(13).default.Create,
-	            __webpack_require__(13).default.Create,
-	            __webpack_require__(15).default.Create,
-	            __webpack_require__(18).default.Create
-	        ];
-	    }
-	    function ScheduleUpdate(callback) {
-	        var ind = pendingUpdates.indexOf(callback);
-	        if (ind < 0) {
-	            pendingUpdates.push(callback);
-	        }
-	        if (!updateScheduled) {
-	            updateScheduled = true;
-	            browser_1.default.requestAnimationFrame(function () {
-	                updateScheduled = false;
-	                while (pendingUpdates.length > 0)
-	                    pendingUpdates.shift()();
-	            });
-	        }
-	    }
-	    Bindings.ScheduleUpdate = ScheduleUpdate;
-	    function Bind(element, parameters) {
-	        var bindingMethods = BindingMethods();
-	        var ret = [];
-	        var skipChildren = false;
-	        if (element.nodeType != element.DOCUMENT_FRAGMENT_NODE) {
-	            for (var x = 0; x < bindingMethods.length; x++) {
-	                var bindings = bindingMethods[x](element, parameters, ScheduleUpdate);
-	                for (var y = 0; y < bindings.length; y++) {
-	                    skipChildren = skipChildren || bindings[y].BindsChildren;
-	                    ret.push(bindings[y]);
-	                }
-	            }
-	        }
-	        for (var z = 0; z < element.childNodes.length && !skipChildren; z++) {
-	            var childBindings = Bind(element.childNodes[z], parameters);
-	            for (var i = 0; i < childBindings.length; i++)
-	                ret.push(childBindings[i]);
-	        }
-	        return ret;
-	    }
-	    Bindings.Bind = Bind;
-	})(Bindings || (Bindings = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = Bindings;
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
 	var __extends = (this && this.__extends) || function (d, b) {
 	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var binding_1 = __webpack_require__(10);
-	var TextBinding = (function (_super) {
-	    __extends(TextBinding, _super);
-	    function TextBinding(element, parameters, scheduleUpdate) {
-	        _super.call(this, element, element.textContent, parameters, scheduleUpdate);
-	    }
-	    TextBinding.prototype.Apply = function () {
-	        this.BoundTo.textContent = this.Value;
-	    };
-	    return TextBinding;
-	}(binding_1.default));
-	var TextBinding;
-	(function (TextBinding) {
-	    function Create(element, bindingParameters, scheduleUpdate) {
-	        if (element.nodeType == element.TEXT_NODE && binding_1.default.IsExpression(element.textContent))
-	            return [new TextBinding(element, bindingParameters, scheduleUpdate)];
-	        return [];
-	    }
-	    TextBinding.Create = Create;
-	})(TextBinding || (TextBinding = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = TextBinding;
-
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var observable_1 = __webpack_require__(1);
-	var syntax_1 = __webpack_require__(11);
-	var Binding = (function () {
-	    function Binding(boundTo, expression, parameters, scheduleUpdate) {
-	        var _this = this;
-	        this.boundTo = boundTo;
-	        this.observables = [];
-	        this.setCallback = function (obs) { _this.Update(); };
-	        this.applyCallback = function () { _this.Apply(); };
-	        this.scheduleUpdate = scheduleUpdate;
-	        this.parameters = parameters;
-	        this.parameterNames = [];
-	        this.parameterValues = [];
-	        for (var key in parameters) {
-	            this.parameterNames.push(key);
-	            this.parameterValues.push(parameters[key]);
-	        }
-	        this.bindingFunction = Binding.ParseExpression(expression, this.parameterNames);
-	    }
-	    Object.defineProperty(Binding.prototype, "BindsChildren", {
-	        get: function () {
-	            return false;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    Object.defineProperty(Binding.prototype, "Value", {
-	        get: function () {
-	            return this.value;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    Object.defineProperty(Binding.prototype, "BoundTo", {
-	        get: function () {
-	            return this.boundTo;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    Object.defineProperty(Binding.prototype, "Parameters", {
-	        get: function () {
-	            return this.parameters;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    Binding.prototype.Destroy = function () {
-	        var _this = this;
-	        this.observables.forEach(function (c) {
-	            c.RemoveListener("set", _this.setCallback);
-	        });
-	        this.value = null;
-	    };
-	    Binding.prototype.AddListeners = function (observable) {
-	        observable.AddListener("set", this.setCallback);
-	    };
-	    Binding.prototype.RemoveListeners = function (observable) {
-	        observable.RemoveListener("set", this.setCallback);
-	    };
-	    Binding.prototype.ScheduleUpdate = function (updateCallback) {
-	        this.scheduleUpdate(updateCallback);
-	    };
-	    Binding.prototype.ProcessValue = function (value) {
-	        return value;
-	    };
-	    Binding.prototype.Update = function () {
-	        var _this = this;
-	        var obs = observable_1.default.Watch("get", function () {
-	            var bindingResult = _this.bindingFunction.apply(_this, _this.parameterValues);
-	            _this.value = _this.ProcessValue(bindingResult);
-	        });
-	        var curObs = this.observables;
-	        for (var x = 0; x < obs.length; x++) {
-	            var ind = curObs.indexOf(obs[x]);
-	            if (ind < 0) {
-	                this.AddListeners(obs[x]);
-	            }
-	            else
-	                curObs.splice(ind, 1);
-	        }
-	        for (var y = 0; y < curObs.length; y++) {
-	            this.RemoveListeners(curObs[y]);
-	        }
-	        this.observables = obs;
-	        this.ScheduleUpdate(this.applyCallback);
-	    };
-	    return Binding;
-	}());
-	var Binding;
-	(function (Binding) {
-	    var spreadArrayRgx = /\[(.*\.\.\..*)\]/;
-	    var spreadOpRgx = /\.\.\.([^,]+)/g;
-	    function FixSyntax(codeStr) {
-	        var retStr = codeStr;
-	        if (!syntax_1.default.spread && spreadArrayRgx.test(codeStr)) {
-	            retStr = retStr.replace(spreadArrayRgx, function (match, g1) {
-	                var retArr = g1.replace(spreadOpRgx, function (match, g1) {
-	                    return g1 + ".valueOf()";
-	                });
-	                return "Array.prototype.concat.call(" + retArr + ")";
-	            });
-	        }
-	        return retStr;
-	    }
-	    var expRgx = /{{(.+?)}}/;
-	    function ParseExpression(expression, parameters) {
-	        if (!expression)
-	            expression = "null";
-	        var parts = expression.split(expRgx);
-	        if (parts.length > 1) {
-	            parts = expression.split(expRgx).map(function (c, i) {
-	                if (i % 2 == 0)
-	                    return "\"" + c + "\"";
-	                else
-	                    return FixSyntax("(" + c + ")");
-	            });
-	        }
-	        else
-	            parts[0] = FixSyntax(parts[0]);
-	        var merge = parts.join(" + ").replace(/[\n\r]/g, "");
-	        var funcStr = "return " + merge + ";";
-	        var Func = Function.bind.apply(Function, [null].concat(parameters.concat([funcStr])));
-	        return new Func();
-	    }
-	    Binding.ParseExpression = ParseExpression;
-	    function IsExpression(expression) {
-	        return expRgx.test(expression);
-	    }
-	    Binding.IsExpression = IsExpression;
-	})(Binding || (Binding = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = Binding;
-
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var symbol_1 = __webpack_require__(4);
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = {
-	    spread: symbol_1.default.__supported
-	};
-
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __extends = (this && this.__extends) || function (d, b) {
-	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-	    function __() { this.constructor = d; }
-	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-	};
-	var binding_1 = __webpack_require__(10);
-	var browser_1 = __webpack_require__(5);
-	var component_1 = __webpack_require__(6);
-	var ComponentBinding = (function (_super) {
-	    __extends(ComponentBinding, _super);
-	    function ComponentBinding(element, parameters, scheduleUpdate) {
-	        var documentFragment = browser_1.default.createDocumentFragment(element);
-	        var childFragments = {};
-	        for (var x = 0; x < documentFragment.childNodes.length; x++) {
-	            var node = documentFragment.childNodes[x];
-	            childFragments[node.nodeName] = browser_1.default.createDocumentFragment(node);
-	        }
-	        var expression = element.getAttribute("j-parent");
-	        _super.call(this, element, expression, parameters, scheduleUpdate);
-	        var compType = component_1.default.Get(this.BoundTo.nodeName);
-	        this.component = new compType();
-	        this.component.SetChildElements(childFragments);
-	    }
-	    Object.defineProperty(ComponentBinding.prototype, "BindsChildren", {
-	        get: function () {
-	            return true;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    ComponentBinding.prototype.Apply = function () {
-	        this.component.SetParentData(this.Value);
-	        if (!this.component.Attached)
-	            this.component.AttachTo(this.BoundTo);
-	    };
-	    return ComponentBinding;
-	}(binding_1.default));
-	var ComponentBinding;
-	(function (ComponentBinding) {
-	    var componentRgx = /[^-]+-[^-]+/;
-	    function Create(element, bindingParameters, scheduleUpdate) {
-	        if (element.nodeType == element.ELEMENT_NODE && componentRgx.test(element.nodeName) && component_1.default.Exists(element.nodeName))
-	            return [new ComponentBinding(element, bindingParameters, scheduleUpdate)];
-	        return [];
-	    }
-	    ComponentBinding.Create = Create;
-	})(ComponentBinding || (ComponentBinding = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ComponentBinding;
-
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __extends = (this && this.__extends) || function (d, b) {
-	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-	    function __() { this.constructor = d; }
-	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-	};
-	var attributeBinding_1 = __webpack_require__(14);
-	var eventRgx = /j-on(.+)/;
-	var EventBinding = (function (_super) {
-	    __extends(EventBinding, _super);
-	    function EventBinding(element, attributeName, parameters, scheduleUpdate) {
-	        _super.call(this, element, attributeName, parameters, scheduleUpdate);
-	        this.eventName = eventRgx.exec(attributeName)[1];
-	    }
-	    EventBinding.prototype.Apply = function () {
-	        if (this.eventCallback)
-	            this.BoundTo.removeEventListener(this.eventName, this.eventCallback);
-	        this.eventCallback = this.Value;
-	        this.BoundTo.addEventListener(this.eventName, this.eventCallback);
-	    };
-	    return EventBinding;
-	}(attributeBinding_1.default));
-	var EventBinding;
-	(function (EventBinding) {
-	    function Create(element, bindingParameters, scheduleUpdate) {
-	        var ret = [];
-	        if (element.nodeType == element.ELEMENT_NODE) {
-	            for (var x = 0; x < element.attributes.length; x++) {
-	                var att = element.attributes[x];
-	                if (eventRgx.test(att.name))
-	                    ret.push(new EventBinding(element, att.name, bindingParameters, scheduleUpdate));
-	            }
-	        }
-	        return ret;
-	    }
-	    EventBinding.Create = Create;
-	})(EventBinding || (EventBinding = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = EventBinding;
-
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __extends = (this && this.__extends) || function (d, b) {
-	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-	    function __() { this.constructor = d; }
-	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-	};
-	var binding_1 = __webpack_require__(10);
-	var AttributeBinding = (function (_super) {
-	    __extends(AttributeBinding, _super);
-	    function AttributeBinding(element, attributeName, parameters, scheduleUpdate) {
-	        _super.call(this, element, element.getAttribute(attributeName), parameters, scheduleUpdate);
-	        this.attributeName = attributeName;
-	    }
-	    AttributeBinding.prototype.Apply = function () {
-	        this.BoundTo.setAttribute(this.attributeName, this.Value);
-	    };
-	    return AttributeBinding;
-	}(binding_1.default));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = AttributeBinding;
-
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __extends = (this && this.__extends) || function (d, b) {
-	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-	    function __() { this.constructor = d; }
-	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-	};
-	var template_1 = __webpack_require__(16);
-	var browser_1 = __webpack_require__(5);
-	var observable_1 = __webpack_require__(1);
-	var attributeBinding_1 = __webpack_require__(14);
-	var componentSimple_1 = __webpack_require__(17);
-	var arrayRgx = /j-array/;
-	var ArrayBinding = (function (_super) {
-	    __extends(ArrayBinding, _super);
-	    function ArrayBinding(element, parameters, scheduleUpdate) {
-	        _super.call(this, element, "j-array", parameters, scheduleUpdate);
-	        this.template = template_1.default.Create(this.BoundTo);
-	        this.childComponents = [];
-	        this.indexObservables = observable_1.default.Create([]);
-	    }
-	    Object.defineProperty(ArrayBinding.prototype, "BindsChildren", {
-	        get: function () {
-	            return true;
-	        },
-	        enumerable: true,
-	        configurable: true
-	    });
-	    ArrayBinding.prototype.Apply = function () {
-	        var currentLength = this.childComponents.length;
-	        var newValue = this.Value || [];
-	        if (currentLength > newValue.length) {
-	            var oldComponents = this.childComponents.splice(newValue.length);
-	            oldComponents.forEach(function (c) {
-	                c.Destroy();
-	            });
-	        }
-	        else {
-	            var frag = browser_1.default.createDocumentFragment();
-	            for (var x = currentLength; x < newValue.length; x++) {
-	                var params = {};
-	                for (var key in this.Parameters)
-	                    params[key] = this.Parameters[key];
-	                params["$index"] = x;
-	                var newComponent = new componentSimple_1.default(this.template, newValue[x], params);
-	                newComponent.AttachTo(frag);
-	                this.childComponents.push(newComponent);
-	            }
-	            this.BoundTo.appendChild(frag);
-	        }
-	    };
-	    return ArrayBinding;
-	}(attributeBinding_1.default));
-	var ArrayBinding;
-	(function (ArrayBinding) {
-	    function Create(element, bindingParameters, scheduleUpdate) {
-	        var ret = [];
-	        if (element.nodeType == element.ELEMENT_NODE) {
-	            for (var x = 0; x < element.attributes.length; x++) {
-	                var att = element.attributes[x];
-	                if (arrayRgx.test(att.name))
-	                    ret.push(new ArrayBinding(element, bindingParameters, scheduleUpdate));
-	            }
-	        }
-	        return ret;
-	    }
-	    ArrayBinding.Create = Create;
-	})(ArrayBinding || (ArrayBinding = {}));
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ArrayBinding;
-
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var browser_1 = __webpack_require__(5);
-	var Template = (function () {
+	var browser_1 = __webpack_require__(1);
+	var emitter_1 = __webpack_require__(3);
+	var Template = (function (_super) {
+	    __extends(Template, _super);
 	    function Template(documentFragment) {
+	        _super.call(this);
 	        this.documentFragment = documentFragment;
 	        this.elements = new Array(this.documentFragment.childNodes.length);
 	        for (var x = 0; x < this.documentFragment.childNodes.length; x++) {
@@ -1281,19 +1006,8 @@
 	        var fragment = this.documentFragment.cloneNode(true);
 	        return new Template(fragment);
 	    };
-	    Template.prototype.OverwriteChildElements = function (childFragments) {
-	        if (this.Attached)
-	            throw "Can't set child elements while attached";
-	        for (var key in childFragments) {
-	            var elements = this.DocumentFragment.querySelectorAll(key);
-	            for (var x = 0; x < elements.length; x++) {
-	                elements[x].innerHTML = "";
-	                elements[x].appendChild(childFragments[key]);
-	            }
-	        }
-	    };
 	    return Template;
-	}());
+	}(emitter_1.default));
 	var Template;
 	(function (Template) {
 	    function Create(template) {
@@ -1309,7 +1023,7 @@
 
 
 /***/ }),
-/* 17 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1318,37 +1032,174 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var componentBase_1 = __webpack_require__(7);
-	var ComponentSimple = (function (_super) {
-	    __extends(ComponentSimple, _super);
-	    function ComponentSimple(template, data, parameterOverrides) {
-	        _super.call(this);
-	        this.data = data;
-	        this.parameterOverrides = parameterOverrides;
-	        this.SetTemplate(template);
+	var nodeBinding_1 = __webpack_require__(10);
+	var TextBinding = (function (_super) {
+	    __extends(TextBinding, _super);
+	    function TextBinding(element, binding) {
+	        _super.call(this, element, binding);
 	    }
-	    Object.defineProperty(ComponentSimple.prototype, "Data", {
+	    TextBinding.prototype.Apply = function () {
+	        this.BoundTo.textContent = this.Value;
+	    };
+	    return TextBinding;
+	}(nodeBinding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = TextBinding;
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var binding_1 = __webpack_require__(11);
+	var browser_1 = __webpack_require__(1);
+	var pendingUpdates = [];
+	var updateScheduled = false;
+	function ScheduleUpdate(callback) {
+	    var ind = pendingUpdates.indexOf(callback);
+	    if (ind < 0) {
+	        pendingUpdates.push(callback);
+	    }
+	    if (!updateScheduled) {
+	        updateScheduled = true;
+	        browser_1.default.requestAnimationFrame(function () {
+	            updateScheduled = false;
+	            while (pendingUpdates.length > 0)
+	                pendingUpdates.shift()();
+	        });
+	    }
+	}
+	var NodeBinding = (function (_super) {
+	    __extends(NodeBinding, _super);
+	    function NodeBinding(boundTo, binding) {
+	        _super.call(this, boundTo, binding, ScheduleUpdate);
+	    }
+	    return NodeBinding;
+	}(binding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = NodeBinding;
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var observable_1 = __webpack_require__(2);
+	var emitter_1 = __webpack_require__(3);
+	var BindingStatus;
+	(function (BindingStatus) {
+	    BindingStatus[BindingStatus["Init"] = 0] = "Init";
+	    BindingStatus[BindingStatus["Updating"] = 1] = "Updating";
+	    BindingStatus[BindingStatus["Updated"] = 2] = "Updated";
+	})(BindingStatus || (BindingStatus = {}));
+	var Binding = (function (_super) {
+	    __extends(Binding, _super);
+	    function Binding(boundTo, binding, scheduleUpdate) {
+	        _super.call(this);
+	        this.boundTo = boundTo;
+	        this.scheduleUpdate = scheduleUpdate;
+	        this.bindingInitialized = false;
+	        this.status = BindingStatus.Init;
+	        this.observables = [];
+	        this.setCallback = this.Update.bind(this);
+	        if (typeof binding == 'function')
+	            this.bindingFunction = binding;
+	        else
+	            this.value = binding;
+	    }
+	    Object.defineProperty(Binding.prototype, "Value", {
 	        get: function () {
-	            return this.data;
+	            return this.value;
 	        },
 	        enumerable: true,
 	        configurable: true
 	    });
-	    ComponentSimple.prototype.BindingParameters = function () {
-	        var params = _super.prototype.BindingParameters.call(this);
-	        for (var key in this.parameterOverrides)
-	            params[key] = this.parameterOverrides[key];
-	        params["$data"] = this.Data;
-	        return params;
+	    Object.defineProperty(Binding.prototype, "BoundTo", {
+	        get: function () {
+	            return this.boundTo;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    Binding.prototype.Update = function () {
+	        var _this = this;
+	        if (this.bindingFunction) {
+	            var obs = observable_1.default.Watch("get", function () {
+	                _this.value = _this.bindingFunction();
+	                if (_this.value)
+	                    _this.value = _this.value.valueOf();
+	            });
+	            var curObs = this.observables;
+	            for (var x = 0; x < obs.length; x++) {
+	                var ind = curObs.indexOf(obs[x]);
+	                if (ind < 0)
+	                    this.AddListeners(obs[x]);
+	                else
+	                    curObs.splice(ind, 1);
+	            }
+	            for (var y = 0; y < curObs.length; y++) {
+	                this.RemoveListeners(curObs[y]);
+	            }
+	            this.observables = obs;
+	        }
+	        if (this.bindingInitialized) {
+	            this.Updating();
+	            this.scheduleUpdate(function () {
+	                _this.Apply();
+	                _this.Updated();
+	            });
+	        }
+	        else {
+	            this.Apply();
+	            this.bindingInitialized = true;
+	        }
 	    };
-	    return ComponentSimple;
-	}(componentBase_1.default));
+	    Binding.prototype.Destroy = function () {
+	        var _this = this;
+	        this.ClearAll();
+	        this.observables.forEach(function (c) {
+	            _this.RemoveListeners(c);
+	        });
+	        this.value = null;
+	    };
+	    Binding.prototype.AddListeners = function (observable) {
+	        observable.AddListener("set", this.setCallback);
+	    };
+	    Binding.prototype.RemoveListeners = function (observable) {
+	        observable.RemoveListener("set", this.setCallback);
+	    };
+	    Binding.prototype.Updating = function () {
+	        if (this.status != BindingStatus.Updating) {
+	            this.Fire("updating", this);
+	            this.status = BindingStatus.Updating;
+	        }
+	    };
+	    Binding.prototype.Updated = function () {
+	        if (this.status != BindingStatus.Updated) {
+	            this.Fire("updated", this);
+	            this.status = BindingStatus.Updated;
+	        }
+	    };
+	    return Binding;
+	}(emitter_1.default));
 	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = ComponentSimple;
+	exports.default = Binding;
 
 
 /***/ }),
-/* 18 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1357,48 +1208,199 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var attributeBinding_1 = __webpack_require__(14);
-	var propRgx = /j-prop.(.*)/;
+	var nodeBinding_1 = __webpack_require__(10);
 	var PropertyBinding = (function (_super) {
 	    __extends(PropertyBinding, _super);
-	    function PropertyBinding(element, attributeName, parameters, scheduleUpdate) {
-	        _super.call(this, element, attributeName, parameters, scheduleUpdate);
-	        var matches = propRgx.exec(attributeName);
-	        var propPath = matches[1].split(".");
+	    function PropertyBinding(boundTo, propertyPath, bindingFunction) {
+	        _super.call(this, boundTo, bindingFunction);
 	        this.parentObject = this.BoundTo;
 	        var x = 0;
-	        for (; x < propPath.length - 1; x++)
-	            this.parentObject = this.parentObject[propPath[x]];
-	        this.propName = propPath[x];
+	        for (; x < propertyPath.length - 1; x++)
+	            this.parentObject = this.parentObject[propertyPath[x]];
+	        this.propName = propertyPath[x];
 	    }
 	    PropertyBinding.prototype.Apply = function () {
-	        var newValue = this.Value;
-	        if (newValue != null && typeof newValue == "object") {
-	            for (var key in newValue)
-	                this.parentObject[this.propName][key] = newValue[key].valueOf();
-	        }
-	        else
-	            this.parentObject[this.propName] = newValue;
+	        this.parentObject[this.propName] = this.Value;
 	    };
 	    return PropertyBinding;
-	}(attributeBinding_1.default));
-	var PropertyBinding;
-	(function (PropertyBinding) {
-	    function Create(element, bindingParameters, scheduleUpdate) {
-	        var ret = [];
-	        if (element.nodeType == element.ELEMENT_NODE) {
-	            for (var x = 0; x < element.attributes.length; x++) {
-	                var att = element.attributes[x];
-	                if (propRgx.test(att.name))
-	                    ret.push(new PropertyBinding(element, att.name, bindingParameters, scheduleUpdate));
-	            }
-	        }
-	        return ret;
-	    }
-	    PropertyBinding.Create = Create;
-	})(PropertyBinding || (PropertyBinding = {}));
+	}(nodeBinding_1.default));
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = PropertyBinding;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var nodeBinding_1 = __webpack_require__(10);
+	var bindingTemplate_1 = __webpack_require__(7);
+	var browser_1 = __webpack_require__(1);
+	var DataBinding = (function (_super) {
+	    __extends(DataBinding, _super);
+	    function DataBinding(boundTo, binding, children) {
+	        _super.call(this, boundTo, binding);
+	        this.childTemplates = [];
+	        this.updatingTemplates = [];
+	        if (typeof children != 'function')
+	            this.templateFunction = function () { return children; };
+	        else
+	            this.templateFunction = children;
+	    }
+	    DataBinding.prototype.Destroy = function () {
+	        for (var x = 0; x < this.childTemplates.length; x++)
+	            this.childTemplates[x].Destroy();
+	    };
+	    DataBinding.prototype.Apply = function () {
+	        var currentLength = this.childTemplates.length;
+	        var newValue = this.Value;
+	        if (!Array.isArray(newValue))
+	            newValue = [newValue];
+	        if (currentLength > newValue.length) {
+	            var oldComponents = this.childTemplates.splice(newValue.length);
+	            oldComponents.forEach(function (c) {
+	                c.Destroy();
+	            });
+	        }
+	        else if (currentLength < newValue.length) {
+	            var frag = browser_1.default.createDocumentFragment();
+	            for (var x = currentLength; x < newValue.length; x++) {
+	                var temp = this.templateFunction(newValue[x], x);
+	                var newTemplate = new bindingTemplate_1.BindingTemplate(temp);
+	                newTemplate.AddListener("updating", this.TemplateUpdating.bind(this));
+	                newTemplate.AddListener("updated", this.TemplateUpdated.bind(this));
+	                newTemplate.AttachTo(frag);
+	                this.childTemplates.push(newTemplate);
+	            }
+	            this.BoundTo.appendChild(frag);
+	        }
+	    };
+	    DataBinding.prototype.Updated = function () {
+	        if (this.updatingTemplates.length == 0)
+	            _super.prototype.Updated.call(this);
+	    };
+	    DataBinding.prototype.TemplateUpdating = function (template) {
+	        var index = this.updatingTemplates.indexOf(template);
+	        if (index < 0)
+	            this.updatingTemplates.push(template);
+	        this.Updating();
+	    };
+	    DataBinding.prototype.TemplateUpdated = function (template) {
+	        var index = this.updatingTemplates.indexOf(template);
+	        if (index >= 0)
+	            this.updatingTemplates.splice(index, 1);
+	        this.Updated();
+	    };
+	    return DataBinding;
+	}(nodeBinding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = DataBinding;
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var nodeBinding_1 = __webpack_require__(10);
+	var EventBinding = (function (_super) {
+	    __extends(EventBinding, _super);
+	    function EventBinding(element, eventName, bindingFunction) {
+	        _super.call(this, element, bindingFunction);
+	        this.eventName = eventName;
+	    }
+	    EventBinding.prototype.Destroy = function () {
+	        this.BoundTo.removeEventListener(this.eventName, this.eventCallback);
+	    };
+	    EventBinding.prototype.Apply = function () {
+	        if (this.eventCallback)
+	            this.BoundTo.removeEventListener(this.eventName, this.eventCallback);
+	        this.eventCallback = this.Value;
+	        this.BoundTo.addEventListener(this.eventName, this.eventCallback);
+	    };
+	    return EventBinding;
+	}(nodeBinding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = EventBinding;
+
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var nodeBinding_1 = __webpack_require__(10);
+	var component_1 = __webpack_require__(6);
+	function CreateBindingFunction(binding, component) {
+	    var bindingFunc = binding;
+	    if (typeof bindingFunc != 'function')
+	        bindingFunc = function () { return binding; };
+	    var componentFunc = component;
+	    if (typeof componentFunc != 'function' || componentFunc.prototype instanceof component_1.default)
+	        componentFunc = function () { return component; };
+	    return function () {
+	        var b = bindingFunc();
+	        var c = componentFunc();
+	        return {
+	            value: b && b.valueOf(),
+	            component: c && c.valueOf()
+	        };
+	    };
+	}
+	function EnsureFunction(value) {
+	    if (typeof value == 'function')
+	        return value;
+	    return function () { return value; };
+	}
+	var ComponentBinding = (function (_super) {
+	    __extends(ComponentBinding, _super);
+	    function ComponentBinding(element, binding, compType, parentTemplates) {
+	        binding = binding && binding.valueOf();
+	        compType = compType && compType.valueOf();
+	        var newBinding = CreateBindingFunction(binding, compType);
+	        _super.call(this, element, newBinding);
+	        this.parentTemplates = {};
+	        for (var key in parentTemplates)
+	            this.parentTemplates[key] = EnsureFunction(parentTemplates[key]);
+	    }
+	    ComponentBinding.prototype.Destroy = function () {
+	        this.component.Destroy();
+	    };
+	    ComponentBinding.prototype.Apply = function () {
+	        var component = this.Value.component;
+	        var value = this.Value.value;
+	        if (!component) {
+	            this.component.Destroy();
+	            return;
+	        }
+	        if (!this.component || !(this.component instanceof component)) {
+	            this.component && this.component.Destroy();
+	            this.component = new component();
+	            this.component.SetParentTemplates(this.parentTemplates);
+	        }
+	        this.component.SetParentData(this.Value.value);
+	        if (!this.component.Attached)
+	            this.component.AttachTo(this.BoundTo);
+	    };
+	    return ComponentBinding;
+	}(nodeBinding_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ComponentBinding;
 
 
 /***/ })

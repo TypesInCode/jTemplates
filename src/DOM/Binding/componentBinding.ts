@@ -1,49 +1,81 @@
 import NodeBinding from "./nodeBinding";
-import browser from "../browser";
-import Template from "../template";
 import Component from "../Component/component";
+import { IBindingTemplate, BindingTemplate } from "../bindingTemplate";
 
+function CreateBindingFunction(binding: any, component: { (): { new (): Component } } | { new (): Component }): () => { value: {(): any}, component: {(): { new (): Component }} } {
+    var bindingFunc = binding;
+    if(typeof bindingFunc != 'function')
+        bindingFunc = () => binding;
+
+    var componentFunc = component;
+    if(typeof componentFunc != 'function' || componentFunc.prototype instanceof Component)
+        componentFunc = () => component as { new (): Component };
+
+    return () => {
+        var b = bindingFunc();
+        var c = (componentFunc as any)();
+        return {
+            value: b && b.valueOf(),
+            component: c && c.valueOf()
+        };
+    };
+}
+
+function EnsureFunction(value: any) {
+    if(typeof value == 'function')
+        return value;
+
+    return () => value;
+}
 
 class ComponentBinding extends NodeBinding {
     private component: Component;
+    private parentTemplates: { [name: string]: { (): IBindingTemplate | Array<IBindingTemplate> } };
 
-    public get BindsChildren(): boolean {
-        return true;
+    constructor(element: Node, binding: any, compType: { (): { new (): Component } } | { new (): Component }, parentTemplates: { [name: string]: { (): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate }) {
+        binding = binding && binding.valueOf();
+        compType = compType && (compType as any).valueOf();
+        var newBinding = CreateBindingFunction(binding, compType);
+        super(element, newBinding);
+
+        this.parentTemplates = {};
+        for(var key in parentTemplates)
+            this.parentTemplates[key] = EnsureFunction(parentTemplates[key]);
+
+        /* this.childTemplates = {};
+        for(var key in templates)
+            this.childTemplates[key] = new BindingTemplate(templates[key]); */
     }
 
-    constructor(element: Node, parameters: {[name: string]: any}) {
-        var documentFragment = browser.createDocumentFragment(element);
-        var childFragments: { [name: string]: DocumentFragment } = {};
-        for(var x=0; x<documentFragment.childNodes.length; x++) {
-            var node = documentFragment.childNodes[x];
-            childFragments[node.nodeName] = browser.createDocumentFragment(node);
-        }
-
-        var expression = (element as any).getAttribute("j-parent");
-        //super(element, expression, parameters);
-        super(element, ():any => null);
-        var compType = Component.Get(this.BoundTo.nodeName);
-        this.component = new compType();
-        this.component.SetChildElements(childFragments);
+    public Destroy() {
+        /* for(var key in this.childTemplates)
+            this.childTemplates[key].Destroy(); */
+        
+        this.component.Destroy();
     }
 
     protected Apply() {
-        this.component.SetParentData(this.Value);
+        var component = this.Value.component;
+        var value = this.Value.value;
+
+        if(!component) {
+            this.component.Destroy();
+            return;
+        }
+
+        if(!this.component || !(this.component instanceof component)) {
+            this.component && this.component.Destroy();
+            this.component = new component();
+            this.component.SetParentTemplates(this.parentTemplates);
+            /* this.component.BindingTemplate.Bind();
+            this.component.BindingTemplate.OverwriteChildElements(this.childTemplates); */
+        }
+
+        this.component.SetParentData(this.Value.value);
 
         if(!this.component.Attached)
             this.component.AttachTo(this.BoundTo);
     }
 }
-
-/* namespace ComponentBinding {
-    var componentRgx = /[^-]+-[^-]+/;
-
-    export function Create(element: any, bindingParameters: {[name: string]: any}): Array<NodeBinding> {
-        if(element.nodeType == element.ELEMENT_NODE && componentRgx.test(element.nodeName) && Component.Exists(element.nodeName))
-            return [new ComponentBinding(element, bindingParameters)];
-
-        return [];
-    }
-} */
 
 export default ComponentBinding;

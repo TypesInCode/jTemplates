@@ -216,14 +216,13 @@ class ObservableValue {
     }
 
     private AddProperties(object: {}, properties: Array<string>) {
-        var self = this;
         properties.forEach((c, i) => {
             Object.defineProperty(object, c, {
                 get: () => {
-                    return self.value[c];
+                    return this.value[c];
                 },
                 set: (val) => {
-                    (self.value[c] as Observable).SetValue(val);
+                    (this.value[c] as Observable).SetValue(val);
                 },
                 enumerable: true,
                 configurable: true
@@ -249,78 +248,59 @@ class ObservableValue {
     }
 
     private AddArrayMixin(object: Observable) {
-        var self = this;
         Object.defineProperty(object, "length", {
-            get: function() {
-                return self.value.length;
-            },
+            get: () => this.value.length,
             enumerable: false,
             configurable: true
         });
         Object.defineProperty(object, "push", {
-            value: function(newVal: any) {
-                self.AddPropertiesToParents([self.value.length]);
+            value: (newVal: any) => {
+                this.AddPropertiesToParents([this.value.length]);
                 var newObs = new Observable(newVal);
-                var ret = self.value.push(newObs);
-                self.FireEvent("set");
+                var ret = this.value.push(newObs);
+                this.FireEvent("set");
                 return ret;
             },
             enumerable: false,
             configurable: true
         });
         Object.defineProperty(object, "splice", {
-            value: function(startIndex: number, count: number, ...args: Array<any>) {
-                var startProperties = self.Properties;
+            value: (startIndex: number, count: number, ...args: Array<any>) => {
+                var startProperties = this.Properties;
                 startIndex = startIndex || 0;
-                count = count || self.value.length - startIndex;
-                if(startIndex + count > self.value.length)
-                    count = self.value.length - startIndex;
+                count = typeof count == 'undefined' ? this.value.length - startIndex : count;
+                if(startIndex + count > this.value.length)
+                    count = this.value.length - startIndex;
 
-                var tailLength = self.value.length - (startIndex + count);
+                var tailLength = this.value.length - (startIndex + count);
                 var tail: Array<Observable> = [];
                 for(var x=0; x<tailLength; x++)
-                    tail.push(self.value[startIndex + count + x]);
+                    tail.push(this.value[startIndex + count + x].valueOf());
                 
                 var ret: Array<Observable> = [];
                 for(var x=0; x<count; x++)
-                    ret.push(self.value[startIndex + x].valueOf());
+                    ret.push(this.value[startIndex + x].valueOf());
 
                 for(var x=0; x<args.length + tailLength; x++) {
                     var index = x + startIndex;
                     var value = x < args.length ? args[x] : tail[x-args.length];
-                    if(index < self.value.length)
-                        self.value[index].SetValue(value);
+                    if(index < this.value.length)
+                        this.value[index].SetValue(value);
                     else
-                        self.value.push(new Observable(value));
+                        this.value.push(new Observable(value));
                 }
 
-                self.value.splice(startIndex + args.length + tailLength);
-
-                /* var ret: Array<Observable> = [];
-                for(var i=0; i<count && i + startIndex < self.value.length; i++) {
-                    ret.push(self.value[startIndex + i].GetValue().valueOf());
-                }
-
-                for(var x=0; x<args.length; x++) {
-                    if(startIndex + x < self.value.length)
-                        self.value[startIndex + x].SetValue(args[x]);
-                    else
-                        self.value.push(new Observable(args[x]));
-                }
-
-                if(count > args.length)
-                    self.value.splice(startIndex + args.length, count - args.length); */
-
-                self.ReconcileProperties(startProperties);
-                self.FireEvent("set");
+                this.value.splice(startIndex + args.length + tailLength);
+                this.ReconcileProperties(startProperties);
+                this.FireEvent("set");
                 return ret;
             },
             enumerable: false,
             configurable: true
         });
         Object.defineProperty(object, Symbol.iterator, {
-            get: function() {
-                return self.valueOf()[Symbol.iterator];
+            get: () => {
+                return this.valueOf()[Symbol.iterator];
             },
             enumerable: false,
             configurable: true

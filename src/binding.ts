@@ -1,27 +1,21 @@
 import Observable from "./Observable/observable";
-import Syntax from "./Utils/syntax";
+import Emitter from "./emitter";
 
-/* interface BindingFunction {
-    ($model: any): any;
+enum BindingStatus {
+    Init,
+    Updating,
+    Updated
 }
 
-interface BindingFactoryMethod<T> {
-    (boundTo: {}, model: any): Array<Binding<T>>;
-} */
-
-abstract class Binding<T> {
+abstract class Binding<T> extends Emitter {
     private boundTo: T;
     private value: any;
     private bindingFunction: () => any;
     private observables: Array<Observable>;
     private setCallback: (obs: Observable) => void;
-    private applyCallback: () => void;
     private scheduleUpdate: (callback: () => void) => void;
-    private staticBinding: boolean;
-
-    public get BindsChildren(): boolean {
-        return false;
-    }
+    private bindingInitialized: boolean;
+    private status: BindingStatus;
 
     protected get Value(): any {
         return this.value;
@@ -32,34 +26,62 @@ abstract class Binding<T> {
     }
 
     constructor(boundTo: T, binding: any, scheduleUpdate: (callback: () => void) => void) {
+        super();
         this.boundTo = boundTo;
         this.scheduleUpdate = scheduleUpdate;
-        this.applyCallback = () => { this.Apply() };
+        this.bindingInitialized = false;
+        this.status = BindingStatus.Init;
+        this.observables = [];
+        this.setCallback = this.Update.bind(this);
+        if(typeof binding == 'function')
+            this.bindingFunction = binding;
+        else
+            this.value = binding;
+    }
 
-        if(typeof binding == 'function') {
-            this.observables = [];
-            this.setCallback = (obs) => { this.Update(); };
+    public Update() {
+        if(this.bindingFunction) {
+            var obs = Observable.Watch("get", () => {
+                this.value = this.bindingFunction();
+                if(this.value)
+                    this.value = this.value.valueOf();
+            });
 
-            /* this.parameters = parameters;
-            this.parameterNames = [];
-            this.parameterValues = [];
-            for(var key in parameters) {
-                this.parameterNames.push(key);
-                this.parameterValues.push(parameters[key]);
-            } */
+            var curObs = this.observables;
+            for(var x=0; x<obs.length; x++) {
+                var ind = curObs.indexOf(obs[x]);
+                if(ind < 0)
+                    this.AddListeners(obs[x]);
+                else
+                    curObs.splice(ind, 1);
+            }
+
+            for(var y=0; y<curObs.length; y++) {
+                this.RemoveListeners(curObs[y]);
+            }
             
-            this.bindingFunction = binding; //Binding.ParseExpression(expression, this.parameterNames);
-            this.staticBinding = false;
+            this.observables = obs;
+        }
+
+        if(this.bindingInitialized) {
+            this.Updating();
+            this.scheduleUpdate(() => {
+                this.Apply();
+                this.Updated();
+            });
         }
         else {
-            this.value = binding;
-            this.staticBinding = true;
+            this.Apply();
+            this.bindingInitialized = true;
         }
     }
 
+    protected abstract Apply(): void;
+
     public Destroy(): void {
+        this.ClearAll();
         this.observables.forEach(c => {
-            c.RemoveListener("set", this.setCallback);
+            this.RemoveListeners(c);
         });
         this.value = null;
     }
@@ -72,40 +94,18 @@ abstract class Binding<T> {
         observable.RemoveListener("set", this.setCallback);
     }
 
-    protected ScheduleUpdate(updateCallback: () => void) {
-        this.scheduleUpdate(updateCallback);
+    protected Updating() {
+        if(this.status != BindingStatus.Updating) {
+            this.Fire("updating", this);
+            this.status = BindingStatus.Updating;
+        }
     }
 
-    protected abstract Apply(): void;
-
-    public Update() {
-        if(this.staticBinding) {
-            this.ScheduleUpdate(this.applyCallback)
-            return;
+    protected Updated() {
+        if(this.status != BindingStatus.Updated) {
+            this.Fire("updated", this);
+            this.status = BindingStatus.Updated;
         }
-
-        var obs = Observable.Watch("get", () => {
-            this.value = this.bindingFunction();
-            if(this.value)
-                this.value = this.value.valueOf();
-        });
-
-        var curObs = this.observables;
-        for(var x=0; x<obs.length; x++) {
-            var ind = curObs.indexOf(obs[x]);
-            if(ind < 0) {
-                this.AddListeners(obs[x]);
-            }
-            else
-                curObs.splice(ind, 1);
-        }
-
-        for(var y=0; y<curObs.length; y++) {
-            this.RemoveListeners(curObs[y]);
-        }
-        
-        this.observables = obs;
-        this.ScheduleUpdate(this.applyCallback);
     }
 }
 

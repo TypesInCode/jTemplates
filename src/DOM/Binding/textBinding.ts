@@ -10,13 +10,4 @@ class TextBinding extends NodeBinding {
     }
 }
 
-/* namespace TextBinding {
-    export function Create(element: any, bindingParameters: {[name: string]: any}, scheduleUpdate: (callback: () => void) => void): Array<Binding<Node>> {
-        if(element.nodeType == element.TEXT_NODE && Binding.IsExpression(element.textContent))
-            return [new TextBinding(element, bindingParameters, scheduleUpdate)];
-
-        return [];
-    }
-} */
-
 export default TextBinding;

@@ -1,56 +1,67 @@
-import Binding from "../../binding";
-import Bindings from "../Binding/bindings";
-import Template from "../template";
-import ComponentBase from "./componentBase";
+import { BindingTemplate, IBindingTemplate } from "../bindingTemplate";
 
-abstract class Component extends ComponentBase {
-    public static get Name(): string {
-        return null;
-    }
-
-    private parentData: {};
-
-    public abstract get Template(): string;
-
-    constructor() {
-        super();
-        this.SetTemplate(this.Template);
-    }
-
-    public SetParentData(data: {}) {
-        this.parentData = data;
-    }
-
-    protected BindingParameters(): {[name: string]: any} {
-        var params = super.BindingParameters();
-        params["$parent"] = this.parentData;
-        return params;
-    }
-
-    public static toString(): string {
-        Component.Register(this);
-        return (this as typeof Component).Name;
-    }
+function CreateFunction(value: any) {
+    return () => value;
 }
 
-namespace Component {
-    var componentMap: { [name: string]: { new (): Component } } = {};
+abstract class Component {
+    private bindingTemplate: BindingTemplate;
+    private parentTemplates: { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } }
+    
+    public get BindingTemplate() {
+        if(!this.bindingTemplate) {
+            this.bindingTemplate = new BindingTemplate(this.Template);
+            this.bindingTemplate.AddListener("updating", this.Updating.bind(this));
+            this.bindingTemplate.AddListener("updated", this.Updated.bind(this));
+        }
 
-    export function Register(constructor: typeof Component) {
-        var name = constructor.Name.toLowerCase();
-        var comp = componentMap[name];
-        if(!comp)
-            componentMap[name] = constructor as any as { new(): Component };
+        return this.bindingTemplate;
     }
 
-    export function Get(name: string) {
-        var comp = componentMap[name.toLowerCase()];
-        return comp;
+    public abstract get Template(): IBindingTemplate | Array<IBindingTemplate>;
+
+    public get DefaultTemplates(): { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } } {
+        return {};
     }
 
-    export function Exists(name: string) {
-        return !!Get(name);
+    protected get Templates(): { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } } {
+        return this.parentTemplates;
     }
+
+    public get Attached(): boolean {
+        return this.BindingTemplate.Attached;
+    }
+
+    constructor() {
+        this.parentTemplates = this.DefaultTemplates;
+    }
+
+    public SetParentData(data: any) { }
+
+    public SetParentTemplates(parentTemplates: { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } }) {
+        for(var key in parentTemplates) {
+            if(typeof parentTemplates[key] != 'function')
+                (this.parentTemplates as any)[key] = CreateFunction(parentTemplates[key]);
+            else
+                this.parentTemplates[key] = parentTemplates[key];
+        }
+    }
+
+    public AttachTo(element: Node) {
+        this.BindingTemplate.AttachTo(element);
+    }
+
+    public Detach() {
+        this.BindingTemplate.Detach();
+    }
+
+    public Destroy() {
+        this.BindingTemplate.Destroy();
+    }
+
+    protected Updating() { }
+
+    protected Updated() { }
 }
 
 export default Component;

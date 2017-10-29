@@ -1,6 +1,7 @@
 import browser from "./browser";
+import Emitter from "../emitter";
 
-class Template {
+class Template extends Emitter {
     private documentFragment: DocumentFragment;
     private attachedTo: Node;
     private elements: Array<Node>;
@@ -14,6 +15,7 @@ class Template {
     }
 
     constructor(documentFragment: DocumentFragment) {
+        super();
         this.documentFragment = documentFragment;
         this.elements = new Array<Node>(this.documentFragment.childNodes.length);
         for(var x=0; x<this.documentFragment.childNodes.length; x++) {
@@ -46,18 +48,21 @@ class Template {
         return new Template(fragment);
     }
 
-    public OverwriteChildElements(childFragments: { [name: string]: DocumentFragment }) {
+    /* public OverwriteChildElements(childFragments: { [name: string]: DocumentFragment | Template }) {
         if(this.Attached)
-            throw "Can't set child elements while attached";
+            throw "Can't overwrite child elements while attached";
 
         for(var key in childFragments) {
-            var elements = this.DocumentFragment.querySelectorAll(key);
-            for(var x=0; x<elements.length; x++) {
-                elements[x].innerHTML = "";
-                elements[x].appendChild(childFragments[key]);
+            var element = this.DocumentFragment.querySelector(key);
+            if(element) {
+                element.innerHTML = "";
+                if(childFragments[key] instanceof Template)
+                    (childFragments[key] as Template).AttachTo(element)
+                else
+                    element.appendChild(childFragments[key] as DocumentFragment);
             }
         }
-    }
+    } */
 }
 
 namespace Template {

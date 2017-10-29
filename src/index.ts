@@ -1,35 +1,106 @@
 import browser from "./DOM/browser";
-import { BindingTemplate } from "./DOM/bindingTemplate";
 import Observable from "./Observable/observable";
+import Component from "./DOM/Component/component";
 
-var obj = Observable.Create({
-    Prop1: "test",
-    Prop2: "blue",
-    Class: "garbage-man",
-    Arr: ["obs1", "obs2"]
-});
+var date: Date = null;
 
-var template = new BindingTemplate([
-{ style: { type: "text/css" }, data: obj, children: (d) => {
-    return { text: () => `
-        .garbage-man: {
-            color: ${d.Prop2};
+class MyComp extends Component {
+    private state = Observable.Create({
+        Prop1: "test",
+        Prop2: "blue",
+        Class: "garbage-man",
+        Font: "verdana",
+        Arr: ["obs1", "obs2"],
+        Component: SubComp
+    });
+
+    public get State() {
+        return this.state;
+    }
+    
+    public get Template() {
+        return [
+            { style: { type: "text/css"}, children: () => {
+                return { text: () => `.garbage-man { color: ${this.State.Prop2}; }` }
+            } },
+            { div: { className: () => this.State.Class, style: { fontFamily: () => this.State.Font } }, data: () => this.State.Arr, 
+                on: { click: () => (e: any) => alert("click") }, children: (c: string, i: number) => {
+                return { 
+                    div: {}, children: [
+                        { text: () => `value is: ${c}, index is ${i}` },
+                        { div: {}, component: () => this.state.Component, data: c }
+                    ] };
+                } 
+            },
+            { div: {}, component: () => this.state.Component, data: () => this.state.Prop1, templates: {
+                header: { div: {}, children: { text: () => `header of MyComp ${this.State.Class}` } }
+            } }
+        ];
+    }
+
+    protected Updating() {
+        date = new Date();
+        console.log("updating");
+    }
+
+    protected Updated() {
+        var date2 = new Date();
+        console.log("updated " + (date2.getTime() - date.getTime()));
+    }
+}
+
+class SubComp extends Component {
+    private state = Observable.Create({
+        Name: "NAME"
+    })
+
+    public get DefaultTemplates() {
+        return {
+            header: (): any => null
         }
-        `}
     }
-},
-{ div: { className: () => obj.Class, style: { color: "red" } }, data: () => obj.Arr, on: { click: () => (e: any) => alert("click") }, children: (c, i) => {
-        return { text: () => `${c} ${i} obj.Prop1: ${obj.Prop1} --` };
-    }
-}]);
 
-var div = browser.window.document.createElement("div");
-template.AttachTo(div);
-console.log(div.innerHTML);
-obj.Prop1 = "something different";
-obj.Prop2 = "orange";
-console.log(div.innerHTML);
-obj.Class = "garbage-person";
-console.log(div.innerHTML);
-obj.Arr = ["sec3", "sec4", "sec5"];
-console.log(div.innerHTML); 
+    public get Template() {
+        return {
+            div: {}, children: [
+                { text: "SubComp Header" },
+                { header: {}, children: this.Templates.header() },
+                { text: () => `Subcomp name: ${this.state.Name}` }
+            ]
+        };
+    }
+
+    public SetParentData(data: any) {
+        this.state.Name = data;
+    }
+}
+
+class SubComp2 extends Component {
+    private state = Observable.Create({
+        Name: "NAME"
+    });
+
+    public get DefaultTemplates() {
+        return {
+            header: (): any => null
+        }
+    }
+
+    public get Template() {
+        return {
+            div: {}, children: [
+                { text: "SubComp2 Header" },
+                { header: {} },
+                { text: () => `Subcomp2 name: ${this.state.Name}` }
+            ]
+        };
+    }
+
+    public SetParentData(data: any) {
+        this.state.Name = data;
+    }
+}
+
+(browser.window as any).MyComp = MyComp;
+(browser.window as any).SubComp = SubComp;
+(browser.window as any).SubComp2 = SubComp2;

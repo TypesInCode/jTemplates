@@ -38,6 +38,11 @@ class Emitter {
     public Clear(name: string) {
         this.callbackMap[name] = null;
     }
+
+    public ClearAll() {
+        for(var key in this.callbackMap)
+            this.Clear(key);
+    }
 }
 
 export default Emitter;
