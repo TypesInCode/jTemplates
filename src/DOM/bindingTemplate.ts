@@ -166,8 +166,8 @@ export class BindingTemplate extends Template {
             return;
         
         this.bindings.forEach((c) => {
-            c.AddListener("updating", this.updatingCallback)
-            c.AddListener("updated", this.updatedCallback)
+            c.AddListener("updating", this.updatingCallback);
+            c.AddListener("updated", this.updatedCallback);
             c.Update();
         });
         this.bound = true;

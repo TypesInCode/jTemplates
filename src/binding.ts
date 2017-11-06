@@ -1,4 +1,5 @@
-import Observable from "./Observable/observable";
+//import Observable from "./Observable/observable";
+import ObservableScope from "./Observable/observableScope";
 import Emitter from "./emitter";
 
 enum BindingStatus {
@@ -9,16 +10,17 @@ enum BindingStatus {
 
 abstract class Binding<T> extends Emitter {
     private boundTo: T;
-    private value: any;
+    /* private value: any;
     private bindingFunction: () => any;
-    private observables: Array<Observable>;
-    private setCallback: (obs: Observable) => void;
+    private observables: Array<Observable>; */
+    private observableScope: ObservableScope;
+    private setCallback: (obs: ObservableScope) => void;
     private scheduleUpdate: (callback: () => void) => void;
     private bindingInitialized: boolean;
     private status: BindingStatus;
 
     protected get Value(): any {
-        return this.value;
+        return this.observableScope.Value;
     }
 
     protected get BoundTo(): T {
@@ -26,21 +28,23 @@ abstract class Binding<T> extends Emitter {
     }
 
     constructor(boundTo: T, binding: any, scheduleUpdate: (callback: () => void) => void) {
-        super();
+        super(); 
         this.boundTo = boundTo;
         this.scheduleUpdate = scheduleUpdate;
         this.bindingInitialized = false;
         this.status = BindingStatus.Init;
-        this.observables = [];
+        //this.observables = [];
         this.setCallback = this.Update.bind(this);
         if(typeof binding == 'function')
-            this.bindingFunction = binding;
+            this.observableScope = new ObservableScope(binding);
         else
-            this.value = binding;
+            this.observableScope = new ObservableScope(() => binding);
+
+        this.observableScope.AddListener("set", this.setCallback);
     }
 
     public Update() {
-        if(this.bindingFunction) {
+        /* if(this.bindingFunction) {
             var obs = Observable.Watch("get", () => {
                 this.value = this.bindingFunction();
                 if(this.value)
@@ -61,7 +65,7 @@ abstract class Binding<T> extends Emitter {
             }
             
             this.observables = obs;
-        }
+        } */
 
         if(this.bindingInitialized) {
             this.Updating();
@@ -80,19 +84,20 @@ abstract class Binding<T> extends Emitter {
 
     public Destroy(): void {
         this.ClearAll();
-        this.observables.forEach(c => {
+        this.observableScope.Destroy();
+        /* this.observables.forEach(c => {
             this.RemoveListeners(c);
         });
-        this.value = null;
+        this.value = null; */
     }
 
-    protected AddListeners(observable: Observable) {
+    /* protected AddListeners(observable: Observable) {
         observable.AddListener("set", this.setCallback);
     }
 
     protected RemoveListeners(observable: Observable) {
         observable.RemoveListener("set", this.setCallback);
-    }
+    } */
 
     protected Updating() {
         if(this.status != BindingStatus.Updating) {

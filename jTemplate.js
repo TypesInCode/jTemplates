@@ -52,7 +52,9 @@
 	};
 	var browser_1 = __webpack_require__(1);
 	var observable_1 = __webpack_require__(2);
+	exports.Observable = observable_1.default;
 	var component_1 = __webpack_require__(6);
+	exports.Component = component_1.default;
 	var date = null;
 	var MyComp = (function (_super) {
 	    __extends(MyComp, _super);
@@ -792,10 +794,10 @@
 	var browser_1 = __webpack_require__(1);
 	var template_1 = __webpack_require__(8);
 	var textBinding_1 = __webpack_require__(9);
-	var propertyBinding_1 = __webpack_require__(12);
-	var dataBinding_1 = __webpack_require__(13);
-	var eventBinding_1 = __webpack_require__(14);
-	var componentBinding_1 = __webpack_require__(15);
+	var propertyBinding_1 = __webpack_require__(13);
+	var dataBinding_1 = __webpack_require__(14);
+	var eventBinding_1 = __webpack_require__(15);
+	var componentBinding_1 = __webpack_require__(16);
 	var TemplateType;
 	(function (TemplateType) {
 	    TemplateType[TemplateType["Element"] = 0] = "Element";
@@ -1096,7 +1098,7 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
-	var observable_1 = __webpack_require__(2);
+	var observableScope_1 = __webpack_require__(12);
 	var emitter_1 = __webpack_require__(3);
 	var BindingStatus;
 	(function (BindingStatus) {
@@ -1112,16 +1114,16 @@
 	        this.scheduleUpdate = scheduleUpdate;
 	        this.bindingInitialized = false;
 	        this.status = BindingStatus.Init;
-	        this.observables = [];
 	        this.setCallback = this.Update.bind(this);
 	        if (typeof binding == 'function')
-	            this.bindingFunction = binding;
+	            this.observableScope = new observableScope_1.default(binding);
 	        else
-	            this.value = binding;
+	            this.observableScope = new observableScope_1.default(function () { return binding; });
+	        this.observableScope.AddListener("set", this.setCallback);
 	    }
 	    Object.defineProperty(Binding.prototype, "Value", {
 	        get: function () {
-	            return this.value;
+	            return this.observableScope.Value;
 	        },
 	        enumerable: true,
 	        configurable: true
@@ -1135,25 +1137,6 @@
 	    });
 	    Binding.prototype.Update = function () {
 	        var _this = this;
-	        if (this.bindingFunction) {
-	            var obs = observable_1.default.Watch("get", function () {
-	                _this.value = _this.bindingFunction();
-	                if (_this.value)
-	                    _this.value = _this.value.valueOf();
-	            });
-	            var curObs = this.observables;
-	            for (var x = 0; x < obs.length; x++) {
-	                var ind = curObs.indexOf(obs[x]);
-	                if (ind < 0)
-	                    this.AddListeners(obs[x]);
-	                else
-	                    curObs.splice(ind, 1);
-	            }
-	            for (var y = 0; y < curObs.length; y++) {
-	                this.RemoveListeners(curObs[y]);
-	            }
-	            this.observables = obs;
-	        }
 	        if (this.bindingInitialized) {
 	            this.Updating();
 	            this.scheduleUpdate(function () {
@@ -1167,18 +1150,8 @@
 	        }
 	    };
 	    Binding.prototype.Destroy = function () {
-	        var _this = this;
 	        this.ClearAll();
-	        this.observables.forEach(function (c) {
-	            _this.RemoveListeners(c);
-	        });
-	        this.value = null;
-	    };
-	    Binding.prototype.AddListeners = function (observable) {
-	        observable.AddListener("set", this.setCallback);
-	    };
-	    Binding.prototype.RemoveListeners = function (observable) {
-	        observable.RemoveListener("set", this.setCallback);
+	        this.observableScope.Destroy();
 	    };
 	    Binding.prototype.Updating = function () {
 	        if (this.status != BindingStatus.Updating) {
@@ -1208,6 +1181,79 @@
 	    function __() { this.constructor = d; }
 	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 	};
+	var emitter_1 = __webpack_require__(3);
+	var observable_1 = __webpack_require__(2);
+	var ObservableScope = (function (_super) {
+	    __extends(ObservableScope, _super);
+	    function ObservableScope(observableFunction) {
+	        _super.call(this);
+	        this.dirty = true;
+	        this.observableFunction = observableFunction;
+	        this.childObservables = [];
+	        this.setCallback = this.SetCallback.bind(this);
+	    }
+	    Object.defineProperty(ObservableScope.prototype, "Value", {
+	        get: function () {
+	            this.Fire("get", this);
+	            if (!this.dirty)
+	                return this.value;
+	            this.UpdateValue();
+	            return this.value;
+	        },
+	        enumerable: true,
+	        configurable: true
+	    });
+	    ObservableScope.prototype.Destroy = function () {
+	        var _this = this;
+	        this.ClearAll();
+	        for (var x = 0; x < this.childObservables.length; x++)
+	            this.childObservables.forEach(function (c) { return _this.RemoveListeners(c); });
+	    };
+	    ObservableScope.prototype.UpdateValue = function () {
+	        var _this = this;
+	        var newObservables = observable_1.default.Watch("get", function () {
+	            _this.value = _this.observableFunction();
+	            if (_this.value instanceof observable_1.default)
+	                _this.value = _this.value.valueOf();
+	        });
+	        for (var x = 0; x < newObservables.length; x++) {
+	            var ind = this.childObservables.indexOf(newObservables[x]);
+	            if (ind < 0)
+	                this.AddListeners(newObservables[x]);
+	            else
+	                this.childObservables.splice(ind, 1);
+	        }
+	        for (var y = 0; y < this.childObservables.length; y++)
+	            this.RemoveListeners(this.childObservables[y]);
+	        this.childObservables = newObservables;
+	        this.dirty = false;
+	    };
+	    ObservableScope.prototype.SetCallback = function (observable) {
+	        this.dirty = true;
+	        this.Fire("set", this);
+	    };
+	    ObservableScope.prototype.AddListeners = function (observable) {
+	        observable.AddListener("set", this.setCallback);
+	    };
+	    ObservableScope.prototype.RemoveListeners = function (observable) {
+	        observable.RemoveListener("set", this.setCallback);
+	    };
+	    return ObservableScope;
+	}(emitter_1.default));
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = ObservableScope;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
 	var nodeBinding_1 = __webpack_require__(10);
 	var PropertyBinding = (function (_super) {
 	    __extends(PropertyBinding, _super);
@@ -1229,7 +1275,7 @@
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1303,7 +1349,7 @@
 
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1335,7 +1381,7 @@
 
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
