@@ -19,10 +19,10 @@ class ObservableScope extends Emitter {
 
     constructor(observableFunction: {(): any}) {
         super();
-        this.dirty = true;
         this.observableFunction = observableFunction;
         this.childObservables = [];
         this.setCallback = this.SetCallback.bind(this);
+        this.UpdateValue();
     }
 
     public Destroy() {
