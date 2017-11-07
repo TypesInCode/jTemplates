@@ -2,13 +2,13 @@ import Emitter from "../emitter";
 import Observable from "./observable";
 import Symbol from "../Utils/symbol";
 
-enum ObservableValueType {
+export enum ObservableValueType {
     Value,
     Object,
     Array
 }
 
-class ObservableValue {
+export class ObservableValue {
     private value: any;
     private valueType: ObservableValueType;
     private objectProperties: Array<string>;
@@ -321,7 +321,7 @@ class ObservableValue {
     }
 }
 
-namespace ObservableValue {
+export namespace ObservableValue {
     export function Unwrap(value: ObservableValue): any {
         if(value.ValueType == ObservableValueType.Value)
             return value.Value;
@@ -334,5 +334,3 @@ namespace ObservableValue {
         return returnValue;
     }
 }
-
-export default ObservableValue;

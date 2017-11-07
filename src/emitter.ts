@@ -1,15 +1,11 @@
-interface Callback {
-    (...args: any[]): void;
-}
-
 interface CallbackMap {
-    [name: string]: Callback[];
+    [name: string]: {(...args: any[]): void}[];
 }
 
 class Emitter {
     private callbackMap: CallbackMap = {};
 
-    public AddListener(name: string, callback: Callback) {
+    public AddListener(name: string, callback: {(...args: any[]): void}) {
         var events = this.callbackMap[name] || [];
         var ind = events.indexOf(callback);
         if( ind >= 0 )
@@ -19,7 +15,7 @@ class Emitter {
         this.callbackMap[name] = events;
     }
 
-    public RemoveListener(name: string, callback: Callback) {
+    public RemoveListener(name: string, callback: {(...args: any[]): void}) {
         var events = this.callbackMap[name] || [];
         var ind = events.indexOf(callback);
         if( ind >= 0 ) {        

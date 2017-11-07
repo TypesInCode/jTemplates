@@ -64,7 +64,7 @@ class SubComp extends Component {
         return {
             div: {}, children: [
                 { text: "SubComp Header" },
-                { header: {}, children: this.Templates.header() },
+                { header: {}, children: this.Templates["header"]() },
                 { text: () => `Subcomp name: ${this.state.Name}` }
             ]
         };

@@ -1,5 +1,5 @@
 import Emitter from "../emitter";
-import ObservableValue from "./observableValue";
+import { ObservableValue } from "./observableValue";
 
 var sharedEmitter = new Emitter();
 

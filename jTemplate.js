@@ -1112,7 +1112,6 @@
 	        _super.call(this);
 	        this.boundTo = boundTo;
 	        this.scheduleUpdate = scheduleUpdate;
-	        this.bindingInitialized = false;
 	        this.status = BindingStatus.Init;
 	        this.setCallback = this.Update.bind(this);
 	        if (typeof binding == 'function')
@@ -1137,7 +1136,7 @@
 	    });
 	    Binding.prototype.Update = function () {
 	        var _this = this;
-	        if (this.bindingInitialized) {
+	        if (this.status != BindingStatus.Init) {
 	            this.Updating();
 	            this.scheduleUpdate(function () {
 	                _this.Apply();
@@ -1146,7 +1145,7 @@
 	        }
 	        else {
 	            this.Apply();
-	            this.bindingInitialized = true;
+	            this.status = BindingStatus.Updated;
 	        }
 	    };
 	    Binding.prototype.Destroy = function () {
