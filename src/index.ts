@@ -2,7 +2,7 @@ import browser from "./DOM/browser";
 import Observable from "./Observable/observable";
 import Component from "./DOM/Component/component";
 
-var date: Date = null;
+/* var date: Date = null;
 
 class MyComp extends Component {
     private state = Observable.Create({
@@ -103,6 +103,6 @@ class SubComp2 extends Component {
 
 (browser.window as any).MyComp = MyComp;
 (browser.window as any).SubComp = SubComp;
-(browser.window as any).SubComp2 = SubComp2;
+(browser.window as any).SubComp2 = SubComp2; */
 
 export { Observable, Component };
