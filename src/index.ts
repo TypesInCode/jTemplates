@@ -1,5 +1,6 @@
 import browser from "./DOM/browser";
 import Observable from "./Observable/observable";
+import ObservableScope from "./Observable/observableScope";
 import Component from "./DOM/Component/component";
 
 /* var date: Date = null;
@@ -105,4 +106,4 @@ class SubComp2 extends Component {
 (browser.window as any).SubComp = SubComp;
 (browser.window as any).SubComp2 = SubComp2; */
 
-export { Observable, Component };
+export { Observable, ObservableScope, Component };
