@@ -55,7 +55,7 @@ class ObservableScope extends Emitter {
 
     protected SetCallback(observable: Observable) {
         this.dirty = true;
-        this.Fire("set", this);
+        this.Fire("set");
     }
 
     protected AddListeners(observable: Observable) {

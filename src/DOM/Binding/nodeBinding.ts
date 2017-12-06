@@ -1,5 +1,6 @@
 import Binding from "../../binding";
 import browser from "../browser";
+import { ValueFunction } from "../elements";
 
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
@@ -21,7 +22,7 @@ function ScheduleUpdate(callback: () => void): void {
 }
 
 abstract class NodeBinding extends Binding<Node> {
-    constructor(boundTo: Node, binding: any | { (): any }) {
+    constructor(boundTo: Node, binding: ValueFunction<any>) {
         super(boundTo, binding, ScheduleUpdate);
     }
 }

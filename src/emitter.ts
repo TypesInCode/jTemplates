@@ -1,11 +1,15 @@
+export interface Callback {
+    (sender: any, ...args: any[]): void;
+}
+
 interface CallbackMap {
-    [name: string]: {(...args: any[]): void}[];
+    [name: string]: Callback[];
 }
 
 class Emitter {
     private callbackMap: CallbackMap = {};
 
-    public AddListener(name: string, callback: {(...args: any[]): void}) {
+    public AddListener(name: string, callback: Callback) {
         var events = this.callbackMap[name] || [];
         var ind = events.indexOf(callback);
         if( ind >= 0 )
@@ -15,7 +19,7 @@ class Emitter {
         this.callbackMap[name] = events;
     }
 
-    public RemoveListener(name: string, callback: {(...args: any[]): void}) {
+    public RemoveListener(name: string, callback: Callback) {
         var events = this.callbackMap[name] || [];
         var ind = events.indexOf(callback);
         if( ind >= 0 ) {        
@@ -27,7 +31,7 @@ class Emitter {
     public Fire(name: string, ...args: any[]) {
         var events = this.callbackMap[name] || [];
         events.forEach((c) => {
-            c(...args);
+            c(this, ...args);
         });
     }
 

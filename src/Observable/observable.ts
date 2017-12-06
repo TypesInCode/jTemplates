@@ -46,7 +46,7 @@ class Observable extends Emitter {
     }
 
     public valueOf(): any {
-        this.Fire("get", this);
+        this.Fire("get");
         return this.observableValue.valueOf();
     }
 

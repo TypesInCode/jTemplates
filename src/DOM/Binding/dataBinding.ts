@@ -1,15 +1,16 @@
 import NodeBinding from './nodeBinding';
-import { IBindingTemplate, BindingTemplate } from "../bindingTemplate";
+import { BindingTemplate } from "../bindingTemplate";
 import browser from "../browser";
+import { BindingElementsDefinition, BindingDefinition, ValueFunction } from "../elements";
 
 class DataBinding extends NodeBinding {
     private childTemplates: Array<BindingTemplate>;
     private updatingTemplates: Array<BindingTemplate>;
     private localUpdate: boolean;
 
-    private templateFunction: {(c: {}, i: number): IBindingTemplate | Array<IBindingTemplate>};
+    private templateFunction: {(c: {}, i: number): BindingElementsDefinition};
 
-    constructor(boundTo: Node, binding: any | { (): any }, children: IBindingTemplate | Array<IBindingTemplate> | {(c: {}, i: number): IBindingTemplate | Array<IBindingTemplate>}) {
+    constructor(boundTo: Node, binding: ValueFunction<any>, children: BindingDefinition) {
         super(boundTo, binding);
         this.childTemplates = [];
         this.updatingTemplates = [];

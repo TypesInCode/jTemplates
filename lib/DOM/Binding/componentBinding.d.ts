@@ -1,20 +1,9 @@
 import NodeBinding from "./nodeBinding";
-import Component from "../Component/component";
-import { IBindingTemplate } from "../bindingTemplate";
+import { ComponentDefinition, TemplateDefinitionMap } from "../elements";
 declare class ComponentBinding extends NodeBinding {
     private component;
     private parentTemplates;
-    constructor(element: Node, binding: any, compType: {
-        (): {
-            new (): Component;
-        };
-    } | {
-        new (): Component;
-    }, parentTemplates: {
-        [name: string]: {
-            (): IBindingTemplate | Array<IBindingTemplate>;
-        } | Array<IBindingTemplate> | IBindingTemplate;
-    });
+    constructor(element: Node, binding: any, compType: ComponentDefinition<any>, parentTemplates: TemplateDefinitionMap);
     Destroy(): void;
     protected Apply(): void;
 }

@@ -1,12 +1,13 @@
-import { BindingTemplate, IBindingTemplate } from "../bindingTemplate";
+import { BindingDefinitionMap, BindingDefinition, BindingElementsDefinition, TemplateDefinitionMap } from "../elements";
+import { BindingTemplate } from "../bindingTemplate";
 
 function CreateFunction(value: any) {
     return () => value;
 }
 
-abstract class Component {
+abstract class Component<P> {
     private bindingTemplate: BindingTemplate;
-    private parentTemplates: { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } }
+    private parentTemplates: TemplateDefinitionMap;
     
     public get BindingTemplate() {
         if(!this.bindingTemplate) {
@@ -18,13 +19,17 @@ abstract class Component {
         return this.bindingTemplate;
     }
 
-    public abstract get Template(): IBindingTemplate | Array<IBindingTemplate>;
+    public static get Name(): string {
+        throw "public static property Name must be overidden";
+    }
 
-    public get DefaultTemplates(): { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } } {
+    public abstract get Template(): BindingElementsDefinition;
+
+    public get DefaultTemplates(): TemplateDefinitionMap {
         return {};
     }
 
-    protected get Templates(): { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } } {
+    protected get Templates(): TemplateDefinitionMap {
         return this.parentTemplates;
     }
 
@@ -36,9 +41,9 @@ abstract class Component {
         this.parentTemplates = this.DefaultTemplates;
     }
 
-    public SetParentData(data: any) { }
+    public SetParentData(data: P) { }
 
-    public SetParentTemplates(parentTemplates: { [name: string]: { (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate> } }) {
+    public SetParentTemplates(parentTemplates: TemplateDefinitionMap) {
         for(var key in parentTemplates) {
             if(typeof parentTemplates[key] != 'function')
                 (this.parentTemplates as any)[key] = CreateFunction(parentTemplates[key]);

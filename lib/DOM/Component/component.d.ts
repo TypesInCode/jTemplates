@@ -1,27 +1,17 @@
-import { BindingTemplate, IBindingTemplate } from "../bindingTemplate";
-declare abstract class Component {
+import { BindingElementsDefinition, TemplateDefinitionMap } from "../elements";
+import { BindingTemplate } from "../bindingTemplate";
+declare abstract class Component<P> {
     private bindingTemplate;
     private parentTemplates;
     readonly BindingTemplate: BindingTemplate;
-    readonly abstract Template: IBindingTemplate | Array<IBindingTemplate>;
-    readonly DefaultTemplates: {
-        [name: string]: {
-            (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate>;
-        };
-    };
-    protected readonly Templates: {
-        [name: string]: {
-            (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate>;
-        };
-    };
+    static readonly Name: string;
+    readonly abstract Template: BindingElementsDefinition;
+    readonly DefaultTemplates: TemplateDefinitionMap;
+    protected readonly Templates: TemplateDefinitionMap;
     readonly Attached: boolean;
     constructor();
-    SetParentData(data: any): void;
-    SetParentTemplates(parentTemplates: {
-        [name: string]: {
-            (...args: Array<any>): IBindingTemplate | Array<IBindingTemplate>;
-        };
-    }): void;
+    SetParentData(data: P): void;
+    SetParentTemplates(parentTemplates: TemplateDefinitionMap): void;
     AttachTo(element: Node): void;
     Detach(): void;
     Destroy(): void;

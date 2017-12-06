@@ -8,30 +8,31 @@ import DataBinding from "./Binding/dataBinding";
 import EventBinding from "./Binding/eventBinding";
 import ComponentBinding from "./Binding/componentBinding";
 
-export interface IBindingTemplate {
-    [name: string]: { };
-    text?: string | { (): string };
-    component?: { (): { new (): Component } } | { new (): Component };
-    templates?: { [name: string]: { (): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate };
-    data?: { (): any } | any;
-    children?: { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate;
-    on?: { [name: string]: { (): EventListener } };
-}
+import { 
+    BindingElementDefinition, 
+    BindingDefinitionMap, 
+    BindingDefinition, 
+    IComponentDefinition, 
+    EventBindingMap, 
+    IElementDefinition, 
+    TemplateDefinitionMap, 
+    ComponentDefinition, 
+    BindingElementsDefinition 
+} from "./elements";
 
 enum TemplateType {
     Element,
     Text
 }
 
-function GetTemplateType(template: IBindingTemplate): TemplateType {
-    if(template.text)
+function GetTemplateType<P>(template: BindingElementDefinition): TemplateType {
+    if(typeof template === 'string' || typeof template.valueOf() === 'string')
         return TemplateType.Text;
 
     return TemplateType.Element;
 }
 
-function AppendText(template: IBindingTemplate, node: Node): NodeBinding {
-    var text = template.text;
+function AppendText(text: string, node: Node): NodeBinding {
     var textNode = browser.window.document.createTextNode("");
     node.appendChild(textNode);
     return new TextBinding(textNode, text);
@@ -56,34 +57,37 @@ function ReadElementProperties(node: Node, properties: {}, parentProperties?: Ar
     return bindings;
 }
 
-function AppendElement(template: IBindingTemplate, node: Node): Array<NodeBinding> {
+function AppendElement<P>(template: BindingElementDefinition, node: Node): Array<NodeBinding> {
     var data: any = null;
-    var children:  { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate = null;
-    var events: { [name: string]: () => EventListener };
-    var component: { new (): Component } | { (): { new (): Component } };
+    var children: BindingDefinition = null; // { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate = null;
+    var events: EventBindingMap
+    var component: ComponentDefinition<any>;
     var elementName: string = null;
     var properties: {} = null;
-    var templates: { [name: string]: { (): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate } = null;
-    for(var key in template) {
+    var templates: TemplateDefinitionMap = null;
+    for(var key in (template as any)) {
         switch(key) {
             case "children":
-                children = template.children;
+                children = (template as any).children;
                 break;
             case "data":
-                data = template.data;
+                data = (template as any).data;
                 break;
             case "on":
-                events = template.on;
+                events = (template as any).on;
                 break;
             case "component":
-                component = template.component;
+                component = (template as any).component;
                 break;
             case "templates":
-                templates = template.templates;
+                templates = (template as any).templates;
+                break;
+            case "name":
+                elementName = (template as any).name;
                 break;
             default:
                 elementName = key;
-                properties = template[key];
+                properties = (template as any)[key];
                 break;
         }
     }
@@ -93,7 +97,7 @@ function AppendElement(template: IBindingTemplate, node: Node): Array<NodeBindin
     var bindings = ReadElementProperties(elementNode, properties);
 
     for(var key in events)
-        bindings.push(new EventBinding(elementNode, key, events[key]))
+        bindings.push(new EventBinding(elementNode, key, events[key]));
 
     if(component) {
         bindings.push(new ComponentBinding(elementNode, data, component, templates));
@@ -105,7 +109,7 @@ function AppendElement(template: IBindingTemplate, node: Node): Array<NodeBindin
     return bindings;
 }
 
-function ReadBindingTemplate(template: Array<IBindingTemplate> | IBindingTemplate, rootNode: Node, bindings?: Array<NodeBinding>): Array<NodeBinding> {
+function ReadBindingTemplate(template: BindingElementsDefinition, rootNode: Node, bindings?: Array<NodeBinding>): Array<NodeBinding> {
     if(!template)
         return [];
 
@@ -119,7 +123,7 @@ function ReadBindingTemplate(template: Array<IBindingTemplate> | IBindingTemplat
         var type = GetTemplateType(tempObj);
         switch(type) {
             case TemplateType.Text:
-                var textBinding = AppendText(tempObj, rootNode);
+                var textBinding = AppendText(tempObj as string, rootNode);
                 if(textBinding)
                     bindings.push(textBinding);
                 break;
@@ -142,7 +146,7 @@ export class BindingTemplate extends Template {
     private updatingCallback: (binding: NodeBinding) => void;
     private updatedCallback: (binding: NodeBinding) => void;
 
-    constructor(template: IBindingTemplate | Array<IBindingTemplate>) {
+    constructor(template: BindingElementsDefinition) {
         var documentFragment = browser.createDocumentFragment();
         var bindings = ReadBindingTemplate(template, documentFragment);
         super(documentFragment);

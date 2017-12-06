@@ -61,14 +61,14 @@ abstract class Binding<T> extends Emitter {
 
     protected Updating() {
         if(this.status != BindingStatus.Updating) {
-            this.Fire("updating", this);
+            this.Fire("updating");
             this.status = BindingStatus.Updating;
         }
     }
 
     protected Updated() {
         if(this.status != BindingStatus.Updated) {
-            this.Fire("updated", this);
+            this.Fire("updated");
             this.status = BindingStatus.Updated;
         }
     }

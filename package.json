@@ -17,7 +17,8 @@
     "clean": "rimraf lib",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
     "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty",
-    "test": "npm run build && mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
+    "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
+    "test": "npm run buildquick && mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
     "watch": "npm run build -- --watch",
     "watch:test": "npm run test -- --watch",
     "webbuild": "npm run clean && webpack -p --config webpack.dist.config.js",
@@ -26,7 +27,6 @@
     "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
   },
   "dependencies": {
-    "ts-loader": "^1.2.0",
     "xmldom": "^0.1.22"
   },
   "devDependencies": {
@@ -38,6 +38,7 @@
     "mocha": "^3.0.1",
     "rimraf": "^2.5.4",
     "ts-node": "^1.7.3",
+    "ts-loader": "^1.2.0",
     "tslint": "3.15.1",
     "typescript": "2.0.3",
     "webpack": "^1.13.3"
