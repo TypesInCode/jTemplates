@@ -1,4 +1,4 @@
-import { BindingDefinition, BindingElementsDefinition, TemplateDefinitionMap } from "../elements";
+import { BindingDefinition, BindingElementsDefinition, TemplateDefinitionMap, ValueFunction } from "../elements";
 import { BindingTemplate } from "../bindingTemplate";
 
 function CreateFunction(value: any) {
