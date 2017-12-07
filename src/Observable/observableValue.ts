@@ -143,7 +143,7 @@ export class ObservableValue {
             if(this.valueType == ObservableValueType.Array)
                 this.AddArrayMixin(node);
 
-            node.Fire("set", node);
+            node.Fire("set");
         }
     }
 
