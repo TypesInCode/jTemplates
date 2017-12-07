@@ -45,7 +45,7 @@ export interface ElementMethod {
     (properties: IElementProperties, children?: BindingDefinition): IElementDefinition
 }
 
-export function component<T>(component: { new(): Component<T> }, data: T, templates: TemplateDefinitionMap ): IComponentDefinition {
+export function component<T>(component: { new(): Component<T> }, data?: T, templates?: TemplateDefinitionMap ): IComponentDefinition {
     return {
         name: (component as any as typeof Component).Name,
         component: component,
