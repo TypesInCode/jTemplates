@@ -7,8 +7,8 @@ export type EventBindingMap = { [eventName: string]: { (): EventListener } };
 export type BindingElementDefinition = IElementDefinition | IComponentDefinition | string;
 export type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
 export type BindingDefinition = ValueFunction<BindingElementsDefinition>;
-export type BindingDefinitionMap = { [name: string]: BindingDefinition };
-export type TemplateDefinitionMap = { [name: string]: BindingElementDefinition };
+//export type BindingDefinitionMap = { [name: string]: BindingDefinition };
+export type TemplateDefinitionMap = { [name: string]: { (c?: any, i?: number): BindingElementsDefinition } };
 
 export interface IElementDefinition {
     [elementName: string]: {};
@@ -21,7 +21,7 @@ export interface IComponentDefinition {
     name: string;
     component: ComponentDefinition<any>;
     data?: ValueFunction<any>;
-    templates?: BindingDefinitionMap;
+    templates?: TemplateDefinitionMap;
 }
 
 export interface IElementProperties {
