@@ -29,7 +29,10 @@ class DataBinding extends NodeBinding {
     protected Apply() {
         var currentLength = this.childTemplates.length;
         var newValue = this.Value;
-        if(!Array.isArray(newValue))
+
+        if(!newValue)
+            newValue = [];
+        else if(!Array.isArray(newValue))
             newValue = [newValue];
         
         if(currentLength > newValue.length) {
