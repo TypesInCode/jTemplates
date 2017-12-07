@@ -39,14 +39,15 @@ abstract class Binding<T> extends Emitter {
     }
 
     public Update() {
-        if(this.status != BindingStatus.Init) {
+        if(this.status == BindingStatus.Updated) {
             this.Updating();
             this.scheduleUpdate(() => {
                 this.Apply();
                 this.Updated();
             });
         }
-        else {
+        else if(this.status == BindingStatus.Init) {
+            this.status = BindingStatus.Updating;
             this.Apply();
             this.status = BindingStatus.Updated;
         }
