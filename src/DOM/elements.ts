@@ -1,6 +1,6 @@
 import Component from "./Component/component";
 
-export type ValueFunction<T> = T | ((...args: any[]) => T);
+export type ValueFunction<T> = T | ((c?: any, i?: number) => T);
 export type ComponentDefinition<P> = ValueFunction<{ new (): Component<P> }>;
 export type EventBindingMap = { [eventName: string]: { (): EventListener } };
 
