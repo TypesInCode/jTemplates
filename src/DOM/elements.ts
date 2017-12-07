@@ -24,23 +24,26 @@ export interface IComponentDefinition {
     templates?: BindingDefinitionMap;
 }
 
-export function element(name: string, properties: {}, events: EventBindingMap, data: {}, children: BindingDefinition): IElementDefinition {
+export interface IElementProperties {
+    props?: {};
+    events?: EventBindingMap;
+    data?: {}
+}
+
+export function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition {
     var elementDefinition: IElementDefinition = {
-        on: events,
-        data: data,
+        on: properties.events,
+        data: properties.data,
         children: children
     };
-    elementDefinition[name] = properties;
+    elementDefinition[name] = properties.props;
     
     return elementDefinition;
 }
 
 export interface ElementMethod {
-    (properties?: {}, events?: EventBindingMap, data?: {}, children?: BindingDefinition): IElementDefinition
+    (properties: IElementProperties, children?: BindingDefinition): IElementDefinition
 }
-
-export var div: ElementMethod = element.bind(null, "div");
-export var span: ElementMethod = element.bind(null, "span");
 
 export function component<T>(component: { new(): Component<T> }, data: T, templates: TemplateDefinitionMap ): IComponentDefinition {
     return {

@@ -2,7 +2,7 @@
 
 import browser from "../src/DOM/browser";
 import { BindingTemplate } from "../src/DOM/bindingTemplate";
-import { div } from "../src/DOM/elements";
+import { div } from "../src/DOM/elementMethods";
 import Observable from "../src/Observable/observable";
 import * as chai from "chai";
 
@@ -20,7 +20,7 @@ describe("BindingTemplate", () => {
     });
     it("elements function", () => {
         var template = new BindingTemplate(
-            div()
+            div({})
         );
 
         var fragment = browser.createDocumentFragment();
@@ -51,7 +51,7 @@ describe("BindingTemplate", () => {
     });
     it("set element method ID and text", () => {
         var template = new BindingTemplate(
-            div({ id: "elemID" }, {}, {} , "element content")
+            div({ props: { id: "elemID" } }, "element content")
         );
 
         var fragment = browser.createDocumentFragment();

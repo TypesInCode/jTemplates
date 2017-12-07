@@ -8,6 +8,8 @@ export enum ObservableValueType {
     Array
 }
 
+var jsonObj: {} = {};
+
 export class ObservableValue {
     private value: any;
     private valueType: ObservableValueType;
@@ -68,7 +70,7 @@ export class ObservableValue {
 
             this.value = nextArr;
         }
-        else if( val != null && val != undefined && typeof val === "object" ) {
+        else if( val && typeof val === "object" && val.constructor === jsonObj.constructor ) {
             this.ConvertToObject();
 
             var nextObject: { [name: string]: Observable } = 

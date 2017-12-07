@@ -29,12 +29,15 @@ export interface IComponentDefinition {
     data?: ValueFunction<any>;
     templates?: BindingDefinitionMap;
 }
-export declare function element(name: string, properties: {}, events: EventBindingMap, data: {}, children: BindingDefinition): IElementDefinition;
-export interface ElementMethod {
-    (properties?: {}, events?: EventBindingMap, data?: {}, children?: BindingDefinition): IElementDefinition;
+export interface IElementProperties {
+    props?: {};
+    events?: EventBindingMap;
+    data?: {};
 }
-export declare var div: ElementMethod;
-export declare var span: ElementMethod;
+export declare function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition;
+export interface ElementMethod {
+    (properties: IElementProperties, children?: BindingDefinition): IElementDefinition;
+}
 export declare function component<T>(component: {
     new (): Component<T>;
 }, data: T, templates: TemplateDefinitionMap): IComponentDefinition;
