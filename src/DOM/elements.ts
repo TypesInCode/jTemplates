@@ -19,7 +19,7 @@ export interface IElementDefinition {
 
 export interface IComponentDefinition {
     name: string;
-    component: ComponentDefinition<any>;
+    component: { new(): Component<any> };
     data?: ValueFunction<any>;
     templates?: TemplateDefinitionMap;
 }

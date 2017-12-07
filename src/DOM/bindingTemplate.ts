@@ -10,7 +10,6 @@ import ComponentBinding from "./Binding/componentBinding";
 
 import { 
     BindingElementDefinition, 
-    BindingDefinitionMap, 
     BindingDefinition, 
     IComponentDefinition, 
     EventBindingMap, 
@@ -61,7 +60,7 @@ function AppendElement<P>(template: BindingElementDefinition, node: Node): Array
     var data: any = null;
     var children: BindingDefinition = null; // { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate = null;
     var events: EventBindingMap
-    var component: ComponentDefinition<any>;
+    var component: { new(): Component<any> };
     var elementName: string = null;
     var properties: {} = null;
     var templates: TemplateDefinitionMap = null;

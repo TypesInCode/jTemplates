@@ -1,9 +1,13 @@
 import NodeBinding from "./nodeBinding";
-import { ComponentDefinition, TemplateDefinitionMap } from "../elements";
+import Component from "../Component/component";
+import { TemplateDefinitionMap } from "../elements";
 declare class ComponentBinding extends NodeBinding {
+    private componentType;
     private component;
     private parentTemplates;
-    constructor(element: Node, binding: any, compType: ComponentDefinition<any>, parentTemplates: TemplateDefinitionMap);
+    constructor(element: Node, binding: any, compType: {
+        new (): Component<any>;
+    }, parentTemplates: TemplateDefinitionMap);
     Destroy(): void;
     protected Apply(): void;
 }

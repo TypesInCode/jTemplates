@@ -3,7 +3,7 @@ import Component from "../Component/component";
 import { BindingTemplate } from "../bindingTemplate";
 import { ComponentDefinition, TemplateDefinitionMap } from "../elements";
 
-function CreateBindingFunction(binding: any, component: ComponentDefinition<any>): () => { value: {(): any}, component: {(): { new (): Component<any> }} } {
+/* function CreateBindingFunction(binding: any, component: ComponentDefinition<any>): () => { value: {(): any}, component: {(): { new (): Component<any> }} } {
     var bindingFunc = binding;
     if(typeof bindingFunc != 'function')
         bindingFunc = () => binding;
@@ -20,7 +20,7 @@ function CreateBindingFunction(binding: any, component: ComponentDefinition<any>
             component: c && c.valueOf()
         };
     };
-}
+} */
 
 function EnsureFunction(value: any) {
     if(typeof value == 'function')
@@ -30,15 +30,17 @@ function EnsureFunction(value: any) {
 }
 
 class ComponentBinding extends NodeBinding {
+    private componentType: { new(): Component<any> };
     private component: Component<any>;
     private parentTemplates: TemplateDefinitionMap;
 
-    constructor(element: Node, binding: any, compType: ComponentDefinition<any>, parentTemplates: TemplateDefinitionMap) {
-        binding = binding && binding.valueOf();
-        compType = compType && (compType as any).valueOf();
-        var newBinding = CreateBindingFunction(binding, compType);
-        super(element, newBinding);
+    constructor(element: Node, binding: any, compType: { new(): Component<any> }, parentTemplates: TemplateDefinitionMap) {
+        //binding = binding && binding.valueOf();
+        //compType = compType && (compType as any).valueOf();
+        //var newBinding = CreateBindingFunction(binding, compType);
+        super(element, binding);
 
+        this.componentType = compType;
         this.parentTemplates = {};
         for(var key in parentTemplates)
             this.parentTemplates[key] = EnsureFunction(parentTemplates[key]);
@@ -49,24 +51,25 @@ class ComponentBinding extends NodeBinding {
     }
 
     protected Apply() {
-        var component = this.Value.component;
+        /* var component = this.Value.component;
         var value = this.Value.value;
 
         if(!component) {
             this.component.Destroy();
             return;
-        }
+        } */
 
-        if(!this.component || !(this.component instanceof component)) {
-            this.component && this.component.Destroy();
-            this.component = new component();
+        if(!this.component) {
+            //this.component && this.component.Destroy();
+            this.component = new this.componentType();
             this.component.SetParentTemplates(this.parentTemplates);
+            this.component.AttachTo(this.BoundTo);
         }
 
-        this.component.SetParentData(this.Value.value);
+        this.component.SetParentData(this.Value);
 
-        if(!this.component.Attached)
-            this.component.AttachTo(this.BoundTo);
+        /* if(!this.component.Attached)
+            this.component.AttachTo(this.BoundTo); */
     }
 }
 

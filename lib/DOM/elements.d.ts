@@ -1,5 +1,5 @@
 import Component from "./Component/component";
-export declare type ValueFunction<T> = T | ((...args: any[]) => T);
+export declare type ValueFunction<T> = T | ((c?: any, i?: number) => T);
 export declare type ComponentDefinition<P> = ValueFunction<{
     new (): Component<P>;
 }>;
@@ -11,11 +11,10 @@ export declare type EventBindingMap = {
 export declare type BindingElementDefinition = IElementDefinition | IComponentDefinition | string;
 export declare type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
 export declare type BindingDefinition = ValueFunction<BindingElementsDefinition>;
-export declare type BindingDefinitionMap = {
-    [name: string]: BindingDefinition;
-};
 export declare type TemplateDefinitionMap = {
-    [name: string]: BindingElementDefinition;
+    [name: string]: {
+        (c?: any, i?: number): BindingElementsDefinition;
+    };
 };
 export interface IElementDefinition {
     [elementName: string]: {};
@@ -25,9 +24,11 @@ export interface IElementDefinition {
 }
 export interface IComponentDefinition {
     name: string;
-    component: ComponentDefinition<any>;
+    component: {
+        new (): Component<any>;
+    };
     data?: ValueFunction<any>;
-    templates?: BindingDefinitionMap;
+    templates?: TemplateDefinitionMap;
 }
 export interface IElementProperties {
     props?: {};
@@ -40,4 +41,4 @@ export interface ElementMethod {
 }
 export declare function component<T>(component: {
     new (): Component<T>;
-}, data: T, templates: TemplateDefinitionMap): IComponentDefinition;
+}, data?: T, templates?: TemplateDefinitionMap): IComponentDefinition;
