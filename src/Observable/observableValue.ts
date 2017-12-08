@@ -77,7 +77,7 @@ export class ObservableValue {
             this.ConvertToObject();
 
             var nextObject: { [name: string]: Observable } = 
-                typeof this.value === "object" ? this.value : {};
+                this.value && typeof this.value === "object" ? this.value : {};
             
             var props = new Array<string>();
             for( var key in val ) {
