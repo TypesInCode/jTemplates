@@ -2,7 +2,7 @@ import Component from "./Component/component";
 
 export type ValueFunction<T> = T | ((c?: any, i?: number) => T);
 export type ComponentDefinition<P> = ValueFunction<{ new (): Component<P> }>;
-export type EventBindingMap = { [eventName: string]: (...args: any[]) => void };
+export type EventBindingMap = { [eventName: string]: { (): {(...args: any[]): void} } };
 
 export type BindingElementDefinition = IElementDefinition | IComponentDefinition | string;
 export type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
