@@ -42,3 +42,6 @@ export interface ElementMethod {
 export declare function component<T>(component: {
     new (): Component<T>;
 }, data?: ValueFunction<T>, templates?: TemplateDefinitionMap): IComponentDefinition;
+export interface ComponentMethod<T> {
+    (data?: ValueFunction<T>, templates?: TemplateDefinitionMap): IComponentDefinition;
+}

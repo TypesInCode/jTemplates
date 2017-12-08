@@ -55,3 +55,7 @@ export function component<T>(component: { new(): Component<T> }, data?: ValueFun
         templates: templates
     };
 }
+
+export interface ComponentMethod<T> {
+    (data?: ValueFunction<T>, templates?: TemplateDefinitionMap): IComponentDefinition;
+}
