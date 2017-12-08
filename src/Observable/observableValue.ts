@@ -55,6 +55,9 @@ export class ObservableValue {
             this.ConvertToArray();
             var nextArr: Array<Observable> = 
                 Array.isArray(this.value) ? this.value : new Array<Observable>();
+
+            if(val.length === nextArr.length)
+                skipEventFiring = true;
             
             for(var x=0; x<val.length; x++) {
                 var newVal: any = val[x];
