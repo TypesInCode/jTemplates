@@ -35,7 +35,7 @@ class Observable extends Emitter {
             this.observableValue = value.GetValue();
             this.observableValue.AddNode(this);
         }
-        else {
+        else if(!this.observableValue) {
             this.observableValue = new ObservableValue(value);
             this.observableValue.AddNode(this);
         }
