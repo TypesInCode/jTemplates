@@ -31,8 +31,8 @@ export interface IComponentDefinition {
     templates?: TemplateDefinitionMap;
 }
 export interface IElementProperties {
-    props?: {};
-    events?: EventBindingMap;
+    [propName: string]: {};
+    on?: EventBindingMap;
     data?: {};
 }
 export declare function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition;

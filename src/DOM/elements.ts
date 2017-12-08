@@ -25,18 +25,20 @@ export interface IComponentDefinition {
 }
 
 export interface IElementProperties {
-    props?: {};
-    events?: EventBindingMap;
+    [propName: string]: {};
+    on?: EventBindingMap;
     data?: {}
 }
 
 export function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition {
     var elementDefinition: IElementDefinition = {
-        on: properties.events,
+        on: properties.on,
         data: properties.data,
         children: children
     };
-    elementDefinition[name] = properties.props;
+    delete properties.on;
+    delete properties.data;
+    elementDefinition[name] = properties;
     
     return elementDefinition;
 }
