@@ -21,7 +21,29 @@ class Observable extends Emitter {
     }
 
     public SetValue(value: any) {
-        if( value instanceof Observable ) {
+        var setFired = false;
+        var rawValue: any = value.valueOf();
+        if(this.observableValue) {
+            this.observableValue.Value = rawValue;
+            setFired = true;
+        }
+
+        if(value instanceof Observable) {
+            if(this.observableValue)
+                this.observableValue.RemoveNode(this);
+            
+            this.observableValue = value.GetValue();
+            this.observableValue.AddNode(this);
+        }
+        else {
+            this.observableValue = new ObservableValue(value);
+            this.observableValue.AddNode(this);
+        }
+
+        setFired || this.Fire("set");
+
+
+        /* if( value instanceof Observable ) {
             var newValue = value.GetValue();
             if(newValue !== this.observableValue) {
                 if(this.observableValue)
@@ -38,7 +60,7 @@ class Observable extends Emitter {
                 this.observableValue = new ObservableValue(value);
                 this.observableValue.AddNode(this);
             }
-        }
+        } */
     }
 
     public GetValue(): ObservableValue {

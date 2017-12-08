@@ -4,7 +4,11 @@ export declare type ComponentDefinition<P> = ValueFunction<{
     new (): Component<P>;
 }>;
 export declare type EventBindingMap = {
-    [eventName: string]: (...args: any[]) => void;
+    [eventName: string]: {
+        (): {
+            (...args: any[]): void;
+        };
+    };
 };
 export declare type BindingElementDefinition = IElementDefinition | IComponentDefinition | string;
 export declare type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
