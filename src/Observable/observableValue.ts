@@ -300,6 +300,13 @@ export class ObservableValue {
             enumerable: false,
             configurable: true
         });
+        Object.defineProperty(object, "sort", {
+            value: (sortCallback: {(a: any, b: any): number}) => {
+                var array = ObservableValue.Unwrap(this) as Array<any>;
+                array.sort(sortCallback);
+                this.Value = array;
+            }
+        });
         Object.defineProperty(object, Symbol.iterator, {
             get: () => {
                 return this.valueOf()[Symbol.iterator];
@@ -319,6 +326,7 @@ export class ObservableValue {
         delete (object as any)["length"];
         delete (object as any)["push"];
         delete (object as any)["splice"];
+        delete (object as any)["sort"];
         delete (object as any)[Symbol.iterator];
     }
 }
