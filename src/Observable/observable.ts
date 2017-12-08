@@ -17,7 +17,7 @@ class Observable extends Emitter {
 
     public Fire(name: string, ...args: any[]) {
         super.Fire(name, ...args);
-        sharedEmitter.Fire(name, ...args);
+        sharedEmitter.Fire(name, this, ...args);
     }
 
     public SetValue(value: any) {
@@ -66,7 +66,7 @@ namespace Observable {
 
     export function Watch(event: string, action: () => void): Array<Observable> {
         var ret: Array<Observable> = [];
-        var callback = (obs: Observable) => {
+        var callback = (sender: Emitter, obs: Observable) => {
             var ind = ret.indexOf(obs);
             if(ind < 0)
                 ret.push(obs);
