@@ -22,7 +22,7 @@ class Observable extends Emitter {
 
     public SetValue(value: any) {
         var setFired = false;
-        var rawValue: any = value.valueOf();
+        var rawValue: any = value && value.valueOf();
         if(this.observableValue) {
             this.observableValue.Value = rawValue;
             setFired = true;
