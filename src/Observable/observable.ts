@@ -5,7 +5,6 @@ var sharedEmitter = new Emitter();
 
 class Observable extends Emitter {
     private observableValue: ObservableValue;
-    private joined: boolean;
 
     public get IsArray(): boolean {
         return Array.isArray(this.observableValue.valueOf());
@@ -13,7 +12,6 @@ class Observable extends Emitter {
 
     constructor(initialValue: any) {
         super();
-        this.joined = false;
         this.observableValue = new ObservableValue(initialValue);
         this.observableValue.AddNode(this);
         this.SetValue(initialValue);
@@ -24,11 +22,12 @@ class Observable extends Emitter {
         sharedEmitter.Fire(name, this, ...args);
     }
 
-    public Join(obs: Observable) {
-        if(this.joined)
-            throw "Observable can only be joined once";
+    public Join(obs: any) {
+        if(!(obs instanceof Observable)) {
+            this.SetValue(obs);
+            return;
+        }
         
-        this.joined = true;
         this.observableValue.RemoveNode(this);
         this.observableValue = obs.GetValue();
         this.observableValue.AddNode(this);
