@@ -150,6 +150,15 @@ export class ObservableValue {
         }
     }
 
+    public Join(obsVal: ObservableValue) {
+        var value = obsVal.valueOf();
+        for(var x=0; x<this.Properties.length; x++) {
+            var prop = this.Properties[x];
+            if(value[prop])
+                this.value[prop].Join(value[prop]);
+        }
+    }
+
     private FireEvent(event: string) {
         for( var x=0; x<this.parentNodes.length; x++ )
             this.parentNodes[x].Fire(event, this.parentNodes[x]);

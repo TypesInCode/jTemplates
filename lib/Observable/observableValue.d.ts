@@ -18,6 +18,7 @@ export declare class ObservableValue {
     toString(): string;
     RemoveNode(node: Observable): void;
     AddNode(node: Observable): void;
+    Join(obsVal: ObservableValue): void;
     private FireEvent(event);
     private ReconcileProperties(actualProperties);
     private ConvertToArray();

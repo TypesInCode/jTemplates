@@ -27,9 +27,11 @@ class Observable extends Emitter {
             this.SetValue(obs);
             return;
         }
-        
+
         this.observableValue.RemoveNode(this);
-        this.observableValue = obs.GetValue();
+        var newVal = obs.GetValue();
+        this.observableValue.Join(newVal);
+        this.observableValue = newVal;
         this.observableValue.AddNode(this);
         this.Fire("set");
     }
