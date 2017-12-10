@@ -8,7 +8,7 @@ enum BindingStatus {
     Updated
 }
 
-abstract class Binding<T> extends Emitter {
+abstract class Binding<T> { //} extends Emitter {
     private boundTo: T;
     private observableScope: ObservableScope;
     private setCallback: (obs: ObservableScope) => void;
@@ -24,7 +24,7 @@ abstract class Binding<T> extends Emitter {
     }
 
     constructor(boundTo: T, binding: any, scheduleUpdate: (callback: () => void) => void) {
-        super(); 
+        //super(); 
         this.boundTo = boundTo;
         this.scheduleUpdate = scheduleUpdate;
         this.status = BindingStatus.Init;
@@ -56,7 +56,7 @@ abstract class Binding<T> extends Emitter {
     protected abstract Apply(): void;
 
     public Destroy(): void {
-        this.ClearAll();
+        // this.ClearAll();
         this.observableScope.Destroy();
     }
 

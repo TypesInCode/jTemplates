@@ -48,6 +48,7 @@ class ComponentBinding extends NodeBinding {
 
     public Destroy() {
         this.component.Destroy();
+        super.Destroy();
     }
 
     protected Apply() {

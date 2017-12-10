@@ -1,5 +1,4 @@
-import Emitter from "./emitter";
-declare abstract class Binding<T> extends Emitter {
+declare abstract class Binding<T> {
     private boundTo;
     private observableScope;
     private setCallback;

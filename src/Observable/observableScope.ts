@@ -29,6 +29,8 @@ class ObservableScope extends Emitter {
         this.ClearAll();
         for(var x=0; x<this.childObservables.length; x++)
             this.childObservables.forEach(c => this.RemoveListeners(c));
+        
+        this.childObservables = [];
     }
 
     protected UpdateValue() {

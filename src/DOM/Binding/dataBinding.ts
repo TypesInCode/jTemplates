@@ -24,6 +24,8 @@ class DataBinding extends NodeBinding {
     public Destroy() {
         for(var x=0; x<this.childTemplates.length; x++)
             this.childTemplates[x].Destroy();
+            
+        super.Destroy();
     }
 
     protected Apply() {
