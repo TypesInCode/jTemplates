@@ -32,10 +32,14 @@ class Observable extends Emitter {
         this.observableValue.RemoveNode(this);
         this.observableValue = obs.GetValue();
         this.observableValue.AddNode(this);
+        this.Fire("set");
     }
 
     public SetValue(value: any) {
-        this.observableValue.Value = value && value.valueOf();
+        if(value instanceof Observable)
+            value = Observable.Unwrap(value);
+
+        this.observableValue.Value = value;
 
         /* var setFired = false;
         var rawValue: any = value && value.valueOf();
