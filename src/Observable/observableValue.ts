@@ -308,7 +308,9 @@ export class ObservableValue {
                 var array = ObservableValue.Unwrap(this) as Array<any>;
                 array.sort(sortCallback);
                 this.Value = array;
-            }
+            },
+            enumerable: false,
+            configurable: true
         });
         Object.defineProperty(object, Symbol.iterator, {
             get: () => {
