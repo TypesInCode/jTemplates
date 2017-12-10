@@ -14,7 +14,8 @@ class Observable extends Emitter {
     constructor(initialValue: any) {
         super();
         this.joined = false;
-        this.observableValue = new ObservableValue(null);
+        this.observableValue = new ObservableValue(initialValue);
+        this.observableValue.AddNode(this);
         this.SetValue(initialValue);
     }
 
@@ -35,7 +36,7 @@ class Observable extends Emitter {
 
     public SetValue(value: any) {
         this.observableValue.Value = value && value.valueOf();
-        
+
         /* var setFired = false;
         var rawValue: any = value && value.valueOf();
         if(this.observableValue) {
