@@ -40,10 +40,10 @@ abstract class Binding<T> extends Emitter {
 
     public Update() {
         if(this.status == BindingStatus.Updated) {
-            this.Updating();
+            //this.Updating();
             this.scheduleUpdate(() => {
                 this.Apply();
-                this.Updated();
+                //this.Updated();
             });
         }
         else if(this.status == BindingStatus.Init) {
@@ -60,7 +60,7 @@ abstract class Binding<T> extends Emitter {
         this.observableScope.Destroy();
     }
 
-    protected Updating() {
+    /* protected Updating() {
         if(this.status != BindingStatus.Updating) {
             this.Fire("updating");
             this.status = BindingStatus.Updating;
@@ -72,7 +72,7 @@ abstract class Binding<T> extends Emitter {
             this.Fire("updated");
             this.status = BindingStatus.Updated;
         }
-    }
+    } */
 }
 
 export default Binding;

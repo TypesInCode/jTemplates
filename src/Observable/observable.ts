@@ -88,7 +88,7 @@ namespace Observable {
 
     export function Watch(event: string, action: () => void): Array<Observable> {
         var ret: Array<Observable> = [];
-        var callback = (sender: Emitter, obs: Observable) => {
+        var callback = (sender: any, obs: Observable) => {
             var ind = ret.indexOf(obs);
             if(ind < 0)
                 ret.push(obs);

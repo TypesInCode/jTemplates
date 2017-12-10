@@ -1,12 +1,12 @@
 export interface Callback {
-    (sender: any, ...args: any[]): void;
+    (sender: Emitter, ...args: any[]): void;
 }
 
 interface CallbackMap {
     [name: string]: Callback[];
 }
 
-class Emitter {
+export class Emitter {
     private callbackMap: CallbackMap = {};
 
     public AddListener(name: string, callback: Callback) {

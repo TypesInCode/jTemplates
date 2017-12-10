@@ -151,9 +151,9 @@ export class BindingTemplate extends Template {
         super(documentFragment);
 
         this.bindings = bindings;
-        this.updatingBindings = [];
+        /* this.updatingBindings = [];
         this.updatingCallback = this.Updating.bind(this);
-        this.updatedCallback = this.Updated.bind(this);
+        this.updatedCallback = this.Updated.bind(this); */
     }
 
     public AttachTo(element: Node) {
@@ -169,8 +169,8 @@ export class BindingTemplate extends Template {
             return;
         
         this.bindings.forEach((c) => {
-            c.AddListener("updating", this.updatingCallback);
-            c.AddListener("updated", this.updatedCallback);
+            /* c.AddListener("updating", this.updatingCallback);
+            c.AddListener("updated", this.updatedCallback); */
             c.Update();
         });
         this.bound = true;
@@ -183,7 +183,7 @@ export class BindingTemplate extends Template {
         this.destroyed = true;
     }
 
-    protected Updating(binding: NodeBinding) {
+    /* protected Updating(binding: NodeBinding) {
         var index = this.updatingBindings.indexOf(binding);
         if(index < 0)
             this.updatingBindings.push(binding);
@@ -199,5 +199,5 @@ export class BindingTemplate extends Template {
 
         if(this.updatingBindings.length == 0)
             this.Fire("updated", this);
-    }
+    } */
 }

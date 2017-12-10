@@ -1,7 +1,7 @@
 export interface Callback {
-    (sender: any, ...args: any[]): void;
+    (sender: Emitter, ...args: any[]): void;
 }
-declare class Emitter {
+export declare class Emitter {
     private callbackMap;
     AddListener(name: string, callback: Callback): void;
     RemoveListener(name: string, callback: Callback): void;

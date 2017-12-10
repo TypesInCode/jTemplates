@@ -51,7 +51,7 @@ describe("BindingTemplate", () => {
     });
     it("set element method ID and text", () => {
         var template = new BindingTemplate(
-            div({ props: { id: "elemID" } }, "element content")
+            div({ id: "elemID" }, "element content")
         );
 
         var fragment = browser.createDocumentFragment();

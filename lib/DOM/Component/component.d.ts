@@ -15,7 +15,5 @@ declare abstract class Component<P> {
     AttachTo(element: Node): void;
     Detach(): void;
     Destroy(): void;
-    protected Updating(): void;
-    protected Updated(): void;
 }
 export default Component;

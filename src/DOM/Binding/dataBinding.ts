@@ -44,8 +44,8 @@ class DataBinding extends NodeBinding {
             for(var x=currentLength; x<newValue.length; x++) {
                 var temp = this.templateFunction(newValue[x], x);
                 var newTemplate = new BindingTemplate(temp);
-                newTemplate.AddListener("updating", this.TemplateUpdating.bind(this));
-                newTemplate.AddListener("updated", this.TemplateUpdated.bind(this));
+                // newTemplate.AddListener("updating", this.TemplateUpdating.bind(this));
+                // newTemplate.AddListener("updated", this.TemplateUpdated.bind(this));
                 newTemplate.AttachTo(frag);
                 this.childTemplates.push(newTemplate);
             }
@@ -53,7 +53,7 @@ class DataBinding extends NodeBinding {
         }
     }
 
-    protected Updated() {
+    /* protected Updated() {
         if(this.updatingTemplates.length == 0)
             super.Updated();
     }
@@ -72,7 +72,7 @@ class DataBinding extends NodeBinding {
             this.updatingTemplates.splice(index, 1);
 
         this.Updated();
-    }
+    } */
 }
 
 export default DataBinding;

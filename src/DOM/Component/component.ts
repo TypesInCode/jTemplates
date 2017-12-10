@@ -12,8 +12,8 @@ abstract class Component<P> {
     public get BindingTemplate() {
         if(!this.bindingTemplate) {
             this.bindingTemplate = new BindingTemplate(this.Template);
-            this.bindingTemplate.AddListener("updating", this.Updating.bind(this));
-            this.bindingTemplate.AddListener("updated", this.Updated.bind(this));
+            // this.bindingTemplate.AddListener("updating", this.Updating.bind(this));
+            // this.bindingTemplate.AddListener("updated", this.Updated.bind(this));
         }
 
         return this.bindingTemplate;
@@ -64,9 +64,9 @@ abstract class Component<P> {
         this.BindingTemplate.Destroy();
     }
 
-    protected Updating() { }
+    /* protected Updating() { }
 
-    protected Updated() { }
+    protected Updated() { } */
 }
 
 export default Component;

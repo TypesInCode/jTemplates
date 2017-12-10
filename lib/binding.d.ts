@@ -11,7 +11,5 @@ declare abstract class Binding<T> extends Emitter {
     Update(): void;
     protected abstract Apply(): void;
     Destroy(): void;
-    protected Updating(): void;
-    protected Updated(): void;
 }
 export default Binding;

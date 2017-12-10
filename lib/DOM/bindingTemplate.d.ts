@@ -1,5 +1,4 @@
 import Template from "./template";
-import NodeBinding from "./Binding/nodeBinding";
 import { BindingElementsDefinition } from "./elements";
 export declare class BindingTemplate extends Template {
     private bindings;
@@ -12,6 +11,4 @@ export declare class BindingTemplate extends Template {
     AttachTo(element: Node): void;
     Bind(): void;
     Destroy(): void;
-    protected Updating(binding: NodeBinding): void;
-    protected Updated(binding: NodeBinding): void;
 }
