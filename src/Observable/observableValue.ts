@@ -154,7 +154,7 @@ export class ObservableValue {
         var value = obsVal.valueOf();
         for(var x=0; x<this.Properties.length; x++) {
             var prop = this.Properties[x];
-            if(value[prop])
+            if(value && value[prop])
                 this.value[prop].Join(value[prop]);
         }
     }
