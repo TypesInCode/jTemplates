@@ -259,6 +259,9 @@ export class ObservableValue {
     }
 
     private RemovePropertiesFromValue(properties: Array<string>) {
+        if(!this.value)
+            return;
+        
         for(var x=0; x<properties.length; x++) {
             this.value[properties[x]].Destroy();
             delete this.value[properties[x]];
