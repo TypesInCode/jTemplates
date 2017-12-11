@@ -92,6 +92,11 @@ class Observable extends Emitter {
         return this.observableValue;
     }
 
+    public Destroy() {
+        this.ClearAll();
+        this.observableValue.Destroy();
+    }
+
     public valueOf(): any {
         this.Fire("get");
         return this.observableValue.valueOf();

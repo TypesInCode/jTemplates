@@ -19,6 +19,7 @@ export declare class ObservableValue {
     RemoveNode(node: Observable): void;
     AddNode(node: Observable): void;
     Join(obsVal: ObservableValue): void;
+    Destroy(): void;
     private FireEvent(event);
     private ReconcileProperties(actualProperties);
     private ConvertToArray();
@@ -26,6 +27,7 @@ export declare class ObservableValue {
     private ConvertToValue();
     private AddPropertiesToParents(properties);
     private AddProperties(object, properties);
+    private RemovePropertiesFromValue(properties);
     private RemovePropertiesFromParents(properties);
     private RemoveProperties(object, properties);
     private AddArrayMixinToParents();

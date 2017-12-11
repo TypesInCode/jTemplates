@@ -8,6 +8,7 @@ declare class Observable extends Emitter {
     Join(obs: any): void;
     SetValue(value: any): void;
     GetValue(): ObservableValue;
+    Destroy(): void;
     valueOf(): any;
     toString(): string;
 }

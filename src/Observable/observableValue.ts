@@ -159,6 +159,19 @@ export class ObservableValue {
         }
     }
 
+    public Destroy() {
+        for(var x=0; x<this.Properties.length; x++) {
+            var prop = this.Properties[x];
+            this.value[prop].Destroy();
+            delete this.value[prop];
+        }
+
+        var startProperties = this.Properties;
+        this.arrayProperties = [];
+        this.objectProperties = [];
+        this.ReconcileProperties(startProperties);
+    }
+
     private FireEvent(event: string) {
         for( var x=0; x<this.parentNodes.length; x++ )
             this.parentNodes[x].Fire(event, this.parentNodes[x]);
@@ -177,6 +190,7 @@ export class ObservableValue {
                 addedProperties.push(newProperties[x]);
         }
 
+        this.RemovePropertiesFromValue(lostProperties);
         this.RemovePropertiesFromParents(lostProperties);
         this.AddPropertiesToParents(addedProperties);
     }
@@ -242,6 +256,13 @@ export class ObservableValue {
                 configurable: true
             });
         });
+    }
+
+    private RemovePropertiesFromValue(properties: Array<string>) {
+        for(var x=0; x<properties.length; x++) {
+            this.value[properties[x]].Destroy();
+            delete this.value[properties[x]];
+        }
     }
 
     private RemovePropertiesFromParents(properties: Array<string>) {
