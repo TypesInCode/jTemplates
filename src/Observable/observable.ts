@@ -12,7 +12,7 @@ class Observable extends Emitter {
 
     constructor(initialValue: any) {
         super();
-        this.observableValue = new ObservableValue(initialValue);
+        this.observableValue = new ObservableValue();
         this.observableValue.AddNode(this);
         this.SetValue(initialValue);
     }
@@ -89,6 +89,13 @@ class Observable extends Emitter {
                 this.observableValue.AddNode(this);
             }
         } */
+    }
+
+    public ResetValue(value: any) {
+        this.observableValue.RemoveNode(this);
+        this.observableValue = new ObservableValue();
+        this.observableValue.AddNode(this);
+        this.SetValue(value);
     }
 
     public GetObservableValue(): ObservableValue {

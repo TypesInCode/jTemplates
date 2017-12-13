@@ -1,8 +1,9 @@
 import Observable from "./observable";
 export declare enum ObservableValueType {
-    Value = 0,
-    Object = 1,
-    Array = 2,
+    Unknown = 0,
+    Value = 1,
+    Object = 2,
+    Array = 3,
 }
 export declare class ObservableValue {
     private value;
@@ -13,7 +14,7 @@ export declare class ObservableValue {
     readonly Properties: Array<any>;
     readonly ValueType: ObservableValueType;
     Value: any;
-    constructor(initialValue: any);
+    constructor();
     valueOf(): any;
     toString(): string;
     RemoveNode(node: Observable): void;

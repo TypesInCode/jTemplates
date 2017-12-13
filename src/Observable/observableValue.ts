@@ -3,6 +3,7 @@ import Observable from "./observable";
 import Symbol from "../Utils/symbol";
 
 export enum ObservableValueType {
+    Unknown,
     Value,
     Object,
     Array
@@ -109,12 +110,12 @@ export class ObservableValue {
         }
     }
 
-    constructor(initialValue: any) {
+    constructor() { //initialValue: any) {
         this.objectProperties = [];
         this.arrayProperties = [];
         this.parentNodes = [];
-        this.valueType = ObservableValueType.Value;
-        this.Value = initialValue;
+        this.valueType = ObservableValueType.Unknown;
+        //this.Value = initialValue;
     }
 
     public valueOf(): any {
