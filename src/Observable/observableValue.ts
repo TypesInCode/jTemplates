@@ -160,8 +160,9 @@ export class ObservableValue {
                 this.value[prop].Join(value[prop]);
         }
 
-        for(var x=0; x<this.parentNodes.length; x++) {
-            var node = this.parentNodes[x];
+        var parents = this.parentNodes.slice();
+        for(var x=0; x<parents.length; x++) {
+            var node = parents[x];
             this.RemoveNode(node);
             obsVal.AddNode(node);
             node.SetObservableValue(obsVal);
