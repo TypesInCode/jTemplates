@@ -145,8 +145,6 @@ export class ObservableValue {
 
             if(this.valueType == ObservableValueType.Array)
                 this.AddArrayMixin(node);
-
-            //node.Fire("set");
         }
     }
 
@@ -156,6 +154,14 @@ export class ObservableValue {
             var prop = this.Properties[x];
             if(value && value[prop])
                 this.value[prop].Join(value[prop]);
+        }
+
+        for(var x=0; x<this.parentNodes.length; x++) {
+            var node = this.parentNodes[x];
+            this.RemoveNode(node);
+            obsVal.AddNode(node);
+            node.SetObservableValue(obsVal);
+            node.Fire("set");
         }
     }
 

@@ -28,12 +28,12 @@ class Observable extends Emitter {
             return;
         }
 
-        this.observableValue.RemoveNode(this);
+        /* this.observableValue.RemoveNode(this);
         var newVal = obs.GetValue();
         this.observableValue.Join(newVal);
         this.observableValue = newVal;
         this.observableValue.AddNode(this);
-        this.Fire("set");
+        this.Fire("set"); */
     }
 
     public SetValue(value: any) {
@@ -88,8 +88,12 @@ class Observable extends Emitter {
         } */
     }
 
-    public GetValue(): ObservableValue {
+    public GetObservableValue(): ObservableValue {
         return this.observableValue;
+    }
+
+    public SetObservableValue(val: ObservableValue) {
+        this.observableValue = val;
     }
 
     public Destroy() {
@@ -113,7 +117,7 @@ namespace Observable {
     }
 
     export function Unwrap(node: Observable): any {
-        return ObservableValue.Unwrap(node.GetValue());
+        return ObservableValue.Unwrap(node.GetObservableValue());
     }
 
     export function Watch(event: string, action: () => void): Array<Observable> {
