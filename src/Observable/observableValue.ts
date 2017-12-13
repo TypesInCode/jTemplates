@@ -36,6 +36,9 @@ export class ObservableValue {
             case ObservableValueType.Value:
                 props = [];
                 break;
+            case ObservableValueType.Unknown:
+                props = [];
+                break;
         }
 
         return props;
