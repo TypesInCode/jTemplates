@@ -28,6 +28,9 @@ class Observable extends Emitter {
             return;
         }
 
+        var newVal = obs.GetObservableValue();
+        this.observableValue.Join(newVal);
+
         /* this.observableValue.RemoveNode(this);
         var newVal = obs.GetValue();
         this.observableValue.Join(newVal);
