@@ -1,13 +1,15 @@
 import Emitter from "../emitter";
-import { IMirrorTreeNode, JsonTreeNode } from "./jsonTreeNode";
-declare class Observable extends Emitter implements IMirrorTreeNode {
-    private _sourceNode;
-    GetSourceNode(): JsonTreeNode<Observable>;
-    SetSourceNode(sourceNode: JsonTreeNode<Observable>): void;
-    NodeUpdated(): void;
+import { ObservableValue } from "./observableValue";
+declare class Observable extends Emitter {
+    private observableValue;
+    readonly IsArray: boolean;
+    constructor(initialValue: any);
     Fire(name: string, ...args: any[]): void;
     Join(obs: any): void;
-    UnJoin(): void;
+    SetValue(value: any): void;
+    ResetValue(value: any): void;
+    GetObservableValue(): ObservableValue;
+    SetObservableValue(val: ObservableValue): void;
     Destroy(): void;
     valueOf(): any;
     toString(): string;

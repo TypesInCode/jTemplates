@@ -1,21 +1,39 @@
 import Emitter from "../emitter";
 import { ObservableValue } from "./observableValue";
+import { IMirrorTreeNode, JsonTreeNode } from "./jsonTreeNode";
 
 var sharedEmitter = new Emitter();
 
-class Observable extends Emitter {
-    private observableValue: ObservableValue;
+class Observable extends Emitter implements IMirrorTreeNode {
+    private _sourceNode: JsonTreeNode<Observable>;
 
-    public get IsArray(): boolean {
+    GetSourceNode(): JsonTreeNode<Observable> {
+        //throw new Error("Method not implemented.");
+        return this._sourceNode;
+    }
+
+    SetSourceNode(sourceNode: JsonTreeNode<Observable>): void {
+        //throw new Error("Method not implemented.");
+        this._sourceNode = sourceNode;
+    }
+
+    NodeUpdated(): void {
+        //throw new Error("Method not implemented.");
+        this.Fire("set");
+    }
+
+    //private observableValue: ObservableValue;
+
+    /* public get IsArray(): boolean {
         return Array.isArray(this.observableValue.valueOf());
-    }
+    } */
 
-    constructor(initialValue: any) {
-        super();
-        this.observableValue = new ObservableValue();
-        this.observableValue.AddNode(this);
-        this.SetValue(initialValue);
-    }
+    //constructor() {//initialValue: any) {
+    //    super();
+        //this.observableValue = new ObservableValue();
+        /* this.observableValue.AddNode(this);
+        this.SetValue(initialValue); */
+    // }
 
     public Fire(name: string, ...args: any[]) {
         super.Fire(name, ...args);
@@ -24,110 +42,67 @@ class Observable extends Emitter {
 
     public Join(obs: any) {
         if(!(obs instanceof Observable)) {
-            this.SetValue(obs);
+            this._sourceNode.SetValue(obs);
             return;
         }
 
-        var newVal = obs.GetObservableValue();
-        this.observableValue.Join(newVal);
-
-        /* this.observableValue.RemoveNode(this);
-        var newVal = obs.GetValue();
-        this.observableValue.Join(newVal);
-        this.observableValue = newVal;
-        this.observableValue.AddNode(this);
-        this.Fire("set"); */
+        obs.GetSourceNode().AddMirrorNode(this);
+        this.Fire("set");
+        // var newVal = obs.GetObservableValue();
+        //this.observableValue.Join(newVal);
     }
 
-    public SetValue(value: any) {
+    public UnJoin() {
+        this.GetSourceNode().RemoveMirroredNode(this);
+    }
+
+    /* public SetValue(value: any) {
         if(value instanceof Observable)
             value = Observable.Unwrap(value);
 
         this.observableValue.Value = value;
+    } */
 
-        /* var setFired = false;
-        var rawValue: any = value && value.valueOf();
-        if(this.observableValue) {
-            this.observableValue.Value = rawValue;
-            setFired = true;
-        }
-        else {
-            this.observableValue = new ObservableValue(rawValue);
-            this.observableValue.AddNode(this);
-        }
-
-        if(value instanceof Observable) {
-            if(this.observableValue)
-                this.observableValue.RemoveNode(this);
-            
-            this.observableValue = value.GetValue();
-            this.observableValue.AddNode(this);
-        }
-        else if(!this.observableValue) {
-            this.observableValue = new ObservableValue(value);
-            this.observableValue.AddNode(this);
-        }
-
-        setFired || this.Fire("set"); */
-
-
-        /* if( value instanceof Observable ) {
-            var newValue = value.GetValue();
-            if(newValue !== this.observableValue) {
-                if(this.observableValue)
-                    this.observableValue.RemoveNode(this);
-                
-                this.observableValue = newValue;
-                this.observableValue.AddNode(this);
-            }
-        }
-        else {
-            if(this.observableValue)
-                this.observableValue.Value = value;
-            else {
-                this.observableValue = new ObservableValue(value);
-                this.observableValue.AddNode(this);
-            }
-        } */
-    }
-
-    public ResetValue(value: any) {
+    /* public ResetValue(value: any) {
         this.observableValue.RemoveNode(this);
         this.observableValue = new ObservableValue();
         this.observableValue.AddNode(this);
         this.SetValue(value);
-    }
+    } */
 
-    public GetObservableValue(): ObservableValue {
+    /* public GetObservableValue(): ObservableValue {
         return this.observableValue;
     }
 
     public SetObservableValue(val: ObservableValue) {
         this.observableValue = val;
-    }
+    } */
 
     public Destroy() {
         this.ClearAll();
-        this.observableValue.Destroy();
+        // this.observableValue.Destroy();
     }
 
     public valueOf(): any {
         this.Fire("get");
-        return this.observableValue.valueOf();
+        return this._sourceNode.GetValue();
     }
 
     public toString(): string {
-        return this.valueOf().toString();
+        var value = this.valueOf();
+        return value && value.toString();
     }
 }
 
 namespace Observable {
     export function Create<T>(initialValue: T): T & Observable {
-        return new Observable(initialValue) as any as T & Observable;
+        //return new Observable(initialValue) as any as T & Observable;
+        return JsonTreeNode.Create(initialValue, Observable);
     }
 
     export function Unwrap(node: Observable): any {
-        return ObservableValue.Unwrap(node.GetObservableValue());
+        //return ObservableValue.Unwrap(node.GetObservableValue());
+        return node.GetSourceNode().GetRawValue();
     }
 
     export function Watch(event: string, action: () => void): Array<Observable> {

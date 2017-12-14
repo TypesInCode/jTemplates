@@ -1,5 +1,5 @@
 import Emitter from "../emitter";
-import Observable from "./observable";
+import Observable from "./observable.1";
 import Symbol from "../Utils/symbol";
 
 export enum ObservableValueType {

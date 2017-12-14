@@ -1,4 +1,4 @@
-import Observable from "./observable";
+import Observable from "./observable.1";
 export declare enum ObservableValueType {
     Unknown = 0,
     Value = 1,
