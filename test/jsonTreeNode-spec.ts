@@ -77,7 +77,14 @@ describe("JsonTreeNode", () => {
         });
         (node as any)[1] = { Prop1: "value" };
         expect((node as any)[1].Prop1.valueOf()).to.equal("value");
+        var event2Fired = false;
+        (node[1] as any).Prop1.AddListener("set", () => {
+            event2Fired = true;
+        });
+        (node as any)[1] = { Prop1: "Next value" };
+        expect((node as any)[1].Prop1.valueOf()).to.equal("Next value");
         expect(eventFired).to.be.true;
+        expect(event2Fired).to.be.true;
     });
     it("object value", () => {
         var node = JsonTreeNode.Create({ prop1: "test1", prop2: "test2" }, MirrorNode);

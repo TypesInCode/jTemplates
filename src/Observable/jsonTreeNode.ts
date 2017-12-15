@@ -50,6 +50,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
         this.mirroredNodes.push(mirrorNode);
         this.AddPropertiesTo(this.objectProperties, [mirrorNode]);
         mirrorNode.SetSourceNode(this);
+        mirrorNode.NodeUpdated();
     }
 
     public RemoveMirroredNode(mirrorNode: N): JsonTreeNode<N> {
