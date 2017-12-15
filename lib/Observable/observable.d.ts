@@ -15,7 +15,7 @@ declare class Observable extends Emitter implements IMirrorTreeNode {
 }
 declare namespace Observable {
     function Create<T>(initialValue: T): T & Observable;
-    function Unwrap(node: Observable): any;
+    function Unwrap(value: any): any;
     function Watch(event: string, action: () => void): Array<Observable>;
 }
 export default Observable;

@@ -18,9 +18,7 @@ class Observable extends Emitter implements IMirrorTreeNode {
     }
 
     public SetValue(value: any) {
-        if(value instanceof Observable)
-            value = Observable.Unwrap(value);
-
+        value = Observable.Unwrap(value);
         this._sourceNode.SetValue(value);
     }
 
@@ -107,9 +105,19 @@ namespace Observable {
         return JsonTreeNode.Create(initialValue, Observable);
     }
 
-    export function Unwrap(node: Observable): any {
+    export function Unwrap(value: any): any {
         //return ObservableValue.Unwrap(node.GetObservableValue());
-        return node.GetSourceNode().GetRawValue();
+        if(value instanceof Observable)
+            return value.GetSourceNode().GetRawValue();
+        
+        if(Array.isArray(value))
+            return value.map((c) => Observable.Unwrap(c));
+        
+        var returnValue = {};
+        for(var key in value)
+            (returnValue as any)[key] = Observable.Unwrap(value[key]);
+
+        return returnValue;
     }
 
     export function Watch(event: string, action: () => void): Array<Observable> {
