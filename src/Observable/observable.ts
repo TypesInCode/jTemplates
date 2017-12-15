@@ -105,20 +105,10 @@ namespace Observable {
         return JsonTreeNode.Create(initialValue, Observable);
     }
 
-    /* export function Unwrap(value: any): any {
+    export function Unwrap(value: Observable): any {
         //return ObservableValue.Unwrap(node.GetObservableValue());
-        if(value instanceof Observable)
-            return value.GetSourceNode().GetRawValue();
-        
-        if(Array.isArray(value))
-            return value.map((c) => Observable.Unwrap(c));
-        
-        var returnValue = {};
-        for(var key in value)
-            (returnValue as any)[key] = Observable.Unwrap(value[key]);
-
-        return returnValue;
-    } */
+        return value.GetSourceNode().GetRawValue();
+    }
 
     export function Watch(event: string, action: () => void): Array<Observable> {
         var ret: Array<Observable> = [];
