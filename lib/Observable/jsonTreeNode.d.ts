@@ -1,6 +1,7 @@
 export interface IMirrorTreeNode {
     GetSourceNode(): JsonTreeNode<IMirrorTreeNode>;
     SetSourceNode(sourceNode: JsonTreeNode<IMirrorTreeNode>): void;
+    SetValue(value: any): void;
     NodeUpdated(): void;
     Destroy(): void;
     valueOf(): any;

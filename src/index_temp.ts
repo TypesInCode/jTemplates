@@ -2,6 +2,9 @@ import {JsonTreeNode, IMirrorTreeNode} from "./Observable/jsonTreeNode"
 import { Emitter } from "./emitter";
 
 class MirrorNode extends Emitter implements IMirrorTreeNode {
+    SetValue(value: any): void {
+        throw new Error("Method not implemented.");
+    }
     private sourceNode: JsonTreeNode<MirrorNode>;
 
     GetSourceNode(): JsonTreeNode<MirrorNode> {

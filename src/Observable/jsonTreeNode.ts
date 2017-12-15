@@ -4,6 +4,7 @@ import { type } from "os";
 export interface IMirrorTreeNode {
     GetSourceNode(): JsonTreeNode<IMirrorTreeNode>;
     SetSourceNode(sourceNode: JsonTreeNode<IMirrorTreeNode>): void;
+    SetValue(value: any): void;
     NodeUpdated(): void;
     Destroy(): void;
     valueOf(): any;
@@ -290,7 +291,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
     private DefineProperty(mirror: IMirrorTreeNode, property: string | number, value: IMirrorTreeNode) {
         (mirror as any as { [prop: string]: N })[property] || Object.defineProperty(mirror, property as string, {
             get: () => value,
-            set: (val: any) => value.GetSourceNode().SetValue(val),
+            set: (val: any) => value.SetValue(val), //value.GetSourceNode().SetValue(val),
             enumerable: true,
             configurable: true
         });

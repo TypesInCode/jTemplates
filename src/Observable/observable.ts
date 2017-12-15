@@ -6,7 +6,6 @@ var sharedEmitter = new Emitter();
 
 class Observable extends Emitter implements IMirrorTreeNode {
     private _sourceNode: JsonTreeNode<Observable>;
-    private _childObservables: any;
 
     public GetSourceNode(): JsonTreeNode<Observable> {
         //throw new Error("Method not implemented.");
@@ -16,6 +15,13 @@ class Observable extends Emitter implements IMirrorTreeNode {
     public SetSourceNode(sourceNode: JsonTreeNode<Observable>): void {
         //throw new Error("Method not implemented.");
         this._sourceNode = sourceNode;
+    }
+
+    public SetValue(value: any) {
+        if(value instanceof Observable)
+            value = Observable.Unwrap(value);
+
+        this._sourceNode.SetValue(value);
     }
 
     public NodeUpdated(): void {

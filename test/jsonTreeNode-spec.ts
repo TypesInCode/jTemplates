@@ -7,6 +7,9 @@ import * as chai from "chai";
 const expect = chai.expect;
 
 class MirrorNode extends Emitter implements IMirrorTreeNode {
+    SetValue(value: any): void {
+        throw new Error("Method not implemented.");
+    }
     private sourceNode: JsonTreeNode<MirrorNode>;
     private localValue: any;
 
