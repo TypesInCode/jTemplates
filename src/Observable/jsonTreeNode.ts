@@ -101,7 +101,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
     
         for(var x=0; x<this.objectProperties.length; x++) {
             var prop = this.objectProperties[x];
-            value[prop] = (node as any)[prop].GetRawValue();
+            value[prop] = (node as any)[prop];
         }
 
         return value;
