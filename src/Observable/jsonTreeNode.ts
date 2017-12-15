@@ -209,7 +209,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
         if(this.type === ValueType.Object)
             return;
 
-        this.ResetToNull();
+        //this.ResetToNull();
         this.type = ValueType.Object;
         this.value = {};
     }
@@ -218,7 +218,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
         if(this.type == ValueType.Array)
             return;
 
-        this.ResetToNull();
+        //this.ResetToNull();
         this.type = ValueType.Array;
         this.value = [] as any;
         this.AddArrayMixinToMirrors();
