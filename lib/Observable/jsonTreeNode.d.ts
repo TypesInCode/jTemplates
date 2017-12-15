@@ -26,6 +26,7 @@ export declare class JsonTreeNode<N extends IMirrorTreeNode> {
     AddMirrorNode(mirrorNode: N): void;
     RemoveMirroredNode(mirrorNode: N): JsonTreeNode<N>;
     GetValue(): any;
+    GetMirroredValue(node: N): any;
     GetRawValue(): any;
     SetValue(newValue: any): void;
     Destroy(): void;

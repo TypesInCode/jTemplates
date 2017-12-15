@@ -86,7 +86,7 @@ class Observable extends Emitter implements IMirrorTreeNode {
 
     public valueOf(): any {
         this.Fire("get");
-        return this._sourceNode.GetValue();
+        return this._sourceNode.GetMirroredValue(this);
     }
 
     public toString(): string {

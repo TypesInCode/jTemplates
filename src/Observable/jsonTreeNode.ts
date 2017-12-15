@@ -92,6 +92,21 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
         return this.value;
     }
 
+    public GetMirroredValue(node: N): any {
+        if(this.mirroredNodes.indexOf(node) < 0)
+            throw "Can't generate mirror value for unrelated node";
+
+        var value: any = this.type === ValueType.Value ? this.value :
+        this.type === ValueType.Array ? [] : {};
+    
+        for(var x=0; x<this.objectProperties.length; x++) {
+            var prop = this.objectProperties[x];
+            value[prop] = (node as any)[prop].GetRawValue();
+        }
+
+        return value;
+    }
+
     public GetRawValue(): any {        
         var value: any = this.type === ValueType.Value ? this.value :
             this.type === ValueType.Array ? [] : {};
