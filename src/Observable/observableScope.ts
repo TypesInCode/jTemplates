@@ -37,7 +37,7 @@ class ObservableScope extends Emitter {
         var newObservables = Observable.Watch("get", () => {
             this.value = this.observableFunction();
             if(this.value instanceof Observable)
-                this.value = this.value.valueOf();
+                this.value.valueOf();
         });
 
         for(var x=0; x<newObservables.length; x++) {
