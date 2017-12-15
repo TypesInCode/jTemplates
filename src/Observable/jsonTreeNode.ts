@@ -157,11 +157,13 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
                 break;
             case ValueType.Value:
                 this.ConvertToValue();
-                this.value = newValue;
                 break;
         }
 
         this.ReconcileProperties(newValue, startProperties, this.objectProperties)
+        if(this.type === ValueType.Value)
+            this.value = newValue;
+        
         if(this.type != ValueType.Value || startValue != this.value)
             for(var x=0; x<this.mirroredNodes.length; x++) {
                 this.mirroredNodes[x].NodeUpdated();
