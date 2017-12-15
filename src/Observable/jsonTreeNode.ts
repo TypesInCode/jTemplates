@@ -228,7 +228,8 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
         if(this.type == ValueType.Value)
             return; 
 
-        this.ResetToNull();
+        //this.ResetToNull();
+        this.type = ValueType.Value;
     }
 
     private ReconcileProperties(newValue: any, oldProperties: Array<string | number>, newProperties: Array<string | number>) {
