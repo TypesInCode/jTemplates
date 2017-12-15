@@ -2,6 +2,7 @@ import NodeBinding from './nodeBinding';
 import { BindingTemplate } from "../bindingTemplate";
 import browser from "../browser";
 import { BindingElementsDefinition, BindingDefinition, ValueFunction } from "../elements";
+import { Observable } from '../../index';
 
 class DataBinding extends NodeBinding {
     private childTemplates: Array<BindingTemplate>;
@@ -31,6 +32,8 @@ class DataBinding extends NodeBinding {
     protected Apply() {
         var currentLength = this.childTemplates.length;
         var newValue = this.Value;
+        if(newValue instanceof Observable)
+            newValue = newValue.valueOf();
 
         if(!Array.isArray(newValue))
             newValue = [newValue];
