@@ -157,6 +157,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
                 break;
             case ValueType.Value:
                 this.ConvertToValue();
+                this.objectProperties = [];
                 break;
         }
 
