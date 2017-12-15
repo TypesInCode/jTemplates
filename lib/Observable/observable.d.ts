@@ -2,6 +2,7 @@ import Emitter from "../emitter";
 import { IMirrorTreeNode, JsonTreeNode } from "./jsonTreeNode";
 declare class Observable extends Emitter implements IMirrorTreeNode {
     private _sourceNode;
+    private _childObservables;
     GetSourceNode(): JsonTreeNode<Observable>;
     SetSourceNode(sourceNode: JsonTreeNode<Observable>): void;
     NodeUpdated(): void;

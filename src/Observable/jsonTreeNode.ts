@@ -288,8 +288,19 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
     }
 
     private AddArrayMixin(object: IMirrorTreeNode) {
+        var array = object as any as Array<any>
         Object.defineProperty(object, "length", {
             get: () => (object.valueOf() as any as Array<any>).length,
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(object, "reduce", {
+            value: (reduceCallback: { (accumulator: any, currentValue: any, currentIndex: number, array: Array<any>): Array<any> }, initialValue: any) => {
+                for(var x=0; x<array.length; x++) {
+                    initialValue = reduceCallback(initialValue, array[x], x, array);
+                }
+                return initialValue;
+            },
             enumerable: false,
             configurable: true
         });
@@ -303,6 +314,7 @@ export class JsonTreeNode<N extends IMirrorTreeNode> {
 
     private RemoveArrayMixin(object: {}) {
         delete (object as any)["length"];
+        delete (object as any)["reduce"];
     }
 }
 
