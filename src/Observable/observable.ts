@@ -66,7 +66,7 @@ class Observable extends Emitter {
         this._properties = [];
         this._setCallback = this.SetCallback.bind(this);
 
-        if(initialValue)
+        if(initialValue != undefined)
             this.SetValue(initialValue);
     }
 
