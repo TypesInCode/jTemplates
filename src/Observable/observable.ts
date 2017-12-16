@@ -61,7 +61,6 @@ class Observable extends Emitter {
 
     constructor(initialValue?: any) {
         super();
-        this._value = null;
         this._valueType = ValueType.Unknown;
         this._properties = [];
         this._setCallback = this.SetCallback.bind(this);
