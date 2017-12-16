@@ -52,7 +52,7 @@ function GetOldValues(oldValues: Array<any>, newValues: Array<any>) {
 
 function AddArrayMixin(object: Observable) {
     Object.defineProperty(object, "length", {
-        value: () => object.GetValue().length,
+        get: () => object.GetValue().length,
         enumerable: false,
         configurable: true
     });
