@@ -82,8 +82,10 @@ class Observable extends Emitter {
         if(value instanceof Observable)
             value = Observable.Unwrap(value);
         
-        this.ReconcileValue(value);
-        this.Fire("set");
+        if(this._value !== value) {
+            this.ReconcileValue(value);
+            this.Fire("set");
+        }
     }
 
     public Join(observable: any) {
@@ -154,6 +156,10 @@ class Observable extends Emitter {
         }
 
         this.ReconcileProperties(properties, type, value);
+        for(var x=0; x<this._properties.length; x++) {
+            var prop = this._properties[x];
+            (this as any)[prop].SetValue(value[prop]);
+        }
     }
 
     private ReconcileObservable(observable: Observable) {
