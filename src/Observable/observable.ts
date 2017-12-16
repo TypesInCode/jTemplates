@@ -213,7 +213,7 @@ class Observable extends Emitter {
         if(this._valueType === ValueType.Array) {
             var removed = this._value.splice(this._value.length - properties.length);
             for(var x=0; x<removed.length; x++) {
-                removed[x].destroy();
+                removed[x].Destroy();
                 delete (this as any)[properties[x]];
             }
         }
