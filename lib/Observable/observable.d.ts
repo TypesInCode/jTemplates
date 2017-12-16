@@ -16,7 +16,7 @@ declare class Observable extends Emitter {
     GetType(): ValueType;
     GetValue(): any;
     SetValue(value: any): void;
-    Join(observable: Observable): void;
+    Join(observable: any): void;
     UnJoin(): void;
     Destroy(): void;
     Fire(name: string, ...args: any[]): void;

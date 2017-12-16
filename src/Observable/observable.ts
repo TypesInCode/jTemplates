@@ -86,9 +86,11 @@ class Observable extends Emitter {
         this.Fire("set");
     }
 
-    public Join(observable: Observable) {
-        if(!observable || !(observable instanceof Observable))
+    public Join(observable: any) {
+        if(!(observable instanceof Observable)) {
+            this.SetValue(observable);
             return;
+        }
         
         for(var x=0; x<this._properties.length; x++) {
             var prop = this._properties[x];
