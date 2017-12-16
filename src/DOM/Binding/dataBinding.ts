@@ -2,7 +2,7 @@ import NodeBinding from './nodeBinding';
 import { BindingTemplate } from "../bindingTemplate";
 import browser from "../browser";
 import { BindingElementsDefinition, BindingDefinition, ValueFunction } from "../elements";
-import { Observable } from '../../index';
+import Observable from '../../Observable/observable';
 
 class DataBinding extends NodeBinding {
     private childTemplates: Array<BindingTemplate>;

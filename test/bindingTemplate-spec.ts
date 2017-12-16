@@ -82,7 +82,7 @@ describe("BindingTemplate", () => {
         });
 
         var template = new BindingTemplate({
-            div: {}, children: () => obs.Text
+            div: { innerHTML: () => obs.Text }
         });
 
         var fragment = browser.createDocumentFragment();
