@@ -114,6 +114,9 @@ class Observable extends Emitter {
             this.SetValue(observable);
             return;
         }
+
+        if(this._sourceObservable === observable)
+            return;
         
         for(var x=0; x<this._properties.length; x++) {
             var prop = this._properties[x];
