@@ -210,12 +210,21 @@ class Observable extends Emitter {
     }
 
     private RemoveProperties(properties: Array<string | number>) {
-        for(var x=0; x<properties.length; x++) {
-            var p = properties[x];
-            var obs: Observable = this._value[p];
-            obs.Destroy();
-            delete this._value[p];
-            delete (this as any)[p];
+        if(this._valueType === ValueType.Array) {
+            var removed = this._value.splice(this._value.length - properties.length);
+            for(var x=0; x<removed.length; x++) {
+                removed[x].destroy();
+                delete (this as any)[properties[x]];
+            }
+        }
+        else {
+            for(var x=0; x<properties.length; x++) {
+                var p = properties[x];
+                var obs: Observable = this._value[p];
+                obs.Destroy();
+                delete this._value[p];
+                delete (this as any)[p];
+            }
         }
     }
 
