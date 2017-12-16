@@ -248,7 +248,7 @@ namespace Observable {
             type === ValueType.Array ? [] : {};
         
         var properties = observable.GetProperties();
-        for(var x=0; x<properties[x]; x++) {
+        for(var x=0; x<properties.length; x++) {
             var p = properties[x];
             value[p] = Unwrap((observable as any)[p]);
         }
