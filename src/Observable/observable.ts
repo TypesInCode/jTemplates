@@ -104,6 +104,9 @@ class Observable extends Emitter {
     }
 
     public UnJoin() {
+        if(!this._sourceObservable)
+            return;
+        
         this._sourceObservable.RemoveListener("set", this._setCallback);
         this._sourceObservable = null;
     }
