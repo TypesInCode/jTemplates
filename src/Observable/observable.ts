@@ -30,6 +30,16 @@ function GetNewValues(oldValues: Array<any>, newValues: Array<any>) {
     return uniqueValues;
 }
 
+function GetCurrentValues(oldValues: Array<any>, newValues: Array<any>) {
+    var currentValues: Array<any> = [];
+    for(var x=0; x<newValues.length; x++) {
+        var v = newValues[x];
+        if(oldValues.indexOf(v) >= 0)
+            currentValues.push(v);
+    }
+    return currentValues;
+}
+
 function GetOldValues(oldValues: Array<any>, newValues: Array<any>) {
     var uniqueValues: Array<any> = [];
     for(var x=0; x<oldValues.length; x++) {
@@ -155,9 +165,10 @@ class Observable extends Emitter {
                 properties.push(key);
         }
 
+        var currentProperties = GetCurrentValues(this._properties, properties);
         this.ReconcileProperties(properties, type, value);
-        for(var x=0; x<this._properties.length; x++) {
-            var prop = this._properties[x];
+        for(var x=0; x<currentProperties.length; x++) {
+            var prop = currentProperties[x];
             (this as any)[prop].SetValue(value[prop]);
         }
     }
