@@ -50,6 +50,18 @@ function GetOldValues(oldValues: Array<any>, newValues: Array<any>) {
     return uniqueValues;
 }
 
+function AddArrayMixin(object: Observable) {
+    Object.defineProperty(object, "length", {
+        value: () => object.GetValue().length,
+        enumerable: false,
+        configurable: true
+    });
+}
+
+function RemoveArrayMixin(object: any) {
+    delete object["length"];
+}
+
 var sharedEmitter = new Emitter();
 
 class Observable extends Emitter {
@@ -190,9 +202,14 @@ class Observable extends Emitter {
         switch(this._valueType) {
             case ValueType.Array:
                 this._value = [];
+                AddArrayMixin(this);
                 break;
             case ValueType.Object:
                 this._value = {};
+                RemoveArrayMixin(this);
+                break;
+            case ValueType.Value:
+                RemoveArrayMixin(this);
                 break;
         }
     }
