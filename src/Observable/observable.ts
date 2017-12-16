@@ -98,6 +98,9 @@ class Observable extends Emitter {
         }
 
         this.ReconcileObservable(observable);
+        if(!this._sourceObservable)
+            this._sourceObservable.RemoveListener("set", this._setCallback);
+            
         this._sourceObservable = observable;
         this._sourceObservable.AddListener("set", this._setCallback);
         this.Fire("set");
