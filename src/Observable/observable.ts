@@ -78,7 +78,7 @@ function DefineProperty(object: Observable, property: string | number, value: an
     else
         newObservable.SetValue(value);
 
-    this._value[property] = newObservable;        
+    object.GetValue()[property] = newObservable;        
     Object.defineProperty(object, property as string, {
         get: () => object.GetValue()[property],
         set: (val: any) => object.GetValue()[property].SetValue(val),
