@@ -14,9 +14,7 @@ export declare type BindingElementDefinition = IElementDefinition | IComponentDe
 export declare type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
 export declare type BindingDefinition = ValueFunction<BindingElementsDefinition>;
 export declare type TemplateDefinitionMap = {
-    [name: string]: {
-        (c?: any, i?: number): BindingElementsDefinition;
-    };
+    [name: string]: BindingDefinition;
 };
 export interface IElementDefinition {
     [elementName: string]: {};
