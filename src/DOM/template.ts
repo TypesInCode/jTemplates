@@ -14,6 +14,10 @@ class Template extends Emitter {
         return !!this.attachedTo;
     }
 
+    public get AttachedTo() {
+        return this.attachedTo;
+    }
+
     constructor(documentFragment: DocumentFragment) {
         super();
         this.documentFragment = documentFragment;

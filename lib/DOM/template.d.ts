@@ -5,6 +5,7 @@ declare class Template extends Emitter {
     private elements;
     readonly DocumentFragment: DocumentFragment;
     readonly Attached: boolean;
+    readonly AttachedTo: Node;
     constructor(documentFragment: DocumentFragment);
     AttachTo(element: Node): void;
     Detach(): void;
