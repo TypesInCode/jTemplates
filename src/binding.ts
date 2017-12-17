@@ -14,9 +14,11 @@ abstract class Binding<T> { //} extends Emitter {
     private setCallback: (obs: ObservableScope) => void;
     private scheduleUpdate: (callback: () => void) => void;
     private status: BindingStatus;
+    private hasStaticValue: boolean;
+    private staticValue: any;
 
     protected get Value(): any {
-        return this.observableScope.Value;
+        return this.hasStaticValue ? this.staticValue : this.observableScope.Value;
     }
 
     protected get BoundTo(): T {
@@ -30,10 +32,15 @@ abstract class Binding<T> { //} extends Emitter {
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
 
-        if(typeof binding == 'function')
+        if(typeof binding == 'function') {
+            this.hasStaticValue = false;
             this.observableScope = new ObservableScope(binding);
-        else
-            this.observableScope = new ObservableScope(() => binding);
+        }
+        else {
+            this.hasStaticValue = true;
+            this.staticValue = binding;
+            //this.observableScope = new ObservableScope(() => binding);
+        }
 
         this.observableScope.AddListener("set", this.setCallback);
     }

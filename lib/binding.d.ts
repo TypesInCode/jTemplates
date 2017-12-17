@@ -4,6 +4,8 @@ declare abstract class Binding<T> {
     private setCallback;
     private scheduleUpdate;
     private status;
+    private hasStaticValue;
+    private staticValue;
     protected readonly Value: any;
     protected readonly BoundTo: T;
     constructor(boundTo: T, binding: any, scheduleUpdate: (callback: () => void) => void);
