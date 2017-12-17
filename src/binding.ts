@@ -35,14 +35,13 @@ abstract class Binding<T> { //} extends Emitter {
         if(typeof binding == 'function') {
             this.hasStaticValue = false;
             this.observableScope = new ObservableScope(binding);
+            this.observableScope.AddListener("set", this.setCallback);
         }
         else {
             this.hasStaticValue = true;
             this.staticValue = binding;
             //this.observableScope = new ObservableScope(() => binding);
         }
-
-        this.observableScope.AddListener("set", this.setCallback);
     }
 
     public Update() {
