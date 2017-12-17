@@ -37,6 +37,10 @@ abstract class Component<P> {
         return this.BindingTemplate.Attached;
     }
 
+    public get AttachedTo(): Node {
+        return this.BindingTemplate.AttachedTo;
+    }
+
     constructor() {
         this.parentTemplates = this.DefaultTemplates;
     }

@@ -9,6 +9,7 @@ declare abstract class Component<P> {
     readonly DefaultTemplates: TemplateDefinitionMap;
     protected readonly Templates: TemplateDefinitionMap;
     readonly Attached: boolean;
+    readonly AttachedTo: Node;
     constructor();
     SetParentData(data: P): void;
     SetParentTemplates(parentTemplates: TemplateDefinitionMap): void;
