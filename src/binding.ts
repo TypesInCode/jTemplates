@@ -63,7 +63,7 @@ abstract class Binding<T> { //} extends Emitter {
 
     public Destroy(): void {
         // this.ClearAll();
-        this.observableScope.Destroy();
+        this.observableScope && this.observableScope.Destroy();
     }
 
     /* protected Updating() {
