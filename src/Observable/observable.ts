@@ -58,8 +58,8 @@ function AddArrayMixin(object: Observable) {
     });
     Object.defineProperty(object, "push", {
         value: (newValue: any) => {
-            var value = this.GetValue() as Array<any>;
-            DefineProperty(this, value.length, newValue);
+            var value = object.GetValue() as Array<any>;
+            DefineProperty(object, value.length, newValue);
         },
         enumerable: false,
         configurable: true
