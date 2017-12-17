@@ -8,6 +8,8 @@ interface CallbackMap {
 
 export class Emitter {
     private callbackMap: CallbackMap = {};
+    private firingEvents: boolean = false;
+    private removedEvents: Array<any> = [];
 
     public AddListener(name: string, callback: Callback) {
         var events = this.callbackMap[name] || [];
@@ -23,16 +25,24 @@ export class Emitter {
         var events = this.callbackMap[name] || [];
         var ind = events.indexOf(callback);
         if( ind >= 0 ) {        
-            events.splice(ind, 1);
+            var event = events.splice(ind, 1)[0];
             this.callbackMap[name] = events;
+            if(this.firingEvents)
+                this.removedEvents.push(event);
         }
     }
 
     public Fire(name: string, ...args: any[]) {
-        var events = this.callbackMap[name] || [];
-        events.forEach((c) => {
-            c(this, ...args);
+        this.firingEvents = true;
+        var events = (this.callbackMap[name] || []).slice();
+        events.forEach((c: any, i: number) => {
+            if(this.removedEvents.indexOf(c) < 0)
+                c(this, ...args);
+            else
+                console.log("skipping event because it was removed");
         });
+        this.firingEvents = false;
+        this.removedEvents = [];
     }
 
     public Clear(name: string) {
