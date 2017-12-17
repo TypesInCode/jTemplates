@@ -29,7 +29,6 @@ declare class Observable extends Emitter {
     private ReconcileProperties(properties, type, value);
     private RemoveProperties(properties);
     private AddProperties(properties, value);
-    private DefineProperty(property, value);
 }
 declare namespace Observable {
     function Create<T>(initialValue: T): T & Observable;

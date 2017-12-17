@@ -56,10 +56,35 @@ function AddArrayMixin(object: Observable) {
         enumerable: false,
         configurable: true
     });
+    Object.defineProperty(object, "push", {
+        value: (newValue: any) => {
+            var value = this.GetValue() as Array<any>;
+            DefineProperty(this, value.length, newValue);
+        },
+        enumerable: false,
+        configurable: true
+    });
 }
 
 function RemoveArrayMixin(object: any) {
     delete object["length"];
+    delete object["push"];
+}
+
+function DefineProperty(object: Observable, property: string | number, value: any) {
+    var newObservable = new Observable();
+    if(value instanceof Observable)
+        newObservable.Join(value);
+    else
+        newObservable.SetValue(value);
+
+    this._value[property] = newObservable;        
+    Object.defineProperty(object, property as string, {
+        get: () => object.GetValue()[property],
+        set: (val: any) => object.GetValue()[property].SetValue(val),
+        enumerable: true,
+        configurable: true
+    });
 }
 
 var sharedEmitter = new Emitter();
@@ -251,24 +276,8 @@ class Observable extends Emitter {
     private AddProperties(properties: Array<string | number>, value: any) {
         for(var x=0; x<properties.length; x++) {
             var p = properties[x];
-            this.DefineProperty(p, value[p]);
+            DefineProperty(this, p, value[p]);
         }
-    }
-
-    private DefineProperty(property: string | number, value: any) {
-        var newObservable = new Observable();
-        if(value instanceof Observable)
-            newObservable.Join(value);
-        else
-            newObservable.SetValue(value);
-
-        this._value[property] = newObservable;        
-        Object.defineProperty(this, property as string, {
-            get: () => this._value[property],
-            set: (val: any) => this._value[property].SetValue(val),
-            enumerable: true,
-            configurable: true
-        });
     }
 }
 
