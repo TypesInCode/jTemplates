@@ -50,4 +50,10 @@ describe("JsonTreeNode", () => {
         expect(obs[0].valueOf()).to.equal("changed");
         expect(eventFired).to.be.true;
     });
+    it("reset array", () => {
+        var obs = Observable.Create(["test1", "test2"]);
+        expect(obs.length).to.equal(2);
+        obs.SetValue([]);
+        expect(obs.length).to.equal(0);
+    });
 });
