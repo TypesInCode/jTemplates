@@ -18,7 +18,8 @@ class EventBinding extends NodeBinding {
             this.BoundTo.removeEventListener(this.eventName, this.eventCallback);
         
         this.eventCallback = this.Value;
-        this.BoundTo.addEventListener(this.eventName, this.eventCallback);
+        if(this.eventCallback)
+            this.BoundTo.addEventListener(this.eventName, this.eventCallback);
     }
 }
 
