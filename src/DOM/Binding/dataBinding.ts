@@ -6,7 +6,6 @@ import Observable from '../../Observable/observable';
 
 class DataBinding extends NodeBinding {
     private childTemplates: Array<BindingTemplate>;
-    //private updatingTemplates: Array<BindingTemplate>;
     private localUpdate: boolean;
     private destroyedTemplates: Array<BindingTemplate>;
 
@@ -16,7 +15,6 @@ class DataBinding extends NodeBinding {
         super(boundTo, binding);
         this.childTemplates = [];
         this.destroyedTemplates = [];
-        //this.updatingTemplates = [];
 
         if(typeof children != 'function')
             this.templateFunction = () => children;
@@ -48,20 +46,11 @@ class DataBinding extends NodeBinding {
         var newValue = this.GetValue();
 
         this.destroyedTemplates.forEach(c => c.Destroy());
-        
-        /* if(currentLength > newValue.length) {
-            var oldComponents = this.childTemplates.splice(newValue.length);
-            oldComponents.forEach(c => {
-                c.Destroy();
-            });
-        } */
         if(currentLength < newValue.length) {
             var frag = browser.createDocumentFragment();
             for(var x=currentLength; x<newValue.length; x++) {
                 var temp = this.templateFunction(newValue[x], x);
                 var newTemplate = new BindingTemplate(temp);
-                // newTemplate.AddListener("updating", this.TemplateUpdating.bind(this));
-                // newTemplate.AddListener("updated", this.TemplateUpdated.bind(this));
                 newTemplate.AttachTo(frag);
                 this.childTemplates.push(newTemplate);
             }
@@ -80,27 +69,6 @@ class DataBinding extends NodeBinding {
         
         return newValue;
     }
-
-    /* protected Updated() {
-        if(this.updatingTemplates.length == 0)
-            super.Updated();
-    }
-
-    protected TemplateUpdating(template: BindingTemplate) {
-        var index = this.updatingTemplates.indexOf(template);
-        if(index < 0)
-            this.updatingTemplates.push(template);
-
-        this.Updating();
-    }
-
-    protected TemplateUpdated(template: BindingTemplate) {
-        var index = this.updatingTemplates.indexOf(template);
-        if(index >= 0)
-            this.updatingTemplates.splice(index, 1);
-
-        this.Updated();
-    } */
 }
 
 export default DataBinding;

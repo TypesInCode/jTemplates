@@ -252,8 +252,12 @@ class Observable extends Emitter {
         this.RemoveProperties(removedProperties);
         this.AddProperties(addedProperties, value);
 
-        if(type === ValueType.Value)
-            this._value = value && value.valueOf();
+        if(type === ValueType.Value) {
+            this._value = value; // && value.valueOf();
+            if(this._value instanceof Observable)
+                this._value = this._value.valueOf();
+        }
+        
     }
 
     private RemoveProperties(properties: Array<string | number>) {
