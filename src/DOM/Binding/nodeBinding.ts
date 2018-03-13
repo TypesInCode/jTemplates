@@ -6,17 +6,21 @@ var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
 
 function ScheduleUpdate(callback: () => void): void {
-    var ind = pendingUpdates.indexOf(callback);
-    if(ind < 0) {
+    /* var ind = pendingUpdates.indexOf(callback);
+    if(ind < 0) { */
         pendingUpdates.push(callback);
-    }
+    // }
 
     if(!updateScheduled) {
         updateScheduled = true;
         browser.requestAnimationFrame(() => {
             updateScheduled = false;
-            while(pendingUpdates.length > 0)
-                pendingUpdates.shift()();
+            for(var x=0; x<pendingUpdates.length; x++)
+                pendingUpdates[x]();
+
+            pendingUpdates = [];
+            // while(pendingUpdates.length > 0)
+            //     pendingUpdates.shift()();
         });
     }
 }
