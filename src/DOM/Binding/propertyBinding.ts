@@ -14,7 +14,7 @@ class PropertyBinding extends NodeBinding {
     }
 
     protected Apply() {
-        this.parentObject[this.propName] = this.Value;
+        this.parentObject[this.propName] = this.Value && this.Value.valueOf();
     }
 }
 
