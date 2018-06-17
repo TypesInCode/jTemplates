@@ -1,4 +1,5 @@
 var webpack = require('webpack');
+var Uglify = require('uglifyjs-webpack-plugin');
 
 module.exports = {  
   entry: './src/index',
@@ -14,7 +15,8 @@ module.exports = {
     ]
   },
   plugins: [
-    new webpack.optimize.UglifyJsPlugin({minimize: true}),
+    // new webpack.optimize.UglifyJsPlugin({minimize: true}),
+    new Uglify(),
     new webpack.IgnorePlugin(/jsdom$/)
   ]
 }

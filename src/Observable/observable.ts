@@ -1,6 +1,4 @@
 import Emitter from "../emitter";
-import { ObservableValue } from "./observableValue";
-import { IMirrorTreeNode, JsonTreeNode } from "./jsonTreeNode";
 
 export enum ValueType {
     Unknown,
@@ -20,156 +18,79 @@ function GetValueType(value: any): ValueType {
     return ValueType.Value;
 }
 
-function GetNewValues(oldValues: Array<any>, newValues: Array<any>) {
-    var uniqueValues: Array<any> = [];
-    for(var x=0; x<newValues.length; x++) {
-        var v = newValues[x];
-        if(oldValues.indexOf(v) < 0)
-            uniqueValues.push(v);
+export class ObservableValue {
+    private __observableReference: Observable;
+    public get ObservableReference() {
+        return this.__observableReference;
     }
-    return uniqueValues;
-}
 
-function GetCurrentValues(oldValues: Array<any>, newValues: Array<any>) {
-    var currentValues: Array<any> = [];
-    for(var x=0; x<newValues.length; x++) {
-        var v = newValues[x];
-        if(oldValues.indexOf(v) >= 0)
-            currentValues.push(v);
+    constructor(parent: Observable) {
+        this.__observableReference = parent;
     }
-    return currentValues;
-}
 
-function GetOldValues(oldValues: Array<any>, newValues: Array<any>) {
-    var uniqueValues: Array<any> = [];
-    for(var x=0; x<oldValues.length; x++) {
-        var v = oldValues[x];
-        if(newValues.indexOf(v) < 0)
-            uniqueValues.push(v);
+    public valueOf() {
+        return this.ObservableReference.Value;
     }
-    return uniqueValues;
-}
 
-function AddArrayMixin(object: Observable) {
-    Object.defineProperty(object, "length", {
-        get: () => object.GetValue().length,
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(object, "push", {
-        value: (newValue: any) => {
-            var value = object.GetValue() as Array<any>;
-            object.GetProperties().push(value.length);
-            DefineProperty(object, value.length, newValue);
-            object.Fire("set");
-        },
-        enumerable: false,
-        configurable: true
-    });
-}
-
-function RemoveArrayMixin(object: any) {
-    delete object["length"];
-    delete object["push"];
-}
-
-function DefineProperty(object: Observable, property: string | number, value: any) {
-    var newObservable = new Observable();
-    if(value instanceof Observable)
-        newObservable.Join(value);
-    else
-        newObservable.SetValue(value);
-
-    object.GetValue()[property] = newObservable;        
-    Object.defineProperty(object, property as string, {
-        get: () => object.GetValue()[property],
-        set: (val: any) => object.GetValue()[property].SetValue(val),
-        enumerable: true,
-        configurable: true
-    });
+    public toString() {
+        var val = this.ObservableReference.Value;
+        return val && val.toString();
+    }
 }
 
 var sharedEmitter = new Emitter();
 
-class Observable extends Emitter {
-    private _sourceObservable: Observable;
-    private _properties: Array<string | number>;
+export class Observable extends Emitter {
+    private _joinedObservable: Observable;
+    private _properties: Set<string | number>;
     private _value: any;
     private _valueType: ValueType;
-    private _setCallback: { (observable: Observable): void };
+    private _observableValue: ObservableValue;
+    private _setCallback: { (value: Observable): void };
 
-    constructor(initialValue?: any) {
-        super();
-        this._valueType = ValueType.Unknown;
-        this._properties = [];
-        this._setCallback = this.SetCallback.bind(this);
-
-        if(initialValue != undefined)
-            this.SetValue(initialValue);
+    public get Properties() {
+        return this._properties.values();
     }
 
-    public GetProperties(): Array<string | number> {
-        return this._properties;
-    }
-
-    public GetType(): ValueType {
+    public get Type() {
         return this._valueType;
     }
 
-    public GetValue() {
+    public get Value() {
         this.Fire("get");
         return this._value;
     }
 
-    public SetValue(value: any) {
-        if(this._sourceObservable) {
-            this._sourceObservable.SetValue(value);
+    public set Value(val: any | ObservableValue) {
+        if(this._joinedObservable) {
+            this._joinedObservable.Value = val;
             return;
         }
 
-        if(value instanceof Observable)
-            value = Observable.Unwrap(value);
-        
-        if(this._value !== value) {
-            this.ReconcileValue(value);
+        if(val instanceof ObservableValue)
+            val = Observable.Unwrap(val);
+        else if(val instanceof Observable)
+            val = Observable.Unwrap(val.ObservableValue);
+
+        if(this._value !== val) {
+            this.ReconcileRawValue(val);
             this.Fire("set");
         }
     }
 
-    public Join(observable: any) {
-        if(!(observable instanceof Observable)) {
-            this.SetValue(observable);
-            return;
-        }
-
-        if(this._sourceObservable === observable)
-            return;
-        
-        for(var x=0; x<this._properties.length; x++) {
-            var prop = this._properties[x];
-            (this as any)[prop].Join((observable as any)[prop]);
-        }
-
-        this.ReconcileObservable(observable);
-        if(this._sourceObservable)
-            this._sourceObservable.RemoveListener("set", this._setCallback);
-
-        this._sourceObservable = observable;
-        this._sourceObservable.AddListener("set", this._setCallback);
-        this.Fire("set");
+    public get ObservableValue() {
+        return this._observableValue;
     }
 
-    public UnJoin() {
-        if(!this._sourceObservable)
-            return;
-        
-        this._sourceObservable.RemoveListener("set", this._setCallback);
-        this._sourceObservable = null;
-    }
+    constructor(value?: Observable | any) {
+        super();
+        this._valueType = ValueType.Unknown;
+        this._properties = new Set();
+        this._setCallback = this.SetCallback.bind(this);
+        this._observableValue = new ObservableValue(this);
 
-    public Destroy() {
-        this.ClearAll();
-        this.UnJoin();
+        if(value != undefined)
+            this.Value = value;
     }
 
     public Fire(name: string, ...args: any[]) {
@@ -177,159 +98,230 @@ class Observable extends Emitter {
         sharedEmitter.Fire(name, this, ...args);
     }
 
-    public valueOf(): any {
-        return this.GetValue();
-    }
+    public Join(observable: Observable | ObservableValue | any) {
+        if(this._joinedObservable === observable)
+            return;
+        
+        if(this._joinedObservable)
+            this.Unjoin();
 
-    public toString(): string {
-        var value = this.valueOf();
-        return value || value.toString();
-    }
-
-    private SetCallback(observable: Observable) {
-        this.ReconcileObservable(observable);
+        if(observable instanceof ObservableValue)
+            observable = observable.ObservableReference;
+        else if(!(observable instanceof Observable)) {
+            this.Value = observable;
+            return;
+        }
+        
+        this._joinedObservable = observable;
+        this._joinedObservable.AddListener("set", this._setCallback);
+        this.ReconcileJoinedObservable(observable);
         this.Fire("set");
     }
 
-    private ReconcileValue(value: any) {
-        var type = GetValueType(value);
-        this.ConvertToType(type);
+    public Unjoin() {
+        if(!this._joinedObservable)
+            return;
 
-        var properties: Array<string | number> = [];
-        if(type === ValueType.Array) {
-            value = value as Array<any>;
-            for(var x=0; x<value.length; x++)
-                properties.push(x);
-        }
-        else if(type === ValueType.Object) {
-            for(var key in value)
-                properties.push(key);
+        for(var prop in this.Properties) {
+            var obsValue = (this._value as any)[prop] as ObservableValue;
+            obsValue.ObservableReference.Unjoin();
         }
 
-        var currentProperties = GetCurrentValues(this._properties, properties);
-        this.ReconcileProperties(properties, type, value);
-        for(var x=0; x<currentProperties.length; x++) {
-            var prop = currentProperties[x];
-            (this as any)[prop].SetValue(value[prop]);
-        }
+        this._joinedObservable.RemoveListener("set", this._setCallback);
+        this._joinedObservable = null;
     }
 
-    private ReconcileObservable(observable: Observable) {
-        var type = observable.GetType();
-        this.ConvertToType(type);
-        var properties = observable.GetProperties().slice();
-        this.ReconcileProperties(properties, type, observable);
+    public Destroy() {
+        this.ClearAll();
+        this.DeleteProperties([...(this.Properties as any)]);
+    }
+
+    private SetCallback(observable: Observable) {
+        this.ReconcileJoinedObservable(observable);
+        this.Fire("set");
     }
 
     private ConvertToType(newType: ValueType) {
         if(this._valueType === newType)
             return;
 
-        this.RemoveProperties(this._properties);
-        this._properties = [];
+        this.DeleteProperties([...(this._properties as any)]);
+        this._properties.clear();
 
         this._valueType = newType;
         switch(this._valueType) {
             case ValueType.Array:
                 this._value = [];
-                AddArrayMixin(this);
+                this.AddArrayMixin();
                 break;
             case ValueType.Object:
                 this._value = {};
-                RemoveArrayMixin(this);
+                this.RemoveArrayMixin();
                 break;
             case ValueType.Value:
-                RemoveArrayMixin(this);
+                this.RemoveArrayMixin();
                 break;
         }
     }
 
-    private ReconcileProperties(properties: Array<string | number>, type: ValueType, value: any) {
-        var removedProperties: Array<string | number> = GetOldValues(this._properties, properties);
-        var addedProperties: Array<string | number> = GetNewValues(this._properties, properties);
+    private ReconcileJoinedObservable(observable: Observable) {
+        this.ConvertToType(observable.Type);
+        var properties = new Set([...(observable.Properties as any)]);
+
+        if(observable.Type === ValueType.Value)
+            this._value = observable.Value;
+
+        var removedProperties = [...(this._properties as any)].filter(c => !properties.has(c));
+        properties.forEach(prop => {
+            var childObservable = Observable.GetFrom((observable.Value as any)[prop]);
+            if(this._properties.has(prop))
+                Observable.GetFrom(this._value[prop]).Join(childObservable);
+            else
+                this._value[prop] = this.DefineProperty(prop, childObservable);
+        });
+
+        this.DeleteProperties(removedProperties);
         this._properties = properties;
-
-        this.RemoveProperties(removedProperties);
-        this.AddProperties(addedProperties, value);
-
-        if(type === ValueType.Value) {
-            this._value = value; // && value.valueOf();
-            if(this._value instanceof Observable)
-                this._value = this._value.valueOf();
-        }
-        
     }
 
-    private RemoveProperties(properties: Array<string | number>) {
-        if(this._valueType === ValueType.Array) {
-            var removed = this._value.splice(this._value.length - properties.length);
-            for(var x=0; x<removed.length; x++) {
-                removed[x].Destroy();
-                delete (this as any)[properties[x]];
+    private ReconcileRawValue(value: any) {
+        var type = GetValueType(value);
+        this.ConvertToType(type);
+
+        var properties: Set<string | number> = new Set();
+        if(type === ValueType.Array) {
+            for(var x=0; x<value.length; x++)
+                properties.add(x);
+        }
+        else if(type === ValueType.Object) {
+            for(var key in value)
+                properties.add(key);
+        }
+        else if(type === ValueType.Value)
+            this._value = value;
+
+        var removedProperties = [...(this._properties as any)].filter(c => !properties.has(c));
+        properties.forEach(prop => {
+            if(this._properties.has(prop))
+                (this.ObservableValue as any)[prop] = value[prop];
+            else
+                this._value[prop] = this.DefineProperty(prop, value[prop]);
+        });
+        
+        this.DeleteProperties(removedProperties);
+        this._properties = properties;
+    }
+
+    private DefineProperty(prop: string | number, value: any) {
+        var childObservable = new Observable();
+        childObservable.Join(value);
+        Object.defineProperty(this.ObservableValue, prop as string, {
+            get: () => childObservable.ObservableValue,
+            set: (val: any) => childObservable.Value = val,
+            enumerable: true,
+            configurable: true
+        });
+
+        return childObservable.ObservableValue;
+    }
+
+    private DeleteProperties(properties: Array<string | number>) {
+        if(this.Type === ValueType.Array) {
+            for(var x=this._value.length - properties.length; x<this._value.length; x++) {
+                (this._value[x] as ObservableValue).ObservableReference.Destroy();
+                delete (this.ObservableValue as any)[this._value.length - properties.length + x];
             }
+
+            this._value.splice(this._value.length - properties.length);
         }
         else {
-            for(var x=0; x<properties.length; x++) {
-                var p = properties[x];
-                var obs: Observable = this._value[p];
-                obs.Destroy();
-                delete this._value[p];
-                delete (this as any)[p];
+            for(var prop in properties) {
+                var obsValue = (this._value as any)[prop] as ObservableValue;
+                obsValue.ObservableReference.Destroy();
+                delete (this.ObservableValue as any)[prop];
+                delete (this._value as any)[prop];
             }
         }
     }
 
-    private AddProperties(properties: Array<string | number>, value: any) {
-        for(var x=0; x<properties.length; x++) {
-            var p = properties[x];
-            DefineProperty(this, p, value[p]);
-        }
+    private AddArrayMixin() {
+        Object.defineProperty(this.ObservableValue, "length", {
+            get: () => this.Value.length,
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(this.ObservableValue, "push", {
+            value: (newValue: any) => {
+                this._value.push(this.DefineProperty(this._value.length, newValue));
+                this._properties.add(this._properties.size);
+                this.Fire("set");
+            },
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(this.ObservableValue, "join", {
+            value: (separator?: string) => {
+                return this.Value.join(separator);
+            },
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(this.ObservableValue, "map", {
+            value: (callback: (currentValue: any, index?: number, array?: Array<any>) => any) => {
+                return this.Value.map(callback);
+            },
+            enumerable: false,
+            configurable: true
+        });
+    }
+    
+    private RemoveArrayMixin() {
+        delete (this.ObservableValue as any)["length"];
+        delete (this.ObservableValue as any)["push"];
+        delete (this.ObservableValue as any)["join"];
+        delete (this.ObservableValue as any)["map"];
     }
 }
 
-namespace Observable {
-    /* export function Create<T>(initialValue: T): T & Observable {
-        //return new Observable(initialValue) as any as T & Observable;
-        return JsonTreeNode.Create(initialValue, Observable);
-    }
+export namespace Observable {
 
-    export function Unwrap(value: Observable): any {
-        //return ObservableValue.Unwrap(node.GetObservableValue());
-        return value.GetSourceNode().GetRawValue();
-    } */
-
-    export function Create<T>(initialValue: T): T & Observable {
-        return new Observable(initialValue) as T & Observable;
-    }
-
-    export function Unwrap(observable: Observable) {
-        var type = observable.GetType();
-        var value = type === ValueType.Value ? observable.valueOf() :
-            type === ValueType.Array ? [] : {};
+    export function Unwrap(value: ObservableValue | any): any {
+        if(!(value instanceof ObservableValue))
+            return value;
         
-        var properties = observable.GetProperties();
-        for(var x=0; x<properties.length; x++) {
-            var p = properties[x];
-            value[p] = Unwrap((observable as any)[p]);
+        var obs = value.ObservableReference;
+        var returnValue = obs.Type === ValueType.Value ? value.valueOf() : 
+            obs.Type === ValueType.Array ? [] : {} as any;
+
+        for(var prop of obs.Properties) {
+            returnValue[prop] = Unwrap((value as any)[prop]);
         }
 
-        return value;
+        return returnValue;
     }
 
-    export function Watch(event: string, action: () => void): Array<Observable> {
-        var ret: Array<Observable> = [];
+    export function Create<T>(value: T): T {
+        return (new Observable(value)).ObservableValue as any as T;
+    }
+
+    export function Watch(event: string, action: () => void) {
+        var ret: Set<Observable> = new Set();
         var callback = (sender: any, obs: Observable) => {
-            var ind = ret.indexOf(obs);
-            if(ind < 0)
-                ret.push(obs);
+            if(!ret.has(obs))
+                ret.add(obs);
         }
 
         sharedEmitter.AddListener(event, callback);
         action();
         sharedEmitter.RemoveListener(event, callback);
 
-        return ret;
+        return ret.values();
+    }
+
+    export function GetFrom(value: ObservableValue | any) {
+        if(value instanceof ObservableValue)
+            return value.ObservableReference;
+        
+        return null;
     }
 }
-
-export default Observable;

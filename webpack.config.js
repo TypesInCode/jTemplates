@@ -3,7 +3,9 @@ var webpack = require('webpack');
 module.exports = {  
   entry: './src/index',
   output: {
-    filename: 'jTemplate.js'
+    filename: 'jTemplate.js',
+    libraryTarget: 'var',
+    library: 'jTemplate'
   },
   //devtool: 'source-map',
   resolve: {

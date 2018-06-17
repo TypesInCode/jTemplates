@@ -64,10 +64,11 @@ class ComponentBinding extends NodeBinding {
             //this.component && this.component.Destroy();
             this.component = new this.componentType();
             this.component.SetParentTemplates(this.parentTemplates);
+            this.component.SetParentData(this.Value);
             this.component.AttachTo(this.BoundTo);
         }
-
-        this.component.SetParentData(this.Value);
+        else
+            this.component.SetParentData(this.Value);
 
         /* if(!this.component.Attached)
             this.component.AttachTo(this.BoundTo); */

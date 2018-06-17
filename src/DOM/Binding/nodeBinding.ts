@@ -6,10 +6,7 @@ var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
 
 function ScheduleUpdate(callback: () => void): void {
-    /* var ind = pendingUpdates.indexOf(callback);
-    if(ind < 0) { */
-        pendingUpdates.push(callback);
-    // }
+    pendingUpdates.push(callback);
 
     if(!updateScheduled) {
         updateScheduled = true;
@@ -19,8 +16,6 @@ function ScheduleUpdate(callback: () => void): void {
                 pendingUpdates[x]();
 
             pendingUpdates = [];
-            // while(pendingUpdates.length > 0)
-            //     pendingUpdates.shift()();
         });
     }
 }

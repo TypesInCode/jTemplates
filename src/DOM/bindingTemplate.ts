@@ -16,7 +16,8 @@ import {
     IElementDefinition, 
     TemplateDefinitionMap, 
     ComponentDefinition, 
-    BindingElementsDefinition 
+    BindingElementsDefinition, 
+    ValueFunction
 } from "./elements";
 
 enum TemplateType {
@@ -59,11 +60,12 @@ function ReadElementProperties(node: Node, properties: {}, parentProperties?: Ar
 function AppendElement<P>(template: BindingElementDefinition, node: Node): Array<NodeBinding> {
     var data: any = null;
     var children: BindingDefinition = null; // { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate = null;
-    var events: EventBindingMap
+    var events: EventBindingMap;
     var component: { new(): Component<any> };
     var elementName: string = null;
     var properties: {} = null;
     var templates: TemplateDefinitionMap = null;
+    var text: ValueFunction<string> = null;
     for(var key in (template as any)) {
         switch(key) {
             case "children":
@@ -84,6 +86,8 @@ function AppendElement<P>(template: BindingElementDefinition, node: Node): Array
             case "name":
                 elementName = (template as any).name;
                 break;
+            case "text":
+                text = (template as any).text;
             default:
                 elementName = key;
                 properties = (template as any)[key];
@@ -100,6 +104,9 @@ function AppendElement<P>(template: BindingElementDefinition, node: Node): Array
 
     if(component) {
         bindings.push(new ComponentBinding(elementNode, data, component, templates));
+    }
+    else if(text) {
+        bindings.push(new TextBinding(elementNode, text));
     }
     else if(children) {
         bindings.push(new DataBinding(elementNode, data, children));
@@ -141,9 +148,9 @@ export class BindingTemplate extends Template {
     private bindings: Array<NodeBinding>;
     private destroyed: boolean;
     private bound: boolean;
-    private updatingBindings: Array<NodeBinding>;
+    /* private updatingBindings: Array<NodeBinding>;
     private updatingCallback: (binding: NodeBinding) => void;
-    private updatedCallback: (binding: NodeBinding) => void;
+    private updatedCallback: (binding: NodeBinding) => void; */
 
     constructor(template: BindingElementsDefinition) {
         var documentFragment = browser.createDocumentFragment();
@@ -177,7 +184,7 @@ export class BindingTemplate extends Template {
     }
 
     public Destroy(): void {
-        this.ClearAll();
+        // this.ClearAll();
         this.Detach();
         this.bindings.forEach((c) => c.Destroy());
         this.destroyed = true;

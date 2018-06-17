@@ -5,34 +5,41 @@ export declare enum ValueType {
     Object = 2,
     Array = 3,
 }
-declare class Observable extends Emitter {
-    private _sourceObservable;
+export declare class ObservableValue {
+    private __observableReference;
+    readonly ObservableReference: Observable;
+    constructor(parent: Observable);
+    valueOf(): any;
+    toString(): any;
+}
+export declare class Observable extends Emitter {
+    private _joinedObservable;
     private _properties;
     private _value;
     private _valueType;
+    private _observableValue;
     private _setCallback;
-    constructor(initialValue?: any);
-    GetProperties(): Array<string | number>;
-    GetType(): ValueType;
-    GetValue(): any;
-    SetValue(value: any): void;
-    Join(observable: any): void;
-    UnJoin(): void;
-    Destroy(): void;
+    readonly Properties: IterableIterator<string | number>;
+    readonly Type: ValueType;
+    Value: any | ObservableValue;
+    readonly ObservableValue: ObservableValue;
+    constructor(value?: Observable | any);
     Fire(name: string, ...args: any[]): void;
-    valueOf(): any;
-    toString(): string;
+    Join(observable: Observable | ObservableValue | any): void;
+    Unjoin(): void;
+    Destroy(): void;
     private SetCallback(observable);
-    private ReconcileValue(value);
-    private ReconcileObservable(observable);
     private ConvertToType(newType);
-    private ReconcileProperties(properties, type, value);
-    private RemoveProperties(properties);
-    private AddProperties(properties, value);
+    private ReconcileJoinedObservable(observable);
+    private ReconcileRawValue(value);
+    private DefineProperty(prop, value);
+    private DeleteProperties(properties);
+    private AddArrayMixin();
+    private RemoveArrayMixin();
 }
-declare namespace Observable {
-    function Create<T>(initialValue: T): T & Observable;
-    function Unwrap(observable: Observable): any;
-    function Watch(event: string, action: () => void): Array<Observable>;
+export declare namespace Observable {
+    function Unwrap(value: ObservableValue | any): any;
+    function Create<T>(value: T): T;
+    function Watch(event: string, action: () => void): IterableIterator<Observable>;
+    function GetFrom(value: ObservableValue | any): Observable;
 }
-export default Observable;

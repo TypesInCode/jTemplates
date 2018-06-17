@@ -34,10 +34,11 @@ export interface IElementProperties {
     [propName: string]: {};
     on?: EventBindingMap;
     data?: {};
+    text?: ValueFunction<string>;
 }
-export declare function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition;
+export declare function element(name: string, properties?: IElementProperties, children?: BindingDefinition): IElementDefinition;
 export interface ElementMethod {
-    (properties: IElementProperties, children?: BindingDefinition): IElementDefinition;
+    (properties?: IElementProperties, children?: BindingDefinition): IElementDefinition;
 }
 export declare function component<T>(component: {
     new (): Component<T>;

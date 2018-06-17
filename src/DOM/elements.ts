@@ -27,24 +27,28 @@ export interface IComponentDefinition {
 export interface IElementProperties {
     [propName: string]: {};
     on?: EventBindingMap;
-    data?: {}
+    data?: {};
+    text?: ValueFunction<string>;
 }
 
-export function element(name: string, properties: IElementProperties, children?: BindingDefinition): IElementDefinition {
+export function element(name: string, properties?: IElementProperties, children?: BindingDefinition): IElementDefinition {
+    properties = properties || {};
     var elementDefinition: IElementDefinition = {
         on: properties.on,
         data: properties.data,
+        text: properties.text,
         children: children
     };
     delete properties.on;
     delete properties.data;
+    delete properties.text;
     elementDefinition[name] = properties;
     
     return elementDefinition;
 }
 
 export interface ElementMethod {
-    (properties: IElementProperties, children?: BindingDefinition): IElementDefinition
+    (properties?: IElementProperties, children?: BindingDefinition): IElementDefinition
 }
 
 export function component<T>(component: { new(): Component<T> }, data?: ValueFunction<T>, templates?: TemplateDefinitionMap ): IComponentDefinition {

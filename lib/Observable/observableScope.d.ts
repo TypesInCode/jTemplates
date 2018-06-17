@@ -1,19 +1,18 @@
 import Emitter from "../emitter";
-import Observable from "./observable";
-declare class ObservableScope extends Emitter {
+declare class ObservableScope<T> extends Emitter {
+    private parameters;
     private observableFunction;
     private childObservables;
     private dirty;
     private value;
     private setCallback;
-    readonly Value: any;
+    readonly Value: T;
+    readonly Dirty: boolean;
     constructor(observableFunction: {
-        (): any;
-    });
+        (...params: any[]): T;
+    }, ...params: Array<any>);
     Destroy(): void;
     protected UpdateValue(): void;
-    protected SetCallback(observable: Observable): void;
-    protected AddListeners(observable: Observable): void;
-    protected RemoveListeners(observable: Observable): void;
+    private SetCallback(observable);
 }
 export default ObservableScope;

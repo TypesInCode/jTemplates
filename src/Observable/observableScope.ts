@@ -1,14 +1,15 @@
 import Emitter from "../emitter";
-import Observable from "./observable";
+import { Observable, ObservableValue } from "./observable";
 
-class ObservableScope extends Emitter {
-    private observableFunction: {(): any};
-    private childObservables: Array<Observable>;
+class ObservableScope<T> extends Emitter {
+    private parameters: Array<any>
+    private observableFunction: {(...params: any[]): any};
+    private childObservables: Set<Observable>;
     private dirty: boolean;
     private value: any;
     private setCallback: (obs: Observable) => void;
 
-    public get Value(): any {
+    public get Value(): T {
         this.Fire("get", this);
         if(!this.dirty)
             return this.value;
@@ -17,55 +18,47 @@ class ObservableScope extends Emitter {
         return this.value;
     }
 
-    constructor(observableFunction: {(): any}) {
+    public get Dirty(): boolean { 
+        return this.dirty;
+    }
+
+    constructor(observableFunction: {(...params: any[]): T}, ...params: Array<any>) {
         super();
+        this.parameters = params;
         this.observableFunction = observableFunction;
-        this.childObservables = [];
+        this.childObservables = new Set();
         this.setCallback = this.SetCallback.bind(this);
         this.UpdateValue();
     }
 
     public Destroy() {
         this.ClearAll();
-        for(var x=0; x<this.childObservables.length; x++)
-            this.childObservables.forEach(c => this.RemoveListeners(c));
-        
-        this.childObservables = [];
+        this.childObservables.forEach(c => c.RemoveListener("set", this.setCallback));
+        this.childObservables.clear();
     }
 
     protected UpdateValue() {
         var newObservables = Observable.Watch("get", () => {
-            this.value = this.observableFunction();
-            if(this.value instanceof Observable)
-                this.value.valueOf();
+            this.value = this.observableFunction(...this.parameters);
+            if(this.value instanceof ObservableValue)
+                this.value = this.value.valueOf();
         });
 
-        for(var x=0; x<newObservables.length; x++) {
-            var ind = this.childObservables.indexOf(newObservables[x]);
-            if(ind < 0)
-                this.AddListeners(newObservables[x]);
-            else
-                this.childObservables.splice(ind, 1);
-        }
+        var newObsSet = new Set([...(newObservables as any)]);
 
-        for(var y=0; y<this.childObservables.length; y++)
-            this.RemoveListeners(this.childObservables[y]);
-        
-        this.childObservables = newObservables;
+        this.childObservables.forEach(obs => {
+            if(!newObsSet.has(obs))
+                obs.RemoveListener("set", this.setCallback);
+        });
+
+        newObsSet.forEach(obs => obs.AddListener("set", this.setCallback));
+        this.childObservables = newObsSet;
         this.dirty = false;
     }
 
-    protected SetCallback(observable: Observable) {
+    private SetCallback(observable: Observable) {
         this.dirty = true;
         this.Fire("set");
-    }
-
-    protected AddListeners(observable: Observable) {
-        observable.AddListener("set", this.setCallback);
-    }
-
-    protected RemoveListeners(observable: Observable) {
-        observable.RemoveListener("set", this.setCallback);
     }
 }
 

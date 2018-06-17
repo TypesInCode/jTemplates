@@ -1,7 +1,7 @@
 import browser from "./browser";
 import Emitter from "../emitter";
 
-class Template extends Emitter {
+class Template { // extends Emitter {
     private documentFragment: DocumentFragment;
     private attachedTo: Node;
     private elements: Array<Node>;
@@ -19,7 +19,7 @@ class Template extends Emitter {
     }
 
     constructor(documentFragment: DocumentFragment) {
-        super();
+        // super();
         this.documentFragment = documentFragment;
         this.elements = new Array<Node>(this.documentFragment.childNodes.length);
         for(var x=0; x<this.documentFragment.childNodes.length; x++) {

@@ -7,7 +7,7 @@
     "outDir": "./lib",
     "preserveConstEnums": true,
     "removeComments": true,
-    "target": "es5",
+    "target": "es6",
     "sourceMap": true,
     "types": [
       // add node as an option

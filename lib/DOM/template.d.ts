@@ -1,5 +1,4 @@
-import Emitter from "../emitter";
-declare class Template extends Emitter {
+declare class Template {
     private documentFragment;
     private attachedTo;
     private elements;
