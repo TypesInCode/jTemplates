@@ -1,7 +1,8 @@
+declare function CreateDocumentFragment(node?: Node | string): DocumentFragment;
 declare var config: {
     window: Window;
     immediateAnimationFrames: boolean;
     requestAnimationFrame: (callback: FrameRequestCallback) => {};
-    createDocumentFragment: (node?: string | Node) => DocumentFragment;
+    createDocumentFragment: typeof CreateDocumentFragment;
 };
 export default config;

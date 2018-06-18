@@ -3,7 +3,7 @@ export declare enum ValueType {
     Unknown = 0,
     Value = 1,
     Object = 2,
-    Array = 3,
+    Array = 3
 }
 export declare class ObservableValue {
     private __observableReference;
@@ -28,14 +28,14 @@ export declare class Observable extends Emitter {
     Join(observable: Observable | ObservableValue | any): void;
     Unjoin(): void;
     Destroy(): void;
-    private SetCallback(observable);
-    private ConvertToType(newType);
-    private ReconcileJoinedObservable(observable);
-    private ReconcileRawValue(value);
-    private DefineProperty(prop, value);
-    private DeleteProperties(properties);
-    private AddArrayMixin();
-    private RemoveArrayMixin();
+    private SetCallback;
+    private ConvertToType;
+    private ReconcileJoinedObservable;
+    private ReconcileRawValue;
+    private DefineProperty;
+    private DeleteProperties;
+    private AddArrayMixin;
+    private RemoveArrayMixin;
 }
 export declare namespace Observable {
     function Unwrap(value: ObservableValue | any): any;

@@ -1,10 +1,10 @@
 import Template from "./template";
-import { BindingElementsDefinition } from "./elements";
+import { TemplateDefinitions } from "./elements";
 export declare class BindingTemplate extends Template {
     private bindings;
     private destroyed;
     private bound;
-    constructor(template: BindingElementsDefinition);
+    constructor(template: TemplateDefinitions);
     AttachTo(element: Node): void;
     Bind(): void;
     Destroy(): void;

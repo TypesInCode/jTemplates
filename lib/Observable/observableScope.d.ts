@@ -13,6 +13,6 @@ declare class ObservableScope<T> extends Emitter {
     }, ...params: Array<any>);
     Destroy(): void;
     protected UpdateValue(): void;
-    private SetCallback(observable);
+    private SetCallback;
 }
 export default ObservableScope;

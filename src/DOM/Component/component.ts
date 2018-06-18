@@ -1,13 +1,16 @@
-import { BindingDefinition, BindingElementsDefinition, TemplateDefinitionMap, ValueFunction } from "../elements";
+import { TemplateDefinitionsValueFunction, TemplateDefinitions, TemplateValueFunctionMap, TemplateFunctionMap } from "../elements";
 import { BindingTemplate } from "../bindingTemplate";
 
 function CreateFunction(value: any) {
-    return () => value;
+    if(typeof value != 'function')
+        return () => value;
+
+    return value;
 }
 
-abstract class Component<P> {
+abstract class Component<P, T> {
     private bindingTemplate: BindingTemplate;
-    private parentTemplates: TemplateDefinitionMap;
+    private parentTemplates: any;
     
     public get BindingTemplate() {
         if(!this.bindingTemplate) {
@@ -23,13 +26,13 @@ abstract class Component<P> {
         throw "public static property Name must be overidden";
     }
 
-    public abstract get Template(): BindingElementsDefinition;
+    public abstract get Template(): TemplateDefinitions;
 
-    public get DefaultTemplates(): TemplateDefinitionMap {
-        return {};
+    public get DefaultTemplates(): TemplateValueFunctionMap<T> {
+        return {} as any;
     }
 
-    protected get Templates(): TemplateDefinitionMap {
+    protected get Templates(): TemplateFunctionMap<T> {
         return this.parentTemplates;
     }
 
@@ -42,17 +45,20 @@ abstract class Component<P> {
     }
 
     constructor() {
-        this.parentTemplates = this.DefaultTemplates;
+        this.parentTemplates = {} as any;
+        for(var key in this.DefaultTemplates)
+            this.parentTemplates[key] = (this.DefaultTemplates as any)[key];
     }
 
     public SetParentData(data: P) { }
 
-    public SetParentTemplates(parentTemplates: TemplateDefinitionMap) {
+    public SetParentTemplates(parentTemplates: TemplateValueFunctionMap<T>) {
         for(var key in parentTemplates) {
-            if(typeof parentTemplates[key] != 'function')
+            this.parentTemplates[key] = CreateFunction(parentTemplates[key]);
+            /* if(typeof parentTemplates[key] != 'function')
                 (this.parentTemplates as any)[key] = CreateFunction(parentTemplates[key]);
             else
-                this.parentTemplates[key] = parentTemplates[key];
+                this.parentTemplates[key] = parentTemplates[key]; */
         }
     }
 

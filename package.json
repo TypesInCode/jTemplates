@@ -1,10 +1,10 @@
 {
   "name": "j-templates",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "j-templates",
   "license": "MIT",
-  "repository": "",
-  "author": "",
+  "repository": "https://github.com/TypesInCode/jTemplates",
+  "author": "Jay Landrum",
   "keywords": [
     ""
   ],
@@ -38,9 +38,9 @@
     "mocha": "^3.0.1",
     "rimraf": "^2.5.4",
     "ts-loader": "^1.2.0",
-    "ts-node": "^1.7.3",
+    "ts-node": "^6.1.1",
     "tslint": "3.15.1",
-    "typescript": "2.0.3",
+    "typescript": "^2.9.2",
     "uglifyjs-webpack-plugin": "^1.2.4",
     "webpack": "^1.15.0"
   },

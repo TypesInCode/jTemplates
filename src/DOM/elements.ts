@@ -1,27 +1,34 @@
 import Component from "./Component/component";
 
 export type ValueFunction<T> = T | ((c?: any, i?: number) => T);
-export type ComponentDefinition<P> = ValueFunction<{ new (): Component<P> }>;
+export type ComponentDefinition<P, T> = ValueFunction<{ new (): Component<P, T> }>;
 export type EventBindingMap = { [eventName: string]: { (): {(...args: any[]): void} } };
 
-export type BindingElementDefinition = IElementDefinition | IComponentDefinition | string;
-export type BindingElementsDefinition = BindingElementDefinition | Array<BindingElementDefinition>;
-export type BindingDefinition = ValueFunction<BindingElementsDefinition>;
-//export type BindingDefinitionMap = { [name: string]: BindingDefinition };
-export type TemplateDefinitionMap = { [name: string]: BindingDefinition };
+export type TemplateDefinition = IElementDefinition | IComponentDefinition | string;
+export type TemplateValueFunction = ValueFunction<TemplateDefinition>;
+export type TemplateValueFunctionMap<T> = {
+    [K in keyof T]: TemplateValueFunction
+}
+
+export type TemplateFunction = (c?: any, i?: number) => TemplateDefinition;
+export type TemplateFunctionMap<T> = {
+    [K in keyof T]: TemplateFunction
+}
+export type TemplateDefinitions = TemplateDefinition | Array<TemplateDefinition>;
+export type TemplateDefinitionsValueFunction = ValueFunction<TemplateDefinitions>;
 
 export interface IElementDefinition {
     [elementName: string]: {};
     on?: EventBindingMap;
     data?: ValueFunction<{}>;
-    children?: BindingDefinition;
+    children?: TemplateDefinitionsValueFunction;
 }
 
 export interface IComponentDefinition {
     name: string;
-    component: { new(): Component<any> };
+    component: { new(): Component<any, any> };
     data?: ValueFunction<any>;
-    templates?: TemplateDefinitionMap;
+    templates?: TemplateValueFunctionMap<any>;
 }
 
 export interface IElementProperties {
@@ -31,7 +38,7 @@ export interface IElementProperties {
     text?: ValueFunction<string>;
 }
 
-export function element(name: string, properties?: IElementProperties, children?: BindingDefinition): IElementDefinition {
+export function element(name: string, properties?: IElementProperties, children?: TemplateDefinitionsValueFunction): IElementDefinition {
     properties = properties || {};
     var elementDefinition: IElementDefinition = {
         on: properties.on,
@@ -48,10 +55,10 @@ export function element(name: string, properties?: IElementProperties, children?
 }
 
 export interface ElementMethod {
-    (properties?: IElementProperties, children?: BindingDefinition): IElementDefinition
+    (properties?: IElementProperties, children?: TemplateDefinitionsValueFunction): IElementDefinition
 }
 
-export function component<T>(component: { new(): Component<T> }, data?: ValueFunction<T>, templates?: TemplateDefinitionMap ): IComponentDefinition {
+export function component<P, T>(component: { new(): Component<P, T> }, data?: ValueFunction<T>, templates?: TemplateValueFunctionMap<T> ): IComponentDefinition {
     return {
         name: (component as any as typeof Component).Name,
         component: component,
@@ -60,6 +67,6 @@ export function component<T>(component: { new(): Component<T> }, data?: ValueFun
     };
 }
 
-export interface ComponentMethod<T> {
-    (data?: ValueFunction<T>, templates?: TemplateDefinitionMap): IComponentDefinition;
+export interface ComponentMethod<P, T> {
+    (data?: ValueFunction<P>, templates?: TemplateValueFunctionMap<T>): IComponentDefinition;
 }

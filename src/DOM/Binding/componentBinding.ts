@@ -1,7 +1,7 @@
 import NodeBinding from "./nodeBinding";
 import Component from "../Component/component";
 import { BindingTemplate } from "../bindingTemplate";
-import { ComponentDefinition, TemplateDefinitionMap } from "../elements";
+import { ComponentDefinition, TemplateValueFunctionMap } from "../elements";
 
 /* function CreateBindingFunction(binding: any, component: ComponentDefinition<any>): () => { value: {(): any}, component: {(): { new (): Component<any> }} } {
     var bindingFunc = binding;
@@ -30,11 +30,11 @@ function EnsureFunction(value: any) {
 }
 
 class ComponentBinding extends NodeBinding {
-    private componentType: { new(): Component<any> };
-    private component: Component<any>;
-    private parentTemplates: TemplateDefinitionMap;
+    private componentType: { new(): Component<any, any> };
+    private component: Component<any, any>;
+    private parentTemplates: TemplateValueFunctionMap<any>;
 
-    constructor(element: Node, binding: any, compType: { new(): Component<any> }, parentTemplates: TemplateDefinitionMap) {
+    constructor(element: Node, binding: any, compType: { new(): Component<any, any> }, parentTemplates: TemplateValueFunctionMap<any>) {
         //binding = binding && binding.valueOf();
         //compType = compType && (compType as any).valueOf();
         //var newBinding = CreateBindingFunction(binding, compType);

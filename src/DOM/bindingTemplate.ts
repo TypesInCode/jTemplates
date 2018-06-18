@@ -9,14 +9,11 @@ import EventBinding from "./Binding/eventBinding";
 import ComponentBinding from "./Binding/componentBinding";
 
 import { 
-    BindingElementDefinition, 
-    BindingDefinition, 
-    IComponentDefinition, 
+    TemplateDefinition, 
+    TemplateDefinitionsValueFunction, 
     EventBindingMap, 
-    IElementDefinition, 
-    TemplateDefinitionMap, 
-    ComponentDefinition, 
-    BindingElementsDefinition, 
+    TemplateValueFunctionMap,  
+    TemplateDefinitions, 
     ValueFunction
 } from "./elements";
 
@@ -25,7 +22,7 @@ enum TemplateType {
     Text
 }
 
-function GetTemplateType<P>(template: BindingElementDefinition): TemplateType {
+function GetTemplateType<P>(template: TemplateDefinition): TemplateType {
     if(typeof template === 'string' || typeof template.valueOf() === 'string')
         return TemplateType.Text;
 
@@ -57,14 +54,14 @@ function ReadElementProperties(node: Node, properties: {}, parentProperties?: Ar
     return bindings;
 }
 
-function AppendElement<P>(template: BindingElementDefinition, node: Node): Array<NodeBinding> {
+function AppendElement<P>(template: TemplateDefinition, node: Node): Array<NodeBinding> {
     var data: any = null;
-    var children: BindingDefinition = null; // { (c?: any, i?: number): IBindingTemplate | Array<IBindingTemplate> } | Array<IBindingTemplate> | IBindingTemplate = null;
+    var children: TemplateDefinitionsValueFunction = null;
     var events: EventBindingMap;
-    var component: { new(): Component<any> };
+    var component: { new(): Component<any, any> };
     var elementName: string = null;
     var properties: {} = null;
-    var templates: TemplateDefinitionMap = null;
+    var templates: TemplateValueFunctionMap<any> = null;
     var text: ValueFunction<string> = null;
     for(var key in (template as any)) {
         switch(key) {
@@ -115,7 +112,7 @@ function AppendElement<P>(template: BindingElementDefinition, node: Node): Array
     return bindings;
 }
 
-function ReadBindingTemplate(template: BindingElementsDefinition, rootNode: Node, bindings?: Array<NodeBinding>): Array<NodeBinding> {
+function ReadBindingTemplate(template: TemplateDefinitions, rootNode: Node, bindings?: Array<NodeBinding>): Array<NodeBinding> {
     if(!template)
         return [];
 
@@ -152,7 +149,7 @@ export class BindingTemplate extends Template {
     private updatingCallback: (binding: NodeBinding) => void;
     private updatedCallback: (binding: NodeBinding) => void; */
 
-    constructor(template: BindingElementsDefinition) {
+    constructor(template: TemplateDefinitions) {
         var documentFragment = browser.createDocumentFragment();
         var bindings = ReadBindingTemplate(template, documentFragment);
         super(documentFragment);

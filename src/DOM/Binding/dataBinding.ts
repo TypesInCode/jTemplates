@@ -1,7 +1,7 @@
 import NodeBinding from './nodeBinding';
 import { BindingTemplate } from "../bindingTemplate";
 import browser from "../browser";
-import { BindingElementsDefinition, BindingDefinition, ValueFunction } from "../elements";
+import { TemplateDefinitions, TemplateDefinitionsValueFunction, ValueFunction } from "../elements";
 import { Observable } from '../../Observable/observable';
 
 class DataBinding extends NodeBinding {
@@ -9,9 +9,9 @@ class DataBinding extends NodeBinding {
     private localUpdate: boolean;
     private destroyedTemplates: Array<BindingTemplate>;
 
-    private templateFunction: {(c: {}, i: number): BindingElementsDefinition};
+    private templateFunction: {(c: {}, i: number): TemplateDefinitions};
 
-    constructor(boundTo: Node, binding: ValueFunction<any>, children: BindingDefinition) {
+    constructor(boundTo: Node, binding: ValueFunction<any>, children: TemplateDefinitionsValueFunction) {
         super(boundTo, binding);
         this.childTemplates = [];
         this.destroyedTemplates = [];

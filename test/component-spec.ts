@@ -6,14 +6,14 @@ import { div, span, br } from "../src/DOM/elementMethods";
 import { Observable } from "../src/Observable/observable";
 import * as chai from "chai";
 import Component from "../src/DOM/Component/component";
-import { component, ComponentMethod } from "../src/DOM/elements";
+import { component, ComponentMethod, TemplateValueFunctionMap } from "../src/DOM/elements";
 
 browser.immediateAnimationFrames = true;
 const expect = chai.expect;
 
-class RootComponent extends Component<any> {
+class RootComponent extends Component<any, any> {
 
-    public State = Observable.Create({ name: "Start Name" });
+    public State = Observable.Create({ name: "Start Name", header: "header name" });
 
     public static get Name(): string {
         return "RootComponent";
@@ -21,13 +21,23 @@ class RootComponent extends Component<any> {
 
     public get Template() {
         return div({}, 
-            childComponent({ text: this.State.name })
+            childComponent({ text: this.State.name }, {
+                header: div({ text: () => this.State.header })
+            })
         )
     }
 
 }
 
-class ChildComponent extends Component<{ text: string }> {
+interface IChildComponentData {
+    text: string;
+}
+
+interface IChildComponentTemplates {
+    header: any;
+}
+
+class ChildComponent extends Component<IChildComponentData, IChildComponentTemplates> {
 
     State = Observable.Create({ text: "" });
     
@@ -35,16 +45,25 @@ class ChildComponent extends Component<{ text: string }> {
         return "Child-Component";
     }
 
-    public get Template() {
-        return div({ text: () => this.State.text });
+    public get DefaultTemplates(): TemplateValueFunctionMap<IChildComponentTemplates> {
+        return {
+            header: div({ text: "default header" })
+        };
     }
 
-    public SetParentData(data: { text: string }) {
+    public get Template() {
+        return [
+            this.Templates.header(),
+            div({ text: () => this.State.text })
+        ];
+    }
+
+    public SetParentData(data: IChildComponentData) {
         Observable.GetFrom(this.State.text).Join(data.text);
     }
 }
 
-var childComponent: ComponentMethod<{ text: string }> = component.bind(null, ChildComponent);
+var childComponent: ComponentMethod<IChildComponentData, IChildComponentTemplates> = component.bind(null, ChildComponent);
 
 describe("Component", () => {
     it("initialized value", () => {
@@ -56,8 +75,10 @@ describe("Component", () => {
         expect(fragment.childNodes.length).to.equal(1);
         var elem = fragment.childNodes[0] as HTMLElement;
         expect(elem).to.not.be.null;
-        expect(elem.innerHTML).to.equal("<child-component><div>Start Name</div></child-component>");
+        expect(elem.innerHTML).to.equal("<child-component><div>header name</div><div>Start Name</div></child-component>");
         root.State.name = "second name";
-        expect(elem.innerHTML).to.equal("<child-component><div>second name</div></child-component>");
+        expect(elem.innerHTML).to.equal("<child-component><div>header name</div><div>second name</div></child-component>");
+        root.State.header = "updated header";
+        expect(elem.innerHTML).to.equal("<child-component><div>updated header</div><div>second name</div></child-component>");
     });
 });

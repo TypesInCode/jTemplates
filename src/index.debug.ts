@@ -1,11 +1,10 @@
 import { Observable } from "./Observable/observable";
-import { BindingTemplate } from "./DOM/bindingTemplate";
 import browser from "./DOM/browser";
 import { div } from "./DOM/elementMethods";
 import { Component } from ".";
 import { ComponentMethod, component } from "./DOM/elements";
 
-class RootComponent extends Component<any> {
+class RootComponent extends Component<any, any> {
 
   public State = Observable.Create({ name: "Start Name" });
 
@@ -21,7 +20,7 @@ class RootComponent extends Component<any> {
 
 }
 
-class ChildComponent extends Component<{ text: string }> {
+class ChildComponent extends Component<{ text: string }, any> {
 
   State = Observable.Create({ text: "" });
   
@@ -38,7 +37,7 @@ class ChildComponent extends Component<{ text: string }> {
   }
 }
 
-var childComponent: ComponentMethod<{ text: string }> = component.bind(null, ChildComponent);
+var childComponent: ComponentMethod<{ text: string }, any> = component.bind(null, ChildComponent);
 
 var fragment = browser.createDocumentFragment();
 
