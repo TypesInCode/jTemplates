@@ -17,6 +17,11 @@ describe("Observable Scope", () => {
         var scope = new ObservableScope(() => `${obs} value`);
         expect(scope.Value).to.equal("test value");
     });
+    it("integer statement", () => {
+        var obs = Observable.Create(5);
+        var scope = new ObservableScope(() => obs + 5);
+        expect(scope.Value).to.equal(10);
+    });
     it("string statement changed", () => {
         var obs = Observable.Create("test");
         var scope = new ObservableScope(() => `${obs} value`);
