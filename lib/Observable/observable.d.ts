@@ -38,7 +38,7 @@ export declare class Observable extends Emitter {
     private RemoveArrayMixin;
 }
 export declare namespace Observable {
-    function Unwrap(value: ObservableValue | any): any;
+    function Unwrap<T>(value: ObservableValue | T): T;
     function Create<T>(value: T): T;
     function Watch(event: string, action: () => void): IterableIterator<Observable>;
     function GetFrom(value: ObservableValue | any): Observable;

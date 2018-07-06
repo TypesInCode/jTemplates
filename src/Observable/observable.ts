@@ -285,7 +285,7 @@ export class Observable extends Emitter {
 
 export namespace Observable {
 
-    export function Unwrap(value: ObservableValue | any): any {
+    export function Unwrap<T>(value: ObservableValue | T): T {
         if(!(value instanceof ObservableValue))
             return value;
         
