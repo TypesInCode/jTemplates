@@ -1,5 +1,7 @@
 import { ElementMethod } from "./elements";
+export declare var a: ElementMethod;
 export declare var br: ElementMethod;
+export declare var b: ElementMethod;
 export declare var div: ElementMethod;
 export declare var span: ElementMethod;
 export declare var img: ElementMethod;
@@ -8,3 +10,6 @@ export declare var source: ElementMethod;
 export declare var input: ElementMethod;
 export declare var option: ElementMethod;
 export declare var select: ElementMethod;
+export declare var h1: ElementMethod;
+export declare var h2: ElementMethod;
+export declare var h3: ElementMethod;
