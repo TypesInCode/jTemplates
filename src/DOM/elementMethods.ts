@@ -1,5 +1,6 @@
 import { ElementMethod, element, ValueFunction } from "./elements";
 
+export var a: ElementMethod = element.bind(null, "a");
 export var br: ElementMethod = element.bind(null, "br");
 export var b: ElementMethod = element.bind(null, "b");
 export var div: ElementMethod = element.bind(null, "div");
