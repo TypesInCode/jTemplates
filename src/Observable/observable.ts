@@ -235,12 +235,13 @@ export class Observable extends Emitter {
             this._value.splice(this._value.length - properties.length);
         }
         else {
-            for(var prop in properties) {
+            //for(var prop in properties) {
+            properties.forEach(prop => {
                 var obsValue = (this._value as any)[prop] as ObservableValue;
                 obsValue.ObservableReference.Destroy();
                 delete (this.ObservableValue as any)[prop];
                 delete (this._value as any)[prop];
-            }
+            });
         }
     }
 
