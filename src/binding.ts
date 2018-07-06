@@ -37,7 +37,7 @@ abstract class Binding<T> {
         }
         else {
             this.hasStaticValue = true;
-            this.staticValue = binding;
+            this.staticValue = binding || true;
         }
     }
 
