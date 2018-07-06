@@ -60,12 +60,13 @@ class DataBinding extends NodeBinding {
     }
 
     private GetValue(): Array<any> {
-        var newValue = this.Value;
-        if(newValue instanceof Observable)
-            newValue = newValue.valueOf();
+        var newValue = this.Value && this.Value.valueOf();
+
+        if(!newValue)
+            return [];
 
         if(!Array.isArray(newValue))
-            newValue = [newValue];
+            return [newValue];
         
         return newValue;
     }
