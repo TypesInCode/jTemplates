@@ -52,6 +52,7 @@ export function element(name: string, properties?: IElementProperties, children?
     delete properties.on;
     delete properties.data;
     delete properties.text;
+    delete properties.rebind;
     elementDefinition[name] = properties;
     
     return elementDefinition;
