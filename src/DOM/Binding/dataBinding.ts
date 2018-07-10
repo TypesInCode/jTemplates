@@ -6,13 +6,14 @@ import { Observable } from '../../Observable/observable';
 
 class DataBinding extends NodeBinding {
     private childTemplates: Array<BindingTemplate>;
-    private localUpdate: boolean;
+    private rebind: boolean;
     private destroyedTemplates: Array<BindingTemplate>;
 
     private templateFunction: {(c: {}, i: number): TemplateDefinitions};
 
-    constructor(boundTo: Node, binding: ValueFunction<any>, children: TemplateDefinitionsValueFunction) {
+    constructor(boundTo: Node, binding: ValueFunction<any>, rebind: boolean, children: TemplateDefinitionsValueFunction) {
         super(boundTo, binding);
+        this.rebind = rebind;
         this.childTemplates = [];
         this.destroyedTemplates = [];
 
@@ -23,6 +24,10 @@ class DataBinding extends NodeBinding {
     }
 
     public Update() {
+        if(this.rebind) {
+            this.destroyedTemplates = this.childTemplates;
+            this.childTemplates = [];
+        }
         var newValue = this.GetValue();
         if(newValue.length < this.childTemplates.length) {
             var oldComponents = this.childTemplates.splice(newValue.length);
@@ -65,8 +70,9 @@ class DataBinding extends NodeBinding {
         if(!newValue)
             return [];
 
-        if(!Array.isArray(newValue))
+        if(!Array.isArray(newValue)) {
             return [newValue];
+        }
         
         return newValue;
     }

@@ -25,6 +25,7 @@ export interface IElementDefinition {
     [elementName: string]: {};
     on?: EventBindingMap;
     data?: ValueFunction<{}>;
+    rebind?: boolean;
     children?: TemplateDefinitionsValueFunction;
 }
 export interface IComponentDefinition {
@@ -39,6 +40,7 @@ export interface IElementProperties {
     [propName: string]: {};
     on?: EventBindingMap;
     data?: {};
+    rebind?: boolean;
     text?: ValueFunction<string>;
 }
 export declare function element(name: string, properties?: IElementProperties, children?: TemplateDefinitionsValueFunction): IElementDefinition;

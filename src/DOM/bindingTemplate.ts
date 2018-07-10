@@ -56,6 +56,7 @@ function ReadElementProperties(node: Node, properties: {}, parentProperties?: Ar
 
 function AppendElement<P>(template: TemplateDefinition, node: Node): Array<NodeBinding> {
     var data: any = null;
+    var rebind: boolean = false;
     var children: TemplateDefinitionsValueFunction = null;
     var events: EventBindingMap;
     var component: { new(): Component<any, any> };
@@ -70,6 +71,9 @@ function AppendElement<P>(template: TemplateDefinition, node: Node): Array<NodeB
                 break;
             case "data":
                 data = (template as any).data;
+                break;
+            case "rebind":
+                rebind = (template as any).rebind;
                 break;
             case "on":
                 events = (template as any).on;
@@ -106,7 +110,7 @@ function AppendElement<P>(template: TemplateDefinition, node: Node): Array<NodeB
         bindings.push(new TextBinding(elementNode, text));
     }
     else if(children) {
-        bindings.push(new DataBinding(elementNode, data, children));
+        bindings.push(new DataBinding(elementNode, data, rebind, children));
     }
 
     return bindings;
