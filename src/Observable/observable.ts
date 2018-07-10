@@ -274,6 +274,13 @@ export class Observable extends Emitter {
             enumerable: false,
             configurable: true
         });
+        Object.defineProperty(this.ObservableValue, "filter", {
+            value: (callback: (element: any, index?: number, array?: Array<any>) => boolean) => {
+                return this.Value.filter(callback);
+            },
+            enumerable: false,
+            configurable: true
+        });
     }
     
     private RemoveArrayMixin() {
@@ -281,6 +288,7 @@ export class Observable extends Emitter {
         delete (this.ObservableValue as any)["push"];
         delete (this.ObservableValue as any)["join"];
         delete (this.ObservableValue as any)["map"];
+        delete (this.ObservableValue as any)["filter"];
     }
 }
 
