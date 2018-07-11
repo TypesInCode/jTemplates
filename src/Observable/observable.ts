@@ -299,11 +299,14 @@ export namespace Observable {
             return value;
         
         var obs = value.ObservableReference;
-        var returnValue = obs.Type === ValueType.Value ? value.valueOf() : 
-            obs.Type === ValueType.Array ? [] : {} as any;
+        if(obs.Type === ValueType.Value)
+            return value.valueOf();
+
+        var returnValue = obs.Type === ValueType.Array ? [] : {} as any;
 
         for(var prop of obs.Properties) {
-            returnValue[prop] = Unwrap((value as any)[prop]);
+            if(prop !== '__observableReference')
+                returnValue[prop] = Unwrap((value as any)[prop]);
         }
 
         return returnValue;
