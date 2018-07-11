@@ -295,8 +295,19 @@ export class Observable extends Emitter {
 export namespace Observable {
 
     export function Unwrap<T>(value: ObservableValue | T): T {
-        if(!(value instanceof ObservableValue))
+        if(!(value instanceof ObservableValue)) {
+            if(Array.isArray(value)) {
+                return value.map(v => Unwrap(v)) as any as T;
+            }
+            else if(typeof value === 'object') {
+                var ret = {} as any;
+                for(var key in value) {
+                    ret[key] = Unwrap((value as any)[key]);
+                }
+                return ret as any as T;
+            }
             return value;
+        }
         
         var obs = value.ObservableReference;
         if(obs.Type === ValueType.Value)
