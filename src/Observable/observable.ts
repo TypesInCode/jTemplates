@@ -281,6 +281,13 @@ export class Observable extends Emitter<Observable> {
             enumerable: false,
             configurable: true
         });
+        Object.defineProperty(this.ObservableValue, "slice", {
+            value: (start: number, end?: number) => {
+                return this.Value.slice(start, end);
+            },
+            enumerable: false,
+            configurable: true
+        });
     }
     
     private RemoveArrayMixin() {
@@ -289,6 +296,7 @@ export class Observable extends Emitter<Observable> {
         delete (this.ObservableValue as any)["join"];
         delete (this.ObservableValue as any)["map"];
         delete (this.ObservableValue as any)["filter"];
+        delete (this.ObservableValue as any)["slice"];
     }
 }
 
