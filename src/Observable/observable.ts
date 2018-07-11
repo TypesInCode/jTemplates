@@ -40,7 +40,7 @@ export class ObservableValue {
 
 var sharedEmitter = new Emitter();
 
-export class Observable extends Emitter {
+export class Observable extends Emitter<Observable> {
     private _joinedObservable: Observable;
     private _properties: Set<string | number>;
     private _value: any;

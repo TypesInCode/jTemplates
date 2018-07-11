@@ -1,7 +1,7 @@
 import Emitter from "../emitter";
 import { Observable, ObservableValue } from "./observable";
 
-class ObservableScope<T> extends Emitter {
+class ObservableScope<T> extends Emitter<ObservableScope<T>> {
     private parameters: Array<any>
     private observableFunction: {(...params: any[]): any};
     private childObservables: Set<Observable>;

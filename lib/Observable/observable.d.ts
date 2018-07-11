@@ -12,7 +12,7 @@ export declare class ObservableValue {
     valueOf(): any;
     toString(): any;
 }
-export declare class Observable extends Emitter {
+export declare class Observable extends Emitter<Observable> {
     private _joinedObservable;
     private _properties;
     private _value;

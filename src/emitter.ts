@@ -1,16 +1,16 @@
-export interface Callback {
-    (sender: Emitter, ...args: any[]): void;
+export interface Callback<T> {
+    (sender: T, ...args: any[]): void;
 }
 
-interface CallbackMap {
-    [name: string]: Set<Callback> // Callback[];
+interface CallbackMap<T> {
+    [name: string]: Set<Callback<T>> // Callback[];
 }
 
-export class Emitter {
-    private callbackMap: CallbackMap = {};
+export class Emitter<T> {
+    private callbackMap: CallbackMap<T> = {};
     private removedEvents: Array<any> = [];
 
-    public AddListener(name: string, callback: Callback) {
+    public AddListener(name: string, callback: Callback<T>) {
         var events = this.callbackMap[name] || new Set();
         if (!events.has(callback))
             events.add(callback);
@@ -18,14 +18,14 @@ export class Emitter {
         this.callbackMap[name] = events;
     }
 
-    public RemoveListener(name: string, callback: Callback) {
+    public RemoveListener(name: string, callback: Callback<T>) {
         var events = this.callbackMap[name]; // || new Set();
         events && events.delete(callback);
     }
 
     public Fire(name: string, ...args: any[]) {
         var events = this.callbackMap[name];
-        events && events.forEach(c => c(this, ...args));
+        events && events.forEach(c => c(this as any as T, ...args));
     }
 
     public Clear(name: string) {

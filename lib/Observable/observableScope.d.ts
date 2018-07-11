@@ -1,5 +1,5 @@
 import Emitter from "../emitter";
-declare class ObservableScope<T> extends Emitter {
+declare class ObservableScope<T> extends Emitter<ObservableScope<T>> {
     private parameters;
     private observableFunction;
     private childObservables;
