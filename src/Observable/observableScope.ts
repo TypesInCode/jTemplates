@@ -40,8 +40,9 @@ class ObservableScope<T> extends Emitter<ObservableScope<T>> {
     protected UpdateValue() {
         var newObservables = Observable.Watch("get", () => {
             this.value = this.observableFunction(...this.parameters);
-            if(this.value instanceof ObservableValue)
-                this.value = this.value.valueOf();
+            this.value && this.value.valueOf();
+            // if(this.value instanceof ObservableValue)
+            //    this.value.valueOf();
         });
 
         var newObsSet = new Set([...(newObservables as any)]);
