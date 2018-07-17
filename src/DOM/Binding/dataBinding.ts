@@ -26,7 +26,7 @@ class DataBinding extends NodeBinding {
 
     public Update() {
         if(this.rebind) {
-            this.destroyedTemplates = new Set(this.childTemplates);
+            this.childTemplates.forEach(t => !this.destroyedTemplates.has(t) && this.destroyedTemplates.add(t));
             this.childTemplates.clear();
         }
 
