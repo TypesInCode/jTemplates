@@ -5,17 +5,18 @@ import { TemplateDefinitions, TemplateDefinitionsValueFunction, ValueFunction } 
 import { Observable } from '../../Observable/observable';
 
 class DataBinding extends NodeBinding {
-    private childTemplates: Array<BindingTemplate>;
+    //private childTemplates: Array<BindingTemplate>;
+    private childTemplates: Set<BindingTemplate>;
     private rebind: boolean;
-    private destroyedTemplates: Array<BindingTemplate>;
+    private destroyedTemplates: Set<BindingTemplate>;
 
     private templateFunction: {(c: {}, i: number): TemplateDefinitions};
 
     constructor(boundTo: Node, binding: ValueFunction<any>, rebind: boolean, children: TemplateDefinitionsValueFunction) {
         super(boundTo, binding);
         this.rebind = rebind;
-        this.childTemplates = [];
-        this.destroyedTemplates = [];
+        this.childTemplates = new Set();
+        this.destroyedTemplates = new Set();
 
         if(typeof children != 'function')
             this.templateFunction = () => children;
@@ -25,29 +26,33 @@ class DataBinding extends NodeBinding {
 
     public Update() {
         if(this.rebind) {
-            this.destroyedTemplates = this.childTemplates;
-            this.childTemplates = [];
+            this.destroyedTemplates = new Set(this.childTemplates);
+            this.childTemplates.clear();
         }
+
+        var childTemplates = [...this.childTemplates];
         var newValue = this.GetValue();
-        if(newValue.length < this.childTemplates.length) {
-            var oldComponents = this.childTemplates.splice(newValue.length);
+        if(newValue.length < childTemplates.length) {
+            var oldComponents = childTemplates.splice(newValue.length);
             for(var x=0; x<oldComponents.length; x++) {
-                if(this.destroyedTemplates.indexOf(oldComponents[x]) < 0)
-                    this.destroyedTemplates.push(oldComponents[x]);
+                if(!this.destroyedTemplates.has(oldComponents[x]))
+                    this.destroyedTemplates.add(oldComponents[x]);
             }
+            this.childTemplates = new Set(childTemplates);
         }
         super.Update();
     }
 
     public Destroy() {
-        for(var x=0; x<this.childTemplates.length; x++)
-            this.childTemplates[x].Destroy();
+        /* for(var x=0; x<this.childTemplates.length; x++)
+            this.childTemplates[x].Destroy(); */
+        this.childTemplates.forEach(t => t.Destroy());
             
         super.Destroy();
     }
 
     protected Apply() {
-        var currentLength = this.childTemplates.length;
+        var currentLength = this.childTemplates.size;
         var newValue = this.GetValue();
 
         this.destroyedTemplates.forEach(c => c.Destroy());
@@ -57,20 +62,22 @@ class DataBinding extends NodeBinding {
                 var temp = this.templateFunction(newValue[x], x);
                 var newTemplate = new BindingTemplate(temp);
                 newTemplate.AttachTo(frag);
-                this.childTemplates.push(newTemplate);
+                this.childTemplates.add(newTemplate);
             }
             this.BoundTo.appendChild(frag);
         }
-        this.destroyedTemplates = [];
+
+        this.destroyedTemplates.clear();
     }
 
     private GetValue(): Array<any> {
-        var newValue = this.Value && this.Value.valueOf();
+        var newValue = this.Value;
+        var valueOf = newValue && newValue.valueOf();
 
-        if(!newValue)
+        if(!valueOf)
             return [];
 
-        if(!Array.isArray(newValue)) {
+        if(!Array.isArray(valueOf)) {
             return [newValue];
         }
         

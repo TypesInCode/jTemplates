@@ -99,15 +99,16 @@ export class Observable extends Emitter<Observable> {
     }
 
     public Join(observable: Observable | ObservableValue | any) {
+        if(observable instanceof ObservableValue)
+            observable = Observable.GetFrom(observable);
+
         if(this._joinedObservable === observable)
             return;
         
         if(this._joinedObservable)
             this.Unjoin();
 
-        if(observable instanceof ObservableValue)
-            observable = observable.ObservableReference;
-        else if(!(observable instanceof Observable)) {
+        if(!(observable instanceof Observable)) {
             this.Value = observable;
             return;
         }
@@ -177,7 +178,7 @@ export class Observable extends Emitter<Observable> {
             if(this._properties.has(prop))
                 Observable.GetFrom(this._value[prop]).Join(childObservable);
             else
-                this._value[prop] = this.DefineProperty(prop, childObservable);
+                this._value[prop] = this.DefineProperty(prop, childObservable, true);
         });
 
         this.DeleteProperties(removedProperties);
@@ -205,16 +206,20 @@ export class Observable extends Emitter<Observable> {
             if(this._properties.has(prop))
                 (this.ObservableValue as any)[prop] = value[prop];
             else
-                this._value[prop] = this.DefineProperty(prop, value[prop]);
+                this._value[prop] = this.DefineProperty(prop, value[prop], false);
         });
         
         this.DeleteProperties(removedProperties);
         this._properties = properties;
     }
 
-    private DefineProperty(prop: string | number, value: any) {
+    private DefineProperty(prop: string | number, value: any, join: boolean) {
         var childObservable = new Observable();
-        childObservable.Join(value);
+        if(join)
+            childObservable.Join(value);
+        else
+            childObservable.Value = value;
+        
         Object.defineProperty(this.ObservableValue, prop as string, {
             get: () => childObservable.ObservableValue,
             set: (val: any) => childObservable.Value = val,
@@ -253,7 +258,7 @@ export class Observable extends Emitter<Observable> {
         });
         Object.defineProperty(this.ObservableValue, "push", {
             value: (newValue: any) => {
-                this._value.push(this.DefineProperty(this._value.length, newValue));
+                this._value.push(this.DefineProperty(this._value.length, newValue, false));
                 this._properties.add(this._properties.size);
                 this.Fire("set");
             },
