@@ -259,7 +259,7 @@ export class Observable extends Emitter<Observable> {
         Object.defineProperty(this.ObservableValue, "push", {
             value: (newValue: any) => {
                 if(this._joinedObservable) {
-                    this._joinedObservable.Value.push(newValue);
+                    (this._joinedObservable.ObservableValue as any).push(newValue);
                 }
                 else {
                     this._value.push(this.DefineProperty(this._value.length, newValue, false));
