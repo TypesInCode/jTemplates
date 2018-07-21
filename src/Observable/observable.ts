@@ -258,9 +258,14 @@ export class Observable extends Emitter<Observable> {
         });
         Object.defineProperty(this.ObservableValue, "push", {
             value: (newValue: any) => {
-                this._value.push(this.DefineProperty(this._value.length, newValue, false));
-                this._properties.add(this._properties.size);
-                this.Fire("set");
+                if(this._joinedObservable) {
+                    this._joinedObservable.Value.push(newValue);
+                }
+                else {
+                    this._value.push(this.DefineProperty(this._value.length, newValue, false));
+                    this._properties.add(this._properties.size);
+                    this.Fire("set");
+                }
             },
             enumerable: false,
             configurable: true
