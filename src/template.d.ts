@@ -33,6 +33,8 @@ export interface ComponentDefinition<P, T> {
 export type BoundTemplateFunction = { (templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any> };
 export type BoundComponentFunction<P, T> = { (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> };
 
+export type TemplateConstructor<P, T> = { new(bindingDef: BindingDefinition<P, T>): ITemplate<P, T> }
+
 export interface ITemplate<P, T> {
     SetTemplates(templates: Templates<T>): void;
 

@@ -4,12 +4,12 @@ import PropertyBinding from "./Binding/propertyBinding";
 import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
-import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition } from './template.d';
+import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.d';
 
 export type BindingDefinitions = BindingDefinitions;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
 
-export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any> {
+function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any> {
     return {
         type: type,
         props: templateDefinition && templateDefinition.props,
@@ -24,7 +24,7 @@ export function CreateTemplateFunction(type: any): BoundTemplateFunction {
     return TemplateFunction.bind(null, type) as BoundTemplateFunction
 }
 
-export function ComponentFunction<P, T>(type: string, classType: { new(bindingDef?: BindingDefinition<any, any>): Template<P, T> }, componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> {
+function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> {
     return {
         type: type,
         class: classType,
@@ -35,7 +35,7 @@ export function ComponentFunction<P, T>(type: string, classType: { new(bindingDe
     }
 }
 
-export function CreateComponentFunction<P, T>(type: any, classType: { new(bindingDef?: BindingDefinition<P, T>): Template<P, T> }): BoundComponentFunction<P, T> {
+export function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
     return ComponentFunction.bind(null, type, classType) as BoundComponentFunction<P, T>;
 }
 
@@ -74,7 +74,10 @@ export class Template<P, T> implements ITemplate<P, T> {
         return this.templates;
     }
 
-    constructor(definition: BindingDefinition<P, T>) {
+    constructor(definition: BindingDefinition<P, T> | string) {
+        if(typeof definition === 'string')
+            definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
+        
         this.templates = this.DefaultTemplates;
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);

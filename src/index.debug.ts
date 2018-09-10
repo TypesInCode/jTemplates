@@ -1,6 +1,7 @@
-import { Template, ComponentFunction, TemplateFunction, BindingDefinition, CreateComponentFunction } from "./template";
+import { Template, BindingDefinition, CreateComponentFunction } from "./template";
 import { browser } from "./DOM/browser";
 import { ProxyObservable } from "./ProxyObservable/proxyObservable";
+import { span, div } from "./DOM/elements";
 // import { Component } from "./component";
 
 /* var start = new Date();
@@ -35,14 +36,15 @@ class Comp extends Template<any, any> {
     state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
 
     constructor() {
-        super(ComponentFunction("comp", Comp as { new(): Template<any, any> }, {}));
+        // super(ComponentFunction("comp", Comp as { new(): Template<any, any> }, {}));
+        super("comp");
     }
 
     public Template(): Array<any> {
         return [
             childComp({ data: () => this.state.title }, {
-                title: () => TemplateFunction("span", { text: () => this.state.title }),
-                body: () => TemplateFunction("span", { text: () => this.state.text })
+                title: () => span({ text: () => this.state.title }),
+                body: () => span({ text: () => this.state.text })
             })
         ];
     }
@@ -62,20 +64,20 @@ class ChildComp extends Template<string, { title: any, body: any }> {
 
     protected Template(d: string) {
         return [
-            TemplateFunction("div", { props: () => ({ className: "header" }) }, this.Templates.title),
-            TemplateFunction("div", { props: () => ({ className: "body" }) }, this.Templates.body)
+            div({ props: () => ({ className: "header" }) }, this.Templates.title),
+            div({ props: () => ({ className: "body" }) }, this.Templates.body)
         ];
     }
 }
 
-var childComp = CreateComponentFunction("childcomp", ChildComp); // : BoundComponentFunction<string, { title: any, body: any }> = ComponentFunction.bind(null, "childcomp", ChildComp);
+var childComp = CreateComponentFunction("childcomp", ChildComp);
 
-var div = browser.window.document.createElement("div");
+var container = browser.window.document.createElement("div");
 var comp = new Comp();
-comp.AttachTo(div);
-console.log(div.innerHTML);
+comp.AttachTo(container);
+console.log(container.innerHTML);
 
 comp.state.text = "test2";
 comp.state.title = "TITLE CHANGED";
 
-console.log(div.innerHTML);
+console.log(container.innerHTML);

@@ -1,1 +1,14 @@
+export declare var a: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var br: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var b: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
 export declare var div: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var span: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var img: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var video: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var source: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var input: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var option: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var select: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var h1: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var h2: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
+export declare var h3: import("../../../../Development/jTemplates_git/src/template").BoundTemplateFunction;
