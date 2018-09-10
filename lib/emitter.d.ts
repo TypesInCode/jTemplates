@@ -1,13 +1,12 @@
-export interface Callback<T> {
-    (sender: T, ...args: any[]): void;
+export interface Callback {
+    (...args: any[]): void;
 }
-export declare class Emitter<T> {
+export declare class Emitter {
     private callbackMap;
-    private removedEvents;
-    AddListener(name: string, callback: Callback<T>): void;
-    RemoveListener(name: string, callback: Callback<T>): void;
-    Fire(name: string, ...args: any[]): void;
-    Clear(name: string): void;
-    ClearAll(): void;
+    addListener(name: string, callback: Callback): void;
+    removeListener(name: string, callback: Callback): void;
+    emit(name: string, ...args: any[]): void;
+    clear(name: string): void;
+    removeAllListeners(): void;
 }
 export default Emitter;

@@ -1,50 +1,81 @@
-import { Observable } from "./Observable/observable";
-import browser from "./DOM/browser";
-import { div } from "./DOM/elementMethods";
-import { Component } from ".";
-import { ComponentMethod, component } from "./DOM/elements";
+import { Template, ComponentFunction, TemplateFunction, BindingDefinition, CreateComponentFunction } from "./template";
+import { browser } from "./DOM/browser";
+import { ProxyObservable } from "./ProxyObservable/proxyObservable";
+// import { Component } from "./component";
 
-class RootComponent extends Component<any, any> {
+/* var start = new Date();
+browser.immediateAnimationFrames = true;
 
-  public State = Observable.Create({ name: "Start Name" });
+var obs = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content" });
 
-  public static get Name(): string {
-      return "RootComponent";
-  }
+var temp = new Template({
+    type: "div",
+    props: () => ({ className: obs.class }),
+    data: () => obs.arr,
+    children: (c: number, i: number) => [{
+        defType: null,
+        type: "span",
+        text: () => `c: ${c} - i: ${i} - text: ${obs.text}`
+    }]
+});
 
-  public get Template() {
-      return div({}, 
-          childComponent({ text: this.State.name })
-      )
-  };
+var div = browser.window.document.createElement("div");
+temp.AttachTo(div);
 
+obs.arr.push(4);
+obs.class = "test2";
+console.log(div.innerHTML);
+obs.text = "span changed";
+obs.arr.splice(0, 2);
+console.log(div.innerHTML);
+var end = new Date();
+console.log(end.getTime() - start.getTime()); */
+
+class Comp extends Template<any, any> {
+    state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
+
+    constructor() {
+        super(ComponentFunction("comp", Comp as { new(): Template<any, any> }, {}));
+    }
+
+    public Template(): Array<any> {
+        return [
+            childComp({ data: () => this.state.title }, {
+                title: () => TemplateFunction("span", { text: () => this.state.title }),
+                body: () => TemplateFunction("span", { text: () => this.state.text })
+            })
+        ];
+    }
 }
 
-class ChildComponent extends Component<{ text: string }, any> {
+class ChildComp extends Template<string, { title: any, body: any }> {
+    constructor(bindingDef: BindingDefinition<string, any>) {
+        super(bindingDef);
+    }
 
-  State = Observable.Create({ text: "" });
-  
-  public static get Name(): string {
-      return "ChildComponent";
-  }
+    protected get DefaultTemplates() {
+        return {
+            title: (): any => null,
+            body: (): any => null
+        }
+    }
 
-  public get Template() {
-      return div({ text: () => this.State.text });
-  }
-
-  public SetParentData(data: { text: string }) {
-      Observable.GetFrom(this.State.text).Join(data.text);
-  }
+    protected Template(d: string) {
+        return [
+            TemplateFunction("div", { props: () => ({ className: "header" }) }, this.Templates.title),
+            TemplateFunction("div", { props: () => ({ className: "body" }) }, this.Templates.body)
+        ];
+    }
 }
 
-var childComponent: ComponentMethod<{ text: string }, any> = component.bind(null, ChildComponent);
+var childComp = CreateComponentFunction("childcomp", ChildComp); // : BoundComponentFunction<string, { title: any, body: any }> = ComponentFunction.bind(null, "childcomp", ChildComp);
 
-var fragment = browser.createDocumentFragment();
+var div = browser.window.document.createElement("div");
+var comp = new Comp();
+comp.AttachTo(div);
+console.log(div.innerHTML);
 
-var root = new RootComponent();
-root.AttachTo(fragment);
+comp.state.text = "test2";
+comp.state.title = "TITLE CHANGED";
 
-var elem = fragment.childNodes[0] as HTMLElement;
-console.log(elem.innerHTML);
-root.State.name = "second name";
-console.log(elem.innerHTML);
+console.log(div.innerHTML);

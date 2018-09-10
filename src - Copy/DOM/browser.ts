@@ -32,7 +32,7 @@ function CreateDocumentFragment(node?: Node | string): DocumentFragment {
     return fragment;
 }
 
-export var browser = {
+var config = {
     window: glbl,
     get immediateAnimationFrames() {
         return immediateAnimationFrames;
@@ -44,4 +44,6 @@ export var browser = {
     requestAnimationFrame: null as (callback: FrameRequestCallback) => {},
     createDocumentFragment: CreateDocumentFragment
 }
-browser.immediateAnimationFrames = false;
+config.immediateAnimationFrames = false;
+
+export default config;
