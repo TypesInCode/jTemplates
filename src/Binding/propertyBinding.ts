@@ -21,7 +21,9 @@ class PropertyBinding extends Binding<any> {
                 this.ApplyRecursive(target[key], val);
             }
             else {
-                target[key] = val && val.valueOf();
+                val = val && val.valueOf();
+                if(target[key] !== val)
+                    target[key] = val;
             }
         }
     }
