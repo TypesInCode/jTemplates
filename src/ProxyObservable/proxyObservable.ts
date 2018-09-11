@@ -29,7 +29,7 @@ export namespace ProxyObservable {
 
     function IsValue(value: any) {
         if(!value)
-            true;
+            return true;
         
         return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor))
     }
