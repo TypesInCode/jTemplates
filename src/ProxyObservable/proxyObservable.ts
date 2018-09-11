@@ -7,23 +7,38 @@ export namespace ProxyObservable {
     var valueMap: { [proxyId: string]: any } = {};
 
     export class Value {
-        private get value() {
-            var value = this.parent[this.prop];
+        public get __value() {
+            var value = this.__parent[this.__prop] as Value;
             return value && value.__getRealValue();
         }
+
+        public set __value(val: any) {
+            this.__parent[this.__prop] = val;
+        }
     
-        constructor(private parent: any, private path: string, private prop: string) { }
+        constructor(private __parent: any, private __path: string, private __prop: string) { }
     
         __getRealValue() {
-            return valueMap[`${this.path}.${this.prop}`];
+            return valueMap[`${this.__path}.${this.__prop}`];
         }
     
         toString() {
-            return this.value && this.value.toString();
+            return this.__value && this.__value.toString();
         }
     
         valueOf() {
-            return this.value && this.value.valueOf();
+            return this.__value && this.__value.valueOf();
+        }
+    }
+
+    export namespace Value {
+        export function Assign<T>(target: Value | any, value: T): T {
+            if(target instanceof Value) {
+                target.__value = value;
+                return target as any as T;
+            }
+
+            return value;
         }
     }
 
