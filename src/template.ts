@@ -4,7 +4,7 @@ import PropertyBinding from "./Binding/propertyBinding";
 import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
-import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.d';
+import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
 
 export type BindingDefinitions = BindingDefinitions;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;

@@ -1,4 +1,4 @@
-import { BindingDefinitions, BindingDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateConstructor } from './template.d';
+import { BindingDefinitions, BindingDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateConstructor } from './template.types';
 export declare type BindingDefinitions = BindingDefinitions;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function CreateTemplateFunction(type: any): BoundTemplateFunction;

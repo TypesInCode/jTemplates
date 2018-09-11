@@ -1,2 +1,2 @@
-import { IBindingConfig } from './bindingConfig.d';
+import { IBindingConfig } from './bindingConfig.types';
 export declare var BindingConfig: IBindingConfig;

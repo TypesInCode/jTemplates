@@ -1,4 +1,4 @@
-import { IBindingConfig } from '../Binding/bindingConfig.d';
+import { IBindingConfig } from '../Binding/bindingConfig.types';
 import { browser } from './browser';
 
 var pendingUpdates: Array<() => void> = [];
