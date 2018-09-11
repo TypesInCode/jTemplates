@@ -11,7 +11,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions}> {
     childrenFunction: (c: any, i: number) => BindingDefinitions;
     activeTemplates: Array<Array<Template<any, any>>>;
 
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions) {
+    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions, private rebind: boolean) {
         super(boundTo, bindingFunction, childrenFunction);
     }
 
@@ -28,6 +28,10 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions}> {
 
     protected Apply() {
         this.activeTemplates = this.activeTemplates || [];
+        if(this.rebind) {
+            this.DestroyTemplates(this.activeTemplates);
+            this.activeTemplates = [];
+        }
         var value = this.Value as Array<any>;
         if(!value)
             value = [];

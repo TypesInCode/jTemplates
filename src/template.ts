@@ -16,7 +16,8 @@ function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<
         on: templateDefinition && templateDefinition.on,
         data: templateDefinition && templateDefinition.data,
         text: templateDefinition && templateDefinition.text,
-        children: children // templateDefinition.children
+        children: children, // templateDefinition.children
+        rebind: templateDefinition && templateDefinition.rebind
     }
 }
 
@@ -31,7 +32,8 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
         props: componentDefinition && componentDefinition.props,
         on: componentDefinition && componentDefinition.on,
         data: componentDefinition && componentDefinition.data,
-        templates: templates // componentDefinition.templates
+        templates: templates, // componentDefinition.templates
+        rebind: componentDefinition && componentDefinition.rebind
     }
 }
 
@@ -53,7 +55,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
         ret.push(new TextBinding(bindingTarget, def1.text));
     else if(def1.children) {
         def1.data = def1.data || DefaultDataCallback;
-        ret.push(new DataBinding(bindingTarget, def1.data, def1.children));
+        ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.rebind));
     }
 
     return ret;
