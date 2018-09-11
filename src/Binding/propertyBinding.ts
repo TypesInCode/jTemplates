@@ -1,13 +1,14 @@
 import { Binding } from "./binding";
 
 class PropertyBinding extends Binding<any> {
-    private lastValue: any = {};
+    private lastValue: any;
 
     constructor(boundTo: Node, bindingFunction: () => any) {
         super(boundTo, bindingFunction, null);
     }
 
     protected Apply() {
+        this.lastValue = this.lastValue || {};
         this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
         this.lastValue = this.Value;
     }
