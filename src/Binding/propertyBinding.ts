@@ -19,8 +19,7 @@ class PropertyBinding extends Binding<any> {
 
         for(var key in source) {
             var val = source[key];
-            if(val !== null && typeof val === 'object' && val.constructor === {}.constructor) {
-                target[key] = target[key] || {};
+            if(target[key] && val !== null && typeof val === 'object' && val.constructor === {}.constructor) {
                 lastValue[key] = lastValue[key] || {};
                 this.ApplyRecursive(target[key], lastValue[key], val);
             }
