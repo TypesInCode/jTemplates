@@ -11,7 +11,7 @@ export declare namespace ProxyObservable {
         valueOf(): any;
     }
     namespace Value {
-        function Assign<T>(target: Value | any, value: T): T;
+        function Assign(target: Value | any, value: any): void;
     }
     function Create<T>(value: T): T;
     function Watch(callback: {

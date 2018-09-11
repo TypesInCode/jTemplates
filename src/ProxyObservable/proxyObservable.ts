@@ -32,13 +32,11 @@ export namespace ProxyObservable {
     }
 
     export namespace Value {
-        export function Assign<T>(target: Value | any, value: T): T {
-            if(target instanceof Value) {
+        export function Assign(target: Value | any, value: any) {
+            if(target instanceof Value)
                 target.__value = value;
-                return target as any as T;
-            }
-
-            return value;
+            else
+                throw "Cannot assign primitive";
         }
     }
 
