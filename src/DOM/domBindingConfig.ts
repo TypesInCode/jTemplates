@@ -3,6 +3,22 @@ import { browser } from './browser';
 
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
+var updateIndex = 0;
+var batchSize = 100;
+
+function processUpdates() {
+    updateScheduled = false;
+    for(var x=updateIndex; x<batchSize && x<pendingUpdates.length; x++, updateIndex++)
+        pendingUpdates[x]();
+
+    if(updateIndex == pendingUpdates.length) {
+        updateIndex = 0;
+        pendingUpdates = [];
+    }
+    else {
+        browser.requestAnimationFrame(processUpdates);
+    }
+}
 
 export var DOMBindingConfig: IBindingConfig = {
     scheduleUpdate: function(callback: () => void): void {
@@ -10,13 +26,7 @@ export var DOMBindingConfig: IBindingConfig = {
     
         if(!updateScheduled) {
             updateScheduled = true;
-            browser.requestAnimationFrame(() => {
-                updateScheduled = false;
-                for(var x=0; x<pendingUpdates.length; x++)
-                    pendingUpdates[x]();
-    
-                pendingUpdates = [];
-            });
+            browser.requestAnimationFrame(processUpdates);
         }
     },
     addListener: function(target: Node, type: string, callback: {():void}) {
