@@ -7,7 +7,8 @@ var updateIndex = 0;
 var batchSize = 100;
 
 function processUpdates() {
-    for(var x=updateIndex; x<batchSize && x<pendingUpdates.length; x++, updateIndex++)
+    var batchEnd = batchSize + updateIndex;
+    for(var x=updateIndex; x<batchEnd && x<pendingUpdates.length; x++, updateIndex++)
         pendingUpdates[x]();
 
     if(updateIndex == pendingUpdates.length) {
