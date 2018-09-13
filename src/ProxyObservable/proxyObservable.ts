@@ -146,25 +146,36 @@ export namespace ProxyObservable {
         return obj;
     }
 
+    var destroyTimeout: any;
+    var destroyQueue: Array<ProxyObservable> = [];
+    function ProcessDestroyQueue() {
+        for(var x=0; x<destroyQueue.length; x++) {
+            var obj = destroyQueue[x];
+            var id = rootObjectMap.get(obj);
+            if(!id)
+                throw "Key not found in rootObjectMap";
+
+            rootObjectMap.delete(obj);
+            var keys = [];
+            for(var key in emitterMap.keys)
+                if(key.startsWith(id))
+                    keys.push(key);
+
+            keys.forEach(key => emitterMap.delete(key));
+            keys = [];
+
+            for(var key in valueMap.keys)
+                if(key.startsWith(id))
+                    keys.push(key);
+            
+            keys.forEach(key => valueMap.delete(key));
+        }
+        destroyQueue = [];
+    }
+
     export function Destroy(obj: ProxyObservable) {
-        var id = rootObjectMap.get(obj);
-        if(!id)
-            throw "Key not found in rootObjectMap";
-
-        rootObjectMap.delete(obj);
-        var keys = [];
-        for(var key in emitterMap.keys)
-            if(key.startsWith(id))
-                keys.push(key);
-
-        keys.forEach(key => emitterMap.delete(key));
-        keys = [];
-
-        for(var key in valueMap.keys)
-            if(key.startsWith(id))
-                keys.push(key);
-        
-        keys.forEach(key => valueMap.delete(key));
+        clearTimeout(destroyTimeout);
+        destroyTimeout = setTimeout(ProcessDestroyQueue, 10);
     }
 
     export function Watch(callback: {(): void}): Array<Emitter> {
