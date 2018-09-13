@@ -68,10 +68,13 @@ export namespace ProxyObservable {
                 if(typeof prop !== 'string')
                     return obj[prop];
 
-                var proxyId = `${parentPath}.${prop}`;
-                var emitter = emitterMap[proxyId];
+                var propPath = `${parentPath}.${prop}`;
+                var emitter = emitterMap[propPath];
                 emitter && globalEmitter.emit("get", emitter);
-                return valueMap[proxyId] || obj[prop];
+                if(typeof valueMap[propPath] === 'undefined')
+                    return obj[prop];
+
+                return valueMap[propPath];
             },
             set: function(obj: any, prop: string, val: any) {
                 if(typeof prop !== 'string') {
@@ -87,7 +90,7 @@ export namespace ProxyObservable {
                 var propPath = `${parentPath}.${prop}`;
                 emitterMap[propPath] = emitterMap[propPath] || new ProxyObservableEmitter(propPath); // new Emitter();
 
-                if(obj[prop] === val && !(isArray && prop === 'length'))
+                if(valueMap[propPath] === val && !(isArray && prop === 'length'))
                     return true;
                 
                 if(IsValue(val)) {
