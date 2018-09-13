@@ -7,13 +7,13 @@ var updateIndex = 0;
 var batchSize = 100;
 
 function processUpdates() {
-    updateScheduled = false;
     for(var x=updateIndex; x<batchSize && x<pendingUpdates.length; x++, updateIndex++)
         pendingUpdates[x]();
 
     if(updateIndex == pendingUpdates.length) {
         updateIndex = 0;
         pendingUpdates = [];
+        updateScheduled = false;
     }
     else {
         browser.requestAnimationFrame(processUpdates);
