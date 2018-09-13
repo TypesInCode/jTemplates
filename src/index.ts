@@ -1,7 +1,7 @@
 import { Template, BindingDefinition, CreateComponentFunction } from "./template";
-import { ProxyObservable } from "./ProxyObservable/proxyObservable";
+import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
 
-export { Template, BindingDefinition, CreateComponentFunction, ProxyObservable };
+export { Template, BindingDefinition, CreateComponentFunction, ProxyObservable, Value };
 
 /* class Comp extends Template<any, any> {
     state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
