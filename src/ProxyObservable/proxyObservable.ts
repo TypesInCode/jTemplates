@@ -174,6 +174,7 @@ export namespace ProxyObservable {
     }
 
     export function Destroy(obj: ProxyObservable) {
+        destroyQueue.push(obj);
         clearTimeout(destroyTimeout);
         destroyTimeout = setTimeout(ProcessDestroyQueue, 10);
     }
