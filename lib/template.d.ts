@@ -1,7 +1,7 @@
-import { BindingDefinitions, BindingDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateConstructor } from './template.types';
+import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
 export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
-export declare function CreateTemplateFunction(type: any): BoundTemplateFunction;
+export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
 export declare class Template<P, T> implements ITemplate<P, T> {
     private bindingDefinition;

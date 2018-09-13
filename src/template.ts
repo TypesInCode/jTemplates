@@ -9,7 +9,7 @@ import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTempla
 export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
 
-function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return {
         type: type,
         props: templateDefinition && templateDefinition.props,
@@ -21,9 +21,9 @@ function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<
     }
 }
 
-export function CreateTemplateFunction(type: any): BoundTemplateFunction {
-    return TemplateFunction.bind(null, type) as BoundTemplateFunction
-}
+/* export function CreateTemplateFunction<P>(type: any): BoundTemplateFunction<P> {
+    return TemplateFunction.bind(null, type) as BoundTemplateFunction<P>
+} */
 
 function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> {
     return {
