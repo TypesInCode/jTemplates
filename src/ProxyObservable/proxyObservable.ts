@@ -2,8 +2,8 @@ import { Emitter } from "../emitter";
 
 var globalEmitter = new Emitter();
 var rootProxyId = 0;
-var emitterMap: { [proxyId: string]: Emitter } = {};
-var valueMap: { [proxyId: string]: any } = {};
+var emitterMap: Map<string, Emitter> = new Map(); //{ [proxyId: string]: Emitter } = {};
+var valueMap: Map<string, any> = new Map(); //{ [proxyId: string]: any } = {};
 var rootObjectMap: Map<any, string> = new Map();
 
 class ProxyObservableEmitter extends Emitter {
@@ -14,14 +14,14 @@ class ProxyObservableEmitter extends Emitter {
 
 export class Value<T> {
     public get Value(): T {
-        var emitter = emitterMap[this.valuePath];
+        var emitter = emitterMap.get(this.valuePath);
         globalEmitter.emit("get", emitter);
-        return valueMap[this.valuePath];
+        return valueMap.get(this.valuePath);
     }
 
     public set Value(val: T) {
-        valueMap[this.valuePath] = val;
-        emitterMap[this.valuePath].emit("set");
+        valueMap.set(this.valuePath, val);
+        emitterMap.get(this.valuePath).emit("set");
     }
 
     constructor(private valuePath: string) { }
@@ -69,12 +69,12 @@ export namespace ProxyObservable {
                     return obj[prop];
 
                 var propPath = `${parentPath}.${prop}`;
-                var emitter = emitterMap[propPath];
+                var emitter = emitterMap.get(propPath);
                 emitter && globalEmitter.emit("get", emitter);
-                if(typeof valueMap[propPath] === 'undefined')
+                if(valueMap.get(propPath) === undefined)
                     return obj[prop];
 
-                return valueMap[propPath];
+                return valueMap.get(propPath);
             },
             set: function(obj: any, prop: string, val: any) {
                 if(typeof prop !== 'string') {
@@ -88,27 +88,27 @@ export namespace ProxyObservable {
                     arrayLength = obj.length;
 
                 var propPath = `${parentPath}.${prop}`;
-                emitterMap[propPath] = emitterMap[propPath] || new ProxyObservableEmitter(propPath); // new Emitter();
+                emitterMap.set(propPath, emitterMap.get(propPath) || new ProxyObservableEmitter(propPath)); // new Emitter();
 
-                if(valueMap[propPath] === val && !(isArray && prop === 'length'))
+                if(valueMap.get(propPath) === val && !(isArray && prop === 'length'))
                     return true;
                 
                 if(IsValue(val)) {
                     /* if(typeof val === 'function')
                         valueMap[propPath] = obj[prop] = WrapFunction(propPath, val);
                     else */
-                        valueMap[propPath] = obj[prop] = val;
+                        valueMap.set(propPath, obj[prop] = val);
                 }
                 else {
-                    delete valueMap[propPath];
+                    valueMap.delete(propPath);
                     obj[prop] = FromObject(val, propPath);
                 }
 
-                emitterMap[propPath].emit("set");
+                emitterMap.get(propPath).emit("set");
 
                 if(isArray && arrayLength != obj.length && prop != 'length') {
-                    emitterMap[`${parentPath}.length`].emit('set');
-                    emitterMap[parentPath] && emitterMap[parentPath].emit('set');
+                    emitterMap.get(`${parentPath}.length`).emit('set');
+                    emitterMap.get(parentPath) && emitterMap.get(parentPath).emit('set');
                 }
                 
                 return true;
@@ -123,7 +123,7 @@ export namespace ProxyObservable {
         
         if(Array.isArray(value)) {
             var lengthPath = `${proxyPath}.length`
-            emitterMap[lengthPath] = emitterMap[lengthPath] || new ProxyObservableEmitter(lengthPath);
+            emitterMap.set(lengthPath, emitterMap.get(lengthPath) || new ProxyObservableEmitter(lengthPath));
         }
             
         for(var key in value)
@@ -153,18 +153,18 @@ export namespace ProxyObservable {
 
         rootObjectMap.delete(obj);
         var keys = [];
-        for(var key in emitterMap)
+        for(var key in emitterMap.keys)
             if(key.startsWith(id))
                 keys.push(key);
 
-        keys.forEach(key => delete emitterMap[key]);
+        keys.forEach(key => emitterMap.delete(key));
         keys = [];
 
-        for(var key in valueMap)
+        for(var key in valueMap.keys)
             if(key.startsWith(id))
                 keys.push(key);
         
-        keys.forEach(key => delete valueMap[key]);
+        keys.forEach(key => valueMap.delete(key));
     }
 
     export function Watch(callback: {(): void}): Array<Emitter> {
