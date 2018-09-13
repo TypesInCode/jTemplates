@@ -1,7 +1,7 @@
-export type BindingDefinitions = BindingDefinition<any, any> | Array<BindingDefinition<any, any>>;
+export type BindingDefinitions<P, T> = BindingDefinition<P, T> | Array<BindingDefinition<P, T>>;
 
 export type Templates<T> = {
-    [P in keyof T]: (c: any, i: number) => BindingDefinitions
+    [P in keyof T]: (c: any, i: number) => BindingDefinitions<any, any>
 }
 
 export interface BindingDefinition<P, T> {
@@ -10,7 +10,7 @@ export interface BindingDefinition<P, T> {
     on?: () => {[name: string]: {(event?: any): void}};
     data?: () => P | Array<P>;
     text?: () => string;
-    children?: (c?: P, i?: number) => BindingDefinitions;
+    children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: { new(bindingDef?: BindingDefinition<any, any>): ITemplate<P, T> };
     templates?: Templates<T>;
     rebind?: boolean;
@@ -33,7 +33,7 @@ export interface ComponentDefinition<P, T> {
     //templates?: Templates<T>;
 }
 
-export type BoundTemplateFunction = { (templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any> };
+export type BoundTemplateFunction = { (templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> };
 export type BoundComponentFunction<P, T> = { (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> };
 
 export type TemplateConstructor<P, T> = { new(bindingDef: BindingDefinition<P, T>): ITemplate<P, T> }

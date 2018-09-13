@@ -1,6 +1,6 @@
-export declare type BindingDefinitions = BindingDefinition<any, any> | Array<BindingDefinition<any, any>>;
+export declare type BindingDefinitions<P, T> = BindingDefinition<P, T> | Array<BindingDefinition<P, T>>;
 export declare type Templates<T> = {
-    [P in keyof T]: (c: any, i: number) => BindingDefinitions;
+    [P in keyof T]: (c: any, i: number) => BindingDefinitions<any, any>;
 };
 export interface BindingDefinition<P, T> {
     type: any;
@@ -14,7 +14,7 @@ export interface BindingDefinition<P, T> {
     };
     data?: () => P | Array<P>;
     text?: () => string;
-    children?: (c?: P, i?: number) => BindingDefinitions;
+    children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: {
         new (bindingDef?: BindingDefinition<any, any>): ITemplate<P, T>;
     };
@@ -47,7 +47,7 @@ export interface ComponentDefinition<P, T> {
     rebind?: boolean;
 }
 export declare type BoundTemplateFunction = {
-    (templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any>;
+    (templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 };
 export declare type BoundComponentFunction<P, T> = {
     (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T>;

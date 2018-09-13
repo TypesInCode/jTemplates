@@ -1,19 +1,22 @@
 import { Emitter } from "../emitter";
+export declare class Value<T> {
+    private valuePath;
+    Value: T;
+    constructor(valuePath: string);
+    toString(): string;
+    valueOf(): Object;
+}
+export declare namespace Value {
+    function Create<T>(valueFunction: {
+        (): T;
+    }): Value<T>;
+}
 export declare namespace ProxyObservable {
-    class Value {
-        private __parent;
-        private __path;
-        private __prop;
-        __value: any;
-        constructor(__parent: any, __path: string, __prop: string);
-        __getRealValue(): any;
-        toString(): any;
-        valueOf(): any;
+    interface ProxyObservable {
+        __ProxyObservableInterfaceProperty: boolean;
     }
-    namespace Value {
-        function Assign(target: Value | any, value: any): void;
-    }
-    function Create<T>(value: T): T;
+    function Create<T>(value: T): T & ProxyObservable;
+    function Destroy(obj: ProxyObservable): void;
     function Watch(callback: {
         (): void;
     }): Array<Emitter>;

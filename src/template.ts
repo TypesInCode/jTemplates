@@ -6,10 +6,10 @@ import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
 import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
 
-export type BindingDefinitions = BindingDefinitions;
+export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
 
-function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions): BindingDefinition<any, any> {
+function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return {
         type: type,
         props: templateDefinition && templateDefinition.props,
@@ -119,7 +119,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.bindings = [];
     }
 
-    protected Template(c: P, i: number): BindingDefinitions {
+    protected Template(c: P, i: number): BindingDefinitions<P, T> {
         return null;
     }
 

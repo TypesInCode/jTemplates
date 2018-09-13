@@ -7,11 +7,11 @@ function CreateTemplate(bindingDef: BindingDefinition<any, any>): Template<any, 
     return template;
 }
 
-class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions}> {
-    childrenFunction: (c: any, i: number) => BindingDefinitions;
+class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, any>}> {
+    childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplates: Array<Array<Template<any, any>>>;
 
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions, private rebind: boolean) {
+    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, private rebind: boolean) {
         super(boundTo, bindingFunction, childrenFunction);
     }
 
@@ -21,7 +21,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions}> {
         this.activeTemplates = [];
     }
 
-    protected Init(childrenFunction: {(c: any, i: number): BindingDefinitions}) {
+    protected Init(childrenFunction: {(c: any, i: number): BindingDefinitions<any, any>}) {
         this.activeTemplates = [];
         this.childrenFunction = childrenFunction;
     }
