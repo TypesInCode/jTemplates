@@ -152,19 +152,20 @@ export namespace ProxyObservable {
         for(var x=0; x<destroyQueue.length; x++) {
             var obj = destroyQueue[x];
             var id = rootObjectMap.get(obj);
+            id = `${id}.`;
             if(!id)
                 throw "Key not found in rootObjectMap";
 
             rootObjectMap.delete(obj);
             var keys = [];
-            for(var key in emitterMap.keys)
+            for(var key in emitterMap.keys())
                 if(key.startsWith(id))
                     keys.push(key);
 
             keys.forEach(key => emitterMap.delete(key));
             keys = [];
 
-            for(var key in valueMap.keys)
+            for(var key in valueMap.keys())
                 if(key.startsWith(id))
                     keys.push(key);
             
@@ -176,7 +177,7 @@ export namespace ProxyObservable {
     export function Destroy(obj: ProxyObservable) {
         destroyQueue.push(obj);
         clearTimeout(destroyTimeout);
-        destroyTimeout = setTimeout(ProcessDestroyQueue, 10);
+        destroyTimeout = setTimeout(ProcessDestroyQueue, 500);
     }
 
     export function Watch(callback: {(): void}): Array<Emitter> {
