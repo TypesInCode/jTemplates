@@ -158,16 +158,20 @@ export namespace ProxyObservable {
 
             rootObjectMap.delete(obj);
             var keys = [];
-            for(var key in emitterMap.keys())
-                if(key.startsWith(id))
-                    keys.push(key);
+            var keyIterator = emitterMap.keys();
+            var current: IteratorResult<string> = null;
+            while((current = keyIterator.next()) && !current.done)
+                if(current.value.startsWith(id))
+                    keys.push(current.value);
 
             keys.forEach(key => emitterMap.delete(key));
             keys = [];
 
-            for(var key in valueMap.keys())
-                if(key.startsWith(id))
-                    keys.push(key);
+            keyIterator = valueMap.keys();
+            current = null;
+            while((current = keyIterator.next()) && !current.done)
+                if(current.value.startsWith(id))
+                    keys.push(current.value);
             
             keys.forEach(key => valueMap.delete(key));
         }
