@@ -146,18 +146,31 @@ export namespace ProxyObservable {
         return obj;
     }
 
+    function DestroyRecursive(parent: any, path: string) {
+        if(!parent || typeof parent !== 'object')
+            return;
+        
+        for(var key in parent) {
+            var childPath = `${path}.${key}`;
+            emitterMap.delete(childPath);
+            valueMap.delete(childPath);
+            DestroyRecursive(parent[key], childPath);
+        }
+    }
+
     var destroyTimeout: any;
     var destroyQueue: Array<ProxyObservable> = [];
     function ProcessDestroyQueue() {
         for(var x=0; x<destroyQueue.length; x++) {
             var obj = destroyQueue[x];
             var id = rootObjectMap.get(obj);
-            id = `${id}.`;
+            // id = `${id}.`;
             if(!id)
                 throw "Key not found in rootObjectMap";
 
-            rootObjectMap.delete(obj);
-            var keys = [];
+            rootObjectMap.delete(obj);            
+            DestroyRecursive(obj, id);
+            /* var keys = [];
             var keyIterator = emitterMap.keys();
             var current: IteratorResult<string> = null;
             while((current = keyIterator.next()) && !current.done)
@@ -173,7 +186,7 @@ export namespace ProxyObservable {
                 if(current.value.startsWith(id))
                     keys.push(current.value);
             
-            keys.forEach(key => valueMap.delete(key));
+            keys.forEach(key => valueMap.delete(key)); */
         }
         destroyQueue = [];
     }
