@@ -11,6 +11,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     private templates;
     protected readonly DefaultTemplates: Templates<T>;
     protected readonly Templates: Templates<T>;
+    protected readonly Root: any;
     constructor(definition: BindingDefinition<P, T> | string);
     SetTemplates(templates: Templates<T>): void;
     AttachTo(bindingParent: any): void;

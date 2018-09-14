@@ -76,6 +76,10 @@ export class Template<P, T> implements ITemplate<P, T> {
         return this.templates;
     }
 
+    protected get Root(): any {
+        return this.bindingRoot;
+    }
+
     constructor(definition: BindingDefinition<P, T> | string) {
         if(typeof definition === 'string')
             definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
