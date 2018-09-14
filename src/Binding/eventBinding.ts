@@ -9,6 +9,12 @@ class EventBinding extends Binding<any> {
         super(boundTo, bindingFunction, null);
     }
 
+    public Destroy() {
+        super.Destroy();
+        for(var key in this.boundEvents)
+            BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
+    }
+
     protected Apply() {
         for(var key in this.boundEvents)
             BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);

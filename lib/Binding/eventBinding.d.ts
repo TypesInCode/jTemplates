@@ -4,6 +4,7 @@ declare class EventBinding extends Binding<any> {
         [name: string]: any;
     };
     constructor(boundTo: Node, bindingFunction: () => any);
+    Destroy(): void;
     protected Apply(): void;
 }
 export default EventBinding;

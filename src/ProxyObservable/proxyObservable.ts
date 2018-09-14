@@ -62,10 +62,11 @@ export namespace ProxyObservable {
         }
     } */
 
+    var disableGetEvent = false;
     function CreateProxy(parentPath: string, initValue: any) {
         var proxy = new Proxy(initValue, {
             get: function(obj: any, prop: string) {
-                if(typeof prop !== 'string')
+                if(disableGetEvent || typeof prop !== 'string')
                     return obj[prop];
 
                 var propPath = `${parentPath}.${prop}`;
@@ -168,8 +169,10 @@ export namespace ProxyObservable {
             if(!id)
                 throw "Key not found in rootObjectMap";
 
-            rootObjectMap.delete(obj);            
+            rootObjectMap.delete(obj);       
+            disableGetEvent = true;     
             DestroyRecursive(obj, id);
+            disableGetEvent = false;
             /* var keys = [];
             var keyIterator = emitterMap.keys();
             var current: IteratorResult<string> = null;
