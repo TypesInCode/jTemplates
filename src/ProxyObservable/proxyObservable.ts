@@ -125,8 +125,11 @@ export namespace ProxyObservable {
         if(Array.isArray(value)) {
             var lengthPath = `${proxyPath}.length`
             emitterMap.set(lengthPath, emitterMap.get(lengthPath) || new ProxyObservableEmitter(lengthPath));
+
+            if(proxy.length > value.length)
+                proxy.splice(value.length);
         }
-            
+
         for(var key in value)
             proxy[key] = value[key];
         
