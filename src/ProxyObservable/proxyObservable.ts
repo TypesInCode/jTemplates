@@ -77,13 +77,13 @@ class StaticValue<T> extends Value<T> {
 
 export namespace Value {
     export function Create<T>(valueFunction: { (): T }): Value<T> {
-        var emitters = ProxyObservable.Watch(valueFunction) as Array<ProxyObservableEmitter>;
+        var val = null;
+        var emitters = ProxyObservable.Watch(() => val = valueFunction()) as Array<ProxyObservableEmitter>;
         var emitter = emitters[emitters.length - 1];
-        return new DynamicValue<T>(emitter.emitterPath);
-    }
+        if(emitter)
+            return new DynamicValue<T>(emitter.emitterPath);
 
-    export function Static<T>(value: T): Value<T> {
-        return new StaticValue<T>(value);
+        return new StaticValue<T>(val);
     }
 }
 

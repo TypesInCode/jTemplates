@@ -11,7 +11,6 @@ export declare namespace Value {
     function Create<T>(valueFunction: {
         (): T;
     }): Value<T>;
-    function Static<T>(value: T): Value<T>;
 }
 export declare namespace ProxyObservable {
     interface ProxyObservable {
