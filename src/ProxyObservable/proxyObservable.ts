@@ -12,19 +12,20 @@ class ProxyObservableEmitter extends Emitter {
     }
 }
 
-export class Value<T> {
+export abstract class Value<T> {
     public get Value(): T {
-        var emitter = emitterMap.get(this.valuePath);
-        globalEmitter.emit("get", emitter);
-        return valueMap.get(this.valuePath);
+        return this.getValue();
     }
 
     public set Value(val: T) {
-        valueMap.set(this.valuePath, val);
-        emitterMap.get(this.valuePath).emit("set");
+        this.setValue(val);
     }
 
-    constructor(private valuePath: string) { }
+    constructor() { }
+
+    protected abstract getValue(): T;
+
+    protected abstract setValue(val: T): void;
 
     toString() {
         var val = this.Value;
@@ -37,11 +38,48 @@ export class Value<T> {
     }
 }
 
+class DynamicValue<T> extends Value<T> {
+
+    constructor(private valuePath: string) {
+        super();
+    }
+
+    protected getValue(): T {
+        var emitter = emitterMap.get(this.valuePath);
+        globalEmitter.emit("get", emitter);
+        return valueMap.get(this.valuePath);
+    }
+
+    protected setValue(val: T): void {
+        valueMap.set(this.valuePath, val);
+        emitterMap.get(this.valuePath).emit("set");
+    }
+
+}
+
+class StaticValue<T> extends Value<T> {
+    constructor(private value: T) {
+        super();
+    }
+
+    protected getValue() {
+        return this.value;
+    }
+
+    protected setValue(val: T) {
+        this.value = val;
+    }
+}
+
 export namespace Value {
     export function Create<T>(valueFunction: { (): T }): Value<T> {
         var emitters = ProxyObservable.Watch(valueFunction) as Array<ProxyObservableEmitter>;
         var emitter = emitters[emitters.length - 1];
-        return new Value<T>(emitter.emitterPath);
+        return new DynamicValue<T>(emitter.emitterPath);
+    }
+
+    export function Static<T>(value: T): Value<T> {
+        return new StaticValue<T>(value);
     }
 }
 

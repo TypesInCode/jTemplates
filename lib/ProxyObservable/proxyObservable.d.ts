@@ -1,8 +1,9 @@
 import { Emitter } from "../emitter";
-export declare class Value<T> {
-    private valuePath;
+export declare abstract class Value<T> {
     Value: T;
-    constructor(valuePath: string);
+    constructor();
+    protected abstract getValue(): T;
+    protected abstract setValue(val: T): void;
     toString(): string;
     valueOf(): Object;
 }
@@ -10,6 +11,7 @@ export declare namespace Value {
     function Create<T>(valueFunction: {
         (): T;
     }): Value<T>;
+    function Static<T>(value: T): Value<T>;
 }
 export declare namespace ProxyObservable {
     interface ProxyObservable {
