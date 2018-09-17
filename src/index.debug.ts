@@ -2,6 +2,29 @@ import { Template, BindingDefinition, CreateComponentFunction } from "./template
 import { browser } from "./DOM/browser";
 import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
 import { span, div } from "./DOM/elements";
+import { ProxyObservableScope } from "./ProxyObservable/proxyObservableScope";
+
+var obs = ProxyObservable.Create({ first: { child: "val1" } });
+var val = null;
+var emitters = ProxyObservable.Watch(() => val = obs.first.child);
+
+console.log(val);
+console.log(emitters.length);
+
+var setFired = false;
+emitters[1].addListener("set", () => {
+    setFired = true;
+});
+
+obs.first.child = "val2";
+console.log(setFired);
+
+
+/* var proxy = ProxyObservable.Create({ arr: [{ var1: { obj1: "val" } }, { var1: null }]})
+proxy.arr = [{ var1: null }, { var1: { obj1: "val" } }, { var1: null }];
+console.log(proxy.arr[0].var1);
+console.log(proxy.arr[1].var1);
+console.log(proxy.arr[2].var1); */
 
 /* var obs = ProxyObservable.Create([]);
 var val = null;
@@ -19,7 +42,7 @@ obs[0] = "test";
 console.log(setFired);
 console.log(obs[0]); */
 
-class Comp extends Template<any, any> {
+/* class Comp extends Template<any, any> {
     state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
 
     constructor() {
@@ -63,4 +86,4 @@ comp.state.class = "class2";
 
 console.log(container.innerHTML);
 comp.Destroy();
-console.log(container.innerHTML || "empty");
+console.log(container.innerHTML || "empty"); */

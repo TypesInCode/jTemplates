@@ -102,7 +102,7 @@ export namespace ProxyObservable {
                 }
                 else {
                     valueMap.delete(propPath);
-                    obj[prop] = FromObject(val, propPath);
+                    obj[prop] = FromObject(val, propPath, obj[prop]);
                 }
 
                 emitterMap.get(propPath).emit("set");
@@ -119,8 +119,8 @@ export namespace ProxyObservable {
         return proxy;
     }
 
-    function FromObject(value: any, proxyPath: string) {
-        var proxy = CreateProxy(proxyPath, Array.isArray(value) ? [] : {});
+    function FromObject(value: any, proxyPath: string, proxy?: any) {
+        var proxy = proxy || CreateProxy(proxyPath, Array.isArray(value) ? [] : {});
         
         if(Array.isArray(value)) {
             var lengthPath = `${proxyPath}.length`
