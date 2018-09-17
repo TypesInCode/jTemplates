@@ -120,7 +120,7 @@ export namespace ProxyObservable {
     }
 
     function FromObject(value: any, proxyPath: string, proxy?: any) {
-        var proxy = proxy || CreateProxy(proxyPath, Array.isArray(value) ? [] : {});
+        var proxy = !IsValue(proxy) ? proxy : CreateProxy(proxyPath, Array.isArray(value) ? [] : {});
         
         if(Array.isArray(value)) {
             var lengthPath = `${proxyPath}.length`
