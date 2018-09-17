@@ -58,16 +58,20 @@ class DynamicValue<T> extends Value<T> {
 }
 
 class StaticValue<T> extends Value<T> {
+    private emitter = new Emitter();
+
     constructor(private value: T) {
         super();
     }
 
     protected getValue() {
+        globalEmitter.emit("get", this.emitter);
         return this.value;
     }
 
     protected setValue(val: T) {
         this.value = val;
+        this.emitter.emit("set");
     }
 }
 
