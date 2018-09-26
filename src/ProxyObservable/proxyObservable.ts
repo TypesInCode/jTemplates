@@ -149,7 +149,7 @@ export namespace ProxyObservable {
 
                 emitterMap.get(propPath).emit("set");
 
-                if(isArray && arrayLength != obj.length && prop != 'length') {
+                if(isArray && arrayLength != obj.length) {
                     emitterMap.get(`${parentPath}.length`).emit('set');
                     emitterMap.get(parentPath) && emitterMap.get(parentPath).emit('set');
                 }
