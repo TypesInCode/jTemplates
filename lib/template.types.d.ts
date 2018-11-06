@@ -13,6 +13,7 @@ export interface BindingDefinition<P, T> {
         };
     };
     data?: () => P | Array<P>;
+    key?: (val: P) => any;
     text?: () => string;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: {
@@ -31,6 +32,7 @@ export interface TemplateDefinition<P> {
         };
     };
     data?: () => P | Array<P>;
+    key?: (val: P) => any;
     text?: () => string;
     rebind?: boolean;
 }
@@ -44,6 +46,7 @@ export interface ComponentDefinition<P, T> {
         };
     };
     data?: () => P | Array<P>;
+    key?: (val: P) => any;
     rebind?: boolean;
 }
 export declare type BoundTemplateFunction<P> = {

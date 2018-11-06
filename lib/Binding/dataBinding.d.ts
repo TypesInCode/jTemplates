@@ -4,9 +4,11 @@ declare class DataBinding extends Binding<{
     (c: any, i: number): BindingDefinitions<any, any>;
 }> {
     private rebind;
+    private keyFunction;
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplates: Array<Array<Template<any, any>>>;
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, rebind: boolean);
+    activeKeys: Array<any>;
+    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, rebind: boolean, keyFunction: (val: any) => any);
     Destroy(): void;
     protected Init(childrenFunction: {
         (c: any, i: number): BindingDefinitions<any, any>;

@@ -8,6 +8,7 @@ export interface IBindingConfig {
     }): void;
     createBindingTarget(type: any): any;
     addChild(root: any, child: any): void;
+    addChildBefore(root: any, sibling: any, child: any): void;
     removeChild(root: any, child: any): void;
     setText(target: any, text: string): void;
 }
