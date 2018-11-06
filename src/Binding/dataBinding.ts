@@ -39,7 +39,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         else if(!Array.isArray(value))
             value = [value];
 
-        for(var x=0; x<this.activeKeys.length && value.length; x++) {
+        for(var x=0; x<this.activeKeys.length && x<value.length; x++) {
             var newKey = this.keyFunction && this.keyFunction(value[x]);
             if(newKey !== this.activeKeys[x]) {
                 this.activeTemplates[x].forEach(t => t.Destroy());
