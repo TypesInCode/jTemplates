@@ -15,6 +15,7 @@ export function TemplateFunction(type: string, templateDefinition?: TemplateDefi
         props: templateDefinition && templateDefinition.props,
         on: templateDefinition && templateDefinition.on,
         data: templateDefinition && templateDefinition.data,
+        key: templateDefinition && templateDefinition.key,
         text: templateDefinition && templateDefinition.text,
         children: children, // templateDefinition.children
         rebind: templateDefinition && templateDefinition.rebind
@@ -32,6 +33,7 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
         props: componentDefinition && componentDefinition.props,
         on: componentDefinition && componentDefinition.on,
         data: componentDefinition && componentDefinition.data,
+        key: componentDefinition && componentDefinition.key,
         templates: templates, // componentDefinition.templates
         rebind: componentDefinition && componentDefinition.rebind
     }
@@ -55,7 +57,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
         ret.push(new TextBinding(bindingTarget, def1.text));
     else if(def1.children) {
         def1.data = def1.data || DefaultDataCallback;
-        ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.rebind));
+        ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.rebind, def1.key));
     }
 
     return ret;
@@ -106,6 +108,15 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.Detach();
         this.bindingParent = bindingParent;
         BindingConfig.addChild(bindingParent, this.bindingRoot);
+    }
+
+    public AttachBefore(bindingParent: any, template: Template<any, any>) {
+        if(!this.bindingRoot)
+            this.BindRoot();
+
+        this.Detach();
+        this.bindingParent = bindingParent;
+        BindingConfig.addChildBefore(bindingParent, template.bindingRoot, this.bindingRoot);
     }
 
     public Detach() {
