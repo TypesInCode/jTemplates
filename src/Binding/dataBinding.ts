@@ -29,10 +29,10 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
     }
 
     protected Apply() {
-        if(this.rebind) {
+        /* if(this.rebind) {
             this.DestroyTemplates(this.activeTemplates);
             this.activeTemplates = [];
-        }
+        } */
         var value = this.Value as Array<any>;
         if(!value)
             value = [];
