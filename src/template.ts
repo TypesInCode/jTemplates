@@ -43,7 +43,7 @@ export function CreateComponentFunction<P, T>(type: any, classType: TemplateCons
     return ComponentFunction.bind(null, type, classType) as BoundComponentFunction<P, T>;
 }
 
-function DefaultDataCallback() { return {}; }
+function DefaultDataCallback() { return true; }
 function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>): Array<Binding<any>> {
     var ret: Array<Binding<any>> = [];
     var def1 = bindingDef as BindingDefinition<any, any>;
