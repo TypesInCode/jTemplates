@@ -39,9 +39,9 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         else if(!Array.isArray(value))
             value = [value];
 
-        var newKeys = value.map(v => this.keyFunction && this.keyFunction(v));
-        for(var x=0; x<this.activeKeys.length && newKeys.length; x++) {
-            if(newKeys[x] !== this.activeKeys[x]) {
+        for(var x=0; x<this.activeKeys.length && value.length; x++) {
+            var newKey = this.keyFunction(value[x]);
+            if(newKey !== this.activeKeys[x]) {
                 this.activeTemplates[x].forEach(t => t.Destroy());
                 var childDef = this.childrenFunction(value[x], x) as Array<any>;
                 if(!Array.isArray(childDef))
@@ -51,7 +51,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
                 this.activeTemplates[x] = templates;
                 var nextTemplate = this.activeTemplates[x+1] && this.activeTemplates[x+1][0];
                 templates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
-                this.activeKeys[x] = newKeys[x];
+                this.activeKeys[x] = newKey;
             }
         }
 
