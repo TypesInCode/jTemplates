@@ -116,7 +116,7 @@ export class Template<P, T> implements ITemplate<P, T> {
 
         this.Detach();
         this.bindingParent = bindingParent;
-        BindingConfig.addChildBefore(bindingParent, template.bindingRoot, this.bindingRoot);
+        BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
 
     public Detach() {
