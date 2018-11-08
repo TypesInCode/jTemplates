@@ -39,7 +39,42 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         else if(!Array.isArray(value))
             value = [value];
 
-        for(var x=0; x<this.activeKeys.length && x<value.length; x++) {
+
+        var newKeys = [];
+        var newTemplates = [];
+        var activeIndex = 0;
+        for(var x=0; x<value.length; x++) {
+            var newKey = this.keyFunction && this.keyFunction(value[x]);
+            newKeys.push(newKey);
+            if(newKey === this.activeKeys[activeIndex]) {
+                newTemplates.push(this.activeTemplates[activeIndex]);
+                activeIndex++;
+            }
+            else {
+                var childDef = this.childrenFunction(value[x], x) as Array<any>;
+                if(!Array.isArray(childDef))
+                    childDef = [childDef];
+                
+                var templates = childDef.filter(c => c).map(c => CreateTemplate(c)); //new Template(c));
+                newTemplates.push(templates);
+                var nextTemplate = this.activeTemplates[activeIndex+1] && this.activeTemplates[activeIndex+1][0];
+                templates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
+                newKeys.push(newKey);
+            }
+        }
+
+        for(; activeIndex<this.activeTemplates.length; activeIndex++)
+            newTemplates.push(this.activeTemplates[activeIndex]);
+
+        if(newTemplates.length > value.length) {
+            var destroyedTemplates = newTemplates.splice(value.length);
+            this.DestroyTemplates(destroyedTemplates);
+        }
+
+        this.activeKeys = newKeys;
+        this.activeTemplates = newTemplates;
+
+        /* for(var x=0; x<this.activeKeys.length && x<value.length; x++) {
             var newKey = this.keyFunction && this.keyFunction(value[x]);
             if(newKey !== this.activeKeys[x]) {
                 this.activeTemplates[x].forEach(t => t.Destroy());
@@ -71,7 +106,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
             this.activeKeys.splice(value.length);
             var destroyedTemplates = this.activeTemplates.splice(value.length);
             this.DestroyTemplates(destroyedTemplates);
-        }
+        } */
     }
 
     private DestroyTemplates(templates: Array<Array<Template<any, any>>>) {
