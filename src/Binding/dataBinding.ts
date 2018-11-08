@@ -46,7 +46,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         for(var x=0; x<value.length; x++) {
             var newKey = this.keyFunction && this.keyFunction(value[x]);
             newKeys.push(newKey);
-            if(newKey === this.activeKeys[activeIndex]) {
+            if(activeIndex < this.activeKeys.length && newKey === this.activeKeys[activeIndex]) {
                 newTemplates.push(this.activeTemplates[activeIndex]);
                 activeIndex++;
             }
