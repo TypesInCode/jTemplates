@@ -59,7 +59,6 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
                 newTemplates.push(templates);
                 var nextTemplate = this.activeTemplates[activeIndex+1] && this.activeTemplates[activeIndex+1][0];
                 templates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
-                newKeys.push(newKey);
             }
         }
 
