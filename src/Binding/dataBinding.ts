@@ -50,6 +50,9 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
             newKeys.push(newKey);
 
             var currentTemplates = this.activeTemplateMap.get(newKey) || this.childrenFunction(value[x], x) as Array<any>;
+            if(!Array.isArray(currentTemplates))
+                currentTemplates = [currentTemplates];
+                
             newTemplateMap.set(newKey, currentTemplates);
             this.activeTemplateMap.delete(newKey);
 
