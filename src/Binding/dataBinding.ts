@@ -49,17 +49,25 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
             var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
             newKeys.push(newKey);
 
-            var currentTemplates = this.activeTemplateMap.get(newKey) || this.childrenFunction(value[x], x) as Array<any>;
-            if(!Array.isArray(currentTemplates))
-                currentTemplates = [currentTemplates];
+            var newTemplates = this.activeTemplateMap.get(newKey); // || (this.childrenFunction(value[x], x) as Array<any>);
+            if(!newTemplates) {
+                var newDefs = this.childrenFunction(value[x], x) as Array<any>;
+                if(!Array.isArray(newDefs))
+                    newDefs = [newDefs];
                 
-            newTemplateMap.set(newKey, currentTemplates);
+                newTemplates = newDefs.filter(d => d).map(d => CreateTemplate(d));
+            }
+
+            if(!Array.isArray(newTemplates))
+                newTemplates = [newTemplates];
+
+            newTemplateMap.set(newKey, newTemplates);
             this.activeTemplateMap.delete(newKey);
 
             if(newKey !== this.activeKeys[x]) {
                 var nextTemplates = this.activeTemplateMap.get(this.activeKeys[x+1]);
                 var nextTemplate = nextTemplates && nextTemplates[0];
-                currentTemplates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
+                newTemplates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
             }
         }
 
