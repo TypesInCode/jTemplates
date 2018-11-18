@@ -6,7 +6,7 @@ declare class DataBinding extends Binding<{
     private rebind;
     private keyFunction;
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
-    activeTemplates: Array<Array<Template<any, any>>>;
+    activeTemplateMap: Map<any, Array<Template<any, any>>>;
     activeKeys: Array<any>;
     constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, rebind: boolean, keyFunction: (val: any) => any);
     Destroy(): void;
