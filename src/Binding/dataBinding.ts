@@ -1,6 +1,6 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template, BindingDefinition } from "../template";
-
+ 
 function CreateTemplate(bindingDef: BindingDefinition<any, any>): Template<any, any> {
     var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>): Template<any, any> };
     var template = new constructor(bindingDef);
@@ -58,8 +58,8 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
                 newTemplates = newDefs.filter(d => d).map(d => CreateTemplate(d));
             }
 
-            if(!Array.isArray(newTemplates))
-                newTemplates = [newTemplates];
+            /* if(!Array.isArray(newTemplates))
+                newTemplates = [newTemplates]; */
 
             newTemplateMap.set(newKey, newTemplates);
             this.activeTemplateMap.delete(newKey);
@@ -73,6 +73,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
 
         this.DestroyTemplates(this.activeTemplateMap);
         this.activeTemplateMap = newTemplateMap;
+        this.activeKeys = newKeys;
 
         /* var newKeys = [];
         var newTemplates = [];
