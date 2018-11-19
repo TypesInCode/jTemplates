@@ -105,7 +105,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         if(!this.bindingRoot)
             this.BindRoot();
 
-        this.Detach();
+        // this.Detach();
         this.bindingParent = bindingParent;
         BindingConfig.addChild(bindingParent, this.bindingRoot);
     }
@@ -114,7 +114,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         if(!this.bindingRoot)
             this.BindRoot();
 
-        this.Detach();
+        // this.Detach();
         this.bindingParent = bindingParent;
         BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
