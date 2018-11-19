@@ -111,6 +111,9 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     public AttachToContainer(container: any) {
+        if(!this.bindingRoot)
+            this.BindRoot();
+        
         BindingConfig.addContainerChild(container, this.bindingRoot);
     }
 

@@ -54,7 +54,7 @@ export var DOMBindingConfig: IBindingConfig = {
         root.removeChild(child);
     },
     remove: function(target: Node) {
-        target.parentNode && target.parentNode.removeChild(target);
+        target && target.parentNode && target.parentNode.removeChild(target);
     },
     setText: function(target: Node, text: string) {
         target.textContent = text;
