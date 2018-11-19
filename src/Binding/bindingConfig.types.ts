@@ -6,5 +6,9 @@ export interface IBindingConfig {
     addChild(root: any, child: any): void;
     addChildBefore(root: any, sibling: any, child: any): void;
     removeChild(root: any, child: any): void;
+    remove(target: any): void;
     setText(target: any, text: string): void;
+    createContainer(): any;
+    addContainerChild(container: any, child: any): void;
+    addChildContainer(root: any, container: any): void;
 }

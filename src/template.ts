@@ -66,7 +66,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
 export class Template<P, T> implements ITemplate<P, T> {
     private bindingDefinition: BindingDefinition<any, T>;
     private bindings: Array<Binding<any>>;
-    private bindingParent: any;
+    // private bindingParent: any;
     private bindingRoot: any;
     private templates: Templates<T>;
 
@@ -106,8 +106,12 @@ export class Template<P, T> implements ITemplate<P, T> {
             this.BindRoot();
 
         // this.Detach();
-        this.bindingParent = bindingParent;
+        // this.bindingParent = bindingParent;
         BindingConfig.addChild(bindingParent, this.bindingRoot);
+    }
+
+    public AttachToContainer(container: any) {
+        BindingConfig.addContainerChild(container, this.bindingRoot);
     }
 
     public AttachBefore(bindingParent: any, template: Template<any, any>) {
@@ -115,16 +119,17 @@ export class Template<P, T> implements ITemplate<P, T> {
             this.BindRoot();
 
         // this.Detach();
-        this.bindingParent = bindingParent;
+        // this.bindingParent = bindingParent;
         BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
 
     public Detach() {
-        if(!this.bindingParent)
-            return;
+        /* if(!this.bindingParent)
+            return; */
 
-        BindingConfig.removeChild(this.bindingParent, this.bindingRoot);
-        this.bindingParent = null;
+        BindingConfig.remove(this.bindingRoot);
+        // BindingConfig.removeChild(this.bindingParent, this.bindingRoot);
+        // this.bindingParent = null;
     }
 
     public Destroy() {

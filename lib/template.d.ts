@@ -6,7 +6,6 @@ export declare function CreateComponentFunction<P, T>(type: any, classType: Temp
 export declare class Template<P, T> implements ITemplate<P, T> {
     private bindingDefinition;
     private bindings;
-    private bindingParent;
     private bindingRoot;
     private templates;
     protected readonly DefaultTemplates: Templates<T>;
@@ -15,6 +14,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     constructor(definition: BindingDefinition<P, T> | string);
     SetTemplates(templates: Templates<T>): void;
     AttachTo(bindingParent: any): void;
+    AttachToContainer(container: any): void;
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
     Detach(): void;
     Destroy(): void;

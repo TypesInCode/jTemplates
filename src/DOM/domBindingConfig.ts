@@ -53,7 +53,19 @@ export var DOMBindingConfig: IBindingConfig = {
     removeChild: function(root: Node, child: Node) {
         root.removeChild(child);
     },
+    remove: function(target: Node) {
+        target.parentNode && target.parentNode.removeChild(target);
+    },
     setText: function(target: Node, text: string) {
         target.textContent = text;
+    },
+    createContainer(): DocumentFragment {
+        return browser.createDocumentFragment();
+    },
+    addContainerChild(container: DocumentFragment, child: Node) {
+        container.appendChild(child);
+    },
+    addChildContainer(root: Node, container: DocumentFragment) {
+        root.appendChild(container);
     }
 }

@@ -1,5 +1,6 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template, BindingDefinition } from "../template";
+import { BindingConfig } from "./bindingConfig";
  
 function CreateTemplate(bindingDef: BindingDefinition<any, any>): Template<any, any> {
     var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>): Template<any, any> };
@@ -45,6 +46,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
 
         var newTemplateMap = new Map();
         var newKeys = [];
+        var container = BindingConfig.createContainer();
         for(var x=0; x<value.length; x++) {
             var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
             newKeys.push(newKey);
@@ -64,7 +66,10 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
             newTemplateMap.set(newKey, newTemplates);
             this.activeTemplateMap.delete(newKey);
 
-            if(newKey !== this.activeKeys[x]) {
+            if(x >= this.activeKeys.length) {
+                newTemplates.forEach(t => t.AttachToContainer(container));
+            }
+            else if(newKey !== this.activeKeys[x]) {
                 var nextTemplates = this.activeTemplateMap.get(this.activeKeys[x+1]);
                 var nextTemplate = nextTemplates && nextTemplates[0];
                 newTemplates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
@@ -74,6 +79,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         this.DestroyTemplates(this.activeTemplateMap);
         this.activeTemplateMap = newTemplateMap;
         this.activeKeys = newKeys;
+        BindingConfig.addChildContainer(this.BoundTo, container);
 
         /* var newKeys = [];
         var newTemplates = [];
