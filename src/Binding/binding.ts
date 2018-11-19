@@ -4,7 +4,8 @@ import { BindingConfig } from './bindingConfig';
 enum BindingStatus {
     Init,
     Updating,
-    Updated
+    Updated,
+    Destroyed
 }
 
 export abstract class Binding<T> {
@@ -33,12 +34,15 @@ export abstract class Binding<T> {
     }
 
     public Update() {
-        if(this.status == BindingStatus.Init) {
+        if(this.status === BindingStatus.Destroyed)
+            return;
+        
+        if(this.status === BindingStatus.Init) {
             this.status = BindingStatus.Updating;
             this.Apply();
             this.status = BindingStatus.Updated;
         }
-        else if(this.status != BindingStatus.Updating) {
+        else if(this.status !== BindingStatus.Updating) {
             this.status = BindingStatus.Updating;
             BindingConfig.scheduleUpdate(() => {
                 this.Apply();
@@ -49,6 +53,7 @@ export abstract class Binding<T> {
 
     public Destroy(): void {
         this.observableScope && this.observableScope.Destroy();
+        this.status = BindingStatus.Destroyed;
     }
 
     protected Init(config: T): void { };
