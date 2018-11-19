@@ -42,6 +42,9 @@ export var DOMBindingConfig: IBindingConfig = {
     addChild: function(root: Node, child: Node) {
         root.appendChild(child);
     },
+    addChildFirst: function(root: Node, child: Node) {
+        DOMBindingConfig.addChildBefore(root, root.firstChild, child);
+    },
     addChildBefore: function(root: Node, sibling: Node, child: Node) {
         if(!sibling) {
             DOMBindingConfig.addChild(root, child);
@@ -49,6 +52,14 @@ export var DOMBindingConfig: IBindingConfig = {
         }
 
         root.insertBefore(child, sibling);
+    },
+    addChildAfter: function(root: Node, sibling: Node, child: Node) {
+        if(!sibling) {
+            DOMBindingConfig.addChildFirst(root, child);
+            return;
+        }
+
+        DOMBindingConfig.addChildBefore(root, sibling.previousSibling, child);
     },
     removeChild: function(root: Node, child: Node) {
         root.removeChild(child);

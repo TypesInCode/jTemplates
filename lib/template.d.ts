@@ -16,6 +16,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     AttachTo(bindingParent: any): void;
     AttachToContainer(container: any): void;
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
+    AttachAfter(bindingParent: any, template: Template<any, any>): void;
     Detach(): void;
     Destroy(): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;

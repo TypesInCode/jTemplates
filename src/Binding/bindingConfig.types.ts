@@ -4,7 +4,9 @@ export interface IBindingConfig {
     removeListener(target: any, type: string, callback: {(): void}): void;
     createBindingTarget(type: any): any;
     addChild(root: any, child: any): void;
+    addChildFirst(root: any, child: any): void;
     addChildBefore(root: any, sibling: any, child: any): void;
+    addChildAfter(root: any, sibling: any, child: any): void;
     removeChild(root: any, child: any): void;
     remove(target: any): void;
     setText(target: any, text: string): void;

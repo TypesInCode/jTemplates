@@ -47,6 +47,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         var newTemplateMap = new Map();
         var newKeys = [];
         var container = BindingConfig.createContainer();
+        var previousTemplate = null as Template<any, any>;
         for(var x=0; x<value.length; x++) {
             var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
             newKeys.push(newKey);
@@ -67,13 +68,25 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
             this.activeTemplateMap.delete(newKey);
 
             if(x >= this.activeKeys.length) {
-                newTemplates.forEach(t => t.AttachToContainer(container));
+                newTemplates.forEach(t => {
+                    t.AttachToContainer(container);
+                    previousTemplate = t;
+                });
             }
             else if(newKey !== this.activeKeys[x]) {
-                var nextTemplates = this.activeTemplateMap.get(this.activeKeys[x+1]);
-                var nextTemplate = nextTemplates && nextTemplates[0];
-                newTemplates.forEach(t => t.AttachBefore(this.BoundTo, nextTemplate));
+                /* var nextTemplates = this.activeTemplateMap.get(this.activeKeys[x+1]);
+                var nextTemplate = nextTemplates && nextTemplates[0]; */
+                newTemplates.forEach(t => {
+                    // t.AttachBefore(this.BoundTo, nextTemplate);
+                    t.AttachAfter(this.BoundTo, previousTemplate);
+                    previousTemplate = t;
+                });
             }
+            else {
+                previousTemplate = newTemplates[newTemplates.length - 1] || previousTemplate;
+            }
+
+            // previousTemplate = newTemplates[newTemplates.length - 1];
         }
 
         this.DestroyTemplates(this.activeTemplateMap);
