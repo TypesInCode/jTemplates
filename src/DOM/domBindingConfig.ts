@@ -59,7 +59,7 @@ export var DOMBindingConfig: IBindingConfig = {
             return;
         }
 
-        DOMBindingConfig.addChildBefore(root, sibling.previousSibling, child);
+        DOMBindingConfig.addChildBefore(root, sibling.nextSibling, child);
     },
     removeChild: function(root: Node, child: Node) {
         root.removeChild(child);
