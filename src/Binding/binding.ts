@@ -45,6 +45,9 @@ export abstract class Binding<T> {
         else if(this.status !== BindingStatus.Updating) {
             this.status = BindingStatus.Updating;
             BindingConfig.scheduleUpdate(() => {
+                if(this.status === BindingStatus.Destroyed)
+                    return;
+                
                 this.Apply();
                 this.status = BindingStatus.Updated;
             });
