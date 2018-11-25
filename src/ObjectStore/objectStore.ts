@@ -170,7 +170,7 @@ export class ObjectStore<T> {
     }
 
     private ProcessChanges(rootPath: string, path: string, value: any, oldValue: any, skipDependents?: boolean) {
-        this.emitterMap.delete(path);
+        this.getterMap.delete(path);
         var newId = value && this.getIdCallback && this.getIdCallback(value);
         var oldId = oldValue && this.getIdCallback && this.getIdCallback(oldValue);
 
