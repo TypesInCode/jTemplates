@@ -4,7 +4,7 @@ import { browser } from './browser';
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
 var updateIndex = 0;
-var batchSize = 100;
+var batchSize = 3000;
 
 function processUpdates() {
     var batchEnd = batchSize + updateIndex;
@@ -25,6 +25,19 @@ export var DOMBindingConfig: IBindingConfig = {
     scheduleUpdate: function(callback: () => void): void {
         pendingUpdates.push(callback);
     
+        if(!updateScheduled) {
+            updateScheduled = true;
+            browser.requestAnimationFrame(processUpdates);
+        }
+    },
+    updateComplete: function(callback: () => void): void {
+        if(pendingUpdates.length === 0) {
+            callback();
+            return;
+        }
+
+        // updateCompleteCallbacks.push(callback);
+        pendingUpdates.push(callback);
         if(!updateScheduled) {
             updateScheduled = true;
             browser.requestAnimationFrame(processUpdates);

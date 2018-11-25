@@ -49,9 +49,6 @@ export interface ComponentDefinition<P, T> {
     key?: (val: P) => any;
     rebind?: boolean;
 }
-export declare type BoundTemplateFunction<P> = {
-    (templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
-};
 export declare type BoundComponentFunction<P, T> = {
     (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T>;
 };

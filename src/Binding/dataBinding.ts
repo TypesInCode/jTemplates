@@ -58,7 +58,7 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
                 if(!Array.isArray(newDefs))
                     newDefs = [newDefs];
                 
-                newTemplates = newDefs.filter(d => d).map(d => CreateTemplate(d));
+                newTemplates = newDefs.map(d => CreateTemplate(d));
             }
 
             /* if(!Array.isArray(newTemplates))

@@ -1,5 +1,4 @@
 import { Binding } from "./binding";
-import { ProxyObservable } from "../ProxyObservable/proxyObservable";
 import { BindingConfig } from "./bindingConfig";
 
 class EventBinding extends Binding<any> {

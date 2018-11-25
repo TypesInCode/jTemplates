@@ -1,5 +1,6 @@
 export interface IBindingConfig {
     scheduleUpdate(callback: () => void): void;
+    updateComplete(callback: () => void): void;
     addListener(target: any, type: string, callback: {
         (): void;
     }): void;

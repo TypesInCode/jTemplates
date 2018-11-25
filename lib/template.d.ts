@@ -2,7 +2,6 @@ import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Template
 export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
-export declare function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
 export declare class Template<P, T> implements ITemplate<P, T> {
     private bindingDefinition;
     private bindings;
@@ -13,6 +12,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     protected readonly Root: any;
     constructor(definition: BindingDefinition<P, T> | string);
     SetTemplates(templates: Templates<T>): void;
+    UpdateComplete(callback: () => void): void;
     AttachTo(bindingParent: any): void;
     AttachToContainer(container: any): void;
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
@@ -21,4 +21,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     Destroy(): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;
     private BindRoot;
+}
+export declare namespace Template {
+    function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
 }

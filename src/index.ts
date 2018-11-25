@@ -1,50 +1,100 @@
-import { Template, BindingDefinition, CreateComponentFunction } from "./template";
-import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
+import { Template } from "./template";
+import { ObjectStore, Value } from './ObjectStore/objectStore';
+import { div, input, b } from "./DOM/elements";
 
-export { Template, BindingDefinition, CreateComponentFunction, ProxyObservable, Value };
+// import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
 
-/* class Comp extends Template<any, any> {
-    state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
+// export { Template, BindingDefinition, CreateComponentFunction, ProxyObservable, Value };
+
+var data = [] as Array<{_id: string, name: string, child: { _id: string, name: string } }>;
+for(var x=0; x<10000; x++) {
+    data[x] = {
+        _id: `root_${x}`,
+        name: `item ${x}`,
+        child: {
+            _id: `child_${Math.ceil(Math.random() * 3)}`,
+            name: `child item ${x}`
+        }
+    };
+}
+
+var count = 0;
+var store = ObjectStore.Create([], (val) => val._id);
+
+setTimeout(() => {
+    store.Write(store.Root, () => data);
+}, 5000);
+
+class Comp extends Template<any, any> {
+
+    state = ObjectStore.Create({ filter: "" });
+
+    get VisibleItems() {
+        var s = new Date();
+        var d =  data.filter(i => {
+            return i.child.name.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0;
+        });
+        var e = new Date();
+        console.log(`Raw data processed in ${e.getTime() - s.getTime()} milliseconds`);
+
+        var start = new Date();
+        var ret =  store.Root.filter(i => {
+            return i.child.name.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0;
+        });
+        var end = new Date();
+
+        console.log(`Data processed in ${end.getTime() - start.getTime()} milliseconds`);
+
+        return ret;
+    }
+
+    protected Template() {
+        return [
+            input({ props: () => ({ type: "button", value: "click" }), on: () => ({ click: this.onClick.bind(this) }) }),
+            input({ props: () => ({ type: "text", value: "" }), on: () => ({ keyup: this.onKeyUp.bind(this) }) }),
+            div({ key: i => i._id, data: () => this.VisibleItems }, (item) => [
+                div({ text: () => item.name }),
+                div({ data: () => item.child }, (child) => [
+                    div({ text: () => `Id: ${child._id} Name: ${child.name}` })
+                ])
+            ])
+        ]
+    }
 
     constructor() {
-        super(ComponentFunction("comp", Comp as { new(): Template<any, any> }, {}));
+        super("app");
     }
 
-    public Template(): Array<any> {
-        return [
-            childComp({ data: () => this.state.title }, {
-                title: () => TemplateFunction("span", { text: () => this.state.title }),
-                body: () => TemplateFunction("span", { text: () => this.state.text })
-            })
-        ];
+    onClick() {
+        store.Root[42].child.name = "test";
     }
+
+    onKeyUp(e: any) {
+        /* var start = new Date();
+        this.state.Root.filter = e.target.value;
+        this.UpdateComplete(() => {
+            var end = new Date();
+            console.log(`Update complete in ${end.getTime() - start.getTime()} milliseconds`);
+        }); */
+        if(this.state.Root.filter === e.target.value)
+            return;
+        
+        var start = new Date();
+        this.state.Write(this.state.Root, (val) => { val.filter = e.target.value });
+        this.UpdateComplete(() => {
+            var end = new Date();
+            console.log(`Update complete in ${end.getTime() - start.getTime()} milliseconds`);
+        });
+    }
+
 }
 
-class ChildComp extends Template<string, { title: any, body: any }> {
-    constructor(bindingDef: BindingDefinition<string, { title: any, body: any }>) {
-        super(bindingDef);
-    }
-
-    protected get DefaultTemplates() {
-        return {
-            title: (): any => null,
-            body: (): any => null
-        }
-    }
-
-    protected Template(d: string) {
-        return [
-            div({ props: () => ({ className: "header" }) }, this.Templates.title),
-            div({ props: () => ({ className: "body" }) }, this.Templates.body)
-        ];
-    }
-}
-
-var childComp = CreateComponentFunction("childcomp", ChildComp);
+import { browser } from "./DOM/browser";
 
 var container = browser.window.document.getElementById("container");
 var comp = new Comp();
+var start = new Date();
 comp.AttachTo(container);
+var end = new Date();
 
-comp.state.title = "something else"; */
-
+console.log(`Attached in ${end.getTime() - start.getTime()} milliseconds`)

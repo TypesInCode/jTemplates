@@ -1,89 +1,118 @@
-import { Template, BindingDefinition, CreateComponentFunction } from "./template";
-import { browser } from "./DOM/browser";
-import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
-import { span, div } from "./DOM/elements";
-import { ProxyObservableScope } from "./ProxyObservable/proxyObservableScope";
+import { ObjectStore } from "./ObjectStore/objectStore";
+import { ObjectStoreScope } from "./ObjectStore/ObjectStoreScope";
 
-var obs = ProxyObservable.Create({ first: { child: "val1" } });
-var val = null;
-var emitters = ProxyObservable.Watch(() => val = obs.first.child);
 
-console.log(val);
+/* var store = ObjectStore.Create(["first", "second"]);
+
+var scope = new ObjectStoreScope(() => store.Root.length)
+console.log(scope.Value);
+
+store.Root = ["first", "second", "third"];
+
+console.log(scope.Value);
+
+store.Root = ["first"];
+
+console.log(scope.Value); */
+
+interface IType {
+    rootProp: {
+        _id: string;
+        name: string;
+    };
+
+    secondProp: {
+        _id: string;
+        name: string;
+    }
+
+    array: Array<{ _id: string, name: string }>;
+}
+
+var store = new ObjectStore<IType>((obj: any) => obj._id);
+
+console.log(store.Root);
+store.Write<IType>(null, () => ({ rootProp: { _id: "unique", name: "TEST" }, secondProp: { _id: "unique", name: "TEST" }, array: [{ _id: "unique", name: "ARRAY"}] }));
+
+var value = null;
+var emitters = ObjectStore.Watch(() => value = store.Root.rootProp.name);
+
 console.log(emitters.length);
+console.log(value);
 
-var setFired = false;
-emitters[1].addListener("set", () => {
-    setFired = true;
-});
-
-obs.first.child = "val2";
-console.log(setFired);
-
-
-/* var proxy = ProxyObservable.Create({ arr: [{ var1: { obj1: "val" } }, { var1: null }]})
-proxy.arr = [{ var1: null }, { var1: { obj1: "val" } }, { var1: null }];
-console.log(proxy.arr[0].var1);
-console.log(proxy.arr[1].var1);
-console.log(proxy.arr[2].var1); */
-
-/* var obs = ProxyObservable.Create([]);
-var val = null;
-var emitters = ProxyObservable.Watch(() => val = obs.length);
-
-console.log(val);
-console.log(emitters.length);;
-
-var setFired = false;
-emitters[0].addListener("set", () => {
-    setFired = true;
-});
-
-obs[0] = "test";
-console.log(setFired);
-console.log(obs[0]); */
-
-/* class Comp extends Template<any, any> {
-    state = ProxyObservable.Create({ arr: [1, 2, 3], class: "test", text: "span content", title: "subcomp TITLE" });
-
-    constructor() {
-        super("comp");
-    }
-
-    public Template(): Array<any> {
-        return [
-            childComp({ data: () => Value.Create(() => this.state.class) }, {
-                title: () => span({ text: () => this.state.title }),
-                // body: () => span({ text: () => this.state.text })
-            })
-        ];
-    }
-
-    public Destroy() {
-        super.Destroy();
-        ProxyObservable.Destroy(this.state);
-    }
+function setCallback() {
+    console.log("set called");
 }
 
-class ChildComp extends Template<Value<string>, { title: any, body?: any }> {
-    protected Template(d: Value<string>) {
-        return [
-            div({ props: () => ({ className: `header ${d}` }) }, this.Templates.title),
-            div({ props: () => ({ className: "body" }) }, this.Templates.body)
-        ];
-    }
-}
+emitters.forEach(e => e.addListener("set", setCallback));
 
-var childComp = CreateComponentFunction("childcomp", ChildComp);
+store.Write(store.Root.rootProp, (val) => {
+    val.name = "CHANGED";
+    return val;
+});
 
-var container = browser.window.document.createElement("div");
-var comp = new Comp();
-comp.AttachTo(container);
-console.log(container.innerHTML);
+var value = null;
+var emitters = ObjectStore.Watch(() => value = store.Root.secondProp.name);
 
-comp.state.text = "test2";
-comp.state.title = "TITLE CHANGED";
-comp.state.class = "class2";
+console.log(emitters.length);
+console.log(value);
 
-console.log(container.innerHTML);
-comp.Destroy();
-console.log(container.innerHTML || "empty"); */
+store.Write(store.Root.secondProp, (val) => {
+    val._id = "different";
+    val.name = "something else";
+    return val;
+});
+
+store.Write(store.Root.rootProp, (val) => {
+    val._id = "different";
+    val.name = "continues to change";
+    return val;
+});
+
+var value = null;
+var emitters = ObjectStore.Watch(() => value = store.Root.secondProp.name);
+
+console.log(emitters.length);
+console.log(value);
+
+var value = null;
+var emitters = ObjectStore.Watch(() => value = store.Root.rootProp.name);
+
+console.log(emitters.length);
+console.log(value);
+
+store.Write(store.Root.array, (arr) => {
+    arr.push({ _id: "different", name: "changed by array" });
+});
+
+console.log(store.Root.rootProp.name);
+
+store.Write(store.Root.rootProp, (val) => {
+    val._id = "different";
+    val.name = "last test";
+    return val;
+});
+
+console.log(store.Root.array[1].name);
+
+store.Write(store.Root.array, (val) => {
+    val[1] = { _id: "allalone", name: "name allalone" };
+    return val;
+});
+
+console.log(store.Root.rootProp.name);
+
+store.Write(store.Get<{ _id: string, name: string }>("different"), (val) => {
+    val.name = "after get is called";
+    return val;
+});
+
+console.log(store.Root.array[1].name);
+
+store.Write(store.Root.array, (val) => {
+    return [{ _id: "different", name: "line 113" }];
+});
+
+store.Root = null;
+
+console.log(store.Root);

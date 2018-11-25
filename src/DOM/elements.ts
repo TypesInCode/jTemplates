@@ -1,5 +1,5 @@
 import { TemplateFunction } from "../template";
-import { BoundTemplateFunction, TemplateDefinition, BindingDefinitions, BindingDefinition } from "../template.types";
+import { TemplateDefinition, BindingDefinitions, BindingDefinition } from "../template.types";
 
 export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return TemplateFunction("a", templateDefinition, children);

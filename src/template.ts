@@ -4,7 +4,7 @@ import PropertyBinding from "./Binding/propertyBinding";
 import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
-import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundTemplateFunction, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
+import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
 
 export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
@@ -39,7 +39,7 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
     }
 }
 
-export function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
+function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
     return ComponentFunction.bind(null, type, classType) as BoundComponentFunction<P, T>;
 }
 
@@ -101,6 +101,10 @@ export class Template<P, T> implements ITemplate<P, T> {
         }
     }
 
+    public UpdateComplete(callback: () => void) {
+        BindingConfig.updateComplete(callback);
+    }
+
     public AttachTo(bindingParent: any) {
         if(!this.bindingRoot)
             this.BindRoot();
@@ -150,11 +154,17 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     protected Template(c: P, i: number): BindingDefinitions<P, T> {
-        return null;
+        return [];
     }
 
     private BindRoot() {
         this.bindingRoot = BindingConfig.createBindingTarget(this.bindingDefinition.type);
         this.bindings = BindTarget(this.bindingRoot, this.bindingDefinition);
+    }
+}
+
+export namespace Template {
+    export function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
+        return CreateComponentFunction(type, classType);
     }
 }
