@@ -1,17 +1,22 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 declare class DataBinding extends Binding<{
-    (c: any, i: number): BindingDefinitions<any, any>;
+    children: {
+        (c: any, i: number): BindingDefinitions<any, any>;
+    };
+    key: (val: any) => any;
 }> {
-    private rebind;
-    private keyFunction;
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     activeKeys: Array<any>;
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, rebind: boolean, keyFunction: (val: any) => any);
+    keyFunction: (val: any) => any;
+    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any);
     Destroy(): void;
-    protected Init(childrenFunction: {
-        (c: any, i: number): BindingDefinitions<any, any>;
+    protected Init(config: {
+        children: {
+            (c: any, i: number): BindingDefinitions<any, any>;
+        };
+        key: (val: any) => any;
     }): void;
     protected Apply(): void;
     private DestroyTemplates;

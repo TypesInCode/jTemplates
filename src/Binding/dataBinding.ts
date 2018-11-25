@@ -8,14 +8,15 @@ function CreateTemplate(bindingDef: BindingDefinition<any, any>): Template<any, 
     return template;
 }
 
-class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, any>}> {
+class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }> {
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     //activeTemplates: Array<Array<Template<any, any>>>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>; // { [key: string]: Array<Template<any, any>> };
     activeKeys: Array<any>;
+    keyFunction: (val: any) => any;
 
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, private rebind: boolean, private keyFunction: (val: any) => any) {
-        super(boundTo, bindingFunction, childrenFunction);
+    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
+        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
@@ -26,11 +27,12 @@ class DataBinding extends Binding<{(c: any, i: number): BindingDefinitions<any, 
         this.activeTemplates = []; */
     }
 
-    protected Init(childrenFunction: {(c: any, i: number): BindingDefinitions<any, any>}) {
+    protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {// childrenFunction: {(c: any, i: number): BindingDefinitions<any, any>}) {
         // this.activeTemplates = [];
         this.activeTemplateMap = new Map(); //{};
         this.activeKeys = [];
-        this.childrenFunction = childrenFunction;
+        this.childrenFunction = config.children;
+        this.keyFunction = config.key;
     }
 
     protected Apply() {

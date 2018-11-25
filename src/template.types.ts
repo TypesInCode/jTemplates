@@ -14,7 +14,6 @@ export interface BindingDefinition<P, T> {
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: { new(bindingDef?: BindingDefinition<any, any>): ITemplate<P, T> };
     templates?: Templates<T>;
-    rebind?: boolean;
 }
 
 export interface TemplateDefinition<P> {
@@ -23,7 +22,6 @@ export interface TemplateDefinition<P> {
     data?: () => P | Array<P>;
     key?: (val: P) => any;
     text?: () => string;
-    rebind?: boolean;
     // children?: (c?: P, i?: number) => TemplateDefinition;
 }
 
@@ -32,7 +30,6 @@ export interface ComponentDefinition<P, T> {
     on?: () => {[name: string]: {(event?: any): void}};
     data?: () => P | Array<P>;
     key?: (val: P) => any;
-    rebind?: boolean;
     //templates?: Templates<T>;
 }
 

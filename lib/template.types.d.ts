@@ -20,7 +20,6 @@ export interface BindingDefinition<P, T> {
         new (bindingDef?: BindingDefinition<any, any>): ITemplate<P, T>;
     };
     templates?: Templates<T>;
-    rebind?: boolean;
 }
 export interface TemplateDefinition<P> {
     props?: () => {
@@ -34,7 +33,6 @@ export interface TemplateDefinition<P> {
     data?: () => P | Array<P>;
     key?: (val: P) => any;
     text?: () => string;
-    rebind?: boolean;
 }
 export interface ComponentDefinition<P, T> {
     props?: () => {
@@ -47,7 +45,6 @@ export interface ComponentDefinition<P, T> {
     };
     data?: () => P | Array<P>;
     key?: (val: P) => any;
-    rebind?: boolean;
 }
 export declare type BoundComponentFunction<P, T> = {
     (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T>;

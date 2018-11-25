@@ -18,7 +18,6 @@ export function TemplateFunction(type: string, templateDefinition?: TemplateDefi
         key: templateDefinition && templateDefinition.key,
         text: templateDefinition && templateDefinition.text,
         children: children, // templateDefinition.children
-        rebind: templateDefinition && templateDefinition.rebind
     }
 }
 
@@ -35,7 +34,6 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
         data: componentDefinition && componentDefinition.data,
         key: componentDefinition && componentDefinition.key,
         templates: templates, // componentDefinition.templates
-        rebind: componentDefinition && componentDefinition.rebind
     }
 }
 
@@ -57,7 +55,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
         ret.push(new TextBinding(bindingTarget, def1.text));
     else if(def1.children) {
         def1.data = def1.data || DefaultDataCallback;
-        ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.rebind, def1.key));
+        ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.key));
     }
 
     return ret;
