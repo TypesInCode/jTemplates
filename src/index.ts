@@ -1,10 +1,10 @@
-import { Template } from "./template";
+import { Template, BindingDefinition } from "./template";
 import { ObjectStore, Value } from './ObjectStore/objectStore';
 import { div, span, input, b, a, br, img, video, source, option, select, h1, h2, h3 } from "./DOM/elements";
 
 // import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
 
-export { Template, ObjectStore, Value, div, span, input, b, a, br, img, video, source, option, select, h1, h2, h3 };
+export { Template, ObjectStore, BindingDefinition, Value, div, span, input, b, a, br, img, video, source, option, select, h1, h2, h3 };
 
 /* var data = [] as Array<{_id: string, name: string, child: { _id: string, name: string } }>;
 for(var x=0; x<10000; x++) {
