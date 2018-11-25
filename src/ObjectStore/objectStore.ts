@@ -293,9 +293,9 @@ export class ObjectStore<T> {
                 var ret = this.getterMap.get(path);
                 return ret || this.CreateGetterObject(val, path);
             },
-            /* set: (val: any) => {
+            set: (val: any) => {
                 this.WriteTo(path, path, val);
-            } */
+            }
         });
     }
 
