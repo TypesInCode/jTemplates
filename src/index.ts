@@ -1,12 +1,12 @@
 import { Template } from "./template";
 import { ObjectStore, Value } from './ObjectStore/objectStore';
-import { div, input, b } from "./DOM/elements";
+import { div, span, input, b, a, br, img, video, source, option, select, h1, h2, h3 } from "./DOM/elements";
 
 // import { ProxyObservable, Value } from "./ProxyObservable/proxyObservable";
 
-// export { Template, BindingDefinition, CreateComponentFunction, ProxyObservable, Value };
+export { Template, ObjectStore, Value, div, span, input, b, a, br, img, video, source, option, select, h1, h2, h3 };
 
-var data = [] as Array<{_id: string, name: string, child: { _id: string, name: string } }>;
+/* var data = [] as Array<{_id: string, name: string, child: { _id: string, name: string } }>;
 for(var x=0; x<10000; x++) {
     data[x] = {
         _id: `root_${x}`,
@@ -70,12 +70,6 @@ class Comp extends Template<any, any> {
     }
 
     onKeyUp(e: any) {
-        /* var start = new Date();
-        this.state.Root.filter = e.target.value;
-        this.UpdateComplete(() => {
-            var end = new Date();
-            console.log(`Update complete in ${end.getTime() - start.getTime()} milliseconds`);
-        }); */
         if(this.state.Root.filter === e.target.value)
             return;
         
@@ -97,4 +91,4 @@ var start = new Date();
 comp.AttachTo(container);
 var end = new Date();
 
-console.log(`Attached in ${end.getTime() - start.getTime()} milliseconds`)
+console.log(`Attached in ${end.getTime() - start.getTime()} milliseconds`) */
