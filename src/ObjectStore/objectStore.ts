@@ -146,7 +146,7 @@ export class ObjectStore<T> {
         var path = (readOnly as any).___path;
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
         var childPath = [path, localValue.length].join(".");
-        localValue.push(newValue);
+        localValue.push(null);
         this.WriteTo(childPath, childPath, newValue);
         this.EmitSet(path);
     }
