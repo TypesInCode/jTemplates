@@ -10,7 +10,7 @@ function IsValue(value: any) {
 var globalEmitter = new Emitter();
 
 class ObjectStoreEmitter extends Emitter {
-    constructor(public ___path: string) {
+    constructor(public ___path: string, public store: ObjectStore<any>) {
         super();
     }
 }
@@ -50,17 +50,17 @@ class StoreValue<T> extends Value<T> {
     protected getValue(): T {
         var emitter = this.store.GetEmitter(this.valuePath);
         globalEmitter.emit("get", emitter);
-        return this.store.GetValue(this.valuePath);
+        return this.store.GetPath(this.valuePath);
     }
 
     protected setValue(val: T): void {
-        this.store.SetValue(this.valuePath, val);
+        this.store.SetPath(this.valuePath, val);
         this.store.GetEmitter(this.valuePath).emit("set");
     }
 
 }
 
-class LoneValue<T> extends Value<T> {
+class StaticValue<T> extends Value<T> {
     private emitter = new Emitter();
 
     constructor(private value: T) {
@@ -89,8 +89,6 @@ export class ObjectStore<T> {
         this.EmitGet("root");
         var ret = this.getterMap.get("root");
         return ret || this.CreateGetterObject(this.root, "root");
-        /* var ret = this.CreateGetterObject(this.root, "root");
-        return ret; */
     }
 
     public set Root(val: T) {
@@ -100,7 +98,7 @@ export class ObjectStore<T> {
     constructor(idCallback?: { (val: any): any }) {
         this.getIdCallback = idCallback;
         this.emitterMap = new Map();
-        this.emitterMap.set("root", new ObjectStoreEmitter("root"));
+        this.emitterMap.set("root", new ObjectStoreEmitter("root", this));
         this.getterMap = new Map();
         this.idToPathsMap = new Map();
     }
@@ -115,37 +113,20 @@ export class ObjectStore<T> {
         return this.CreateGetterObject(value, path);
     }
 
-    public GetEmitter(path: string): ObjectStoreEmitter {
-        return this.emitterMap.get(path);
-    }
-
-    public GetValue(path: string): any {
+    public GetPath(path: string): any {
         var value = this.ResolvePropertyPath(path);
-
-        if(!IsValue(value))
-            throw `Store path: ${path} does not resolve to a value type`;
-
         return value;
     }
 
-    public SetValue(path: string, value: any) {
-        if(!IsValue(value))
-            throw `Can only set value types by path`;
-        
+    public SetPath(path: string, value: any) {        
         this.WriteTo(path, path, value);
     }
 
-    public Value<O>(valueFunction: { (): O }): Value<O> {
-        var emitters = ObjectStore.Watch(() => valueFunction()) as Array<ObjectStoreEmitter>;
-        var emitter = emitters[emitters.length - 1];
-
-        if(emitter && emitter === this.emitterMap.get(emitter.___path))
-            return new StoreValue<O>(this, emitter.___path);
-
-        throw `Invalid value expression. ${emitter ? 'Found emitter does not belong to this store.' : 'No emitters found.'}`;
+    public GetEmitter(path: string): Emitter {
+        return this.emitterMap.get(path);
     }
 
-    public Write<O>(readOnly: O | string, updateCallback?: { (current: O): O } | { (current: O): void }): void {
+    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): void {
         if(typeof readOnly === 'string')
             readOnly = this.Get(readOnly);
         
@@ -153,11 +134,21 @@ export class ObjectStore<T> {
         var localValue = this.ResolvePropertyPath(path) as O;
         var mutableCopy = this.CreateCopy(localValue);
 
-        var newValue = updateCallback(mutableCopy);
-        this.WriteTo(path, path, typeof newValue !== "undefined" ? newValue : mutableCopy);;
-        /* this.writingRoot = path === "root";
-        this.WriteToPath(typeof newValue !== "undefined" ? newValue : mutableCopy, localValue, path);
-        this.writingRoot = false; */
+        var newValue = null;
+        if(typeof updateCallback === 'function')
+            newValue = (updateCallback as { (current: O): O })(mutableCopy);
+        else newValue = updateCallback;
+
+        this.WriteTo(path, path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+    }
+
+    public Push<O>(readOnly: Array<O>, newValue: O) {
+        var path = (readOnly as any).___path;
+        var localValue = this.ResolvePropertyPath(path) as Array<O>;
+        var childPath = [path, localValue.length].join(".");
+        localValue.push(newValue);
+        this.WriteTo(childPath, childPath, newValue);
+        this.EmitSet(path);
     }
 
     private WriteTo(rootPath: string, path: string, value: any, skipDependents?: boolean) {
@@ -207,7 +198,6 @@ export class ObjectStore<T> {
             }
         }
 
-        // this.RemoveEmitters(oldValue, skipProperties, path);
         this.CleanUp(oldValue, skipProperties, path);
         this.EmitSet(path);
     }
@@ -322,7 +312,7 @@ export class ObjectStore<T> {
     private EmitSet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            emitter = new ObjectStoreEmitter(path);
+            emitter = new ObjectStoreEmitter(path, this);
             this.emitterMap.set(path, emitter);
         }
         emitter.emit("set");
@@ -331,7 +321,7 @@ export class ObjectStore<T> {
     private EmitGet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            emitter = new ObjectStoreEmitter(path);
+            emitter = new ObjectStoreEmitter(path, this);
             this.emitterMap.set(path, emitter);
         }
 
@@ -362,10 +352,16 @@ export namespace ObjectStore {
         return [...emitters];
     }
 
-    export function Value<O>(val: O): Value<O> {
-        if(!IsValue(val))
-            "Parameter is not a valid value type";
+    export function Value<O>(valueFunction: { (): O }): Value<O> {
+        var val: O = null;
+        var emitters = ObjectStore.Watch(() => { val = valueFunction() }) as Array<ObjectStoreEmitter>;
+        if(emitters.length > 0) {
+            var emitter = emitters[emitters.length - 1];
 
-        return new LoneValue<O>(val);
+            if(emitter instanceof ObjectStoreEmitter)
+                return new StoreValue<O>(emitter.store, emitter.___path);
+        }
+
+        return new StaticValue(val);
     }
 }

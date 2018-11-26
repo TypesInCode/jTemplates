@@ -1,8 +1,4 @@
 import Emitter from "../emitter";
-class ObjectStoreEmitter extends Emitter {
-    ___path: string;
-    constructor(___path: string);
-}
 export declare abstract class Value<T> {
     Value: T;
     constructor();
@@ -22,17 +18,15 @@ export declare class ObjectStore<T> {
         (val: any): any;
     });
     Get<T>(id: string): T;
-    GetEmitter(path: string): ObjectStoreEmitter;
-    GetValue(path: string): any;
-    SetValue(path: string, value: any): void;
-    Value<O>(valueFunction: {
-        (): O;
-    }): Value<O>;
-    Write<O>(readOnly: O | string, updateCallback?: {
+    GetPath(path: string): any;
+    SetPath(path: string, value: any): void;
+    GetEmitter(path: string): Emitter;
+    Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;
-    }): void;
+    } | O): void;
+    Push<O>(readOnly: Array<O>, newValue: O): void;
     private WriteTo;
     private ProcessChanges;
     private CleanUp;
@@ -51,6 +45,7 @@ export declare namespace ObjectStore {
     function Watch(callback: {
         (): void;
     }): Array<Emitter>;
-    function Value<O>(val: O): Value<O>;
+    function Value<O>(valueFunction: {
+        (): O;
+    }): Value<O>;
 }
-export {};
