@@ -132,18 +132,22 @@ export class ObjectStore<T> {
         
         var path = readOnly ? (readOnly as any).___path : "root";
         var localValue = this.ResolvePropertyPath(path) as O;
-        var mutableCopy = this.CreateCopy(localValue);
 
         var newValue = null;
-        if(typeof updateCallback === 'function')
+        var mutableCopy = null;
+        if(typeof updateCallback === 'function') {
+            mutableCopy = this.CreateCopy(localValue);
             newValue = (updateCallback as { (current: O): O })(mutableCopy);
-        else newValue = updateCallback;
+        }
+        else 
+            newValue = updateCallback;
 
         this.WriteTo(path, path, typeof newValue !== "undefined" ? newValue : mutableCopy);
     }
 
     public Push<O>(readOnly: Array<O>, newValue: O) {
         var path = (readOnly as any).___path;
+        this.getterMap.delete(path);
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
         var childPath = [path, localValue.length].join(".");
         localValue.push(null);
