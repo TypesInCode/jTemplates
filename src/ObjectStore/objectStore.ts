@@ -109,9 +109,9 @@ export class ObjectStore<T> {
             return null;
 
         var path = paths.values().next().value;
-        var value = this.ResolvePropertyPath(path);
         this.EmitGet(path);
-        return this.CreateGetterObject(value, path);
+        var ret = this.getterMap.get(path);
+        return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
     public GetPath(path: string): any {
@@ -292,11 +292,9 @@ export class ObjectStore<T> {
         Object.defineProperty(target, property, {
             enumerable: true,
             get: () => {
-                var val = this.ResolvePropertyPath(path);
-
                 this.EmitGet(path);
                 var ret = this.getterMap.get(path);
-                return ret || this.CreateGetterObject(val, path);
+                return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
             },
             set: (val: any) => {
                 this.WriteTo(path, path, val);
