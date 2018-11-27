@@ -147,11 +147,17 @@ export class ObjectStore<T> {
 
     public Push<O>(readOnly: Array<O>, newValue: O) {
         var path = (readOnly as any).___path;
-        this.getterMap.delete(path);
+        // this.getterMap.delete(path);
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
-        var childPath = [path, localValue.length].join(".");
+        var oldLength = localValue.length;
+
+        var childPath = [path, oldLength].join(".");
         localValue.push(null);
         this.WriteTo(childPath, childPath, newValue);
+
+        var getterValue = this.getterMap.get(path) as Array<O>;
+        getterValue.push(this.CreateGetterObject(newValue, childPath));
+        
         this.EmitSet(path);
     }
 
