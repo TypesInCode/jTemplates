@@ -110,11 +110,13 @@ export class ObjectStore<T> {
 
         var path = paths.values().next().value;
         var value = this.ResolvePropertyPath(path);
+        this.EmitGet(path);
         return this.CreateGetterObject(value, path);
     }
 
     public GetPath(path: string): any {
         var value = this.ResolvePropertyPath(path);
+        this.EmitGet(path);
         return value;
     }
 
@@ -157,7 +159,7 @@ export class ObjectStore<T> {
 
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
-        
+
         this.EmitSet(path);
     }
 
