@@ -129,8 +129,11 @@ export class ObjectStore<T> {
     }
 
     public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): void {
-        if(typeof readOnly === 'string')
+        if(typeof readOnly === 'string') {
             readOnly = this.Get(readOnly);
+            if(!readOnly)
+                return;
+        }
         
         var path = readOnly ? (readOnly as any).___path : "root";
         var localValue = this.ResolvePropertyPath(path) as O;
