@@ -24,4 +24,5 @@ export declare class Template<P, T> implements ITemplate<P, T> {
 }
 export declare namespace Template {
     function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
+    function Create(bindingDef: BindingDefinition<any, any>): Template<any, any>;
 }

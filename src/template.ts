@@ -17,13 +17,9 @@ export function TemplateFunction(type: string, templateDefinition?: TemplateDefi
         data: templateDefinition && templateDefinition.data,
         key: templateDefinition && templateDefinition.key,
         text: templateDefinition && templateDefinition.text,
-        children: children, // templateDefinition.children
+        children: children,
     }
 }
-
-/* export function CreateTemplateFunction<P>(type: any): BoundTemplateFunction<P> {
-    return TemplateFunction.bind(null, type) as BoundTemplateFunction<P>
-} */
 
 function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> {
     return {
@@ -33,7 +29,7 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
         on: componentDefinition && componentDefinition.on,
         data: componentDefinition && componentDefinition.data,
         key: componentDefinition && componentDefinition.key,
-        templates: templates, // componentDefinition.templates
+        templates: templates,
     }
 }
 
@@ -64,7 +60,6 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
 export class Template<P, T> implements ITemplate<P, T> {
     private bindingDefinition: BindingDefinition<any, T>;
     private bindings: Array<Binding<any>>;
-    // private bindingParent: any;
     private bindingRoot: any;
     private templates: Templates<T>;
 
@@ -107,8 +102,6 @@ export class Template<P, T> implements ITemplate<P, T> {
         if(!this.bindingRoot)
             this.BindRoot();
 
-        // this.Detach();
-        // this.bindingParent = bindingParent;
         BindingConfig.addChild(bindingParent, this.bindingRoot);
     }
 
@@ -123,8 +116,6 @@ export class Template<P, T> implements ITemplate<P, T> {
         if(!this.bindingRoot)
             this.BindRoot();
 
-        // this.Detach();
-        // this.bindingParent = bindingParent;
         BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
 
@@ -136,12 +127,7 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     public Detach() {
-        /* if(!this.bindingParent)
-            return; */
-
         BindingConfig.remove(this.bindingRoot);
-        // BindingConfig.removeChild(this.bindingParent, this.bindingRoot);
-        // this.bindingParent = null;
     }
 
     public Destroy() {
@@ -164,5 +150,11 @@ export class Template<P, T> implements ITemplate<P, T> {
 export namespace Template {
     export function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
         return CreateComponentFunction(type, classType);
+    }
+
+    export function Create(bindingDef: BindingDefinition<any, any>): Template<any, any> {
+        var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>): Template<any, any> };
+        var template = new constructor(bindingDef);
+        return template;
     }
 }

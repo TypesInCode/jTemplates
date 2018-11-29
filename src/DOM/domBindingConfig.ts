@@ -1,5 +1,5 @@
 import { IBindingConfig } from '../Binding/bindingConfig.types';
-import { browser } from './browser';
+import { window } from './window';
 
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
@@ -17,7 +17,7 @@ function processUpdates() {
         updateScheduled = false;
     }
     else {
-        browser.requestAnimationFrame(processUpdates);
+        window.requestAnimationFrame(processUpdates);
     }
 }
 
@@ -27,21 +27,13 @@ export var DOMBindingConfig: IBindingConfig = {
     
         if(!updateScheduled) {
             updateScheduled = true;
-            browser.requestAnimationFrame(processUpdates);
+            window.requestAnimationFrame(processUpdates);
         }
     },
     updateComplete: function(callback: () => void): void {
-        if(pendingUpdates.length === 0) {
-            callback();
-            return;
-        }
-
-        // updateCompleteCallbacks.push(callback);
-        pendingUpdates.push(callback);
-        if(!updateScheduled) {
-            updateScheduled = true;
-            browser.requestAnimationFrame(processUpdates);
-        }
+        this.scheduleUpdate(() => {
+            setTimeout(callback, 0);
+        });
     },
     addListener: function(target: Node, type: string, callback: {():void}) {
         target.addEventListener(type, callback);
@@ -50,7 +42,7 @@ export var DOMBindingConfig: IBindingConfig = {
         target.removeEventListener(type, callback);
     },
     createBindingTarget: function(type: string): Node {
-        return browser.window.document.createElement(type);
+        return window.document.createElement(type);
     },
     addChild: function(root: Node, child: Node) {
         root.appendChild(child);
@@ -84,7 +76,7 @@ export var DOMBindingConfig: IBindingConfig = {
         target.textContent = text;
     },
     createContainer(): DocumentFragment {
-        return browser.createDocumentFragment();
+        return window.document.createDocumentFragment();
     },
     addContainerChild(container: DocumentFragment, child: Node) {
         container.appendChild(child);

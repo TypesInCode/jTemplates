@@ -1,4 +1,3 @@
-// import { ProxyObservableScope } from '../ProxyObservable/proxyObservableScope';
 import { ObjectStoreScope } from '../ObjectStore/objectStoreScope';
 import { BindingConfig } from './bindingConfig';
 
@@ -11,7 +10,6 @@ enum BindingStatus {
 
 export abstract class Binding<T> {
     private boundTo: any;
-    // private observableScope: ProxyObservableScope<any>;
     private observableScope: ObjectStoreScope<any>;
     private setCallback: () => void;
     private status: BindingStatus;
@@ -29,7 +27,6 @@ export abstract class Binding<T> {
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
 
-        // this.observableScope = new ProxyObservableScope(binding);
         this.observableScope = new ObjectStoreScope(binding);
         this.observableScope.addListener("set", this.setCallback);
         this.Init(config);

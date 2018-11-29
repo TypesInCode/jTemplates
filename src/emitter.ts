@@ -3,7 +3,7 @@ export interface Callback {
 }
 
 interface CallbackMap {
-    [name: string]: Set<Callback> // Callback[];
+    [name: string]: Set<Callback>;
 }
 
 export class Emitter {
@@ -18,7 +18,7 @@ export class Emitter {
     }
 
     public removeListener(name: string, callback: Callback) {
-        var events = this.callbackMap[name]; // || new Set();
+        var events = this.callbackMap[name];
         events && events.delete(callback);
     }
 

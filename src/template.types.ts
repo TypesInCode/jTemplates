@@ -22,7 +22,6 @@ export interface TemplateDefinition<P> {
     data?: () => P | Array<P>;
     key?: (val: P) => any;
     text?: () => string;
-    // children?: (c?: P, i?: number) => TemplateDefinition;
 }
 
 export interface ComponentDefinition<P, T> {
@@ -30,20 +29,15 @@ export interface ComponentDefinition<P, T> {
     on?: () => {[name: string]: {(event?: any): void}};
     data?: () => P | Array<P>;
     key?: (val: P) => any;
-    //templates?: Templates<T>;
 }
 
-// export type BoundTemplateFunction<P> = { (templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> };
 export type BoundComponentFunction<P, T> = { (componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> };
 
 export type TemplateConstructor<P, T> = { new(bindingDef: BindingDefinition<P, T>): ITemplate<P, T> }
 
 export interface ITemplate<P, T> {
     SetTemplates(templates: Templates<T>): void;
-
     AttachTo(bindingParent: any): void;
-
     Detach(): void;
-
     Destroy(): void;
 }
