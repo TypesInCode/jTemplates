@@ -58,6 +58,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
 }
 
 export class Template<P, T> implements ITemplate<P, T> {
+    private definition: BindingDefinition<P, T>;
     private bindings: Array<Binding<any>>;
     private bindingRoot: any;
     private templates: Templates<T>;
@@ -71,6 +72,11 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     protected get Root(): any {
+        if(!this.bindingRoot) {
+            this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
+            this.bindings = BindTarget(this.bindingRoot, this.definition);
+        }
+        
         return this.bindingRoot;
     }
 
@@ -81,8 +87,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.templates = this.DefaultTemplates;
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
-        this.bindingRoot = BindingConfig.createBindingTarget(definition.type);
-        this.bindings = BindTarget(this.bindingRoot, definition);
+        this.definition = definition;
     }
 
     public SetTemplates(templates: Templates<T>) {
@@ -99,23 +104,23 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     public AttachTo(bindingParent: any) {
-        BindingConfig.addChild(bindingParent, this.bindingRoot);
+        BindingConfig.addChild(bindingParent, this.Root);
     }
 
     public AttachToContainer(container: any) {
-        BindingConfig.addContainerChild(container, this.bindingRoot);
+        BindingConfig.addContainerChild(container, this.Root);
     }
 
     public AttachBefore(bindingParent: any, template: Template<any, any>) {
-        BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
+        BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.Root);
     }
 
     public AttachAfter(bindingParent: any, template: Template<any, any>) {
-        BindingConfig.addChildAfter(bindingParent, template && template.bindingRoot, this.bindingRoot);
+        BindingConfig.addChildAfter(bindingParent, template && template.bindingRoot, this.Root);
     }
 
     public Detach() {
-        BindingConfig.remove(this.bindingRoot);
+        BindingConfig.remove(this.Root);
     }
 
     public Destroy() {

@@ -3,6 +3,7 @@ export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare class Template<P, T> implements ITemplate<P, T> {
+    private definition;
     private bindings;
     private bindingRoot;
     private templates;
