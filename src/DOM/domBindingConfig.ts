@@ -1,5 +1,5 @@
 import { IBindingConfig } from '../Binding/bindingConfig.types';
-import { window } from './window';
+import { wndw } from './window';
 
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
@@ -17,7 +17,7 @@ function processUpdates() {
         updateScheduled = false;
     }
     else {
-        window.requestAnimationFrame(processUpdates);
+        wndw.requestAnimationFrame(processUpdates);
     }
 }
 
@@ -27,7 +27,7 @@ export var DOMBindingConfig: IBindingConfig = {
     
         if(!updateScheduled) {
             updateScheduled = true;
-            window.requestAnimationFrame(processUpdates);
+            wndw.requestAnimationFrame(processUpdates);
         }
     },
     updateComplete: function(callback: () => void): void {
@@ -42,7 +42,7 @@ export var DOMBindingConfig: IBindingConfig = {
         target.removeEventListener(type, callback);
     },
     createBindingTarget: function(type: string): Node {
-        return window.document.createElement(type);
+        return wndw.document.createElement(type);
     },
     addChild: function(root: Node, child: Node) {
         root.appendChild(child);
@@ -76,7 +76,7 @@ export var DOMBindingConfig: IBindingConfig = {
         target.textContent = text;
     },
     createContainer(): DocumentFragment {
-        return window.document.createDocumentFragment();
+        return wndw.document.createDocumentFragment();
     },
     addContainerChild(container: DocumentFragment, child: Node) {
         container.appendChild(child);

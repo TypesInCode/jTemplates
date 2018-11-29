@@ -4,7 +4,12 @@ import { TemplateDefinition, BindingDefinitions, BindingDefinition } from "../te
 export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return TemplateFunction("a", templateDefinition, children);
 }
-
+export function ul<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("ul", templateDefinition, children);
+}
+export function li<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("li", templateDefinition, children);
+}
 export function br<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return TemplateFunction("br", templateDefinition, children);
 }

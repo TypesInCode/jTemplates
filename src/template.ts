@@ -58,7 +58,6 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
 }
 
 export class Template<P, T> implements ITemplate<P, T> {
-    private bindingDefinition: BindingDefinition<any, T>;
     private bindings: Array<Binding<any>>;
     private bindingRoot: any;
     private templates: Templates<T>;
@@ -82,7 +81,8 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.templates = this.DefaultTemplates;
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
-        this.bindingDefinition = definition;
+        this.bindingRoot = BindingConfig.createBindingTarget(definition.type);
+        this.bindings = BindTarget(this.bindingRoot, definition);
     }
 
     public SetTemplates(templates: Templates<T>) {
@@ -99,30 +99,18 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     public AttachTo(bindingParent: any) {
-        if(!this.bindingRoot)
-            this.BindRoot();
-
         BindingConfig.addChild(bindingParent, this.bindingRoot);
     }
 
     public AttachToContainer(container: any) {
-        if(!this.bindingRoot)
-            this.BindRoot();
-        
         BindingConfig.addContainerChild(container, this.bindingRoot);
     }
 
     public AttachBefore(bindingParent: any, template: Template<any, any>) {
-        if(!this.bindingRoot)
-            this.BindRoot();
-
         BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
 
     public AttachAfter(bindingParent: any, template: Template<any, any>) {
-        if(!this.bindingRoot)
-            this.BindRoot();
-        
         BindingConfig.addChildAfter(bindingParent, template && template.bindingRoot, this.bindingRoot);
     }
 
@@ -139,11 +127,6 @@ export class Template<P, T> implements ITemplate<P, T> {
 
     protected Template(c: P, i: number): BindingDefinitions<P, T> {
         return [];
-    }
-
-    private BindRoot() {
-        this.bindingRoot = BindingConfig.createBindingTarget(this.bindingDefinition.type);
-        this.bindings = BindTarget(this.bindingRoot, this.bindingDefinition);
     }
 }
 

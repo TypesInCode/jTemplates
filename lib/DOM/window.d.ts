@@ -1,1 +1,1 @@
-export declare var window: Window;
+export declare var wndw: Window;

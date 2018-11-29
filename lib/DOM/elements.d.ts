@@ -1,5 +1,7 @@
 import { TemplateDefinition, BindingDefinitions, BindingDefinition } from "../template.types";
 export declare function a<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
+export declare function ul<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
+export declare function li<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare function br<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare function b<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare function div<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
