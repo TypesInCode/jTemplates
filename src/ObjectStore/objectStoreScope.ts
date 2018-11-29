@@ -32,7 +32,12 @@ export class ObjectStoreScope<T> extends Emitter {
 
     private UpdateValue() {
         var newEmitters = ObjectStore.Watch(() => {
-            this.value = this.valueFunction();
+            try {
+                this.value = this.valueFunction();
+            }
+            catch(err) {
+                console.error(err);
+            }
         });
 
         var newSet = new Set<Emitter>(newEmitters);

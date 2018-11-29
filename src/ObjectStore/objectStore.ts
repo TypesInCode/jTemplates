@@ -121,7 +121,7 @@ export class ObjectStore<T> {
     }
 
     public SetPath(path: string, value: any) {        
-        this.WriteTo(path, path, value);
+        this.WriteTo(path, value);
     }
 
     public GetEmitter(path: string): Emitter {
@@ -147,18 +147,18 @@ export class ObjectStore<T> {
         else 
             newValue = updateCallback;
 
-        this.WriteTo(path, path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+        this.WriteTo(path, typeof newValue !== "undefined" ? newValue : mutableCopy);
     }
 
     public Push<O>(readOnly: Array<O>, newValue: O) {
         var path = (readOnly as any).___path;
-        // this.getterMap.delete(path);
+        
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
         var oldLength = localValue.length;
 
         var childPath = [path, oldLength].join(".");
         localValue.push(null);
-        this.WriteTo(childPath, childPath, newValue);
+        this.WriteTo(childPath, newValue);
 
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
@@ -166,13 +166,13 @@ export class ObjectStore<T> {
         this.EmitSet(path);
     }
 
-    private WriteTo(rootPath: string, path: string, value: any, skipDependents?: boolean) {
+    private WriteTo(path: string, value: any, skipDependents?: boolean) {
         var localValue = this.ResolvePropertyPath(path);
         if(localValue === value)
             return;
 
         this.AssignPropertyPath(value, path);
-        this.ProcessChanges(rootPath, path, value, localValue, skipDependents);
+        this.ProcessChanges(path, path, value, localValue, skipDependents);
     }
 
     private ProcessChanges(rootPath: string, path: string, value: any, oldValue: any, skipDependents?: boolean) {
@@ -200,7 +200,7 @@ export class ObjectStore<T> {
                 if(p === path || p.indexOf(rootPath) === 0)
                     return;
                 
-                this.WriteTo(rootPath, p, value, true);
+                this.WriteTo(p, value, true);
             });
         }
 
@@ -271,7 +271,7 @@ export class ObjectStore<T> {
                 ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
         }
         else {
-            ret = new Object() as { [key: string]: any };
+            ret = Object.create(null) as { [key: string]: any };
             for(var key in source)
                 this.CreateGetter(ret, path, key);
         }
@@ -297,7 +297,7 @@ export class ObjectStore<T> {
                 return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
             },
             set: (val: any) => {
-                this.WriteTo(path, path, val);
+                this.WriteTo(path, val);
             }
         });
     }
