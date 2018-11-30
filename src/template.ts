@@ -112,11 +112,11 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     public AttachBefore(bindingParent: any, template: Template<any, any>) {
-        BindingConfig.addChildBefore(bindingParent, template && template.bindingRoot, this.Root);
+        BindingConfig.addChildBefore(bindingParent, template && template.Root, this.Root);
     }
 
     public AttachAfter(bindingParent: any, template: Template<any, any>) {
-        BindingConfig.addChildAfter(bindingParent, template && template.bindingRoot, this.Root);
+        BindingConfig.addChildAfter(bindingParent, template && template.Root, this.Root);
     }
 
     public Detach() {
