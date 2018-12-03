@@ -11,6 +11,8 @@ export declare class Store<T> {
     });
     Scope<O>(valueFunction: {
         (root: T): O;
+    }, setFunction?: {
+        (val: T, next: O): void;
     }): Scope<O>;
     Get<O>(id: string): O;
     Write<O>(readOnly: O | string, updateCallback: {

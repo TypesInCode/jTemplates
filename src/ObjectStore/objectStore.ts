@@ -34,8 +34,8 @@ export class Store<T> {
         this.idToPathsMap = new Map();
     }
 
-    public Scope<O>(valueFunction: {(root: T): O}): Scope<O> {
-        return new Scope(() => valueFunction(this.Root));
+    public Scope<O>(valueFunction: {(root: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
+        return new Scope(() => valueFunction(this.Root), (next: O) => setFunction(this.Root, next));
     }
 
     public Get<O>(id: string): O {

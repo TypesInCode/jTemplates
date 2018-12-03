@@ -2,7 +2,8 @@ import { Emitter } from '../emitter';
 import { globalEmitter} from './globalEmitter';
 
 export class Scope<T> extends Emitter {
-    private valueFunction: {(): T};
+    private getFunction: {(): T};
+    private setFunction: {(val: T): void};
     private trackedEmitters: Set<Emitter>;
     private dirty: boolean;
     private value: any;
@@ -17,16 +18,21 @@ export class Scope<T> extends Emitter {
         return this.value;
     }
 
-    constructor(valueFunction: {(): T}) {
+    public set Value(val: T) {
+        this.setFunction && this.setFunction(val);
+    }
+
+    constructor(getFunction: {(): T}, setFunction?: {(val: T): void}) {
         super();
-        this.valueFunction = valueFunction;
+        this.getFunction = getFunction;
+        this.setFunction = setFunction;
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
         this.dirty = true;
     }
 
-    public Scope<O>(valueFunction: {(val: T): O}): Scope<O> {
-        return new Scope(() => valueFunction(this.Value));
+    public Scope<O>(getFunction: {(val: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
+        return new Scope(() => getFunction(this.Value), (val) => setFunction(this.Value, val));
     }
 
     public Destroy() {
@@ -38,7 +44,7 @@ export class Scope<T> extends Emitter {
     private UpdateValue() {
         var newEmitters = globalEmitter.Watch(() => {
             try {
-                this.value = this.valueFunction();
+                this.value = this.getFunction();
             }
             catch(err) {
                 console.error(err);
