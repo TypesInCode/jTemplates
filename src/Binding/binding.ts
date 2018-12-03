@@ -1,4 +1,4 @@
-import { ObjectStoreScope } from '../ObjectStore/objectStoreScope';
+import { Scope } from '../ObjectStore/objectStoreScope';
 import { BindingConfig } from './bindingConfig';
 
 enum BindingStatus {
@@ -10,25 +10,36 @@ enum BindingStatus {
 
 export abstract class Binding<T> {
     private boundTo: any;
-    private observableScope: ObjectStoreScope<any>;
+    private isStatic: boolean;
+    private staticValue: any;
+    private observableScope: Scope<any>;
     private setCallback: () => void;
     private status: BindingStatus;
 
     protected get Value(): any {
-        return this.observableScope.Value;
+        return this.isStatic ? 
+            this.staticValue : 
+            this.observableScope.Value;
     }
 
     protected get BoundTo(): any {
         return this.boundTo;
     }
 
-    constructor(boundTo: any, binding: {(): any}, config: T) {
+    constructor(boundTo: any, binding: {(): any} | any, config: T) {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
 
-        this.observableScope = new ObjectStoreScope(binding);
-        this.observableScope.addListener("set", this.setCallback);
+        if(typeof binding === 'function') {
+            this.observableScope = new Scope(binding);
+            this.observableScope.addListener("set", this.setCallback);
+        }
+        else {
+            this.isStatic = true;
+            this.staticValue = binding;
+        }
+        
         this.Init(config);
         this.Update();
     }

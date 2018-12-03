@@ -49,3 +49,15 @@ export function h2<P>(templateDefinition?: TemplateDefinition<P>, children?: (c:
 export function h3<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
     return TemplateFunction("h3", templateDefinition, children);
 }
+export function table<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("table", templateDefinition, children);
+}
+export function th<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("th", templateDefinition, children);
+}
+export function tr<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("tr", templateDefinition, children);
+}
+export function td<P>(templateDefinition?: TemplateDefinition<P>, children?: (c: P, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+    return TemplateFunction("td", templateDefinition, children);
+}

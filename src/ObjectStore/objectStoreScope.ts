@@ -1,7 +1,7 @@
-import { ObjectStore } from './objectStore';
 import { Emitter } from '../emitter';
+import { globalEmitter} from './globalEmitter';
 
-export class ObjectStoreScope<T> extends Emitter {
+export class Scope<T> extends Emitter {
     private valueFunction: {(): T};
     private trackedEmitters: Set<Emitter>;
     private dirty: boolean;
@@ -9,6 +9,7 @@ export class ObjectStoreScope<T> extends Emitter {
     private setCallback: () => void;
 
     public get Value(): T {
+        globalEmitter.Register(this);
         if(!this.dirty)
             return this.value;
         
@@ -21,7 +22,11 @@ export class ObjectStoreScope<T> extends Emitter {
         this.valueFunction = valueFunction;
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
-        this.UpdateValue();
+        this.dirty = true;
+    }
+
+    public Scope<O>(valueFunction: {(val: T): O}): Scope<O> {
+        return new Scope(() => valueFunction(this.Value));
     }
 
     public Destroy() {
@@ -31,7 +36,7 @@ export class ObjectStoreScope<T> extends Emitter {
     }
 
     private UpdateValue() {
-        var newEmitters = ObjectStore.Watch(() => {
+        var newEmitters = globalEmitter.Watch(() => {
             try {
                 this.value = this.valueFunction();
             }
@@ -40,15 +45,24 @@ export class ObjectStoreScope<T> extends Emitter {
             }
         });
 
-        var newSet = new Set<Emitter>(newEmitters);
+        /* var newEmitters = ObjectStore.Watch(() => {
+            try {
+                this.value = this.valueFunction();
+            }
+            catch(err) {
+                console.error(err);
+            }
+        }); */
+
+        // var newEmitters = new Set<Emitter>(newEmitters);
 
         this.trackedEmitters.forEach(emitter => {
-            if(!newSet.has(emitter))
+            if(!newEmitters.has(emitter))
                 emitter.removeListener("set", this.setCallback);
         });
 
-        newSet.forEach(emitter => emitter.addListener("set", this.setCallback));
-        this.trackedEmitters = newSet;
+        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+        this.trackedEmitters = newEmitters;
         this.dirty = false;
     }
 

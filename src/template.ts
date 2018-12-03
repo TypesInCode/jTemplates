@@ -135,6 +135,18 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 }
 
+/* export class Component<P, T> extends Template<Scope<P>, T> {
+    constructor(definition: BindingDefinition<P, T> | string) {
+        if(typeof definition === 'string')
+            super(definition);
+        else {
+            var data = definition.data;
+            (definition as any).data = definition.data && (() => new Scope(() => data()));
+            super(definition as any as BindingDefinition<Scope<P>, T>);
+        }
+    }
+} */
+
 export namespace Template {
     export function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
         return CreateComponentFunction(type, classType);

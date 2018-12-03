@@ -6,28 +6,28 @@ export type Templates<T> = {
 
 export interface BindingDefinition<P, T> {
     type: any;
-    props?: () => {[name: string]: any};
-    on?: () => {[name: string]: {(event?: any): void}};
-    data?: () => P | Array<P>;
+    props?: {(): {[name: string]: any}} | {[name: string]: any};
+    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    data?: {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
-    text?: () => string;
+    text?: {(): string} | string;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: { new(bindingDef?: BindingDefinition<any, any>): ITemplate<P, T> };
     templates?: Templates<T>;
 }
 
 export interface TemplateDefinition<P> {
-    props?: () => {[name: string]: any};
-    on?: () => {[name: string]: {(event?: any): void}};
-    data?: () => P | Array<P>;
+    props?: {(): {[name: string]: any}} | {[name: string]: any};
+    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    data?: {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
-    text?: () => string;
+    text?: {(): string} | string;
 }
 
 export interface ComponentDefinition<P, T> {
-    props?: () => {[name: string]: any};
-    on?: () => {[name: string]: {(event?: any): void}};
-    data?: () => P | Array<P>;
+    props?: {(): {[name: string]: any}} | {[name: string]: any};
+    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string] : {(event?: any): void}};
+    data?: {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
 }
 

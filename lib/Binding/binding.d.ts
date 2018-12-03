@@ -1,5 +1,7 @@
 export declare abstract class Binding<T> {
     private boundTo;
+    private isStatic;
+    private staticValue;
     private observableScope;
     private setCallback;
     private status;
@@ -7,7 +9,7 @@ export declare abstract class Binding<T> {
     protected readonly BoundTo: any;
     constructor(boundTo: any, binding: {
         (): any;
-    }, config: T);
+    } | any, config: T);
     Update(): void;
     Destroy(): void;
     protected Init(config: T): void;

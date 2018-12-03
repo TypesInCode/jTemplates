@@ -1,1 +1,1078 @@
-!function(t){var e={};function i(n){if(e[n])return e[n].exports;var s=e[n]={exports:{},id:n,loaded:!1};return t[n].call(s.exports,s,s.exports,i),s.loaded=!0,s.exports}i.m=t,i.c=e,i.p="",i(0)}([function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(1);e.Template=n.Template;const s=i(8);e.ObjectStore=s.ObjectStore,e.Value=s.Value;const r=i(13);e.div=r.div,e.span=r.span,e.ul=r.ul,e.li=r.li,e.input=r.input,e.b=r.b,e.a=r.a,e.br=r.br,e.img=r.img,e.video=r.video,e.source=r.source,e.option=r.option,e.select=r.select,e.h1=r.h1,e.h2=r.h2,e.h3=r.h3;const o=i(7);var a=new class{constructor(){this.todos=s.ObjectStore.Create([]);var t=new o.ObjectStoreScope(()=>this.report);t.addListener("set",()=>console.log(t.Value))}get report(){return 0===this.todos.Root.length?"<none>":`Next todo: ${this.todos.Root[0].task}. Progress: ${this.completedCount}/${this.todos.Root.length}`}get completedCount(){return this.todos.Root.filter(t=>t.completed).length}addTodo(t){this.todos.Push(this.todos.Root,{task:t,completed:!1,assignee:null})}};a.addTodo("val 1"),a.addTodo("val 2"),a.todos.Root[0].completed=!0,a.todos.Root[1].task="changed val 2",a.todos.Root[0].task="changed val 1";var l=n.Template.ToFunction("ul",class extends n.Template{Template(t){return r.li({on:()=>({dblclick:this.onRename.bind(this,t)})},()=>[r.input({props:()=>({type:"checkbox",checked:t.completed}),on:()=>({change:this.onToggleCompleted.bind(this,t)})}),r.span({text:()=>`${t.task} ${t.assignee||""}`})])}onToggleCompleted(t){t.completed=!t.completed}onRename(t){t.task=prompt("Task name",t.task)||t.task}});(new class extends n.Template{constructor(){super("todo-list")}Template(){return r.div({},()=>[r.span({text:()=>a.report}),l({data:()=>a.todos.Root}),r.input({props:()=>({type:"button",value:"New Todo"}),on:()=>({click:this.onNewTodo.bind(this)})})])}onNewTodo(){a.addTodo(prompt("Enter a new todo:"))}}).AttachTo(document.getElementById("container"))},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(2),s=i(5),r=i(10),o=i(11),a=i(12);function l(t,e,i,n){return{type:t,class:e,props:i&&i.props,on:i&&i.on,data:i&&i.data,key:i&&i.key,templates:n}}function u(){return!0}e.TemplateFunction=function(t,e,i){return{type:t,props:e&&e.props,on:e&&e.on,data:e&&e.data,key:e&&e.key,text:e&&e.text,children:i}};class h{constructor(t){var e,i,h;"string"==typeof t&&(t=l(t,this.constructor)),this.templates=this.DefaultTemplates,this.SetTemplates(t.templates),t.children=t.children||this.Template.bind(this),this.bindingRoot=n.BindingConfig.createBindingTarget(t.type),this.bindings=(e=this.bindingRoot,i=[],(h=t).props&&i.push(new s.default(e,h.props)),h.on&&i.push(new a.default(e,h.on)),h.text?i.push(new o.default(e,h.text)):h.children&&(h.data=h.data||u,i.push(new r.default(e,h.data,h.children,h.key))),i)}get DefaultTemplates(){return{}}get Templates(){return this.templates}get Root(){return this.bindingRoot}SetTemplates(t){if(t)for(var e in t)this.templates[e]=t[e]}UpdateComplete(t){n.BindingConfig.updateComplete(t)}AttachTo(t){n.BindingConfig.addChild(t,this.bindingRoot)}AttachToContainer(t){n.BindingConfig.addContainerChild(t,this.bindingRoot)}AttachBefore(t,e){n.BindingConfig.addChildBefore(t,e&&e.bindingRoot,this.bindingRoot)}AttachAfter(t,e){n.BindingConfig.addChildAfter(t,e&&e.bindingRoot,this.bindingRoot)}Detach(){n.BindingConfig.remove(this.bindingRoot)}Destroy(){this.Detach(),this.bindingRoot=null,this.bindings.forEach(t=>t.Destroy()),this.bindings=[]}Template(t,e){return[]}}e.Template=h,function(t){t.ToFunction=function(t,e){return function(t,e){return l.bind(null,t,e)}(t,e)},t.Create=function(e){return new(e.class||t)(e)}}(h=e.Template||(e.Template={}))},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(3);e.BindingConfig=n.DOMBindingConfig},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(4);var s=[],r=!1,o=0,a=3e3;function l(){for(var t=a+o,e=o;e<t&&e<s.length;e++,o++)s[e]();o==s.length?(o=0,s=[],r=!1):n.wndw.requestAnimationFrame(l)}e.DOMBindingConfig={scheduleUpdate:function(t){s.push(t),r||(r=!0,n.wndw.requestAnimationFrame(l))},updateComplete:function(t){this.scheduleUpdate(()=>{setTimeout(t,0)})},addListener:function(t,e,i){t.addEventListener(e,i)},removeListener:function(t,e,i){t.removeEventListener(e,i)},createBindingTarget:function(t){return n.wndw.document.createElement(t)},addChild:function(t,e){t.appendChild(e)},addChildFirst:function(t,i){e.DOMBindingConfig.addChildBefore(t,t.firstChild,i)},addChildBefore:function(t,i,n){i?t.insertBefore(n,i):e.DOMBindingConfig.addChild(t,n)},addChildAfter:function(t,i,n){i?e.DOMBindingConfig.addChildBefore(t,i.nextSibling,n):e.DOMBindingConfig.addChildFirst(t,n)},removeChild:function(t,e){t.removeChild(e)},remove:function(t){t&&t.parentNode&&t.parentNode.removeChild(t)},setText:function(t,e){t.textContent=e},createContainer:()=>n.wndw.document.createDocumentFragment(),addContainerChild(t,e){t.appendChild(e)},addChildContainer(t,e){t.appendChild(e)}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var n=null;n="undefined"!=typeof window?window:new(i(!function(){var t=new Error('Cannot find module "jsdom"');throw t.code="MODULE_NOT_FOUND",t}()).JSDOM)("").window,e.wndw=n},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(6);e.default=class extends n.Binding{constructor(t,e){super(t,e,null)}Apply(){this.lastValue=this.lastValue||{},this.ApplyRecursive(this.BoundTo,this.lastValue,this.Value),this.lastValue=this.Value}ApplyRecursive(t,e,i){if("object"!=typeof i)throw"Property binding must resolve to an object";for(var n in i){var s=i[n];t[n]&&null!==s&&"object"==typeof s&&s.constructor==={}.constructor?(e[n]=e[n]||{},this.ApplyRecursive(t[n],e[n],s)):(s=s&&s.valueOf(),e[n]!==s&&(t[n]=s))}}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(7),s=i(2);var r;!function(t){t[t.Init=0]="Init",t[t.Updating=1]="Updating",t[t.Updated=2]="Updated",t[t.Destroyed=3]="Destroyed"}(r||(r={}));e.Binding=class{constructor(t,e,i){this.boundTo=t,this.status=r.Init,this.setCallback=this.Update.bind(this),this.observableScope=new n.ObjectStoreScope(e),this.observableScope.addListener("set",this.setCallback),this.Init(i),this.Update()}get Value(){return this.observableScope.Value}get BoundTo(){return this.boundTo}Update(){this.status!==r.Destroyed&&(this.status===r.Init?(this.status=r.Updating,this.Apply(),this.status=r.Updated):this.status!==r.Updating&&(this.status=r.Updating,s.BindingConfig.scheduleUpdate(()=>{this.status!==r.Destroyed&&(this.Apply(),this.status=r.Updated)})))}Destroy(){this.observableScope&&this.observableScope.Destroy(),this.status=r.Destroyed}Init(t){}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(8),s=i(9);e.ObjectStoreScope=class extends s.Emitter{constructor(t){super(),this.valueFunction=t,this.trackedEmitters=new Set,this.setCallback=this.SetCallback.bind(this),this.UpdateValue()}get Value(){return this.dirty?(this.UpdateValue(),this.value):this.value}Destroy(){this.removeAllListeners(),this.trackedEmitters.forEach(t=>t.removeListener("set",this.setCallback)),this.trackedEmitters.clear()}UpdateValue(){var t=n.ObjectStore.Watch(()=>{try{this.value=this.valueFunction()}catch(t){console.error(t)}}),e=new Set(t);this.trackedEmitters.forEach(t=>{e.has(t)||t.removeListener("set",this.setCallback)}),e.forEach(t=>t.addListener("set",this.setCallback)),this.trackedEmitters=e,this.dirty=!1}SetCallback(){this.dirty=!0,this.emit("set")}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(9);function s(t){return!t||!(Array.isArray(t)||"object"==typeof t&&{}.constructor===t.constructor)}var r=new n.default;class o extends n.default{constructor(t,e){super(),this.___path=t,this.store=e}}class a{constructor(){}get Value(){return this.getValue()}set Value(t){this.setValue(t)}toString(){var t=this.Value;return t&&t.toString()}valueOf(){var t=this.Value;return t&&t.valueOf()}}e.Value=a;class l extends a{constructor(t,e){super(),this.store=t,this.valuePath=e}getValue(){var t=this.store.GetEmitter(this.valuePath);return r.emit("get",t),this.store.GetPath(this.valuePath)}setValue(t){this.store.SetPath(this.valuePath,t),this.store.GetEmitter(this.valuePath).emit("set")}}class u extends a{constructor(t){super(),this.value=t,this.emitter=new n.default}getValue(){return r.emit("get",this.emitter),this.value}setValue(t){this.value=t,this.emitter.emit("set")}}class h{constructor(t){this.getIdCallback=t,this.emitterMap=new Map,this.emitterMap.set("root",new o("root",this)),this.getterMap=new Map,this.idToPathsMap=new Map}get Root(){return this.EmitGet("root"),this.getterMap.get("root")||this.CreateGetterObject(this.root,"root")}set Root(t){this.Write(null,()=>t)}Get(t){var e=this.idToPathsMap.get(t);if(!e)return null;var i=e.values().next().value;return this.EmitGet(i),this.getterMap.get(i)||this.CreateGetterObject(this.ResolvePropertyPath(i),i)}GetPath(t){var e=this.ResolvePropertyPath(t);return this.EmitGet(t),e}SetPath(t,e){this.WriteTo(t,e)}GetEmitter(t){return this.emitterMap.get(t)}Write(t,e){if("string"!=typeof t||(t=this.Get(t))){var i=t?t.___path:"root",n=this.ResolvePropertyPath(i),s=null,r=null;s="function"==typeof e?e(r=this.CreateCopy(n)):e,this.WriteTo(i,void 0!==s?s:r)}}Push(t,e){var i=t.___path,n=this.ResolvePropertyPath(i),s=[i,n.length].join(".");n.push(null),this.WriteTo(s,e),this.getterMap.get(i).push(this.CreateGetterObject(e,s)),this.EmitSet(i)}WriteTo(t,e,i){var n=this.ResolvePropertyPath(t);n!==e&&(this.AssignPropertyPath(e,t),this.ProcessChanges(t,t,e,n,i))}ProcessChanges(t,e,i,n,r){this.getterMap.delete(e);var o=i&&this.getIdCallback&&this.getIdCallback(i),a=n&&this.getIdCallback&&this.getIdCallback(n);if(a&&a!==o){var l=this.idToPathsMap.get(a);l.delete(e),0===l.size&&this.idToPathsMap.delete(a)}if(!r&&o){var u=this.idToPathsMap.get(o);u?u.has(e)||u.add(e):(u=new Set([e]),this.idToPathsMap.set(o,u)),u.forEach(n=>{n!==e&&0!==n.indexOf(t)&&this.WriteTo(n,i,!0)})}var h=new Set;if(!s(i))for(var d in i){var c=[e,d].join(".");this.ProcessChanges(t,c,i[d],n&&n[d],r),h.add(d)}this.CleanUp(n,h,e),this.EmitSet(e)}CleanUp(t,e,i){if(!s(t)){for(var n in t)if(!e||!e.has(n)){var r=[i,n].join(".");this.emitterMap.delete(r),this.getterMap.delete(r),this.CleanUp(t[n],null,r)}if(!e||0===e.size){var o=this.getIdCallback&&this.getIdCallback(t);if(o){var a=this.idToPathsMap.get(o);a&&(a.delete(i),0===a.size&&this.idToPathsMap.delete(o))}}}}AssignPropertyPath(t,e){var i=e.split("."),n=i[i.length-1],s=i.slice(0,i.length-1);this.ResolvePropertyPath(s.join("."))[n]=t}ResolvePropertyPath(t){return t?t.split(".").reduce((t,e)=>t&&t[e],this):this}CreateGetterObject(t,e){if(s(t))return t;var i=null;if(Array.isArray(t)){i=new Array(t.length);for(var n=0;n<t.length;n++)i[n]=this.CreateGetterObject(t[n],[e,n].join("."))}else for(var r in i=Object.create(null),t)this.CreateGetter(i,e,r);return Object.defineProperty(i,"___path",{value:e,configurable:!1,enumerable:!1,writable:!1}),this.getterMap.set(e,i),i}CreateGetter(t,e,i){var n=[e,i].join(".");Object.defineProperty(t,i,{enumerable:!0,get:()=>{return this.EmitGet(n),this.getterMap.get(n)||this.CreateGetterObject(this.ResolvePropertyPath(n),n)},set:t=>{this.WriteTo(n,t)}})}CreateCopy(t){if(s(t))return t;var e=null;if(Array.isArray(t)){e=new Array(t.length);for(var i=0;i<t.length;i++)e[i]=this.CreateCopy(t[i]);return e}for(var n in e={},t)e[n]=this.CreateCopy(t[n]);return e}EmitSet(t){var e=this.emitterMap.get(t);e||(e=new o(t,this),this.emitterMap.set(t,e)),e.emit("set")}EmitGet(t){var e=this.emitterMap.get(t);e||(e=new o(t,this),this.emitterMap.set(t,e)),r.emit("get",e)}}e.ObjectStore=h,function(t){t.Create=function(e,i){if(s(e))throw"Only arrays and JSON types are supported";var n=new t(i);return n.Root=e,n},t.Watch=function(t){var e=new Set;return r.addListener("get",t=>{e.has(t)||e.add(t)}),t(),r.removeAllListeners(),[...e]},t.Value=function(e){var i=null,n=t.Watch(()=>{i=e()});if(n.length>0){var s=n[n.length-1];if(s instanceof o)return new l(s.store,s.___path)}return new u(i)}}(h=e.ObjectStore||(e.ObjectStore={}))},function(t,e){"use strict";Object.defineProperty(e,"__esModule",{value:!0});class i{constructor(){this.callbackMap={}}addListener(t,e){var i=this.callbackMap[t]||new Set;i.has(e)||i.add(e),this.callbackMap[t]=i}removeListener(t,e){var i=this.callbackMap[t];i&&i.delete(e)}emit(t,...e){var i=this.callbackMap[t];i&&i.forEach(t=>t(...e))}clear(t){var e=this.callbackMap[t];e&&e.clear()}removeAllListeners(){for(var t in this.callbackMap)this.clear(t)}}e.Emitter=i,e.default=i},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(6),s=i(1),r=i(2);e.default=class extends n.Binding{constructor(t,e,i,n){super(t,e,{children:i,key:n})}Destroy(){super.Destroy(),this.DestroyTemplates(this.activeTemplateMap),this.activeTemplateMap=null}Init(t){this.activeTemplateMap=new Map,this.activeKeys=[],this.childrenFunction=t.children,this.keyFunction=t.key}Apply(){var t=this.Value;t?Array.isArray(t)||(t=[t]):t=[];for(var e=new Map,i=[],n=r.BindingConfig.createContainer(),o=null,a=0;a<t.length;a++){var l=this.keyFunction&&this.keyFunction(t[a])||a;i.push(l);var u=this.activeTemplateMap.get(l);if(!u){var h=this.childrenFunction(t[a],a);Array.isArray(h)||(h=[h]),u=h.map(t=>s.Template.Create(t))}e.set(l,u),this.activeTemplateMap.delete(l),a>=this.activeKeys.length?u.forEach(t=>{t.AttachToContainer(n),o=t}):l!==this.activeKeys[a]?u.forEach(t=>{t.AttachAfter(this.BoundTo,o),o=t}):o=u[u.length-1]||o}this.DestroyTemplates(this.activeTemplateMap),this.activeTemplateMap=e,this.activeKeys=i,r.BindingConfig.addChildContainer(this.BoundTo,n)}DestroyTemplates(t){t.forEach(t=>t.forEach(t=>t.Destroy()))}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(6),s=i(2);e.default=class extends n.Binding{constructor(t,e){super(t,e,null)}Apply(){s.BindingConfig.setText(this.BoundTo,this.Value)}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(6),s=i(2);e.default=class extends n.Binding{constructor(t,e){super(t,e,null)}Destroy(){for(var t in super.Destroy(),this.boundEvents)s.BindingConfig.removeListener(this.BoundTo,t,this.boundEvents[t])}Apply(){for(var t in this.boundEvents)s.BindingConfig.removeListener(this.BoundTo,t,this.boundEvents[t]);this.boundEvents={};var e=this.Value;for(var t in e)this.boundEvents[t]=e[t],s.BindingConfig.addListener(this.BoundTo,t,e[t])}}},function(t,e,i){"use strict";Object.defineProperty(e,"__esModule",{value:!0});const n=i(1);e.a=function(t,e){return n.TemplateFunction("a",t,e)},e.ul=function(t,e){return n.TemplateFunction("ul",t,e)},e.li=function(t,e){return n.TemplateFunction("li",t,e)},e.br=function(t,e){return n.TemplateFunction("br",t,e)},e.b=function(t,e){return n.TemplateFunction("b",t,e)},e.div=function(t,e){return n.TemplateFunction("div",t,e)},e.span=function(t,e){return n.TemplateFunction("span",t,e)},e.img=function(t,e){return n.TemplateFunction("img",t,e)},e.video=function(t,e){return n.TemplateFunction("video",t,e)},e.source=function(t,e){return n.TemplateFunction("source",t,e)},e.input=function(t,e){return n.TemplateFunction("input",t,e)},e.option=function(t,e){return n.TemplateFunction("option",t,e)},e.select=function(t,e){return n.TemplateFunction("select",t,e)},e.h1=function(t,e){return n.TemplateFunction("h1",t,e)},e.h2=function(t,e){return n.TemplateFunction("h2",t,e)},e.h3=function(t,e){return n.TemplateFunction("h3",t,e)}}]);
+var jTemplate =
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId])
+/******/ 			return installedModules[moduleId].exports;
+
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			exports: {},
+/******/ 			id: moduleId,
+/******/ 			loaded: false
+/******/ 		};
+
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
+
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+
+
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(0);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const template_1 = __webpack_require__(1);
+	exports.Template = template_1.Template;
+	const objectStore_1 = __webpack_require__(13);
+	exports.Store = objectStore_1.Store;
+	const objectStoreScope_1 = __webpack_require__(7);
+	exports.Scope = objectStoreScope_1.Scope;
+	const elements_1 = __webpack_require__(14);
+	exports.div = elements_1.div;
+	exports.span = elements_1.span;
+	exports.ul = elements_1.ul;
+	exports.li = elements_1.li;
+	exports.input = elements_1.input;
+	exports.b = elements_1.b;
+	exports.a = elements_1.a;
+	exports.br = elements_1.br;
+	exports.img = elements_1.img;
+	exports.video = elements_1.video;
+	exports.source = elements_1.source;
+	exports.option = elements_1.option;
+	exports.select = elements_1.select;
+	exports.h1 = elements_1.h1;
+	exports.h2 = elements_1.h2;
+	exports.h3 = elements_1.h3;
+	exports.table = elements_1.table;
+	exports.th = elements_1.th;
+	exports.tr = elements_1.tr;
+	exports.td = elements_1.td;
+	class DataTable extends template_1.Template {
+	    get DefaultTemplates() {
+	        return {
+	            cell: (scope) => elements_1.span({ text: () => {
+	                    var data = scope;
+	                    return `${data.data[scope.column.id]}`;
+	                } })
+	        };
+	    }
+	    Template(scope) {
+	        return [
+	            elements_1.table({ key: d => d, data: () => [{ id: "header" }, ...scope.Value.data] }, (data, index) => {
+	                if (index === 0)
+	                    return elements_1.tr({ key: c => c.id, data: () => scope.Value.columns }, (scope) => [
+	                        elements_1.th({ text: () => scope.name })
+	                    ]);
+	                return elements_1.tr({ key: c => c.id, data: () => scope.Value.columns }, (column, index) => [
+	                    elements_1.td({ data: () => ({ column: column, data: data }) }, (scope) => this.Templates.cell(scope, index))
+	                ]);
+	            })
+	        ];
+	    }
+	}
+	var dataTable = template_1.Template.ToFunction("datatable", DataTable);
+	class Root extends template_1.Template {
+	    constructor() {
+	        super("app");
+	        this.state = objectStore_1.Store.Create({ filter: "" });
+	        this.columns = objectStore_1.Store.Create([
+	            {
+	                id: "id",
+	                name: "Id",
+	                visible: true,
+	                sort: 0
+	            },
+	            {
+	                id: "name",
+	                name: "Name",
+	                visible: true,
+	                sort: 1
+	            },
+	            {
+	                id: "title",
+	                name: "Title",
+	                visible: true,
+	                sort: 2
+	            }
+	        ]);
+	        this.data = objectStore_1.Store.Create([
+	            {
+	                id: 1,
+	                name: "Bart",
+	                title: "Title 1"
+	            },
+	            {
+	                id: 2,
+	                name: "Craig",
+	                title: "Title 2"
+	            }
+	        ]);
+	        this.dataScope = this.data.Scope((root) => root.filter(d => d.name.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0 ||
+	            d.title.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0));
+	        this.columnsScope = this.columns.Scope((root) => root.filter(c => c.visible)).Scope((val) => {
+	            val.sort((a, b) => a.sort - b.sort);
+	            return val;
+	        });
+	        this.tableData = new objectStoreScope_1.Scope(() => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }));
+	    }
+	    Template() {
+	        return [
+	            elements_1.input({ props: { type: 'text' }, on: { keyup: (e) => this.state.Root.filter = e.target.value } }),
+	            dataTable({ data: this.tableData }),
+	            elements_1.input({ props: { type: 'button', value: 'add' }, on: { click: () => {
+	                        this.data.Push(this.data.Root, {
+	                            id: this.data.Root.length + 1,
+	                            name: `garbage ${this.data.Root.length + 1}`,
+	                            title: `title ${this.data.Root.length + 1}`
+	                        });
+	                    } } }),
+	            elements_1.ul({ data: this.columns.Root }, (column) => [
+	                elements_1.li({}, () => [
+	                    elements_1.input({ props: () => ({ type: "checkbox", checked: column.visible }), on: {
+	                            change: () => column.visible = !column.visible
+	                        } }),
+	                    elements_1.span({ text: () => column.name }),
+	                    elements_1.input({ props: { type: "text", value: column.sort }, on: { keyup: (e) => {
+	                                var sort = parseInt(e.target.value);
+	                                if (!isNaN(sort))
+	                                    column.sort = sort;
+	                            } } })
+	                ])
+	            ])
+	        ];
+	    }
+	}
+	var list = new Root();
+	list.AttachTo(document.getElementById("container"));
+
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const bindingConfig_1 = __webpack_require__(2);
+	const propertyBinding_1 = __webpack_require__(5);
+	const dataBinding_1 = __webpack_require__(10);
+	const textBinding_1 = __webpack_require__(11);
+	const eventBinding_1 = __webpack_require__(12);
+	function TemplateFunction(type, templateDefinition, children) {
+	    return {
+	        type: type,
+	        props: templateDefinition && templateDefinition.props,
+	        on: templateDefinition && templateDefinition.on,
+	        data: templateDefinition && templateDefinition.data,
+	        key: templateDefinition && templateDefinition.key,
+	        text: templateDefinition && templateDefinition.text,
+	        children: children,
+	    };
+	}
+	exports.TemplateFunction = TemplateFunction;
+	function ComponentFunction(type, classType, componentDefinition, templates) {
+	    return {
+	        type: type,
+	        class: classType,
+	        props: componentDefinition && componentDefinition.props,
+	        on: componentDefinition && componentDefinition.on,
+	        data: componentDefinition && componentDefinition.data,
+	        key: componentDefinition && componentDefinition.key,
+	        templates: templates,
+	    };
+	}
+	function CreateComponentFunction(type, classType) {
+	    return ComponentFunction.bind(null, type, classType);
+	}
+	function DefaultDataCallback() { return true; }
+	function BindTarget(bindingTarget, bindingDef) {
+	    var ret = [];
+	    var def1 = bindingDef;
+	    if (def1.props)
+	        ret.push(new propertyBinding_1.default(bindingTarget, def1.props));
+	    if (def1.on)
+	        ret.push(new eventBinding_1.default(bindingTarget, def1.on));
+	    if (def1.text)
+	        ret.push(new textBinding_1.default(bindingTarget, def1.text));
+	    else if (def1.children) {
+	        def1.data = def1.data || DefaultDataCallback;
+	        ret.push(new dataBinding_1.default(bindingTarget, def1.data, def1.children, def1.key));
+	    }
+	    return ret;
+	}
+	class Template {
+	    constructor(definition) {
+	        if (typeof definition === 'string')
+	            definition = ComponentFunction(definition, this.constructor);
+	        this.templates = this.DefaultTemplates;
+	        this.SetTemplates(definition.templates);
+	        definition.children = definition.children || this.Template.bind(this);
+	        this.definition = definition;
+	    }
+	    get DefaultTemplates() {
+	        return {};
+	    }
+	    get Templates() {
+	        return this.templates;
+	    }
+	    get Root() {
+	        if (!this.bindingRoot) {
+	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type);
+	            this.bindings = BindTarget(this.bindingRoot, this.definition);
+	        }
+	        return this.bindingRoot;
+	    }
+	    SetTemplates(templates) {
+	        if (!templates)
+	            return;
+	        for (var key in templates) {
+	            this.templates[key] = templates[key];
+	        }
+	    }
+	    UpdateComplete(callback) {
+	        bindingConfig_1.BindingConfig.updateComplete(callback);
+	    }
+	    AttachTo(bindingParent) {
+	        bindingConfig_1.BindingConfig.addChild(bindingParent, this.Root);
+	    }
+	    AttachToContainer(container) {
+	        bindingConfig_1.BindingConfig.addContainerChild(container, this.Root);
+	    }
+	    AttachBefore(bindingParent, template) {
+	        bindingConfig_1.BindingConfig.addChildBefore(bindingParent, template && template.Root, this.Root);
+	    }
+	    AttachAfter(bindingParent, template) {
+	        bindingConfig_1.BindingConfig.addChildAfter(bindingParent, template && template.Root, this.Root);
+	    }
+	    Detach() {
+	        bindingConfig_1.BindingConfig.remove(this.Root);
+	    }
+	    Destroy() {
+	        this.Detach();
+	        this.bindingRoot = null;
+	        this.bindings.forEach(b => b.Destroy());
+	        this.bindings = [];
+	    }
+	    Template(c, i) {
+	        return [];
+	    }
+	}
+	exports.Template = Template;
+	(function (Template) {
+	    function ToFunction(type, classType) {
+	        return CreateComponentFunction(type, classType);
+	    }
+	    Template.ToFunction = ToFunction;
+	    function Create(bindingDef) {
+	        var constructor = (bindingDef.class || Template);
+	        var template = new constructor(bindingDef);
+	        return template;
+	    }
+	    Template.Create = Create;
+	})(Template = exports.Template || (exports.Template = {}));
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const domBindingConfig_1 = __webpack_require__(3);
+	exports.BindingConfig = domBindingConfig_1.DOMBindingConfig;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const window_1 = __webpack_require__(4);
+	var pendingUpdates = [];
+	var updateScheduled = false;
+	var updateIndex = 0;
+	var batchSize = 3000;
+	function processUpdates() {
+	    var batchEnd = batchSize + updateIndex;
+	    for (var x = updateIndex; x < batchEnd && x < pendingUpdates.length; x++, updateIndex++)
+	        pendingUpdates[x]();
+	    if (updateIndex == pendingUpdates.length) {
+	        updateIndex = 0;
+	        pendingUpdates = [];
+	        updateScheduled = false;
+	    }
+	    else {
+	        window_1.wndw.requestAnimationFrame(processUpdates);
+	    }
+	}
+	exports.DOMBindingConfig = {
+	    scheduleUpdate: function (callback) {
+	        pendingUpdates.push(callback);
+	        if (!updateScheduled) {
+	            updateScheduled = true;
+	            window_1.wndw.requestAnimationFrame(processUpdates);
+	        }
+	    },
+	    updateComplete: function (callback) {
+	        this.scheduleUpdate(() => {
+	            setTimeout(callback, 0);
+	        });
+	    },
+	    addListener: function (target, type, callback) {
+	        target.addEventListener(type, callback);
+	    },
+	    removeListener: function (target, type, callback) {
+	        target.removeEventListener(type, callback);
+	    },
+	    createBindingTarget: function (type) {
+	        return window_1.wndw.document.createElement(type);
+	    },
+	    addChild: function (root, child) {
+	        root.appendChild(child);
+	    },
+	    addChildFirst: function (root, child) {
+	        exports.DOMBindingConfig.addChildBefore(root, root.firstChild, child);
+	    },
+	    addChildBefore: function (root, sibling, child) {
+	        if (!sibling) {
+	            exports.DOMBindingConfig.addChild(root, child);
+	            return;
+	        }
+	        root.insertBefore(child, sibling);
+	    },
+	    addChildAfter: function (root, sibling, child) {
+	        if (!sibling) {
+	            exports.DOMBindingConfig.addChildFirst(root, child);
+	            return;
+	        }
+	        exports.DOMBindingConfig.addChildBefore(root, sibling.nextSibling, child);
+	    },
+	    removeChild: function (root, child) {
+	        root.removeChild(child);
+	    },
+	    remove: function (target) {
+	        target && target.parentNode && target.parentNode.removeChild(target);
+	    },
+	    setText: function (target, text) {
+	        target.textContent = text;
+	    },
+	    createContainer() {
+	        return window_1.wndw.document.createDocumentFragment();
+	    },
+	    addContainerChild(container, child) {
+	        container.appendChild(child);
+	    },
+	    addChildContainer(root, container) {
+	        root.appendChild(container);
+	    }
+	};
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var glbl = null;
+	if (typeof window != "undefined")
+	    glbl = window;
+	else {
+	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
+	}
+	exports.wndw = glbl;
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(6);
+	class PropertyBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, null);
+	    }
+	    Apply() {
+	        this.lastValue = this.lastValue || {};
+	        this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
+	        this.lastValue = this.Value;
+	    }
+	    ApplyRecursive(target, lastValue, source) {
+	        if (typeof source !== "object")
+	            throw "Property binding must resolve to an object";
+	        for (var key in source) {
+	            var val = source[key];
+	            if (target[key] && val !== null && typeof val === 'object' && val.constructor === {}.constructor) {
+	                lastValue[key] = lastValue[key] || {};
+	                this.ApplyRecursive(target[key], lastValue[key], val);
+	            }
+	            else {
+	                val = val && val.valueOf();
+	                if (lastValue[key] !== val)
+	                    target[key] = val;
+	            }
+	        }
+	    }
+	}
+	exports.default = PropertyBinding;
+
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const objectStoreScope_1 = __webpack_require__(7);
+	const bindingConfig_1 = __webpack_require__(2);
+	var BindingStatus;
+	(function (BindingStatus) {
+	    BindingStatus[BindingStatus["Init"] = 0] = "Init";
+	    BindingStatus[BindingStatus["Updating"] = 1] = "Updating";
+	    BindingStatus[BindingStatus["Updated"] = 2] = "Updated";
+	    BindingStatus[BindingStatus["Destroyed"] = 3] = "Destroyed";
+	})(BindingStatus || (BindingStatus = {}));
+	class Binding {
+	    constructor(boundTo, binding, config) {
+	        this.boundTo = boundTo;
+	        this.status = BindingStatus.Init;
+	        this.setCallback = this.Update.bind(this);
+	        if (typeof binding === 'function') {
+	            this.observableScope = new objectStoreScope_1.Scope(binding);
+	            this.observableScope.addListener("set", this.setCallback);
+	        }
+	        else {
+	            this.isStatic = true;
+	            this.staticValue = binding;
+	        }
+	        this.Init(config);
+	        this.Update();
+	    }
+	    get Value() {
+	        return this.isStatic ?
+	            this.staticValue :
+	            this.observableScope.Value;
+	    }
+	    get BoundTo() {
+	        return this.boundTo;
+	    }
+	    Update() {
+	        if (this.status === BindingStatus.Destroyed)
+	            return;
+	        if (this.status === BindingStatus.Init) {
+	            this.status = BindingStatus.Updating;
+	            this.Apply();
+	            this.status = BindingStatus.Updated;
+	        }
+	        else if (this.status !== BindingStatus.Updating) {
+	            this.status = BindingStatus.Updating;
+	            bindingConfig_1.BindingConfig.scheduleUpdate(() => {
+	                if (this.status === BindingStatus.Destroyed)
+	                    return;
+	                this.Apply();
+	                this.status = BindingStatus.Updated;
+	            });
+	        }
+	    }
+	    Destroy() {
+	        this.observableScope && this.observableScope.Destroy();
+	        this.status = BindingStatus.Destroyed;
+	    }
+	    Init(config) { }
+	    ;
+	}
+	exports.Binding = Binding;
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const emitter_1 = __webpack_require__(8);
+	const globalEmitter_1 = __webpack_require__(9);
+	class Scope extends emitter_1.Emitter {
+	    constructor(valueFunction) {
+	        super();
+	        this.valueFunction = valueFunction;
+	        this.trackedEmitters = new Set();
+	        this.setCallback = this.SetCallback.bind(this);
+	        this.dirty = true;
+	    }
+	    get Value() {
+	        globalEmitter_1.globalEmitter.Register(this);
+	        if (!this.dirty)
+	            return this.value;
+	        this.UpdateValue();
+	        return this.value;
+	    }
+	    Scope(valueFunction) {
+	        return new Scope(() => valueFunction(this.Value));
+	    }
+	    Destroy() {
+	        this.removeAllListeners();
+	        this.trackedEmitters.forEach(c => c.removeListener("set", this.setCallback));
+	        this.trackedEmitters.clear();
+	    }
+	    UpdateValue() {
+	        var newEmitters = globalEmitter_1.globalEmitter.Watch(() => {
+	            try {
+	                this.value = this.valueFunction();
+	            }
+	            catch (err) {
+	                console.error(err);
+	            }
+	        });
+	        this.trackedEmitters.forEach(emitter => {
+	            if (!newEmitters.has(emitter))
+	                emitter.removeListener("set", this.setCallback);
+	        });
+	        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+	        this.trackedEmitters = newEmitters;
+	        this.dirty = false;
+	    }
+	    SetCallback() {
+	        this.dirty = true;
+	        this.emit("set");
+	    }
+	}
+	exports.Scope = Scope;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class Emitter {
+	    constructor() {
+	        this.callbackMap = {};
+	    }
+	    addListener(name, callback) {
+	        var events = this.callbackMap[name] || new Set();
+	        if (!events.has(callback))
+	            events.add(callback);
+	        this.callbackMap[name] = events;
+	    }
+	    removeListener(name, callback) {
+	        var events = this.callbackMap[name];
+	        events && events.delete(callback);
+	    }
+	    emit(name, ...args) {
+	        var events = this.callbackMap[name];
+	        events && events.forEach(c => c(...args));
+	    }
+	    clear(name) {
+	        var events = this.callbackMap[name];
+	        events && events.clear();
+	    }
+	    removeAllListeners() {
+	        for (var key in this.callbackMap)
+	            this.clear(key);
+	    }
+	}
+	exports.Emitter = Emitter;
+	exports.default = Emitter;
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class GlobalEmitter {
+	    constructor() {
+	        this.emitterStack = [];
+	    }
+	    Watch(callback) {
+	        this.emitterStack.push(new Set());
+	        callback();
+	        return this.emitterStack.pop();
+	    }
+	    Register(emitter) {
+	        if (this.emitterStack.length === 0)
+	            return;
+	        var set = this.emitterStack[this.emitterStack.length - 1];
+	        if (!set.has(emitter))
+	            set.add(emitter);
+	    }
+	}
+	exports.globalEmitter = new GlobalEmitter();
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(6);
+	const template_1 = __webpack_require__(1);
+	const bindingConfig_1 = __webpack_require__(2);
+	class DataBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction, childrenFunction, keyFunction) {
+	        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
+	    }
+	    Destroy() {
+	        super.Destroy();
+	        this.DestroyTemplates(this.activeTemplateMap);
+	        this.activeTemplateMap = null;
+	    }
+	    Init(config) {
+	        this.activeTemplateMap = new Map();
+	        this.activeKeys = [];
+	        this.childrenFunction = config.children;
+	        this.keyFunction = config.key;
+	    }
+	    Apply() {
+	        var value = this.Value;
+	        if (!value)
+	            value = [];
+	        else if (!Array.isArray(value))
+	            value = [value];
+	        var newTemplateMap = new Map();
+	        var newKeys = [];
+	        var container = bindingConfig_1.BindingConfig.createContainer();
+	        var previousTemplate = null;
+	        for (var x = 0; x < value.length; x++) {
+	            var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
+	            newKeys.push(newKey);
+	            var newTemplates = this.activeTemplateMap.get(newKey);
+	            if (!newTemplates) {
+	                var newDefs = this.childrenFunction(value[x], x);
+	                if (!Array.isArray(newDefs))
+	                    newDefs = [newDefs];
+	                newTemplates = newDefs.map(d => template_1.Template.Create(d));
+	            }
+	            newTemplateMap.set(newKey, newTemplates);
+	            this.activeTemplateMap.delete(newKey);
+	            if (x >= this.activeKeys.length)
+	                newTemplates.forEach(t => {
+	                    t.AttachToContainer(container);
+	                    previousTemplate = t;
+	                });
+	            else if (newKey !== this.activeKeys[x])
+	                newTemplates.forEach(t => {
+	                    t.AttachAfter(this.BoundTo, previousTemplate);
+	                    previousTemplate = t;
+	                });
+	            else
+	                previousTemplate = newTemplates[newTemplates.length - 1] || previousTemplate;
+	        }
+	        this.DestroyTemplates(this.activeTemplateMap);
+	        this.activeTemplateMap = newTemplateMap;
+	        this.activeKeys = newKeys;
+	        bindingConfig_1.BindingConfig.addChildContainer(this.BoundTo, container);
+	    }
+	    DestroyTemplates(templateMap) {
+	        templateMap.forEach(templates => templates.forEach(t => t.Destroy()));
+	    }
+	}
+	exports.default = DataBinding;
+
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(6);
+	const bindingConfig_1 = __webpack_require__(2);
+	class TextBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, null);
+	    }
+	    Apply() {
+	        bindingConfig_1.BindingConfig.setText(this.BoundTo, this.Value);
+	    }
+	}
+	exports.default = TextBinding;
+
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(6);
+	const bindingConfig_1 = __webpack_require__(2);
+	class EventBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, null);
+	    }
+	    Destroy() {
+	        super.Destroy();
+	        for (var key in this.boundEvents)
+	            bindingConfig_1.BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
+	    }
+	    Apply() {
+	        for (var key in this.boundEvents)
+	            bindingConfig_1.BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
+	        this.boundEvents = {};
+	        var value = this.Value;
+	        for (var key in value) {
+	            this.boundEvents[key] = value[key];
+	            bindingConfig_1.BindingConfig.addListener(this.BoundTo, key, value[key]);
+	        }
+	    }
+	}
+	exports.default = EventBinding;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const emitter_1 = __webpack_require__(8);
+	const globalEmitter_1 = __webpack_require__(9);
+	const objectStoreScope_1 = __webpack_require__(7);
+	function IsValue(value) {
+	    if (!value)
+	        return true;
+	    return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
+	}
+	class Store {
+	    constructor(idCallback) {
+	        this.getIdCallback = idCallback;
+	        this.emitterMap = new Map();
+	        this.emitterMap.set("root", new emitter_1.default());
+	        this.getterMap = new Map();
+	        this.idToPathsMap = new Map();
+	    }
+	    get Root() {
+	        this.EmitGet("root");
+	        var ret = this.getterMap.get("root");
+	        return ret || this.CreateGetterObject(this.root, "root");
+	    }
+	    set Root(val) {
+	        this.Write(null, () => val);
+	    }
+	    Scope(valueFunction) {
+	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root));
+	    }
+	    Get(id) {
+	        var paths = this.idToPathsMap.get(id);
+	        if (!paths)
+	            return null;
+	        var path = paths.values().next().value;
+	        this.EmitGet(path);
+	        var ret = this.getterMap.get(path);
+	        return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+	    }
+	    Write(readOnly, updateCallback) {
+	        if (typeof readOnly === 'string') {
+	            readOnly = this.Get(readOnly);
+	            if (!readOnly)
+	                return;
+	        }
+	        var path = readOnly ? readOnly.___path : "root";
+	        var localValue = this.ResolvePropertyPath(path);
+	        var newValue = null;
+	        var mutableCopy = null;
+	        if (typeof updateCallback === 'function') {
+	            mutableCopy = this.CreateCopy(localValue);
+	            newValue = updateCallback(mutableCopy);
+	        }
+	        else
+	            newValue = updateCallback;
+	        this.WriteTo(path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+	    }
+	    Push(readOnly, newValue) {
+	        var path = readOnly.___path;
+	        var localValue = this.ResolvePropertyPath(path);
+	        var oldLength = localValue.length;
+	        var childPath = [path, oldLength].join(".");
+	        localValue.push(null);
+	        this.WriteTo(childPath, newValue);
+	        var getterValue = this.getterMap.get(path);
+	        getterValue.push(this.CreateGetterObject(newValue, childPath));
+	        this.EmitSet(path);
+	    }
+	    WriteTo(path, value, skipDependents) {
+	        var localValue = this.ResolvePropertyPath(path);
+	        if (localValue === value)
+	            return;
+	        this.AssignPropertyPath(value, path);
+	        this.ProcessChanges(path, path, value, localValue, skipDependents);
+	    }
+	    ProcessChanges(rootPath, path, value, oldValue, skipDependents) {
+	        this.getterMap.delete(path);
+	        var newId = value && this.getIdCallback && this.getIdCallback(value);
+	        var oldId = oldValue && this.getIdCallback && this.getIdCallback(oldValue);
+	        if (oldId && oldId !== newId) {
+	            var oldIdPaths = this.idToPathsMap.get(oldId);
+	            oldIdPaths.delete(path);
+	            if (oldIdPaths.size === 0)
+	                this.idToPathsMap.delete(oldId);
+	        }
+	        if (!skipDependents && newId) {
+	            var dependentPaths = this.idToPathsMap.get(newId);
+	            if (!dependentPaths) {
+	                dependentPaths = new Set([path]);
+	                this.idToPathsMap.set(newId, dependentPaths);
+	            }
+	            else if (!dependentPaths.has(path))
+	                dependentPaths.add(path);
+	            dependentPaths.forEach(p => {
+	                if (p === path || p.indexOf(rootPath) === 0)
+	                    return;
+	                this.WriteTo(p, value, true);
+	            });
+	        }
+	        var skipProperties = new Set();
+	        if (!IsValue(value)) {
+	            for (var key in value) {
+	                var childPath = [path, key].join(".");
+	                this.ProcessChanges(rootPath, childPath, value[key], oldValue && oldValue[key], skipDependents);
+	                skipProperties.add(key);
+	            }
+	        }
+	        this.CleanUp(oldValue, skipProperties, path);
+	        this.EmitSet(path);
+	    }
+	    CleanUp(value, skipProperties, path) {
+	        if (!IsValue(value)) {
+	            for (var key in value) {
+	                if (!(skipProperties && skipProperties.has(key))) {
+	                    var childPath = [path, key].join(".");
+	                    this.emitterMap.delete(childPath);
+	                    this.getterMap.delete(childPath);
+	                    this.CleanUp(value[key], null, childPath);
+	                }
+	            }
+	            if (!skipProperties || skipProperties.size === 0) {
+	                var id = this.getIdCallback && this.getIdCallback(value);
+	                if (id) {
+	                    var paths = this.idToPathsMap.get(id);
+	                    if (paths) {
+	                        paths.delete(path);
+	                        if (paths.size === 0)
+	                            this.idToPathsMap.delete(id);
+	                    }
+	                }
+	            }
+	        }
+	    }
+	    AssignPropertyPath(value, path) {
+	        var parts = path.split(".");
+	        var prop = parts[parts.length - 1];
+	        var parentParts = parts.slice(0, parts.length - 1);
+	        var parentObj = this.ResolvePropertyPath(parentParts.join("."));
+	        parentObj[prop] = value;
+	    }
+	    ResolvePropertyPath(path) {
+	        if (!path)
+	            return this;
+	        return path.split(".").reduce((pre, curr) => {
+	            return pre && pre[curr];
+	        }, this);
+	    }
+	    CreateGetterObject(source, path) {
+	        if (IsValue(source))
+	            return source;
+	        var ret = null;
+	        if (Array.isArray(source)) {
+	            ret = new Array(source.length);
+	            for (var x = 0; x < source.length; x++)
+	                ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
+	        }
+	        else {
+	            ret = Object.create(null);
+	            for (var key in source)
+	                this.CreateGetter(ret, path, key);
+	        }
+	        Object.defineProperty(ret, "___path", {
+	            value: path,
+	            configurable: false,
+	            enumerable: false,
+	            writable: false
+	        });
+	        this.getterMap.set(path, ret);
+	        return ret;
+	    }
+	    CreateGetter(target, parentPath, property) {
+	        var path = [parentPath, property].join('.');
+	        Object.defineProperty(target, property, {
+	            enumerable: true,
+	            get: () => {
+	                this.EmitGet(path);
+	                var ret = this.getterMap.get(path);
+	                return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+	            },
+	            set: (val) => {
+	                this.WriteTo(path, val);
+	            }
+	        });
+	    }
+	    CreateCopy(source) {
+	        if (IsValue(source))
+	            return source;
+	        var ret = null;
+	        if (Array.isArray(source)) {
+	            ret = new Array(source.length);
+	            for (var x = 0; x < source.length; x++)
+	                ret[x] = this.CreateCopy(source[x]);
+	            return ret;
+	        }
+	        ret = {};
+	        for (var key in source)
+	            ret[key] = this.CreateCopy(source[key]);
+	        return ret;
+	    }
+	    EmitSet(path) {
+	        var emitter = this.emitterMap.get(path);
+	        if (!emitter) {
+	            emitter = new emitter_1.default();
+	            this.emitterMap.set(path, emitter);
+	        }
+	        emitter.emit("set");
+	    }
+	    EmitGet(path) {
+	        var emitter = this.emitterMap.get(path);
+	        if (!emitter) {
+	            emitter = new emitter_1.default();
+	            this.emitterMap.set(path, emitter);
+	        }
+	        globalEmitter_1.globalEmitter.Register(emitter);
+	    }
+	}
+	exports.Store = Store;
+	(function (Store) {
+	    function Create(value, idCallback) {
+	        if (IsValue(value))
+	            throw "Only arrays and JSON types are supported";
+	        var store = new Store(idCallback);
+	        store.Root = value;
+	        return store;
+	    }
+	    Store.Create = Create;
+	})(Store = exports.Store || (exports.Store = {}));
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const template_1 = __webpack_require__(1);
+	function a(templateDefinition, children) {
+	    return template_1.TemplateFunction("a", templateDefinition, children);
+	}
+	exports.a = a;
+	function ul(templateDefinition, children) {
+	    return template_1.TemplateFunction("ul", templateDefinition, children);
+	}
+	exports.ul = ul;
+	function li(templateDefinition, children) {
+	    return template_1.TemplateFunction("li", templateDefinition, children);
+	}
+	exports.li = li;
+	function br(templateDefinition, children) {
+	    return template_1.TemplateFunction("br", templateDefinition, children);
+	}
+	exports.br = br;
+	function b(templateDefinition, children) {
+	    return template_1.TemplateFunction("b", templateDefinition, children);
+	}
+	exports.b = b;
+	function div(templateDefinition, children) {
+	    return template_1.TemplateFunction("div", templateDefinition, children);
+	}
+	exports.div = div;
+	function span(templateDefinition, children) {
+	    return template_1.TemplateFunction("span", templateDefinition, children);
+	}
+	exports.span = span;
+	function img(templateDefinition, children) {
+	    return template_1.TemplateFunction("img", templateDefinition, children);
+	}
+	exports.img = img;
+	function video(templateDefinition, children) {
+	    return template_1.TemplateFunction("video", templateDefinition, children);
+	}
+	exports.video = video;
+	function source(templateDefinition, children) {
+	    return template_1.TemplateFunction("source", templateDefinition, children);
+	}
+	exports.source = source;
+	function input(templateDefinition, children) {
+	    return template_1.TemplateFunction("input", templateDefinition, children);
+	}
+	exports.input = input;
+	function option(templateDefinition, children) {
+	    return template_1.TemplateFunction("option", templateDefinition, children);
+	}
+	exports.option = option;
+	function select(templateDefinition, children) {
+	    return template_1.TemplateFunction("select", templateDefinition, children);
+	}
+	exports.select = select;
+	function h1(templateDefinition, children) {
+	    return template_1.TemplateFunction("h1", templateDefinition, children);
+	}
+	exports.h1 = h1;
+	function h2(templateDefinition, children) {
+	    return template_1.TemplateFunction("h2", templateDefinition, children);
+	}
+	exports.h2 = h2;
+	function h3(templateDefinition, children) {
+	    return template_1.TemplateFunction("h3", templateDefinition, children);
+	}
+	exports.h3 = h3;
+	function table(templateDefinition, children) {
+	    return template_1.TemplateFunction("table", templateDefinition, children);
+	}
+	exports.table = table;
+	function th(templateDefinition, children) {
+	    return template_1.TemplateFunction("th", templateDefinition, children);
+	}
+	exports.th = th;
+	function tr(templateDefinition, children) {
+	    return template_1.TemplateFunction("tr", templateDefinition, children);
+	}
+	exports.tr = tr;
+	function td(templateDefinition, children) {
+	    return template_1.TemplateFunction("td", templateDefinition, children);
+	}
+	exports.td = td;
+
+
+/***/ })
+/******/ ]);

@@ -1,4 +1,6 @@
 import Emitter from "../emitter";
+import { globalEmitter } from './globalEmitter';
+import { Scope } from "./objectStoreScope";
 
 function IsValue(value: any) {
     if(!value)
@@ -7,80 +9,9 @@ function IsValue(value: any) {
     return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor))
 }
 
-var globalEmitter = new Emitter();
-
-class ObjectStoreEmitter extends Emitter {
-    constructor(public ___path: string, public store: ObjectStore<any>) {
-        super();
-    }
-}
-
-export abstract class Value<T> {
-    public get Value(): T {
-        return this.getValue();
-    }
-
-    public set Value(val: T) {
-        this.setValue(val);
-    }
-
-    constructor() { }
-
-    protected abstract getValue(): T;
-
-    protected abstract setValue(val: T): void;
-
-    toString() {
-        var val = this.Value;
-        return val && val.toString();
-    }
-
-    valueOf() {
-        var val = this.Value;
-        return val && val.valueOf();
-    }
-}
-
-class StoreValue<T> extends Value<T> {
-
-    constructor(private store: ObjectStore<any>, private valuePath: string) {
-        super();
-    }
-
-    protected getValue(): T {
-        var emitter = this.store.GetEmitter(this.valuePath);
-        globalEmitter.emit("get", emitter);
-        return this.store.GetPath(this.valuePath);
-    }
-
-    protected setValue(val: T): void {
-        this.store.SetPath(this.valuePath, val);
-        this.store.GetEmitter(this.valuePath).emit("set");
-    }
-
-}
-
-class StaticValue<T> extends Value<T> {
-    private emitter = new Emitter();
-
-    constructor(private value: T) {
-        super();
-    }
-
-    protected getValue() {
-        globalEmitter.emit("get", this.emitter);
-        return this.value;
-    }
-
-    protected setValue(val: T) {
-        this.value = val;
-        this.emitter.emit("set");
-    }
-}
-
-export class ObjectStore<T> {
+export class Store<T> {
     private getIdCallback: { (val: any): any };
-    private emitterMap: Map<string, ObjectStoreEmitter>;
+    private emitterMap: Map<string, Emitter>;
     private getterMap: Map<string, any>;
     private idToPathsMap: Map<any, Set<string>>;
     private root: T;
@@ -98,12 +29,16 @@ export class ObjectStore<T> {
     constructor(idCallback?: { (val: any): any }) {
         this.getIdCallback = idCallback;
         this.emitterMap = new Map();
-        this.emitterMap.set("root", new ObjectStoreEmitter("root", this));
+        this.emitterMap.set("root", new Emitter());
         this.getterMap = new Map();
         this.idToPathsMap = new Map();
     }
 
-    public Get<T>(id: string): T {
+    public Scope<O>(valueFunction: {(root: T): O}): Scope<O> {
+        return new Scope(() => valueFunction(this.Root));
+    }
+
+    public Get<O>(id: string): O {
         var paths = this.idToPathsMap.get(id);
         if(!paths)
             return null;
@@ -112,20 +47,6 @@ export class ObjectStore<T> {
         this.EmitGet(path);
         var ret = this.getterMap.get(path);
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
-    }
-
-    public GetPath(path: string): any {
-        var value = this.ResolvePropertyPath(path);
-        this.EmitGet(path);
-        return value;
-    }
-
-    public SetPath(path: string, value: any) {        
-        this.WriteTo(path, value);
-    }
-
-    public GetEmitter(path: string): Emitter {
-        return this.emitterMap.get(path);
     }
 
     public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): void {
@@ -325,7 +246,8 @@ export class ObjectStore<T> {
     private EmitSet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            emitter = new ObjectStoreEmitter(path, this);
+            // emitter = new ObjectStoreEmitter(path, this);
+            emitter = new Emitter();
             this.emitterMap.set(path, emitter);
         }
         emitter.emit("set");
@@ -334,25 +256,27 @@ export class ObjectStore<T> {
     private EmitGet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            emitter = new ObjectStoreEmitter(path, this);
+            emitter = new Emitter();
+            // emitter = new ObjectStoreEmitter(path, this);
             this.emitterMap.set(path, emitter);
         }
 
-        globalEmitter.emit("get", emitter);
+        // globalEmitter.emit("get", emitter);
+        globalEmitter.Register(emitter);
     }
 }
 
-export namespace ObjectStore {
-    export function Create<T>(value: T, idCallback?: { (val: any): any }): ObjectStore<T> {
+export namespace Store {
+    export function Create<T>(value: T, idCallback?: { (val: any): any }): Store<T> {
         if(IsValue(value))
             throw "Only arrays and JSON types are supported";
 
-        var store = new ObjectStore<T>(idCallback);
+        var store = new Store<T>(idCallback);
         store.Root = value;
         return store;
     }
 
-    export function Watch(callback: {(): void}): Array<Emitter> {
+    /* export function Watch(callback: {(): void}): Array<Emitter> {
         var emitters = new Set();
         globalEmitter.addListener("get", (emitter: Emitter) => {
             if(!emitters.has(emitter))
@@ -363,9 +287,9 @@ export namespace ObjectStore {
 
         globalEmitter.removeAllListeners();
         return [...emitters];
-    }
+    } */
 
-    export function Value<O>(valueFunction: { (): O }): Value<O> {
+    /* export function Value<O>(valueFunction: { (): O }): Value<O> {
         var val: O = null;
         var emitters = ObjectStore.Watch(() => { val = valueFunction() }) as Array<ObjectStoreEmitter>;
         if(emitters.length > 0) {
@@ -376,5 +300,5 @@ export namespace ObjectStore {
         }
 
         return new StaticValue(val);
-    }
+   } */
 }

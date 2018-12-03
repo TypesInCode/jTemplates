@@ -1,5 +1,5 @@
 import { Emitter } from '../emitter';
-export declare class ObjectStoreScope<T> extends Emitter {
+export declare class Scope<T> extends Emitter {
     private valueFunction;
     private trackedEmitters;
     private dirty;
@@ -9,6 +9,9 @@ export declare class ObjectStoreScope<T> extends Emitter {
     constructor(valueFunction: {
         (): T;
     });
+    Scope<O>(valueFunction: {
+        (val: T): O;
+    }): Scope<O>;
     Destroy(): void;
     private UpdateValue;
     private SetCallback;

@@ -3,7 +3,7 @@ import { BindingConfig } from "./bindingConfig";
 
 class TextBinding extends Binding<any> {
 
-    constructor(boundTo: Node, bindingFunction: () => any) {
+    constructor(boundTo: Node, bindingFunction: {(): string} | string) {
         super(boundTo, bindingFunction, null);
     }
 

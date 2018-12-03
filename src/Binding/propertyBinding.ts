@@ -3,7 +3,7 @@ import { Binding } from "./binding";
 class PropertyBinding extends Binding<any> {
     private lastValue: any;
 
-    constructor(boundTo: Node, bindingFunction: () => any) {
+    constructor(boundTo: Node, bindingFunction: {(): any} | any) {
         super(boundTo, bindingFunction, null);
     }
 

@@ -4,17 +4,31 @@ export declare type Templates<T> = {
 };
 export interface BindingDefinition<P, T> {
     type: any;
-    props?: () => {
+    props?: {
+        (): {
+            [name: string]: any;
+        };
+    } | {
         [name: string]: any;
     };
-    on?: () => {
+    on?: {
+        (): {
+            [name: string]: {
+                (event?: any): void;
+            };
+        };
+    } | {
         [name: string]: {
             (event?: any): void;
         };
     };
-    data?: () => P | Array<P>;
+    data?: {
+        (): P | Array<P>;
+    } | P | Array<P>;
     key?: (val: P) => any;
-    text?: () => string;
+    text?: {
+        (): string;
+    } | string;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: {
         new (bindingDef?: BindingDefinition<any, any>): ITemplate<P, T>;
@@ -22,28 +36,54 @@ export interface BindingDefinition<P, T> {
     templates?: Templates<T>;
 }
 export interface TemplateDefinition<P> {
-    props?: () => {
+    props?: {
+        (): {
+            [name: string]: any;
+        };
+    } | {
         [name: string]: any;
     };
-    on?: () => {
+    on?: {
+        (): {
+            [name: string]: {
+                (event?: any): void;
+            };
+        };
+    } | {
         [name: string]: {
             (event?: any): void;
         };
     };
-    data?: () => P | Array<P>;
+    data?: {
+        (): P | Array<P>;
+    } | P | Array<P>;
     key?: (val: P) => any;
-    text?: () => string;
+    text?: {
+        (): string;
+    } | string;
 }
 export interface ComponentDefinition<P, T> {
-    props?: () => {
+    props?: {
+        (): {
+            [name: string]: any;
+        };
+    } | {
         [name: string]: any;
     };
-    on?: () => {
+    on?: {
+        (): {
+            [name: string]: {
+                (event?: any): void;
+            };
+        };
+    } | {
         [name: string]: {
             (event?: any): void;
         };
     };
-    data?: () => P | Array<P>;
+    data?: {
+        (): P | Array<P>;
+    } | P | Array<P>;
     key?: (val: P) => any;
 }
 export declare type BoundComponentFunction<P, T> = {
