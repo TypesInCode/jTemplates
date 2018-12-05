@@ -2,6 +2,16 @@ import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
 
+function ConvertToArray(val: any): Array<any> {
+    if(!val)
+        return [];
+
+    if(!Array.isArray(val))
+        return [val];
+
+    return val;
+}
+
 class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }> {
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
@@ -9,7 +19,30 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     keyFunction: (val: any) => any;
 
     constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
-        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
+        var bindingWrapper = null;
+        if(typeof bindingFunction === 'function')
+            bindingWrapper = () => {
+                var value = bindingFunction() as Array<any>;
+                value = ConvertToArray(value);
+
+                return value.map((curr, index) => {
+                    return {
+                        value: curr,
+                        key: keyFunction && keyFunction(curr) || index
+                    };
+                });
+            };
+        else {
+            bindingWrapper = ConvertToArray(bindingFunction).map((curr, index) => {
+                return {
+                    value: curr,
+                    key: keyFunction && keyFunction(curr) || index
+                };
+            });
+        }
+            
+
+        super(boundTo, bindingWrapper, { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
@@ -26,23 +59,23 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     }
 
     protected Apply() {
-        var value = this.Value as Array<any>;
-        if(!value)
+        var value = this.Value as Array<{ value: any, key: any }>;
+        /* if(!value)
             value = [];
         else if(!Array.isArray(value))
-            value = [value];
+            value = [value]; */
 
         var newTemplateMap = new Map();
         var newKeys = [];
         var container = BindingConfig.createContainer();
         var previousTemplate = null as Template<any, any>;
         for(var x=0; x<value.length; x++) {
-            var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
+            var newKey = value[x].key; // this.keyFunction && this.keyFunction(value[x]) || x;
             newKeys.push(newKey);
 
             var newTemplates = this.activeTemplateMap.get(newKey);
             if(!newTemplates) {
-                var newDefs = this.childrenFunction(value[x], x) as Array<any>;
+                var newDefs = this.childrenFunction(value[x].value, x) as Array<any>;
                 if(!Array.isArray(newDefs))
                     newDefs = [newDefs];
                 

@@ -1,4 +1,4 @@
-import { Template, BindingDefinition } from "./template";
+import { Template, BindingDefinition, Component } from "./template";
 import { Store } from './ObjectStore/objectStore';
 import { Scope } from "./ObjectStore/objectStoreScope";
 import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
@@ -27,7 +27,7 @@ interface ITableCell {
     cell: (cell: Scope<ICellData>, index: number) => BindingDefinition<any, any>;
 }
 
-class DataTable extends Template<Scope<ITableData>, ITableCell> {
+class DataTable extends Component<ITableData, ITableCell> {
     get DefaultTemplates() {
         return {
             cell: (scope: ICellData) => span({ text: () => {
@@ -105,8 +105,6 @@ class Root extends Template<any, any> {
         return val;
     });
 
-    tableData = new Scope(() => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }));
-
     constructor() {
         super("app");
     }
@@ -114,7 +112,7 @@ class Root extends Template<any, any> {
     Template() {
         return [
             input({ props: { type: 'text' }, on: { keyup: (e: any) => this.state.Root.filter = e.target.value } }),
-            dataTable({ data: this.tableData }),
+            dataTable({ data: () => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }) }),
             input({ props: { type: 'button', value: 'add' }, on: { click: () => {
                 this.data.Push(this.data.Root, {
                     id: this.data.Root.length + 1,
@@ -139,7 +137,7 @@ class Root extends Template<any, any> {
     }
 }
 var list = new Root();
-list.AttachTo(document.getElementById("container")); */
+list.AttachTo(document.getElementById("container"));
 
 /* var store = ObjectStore.Create(["first", "third", "second"]);
 var scope1 = new ObjectStoreScope(() => {

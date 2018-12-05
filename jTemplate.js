@@ -74,7 +74,7 @@ var jTemplate =
 	exports.th = elements_1.th;
 	exports.tr = elements_1.tr;
 	exports.td = elements_1.td;
-	class DataTable extends template_1.Template {
+	class DataTable extends template_1.Component {
 	    get DefaultTemplates() {
 	        return {
 	            cell: (scope) => elements_1.span({ text: () => {
@@ -140,12 +140,11 @@ var jTemplate =
 	            val.sort((a, b) => a.sort - b.sort);
 	            return val;
 	        });
-	        this.tableData = new objectStoreScope_1.Scope(() => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }));
 	    }
 	    Template() {
 	        return [
 	            elements_1.input({ props: { type: 'text' }, on: { keyup: (e) => this.state.Root.filter = e.target.value } }),
-	            dataTable({ data: this.tableData }),
+	            dataTable({ data: () => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }) }),
 	            elements_1.input({ props: { type: 'button', value: 'add' }, on: { click: () => {
 	                        this.data.Push(this.data.Root, {
 	                            id: this.data.Root.length + 1,
@@ -184,6 +183,7 @@ var jTemplate =
 	const dataBinding_1 = __webpack_require__(10);
 	const textBinding_1 = __webpack_require__(11);
 	const eventBinding_1 = __webpack_require__(12);
+	const objectStoreScope_1 = __webpack_require__(7);
 	function TemplateFunction(type, templateDefinition, children) {
 	    return {
 	        type: type,
@@ -284,6 +284,22 @@ var jTemplate =
 	    }
 	}
 	exports.Template = Template;
+	class Component extends Template {
+	    constructor(definition) {
+	        if (typeof definition === 'string')
+	            super(definition);
+	        else if (typeof definition.data === 'function') {
+	            definition.data = new objectStoreScope_1.Scope(definition.data);
+	            super(definition);
+	        }
+	        else {
+	            var data = definition.data;
+	            definition.data = new objectStoreScope_1.Scope(() => data);
+	            super(definition);
+	        }
+	    }
+	}
+	exports.Component = Component;
 	(function (Template) {
 	    function ToFunction(type, classType) {
 	        return CreateComponentFunction(type, classType);
@@ -522,9 +538,10 @@ var jTemplate =
 	const emitter_1 = __webpack_require__(8);
 	const globalEmitter_1 = __webpack_require__(9);
 	class Scope extends emitter_1.Emitter {
-	    constructor(valueFunction) {
+	    constructor(getFunction, setFunction) {
 	        super();
-	        this.valueFunction = valueFunction;
+	        this.getFunction = getFunction;
+	        this.setFunction = setFunction;
 	        this.trackedEmitters = new Set();
 	        this.setCallback = this.SetCallback.bind(this);
 	        this.dirty = true;
@@ -536,8 +553,11 @@ var jTemplate =
 	        this.UpdateValue();
 	        return this.value;
 	    }
-	    Scope(valueFunction) {
-	        return new Scope(() => valueFunction(this.Value));
+	    set Value(val) {
+	        this.setFunction && this.setFunction(val);
+	    }
+	    Scope(getFunction, setFunction) {
+	        return new Scope(() => getFunction(this.Value), (val) => setFunction(this.Value, val));
 	    }
 	    Destroy() {
 	        this.removeAllListeners();
@@ -547,7 +567,7 @@ var jTemplate =
 	    UpdateValue() {
 	        var newEmitters = globalEmitter_1.globalEmitter.Watch(() => {
 	            try {
-	                this.value = this.valueFunction();
+	                this.value = this.getFunction();
 	            }
 	            catch (err) {
 	                console.error(err);
@@ -641,9 +661,36 @@ var jTemplate =
 	const binding_1 = __webpack_require__(6);
 	const template_1 = __webpack_require__(1);
 	const bindingConfig_1 = __webpack_require__(2);
+	function ConvertToArray(val) {
+	    if (!val)
+	        return [];
+	    if (!Array.isArray(val))
+	        return [val];
+	    return val;
+	}
 	class DataBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction, childrenFunction, keyFunction) {
-	        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
+	        var bindingWrapper = null;
+	        if (typeof bindingFunction === 'function')
+	            bindingWrapper = () => {
+	                var value = bindingFunction();
+	                value = ConvertToArray(value);
+	                return value.map((curr, index) => {
+	                    return {
+	                        value: curr,
+	                        key: keyFunction && keyFunction(curr) || index
+	                    };
+	                });
+	            };
+	        else {
+	            bindingWrapper = ConvertToArray(bindingFunction).map((curr, index) => {
+	                return {
+	                    value: curr,
+	                    key: keyFunction && keyFunction(curr) || index
+	                };
+	            });
+	        }
+	        super(boundTo, bindingWrapper, { children: childrenFunction, key: keyFunction });
 	    }
 	    Destroy() {
 	        super.Destroy();
@@ -658,20 +705,16 @@ var jTemplate =
 	    }
 	    Apply() {
 	        var value = this.Value;
-	        if (!value)
-	            value = [];
-	        else if (!Array.isArray(value))
-	            value = [value];
 	        var newTemplateMap = new Map();
 	        var newKeys = [];
 	        var container = bindingConfig_1.BindingConfig.createContainer();
 	        var previousTemplate = null;
 	        for (var x = 0; x < value.length; x++) {
-	            var newKey = this.keyFunction && this.keyFunction(value[x]) || x;
+	            var newKey = value[x].key;
 	            newKeys.push(newKey);
 	            var newTemplates = this.activeTemplateMap.get(newKey);
 	            if (!newTemplates) {
-	                var newDefs = this.childrenFunction(value[x], x);
+	                var newDefs = this.childrenFunction(value[x].value, x);
 	                if (!Array.isArray(newDefs))
 	                    newDefs = [newDefs];
 	                newTemplates = newDefs.map(d => template_1.Template.Create(d));
@@ -783,8 +826,8 @@ var jTemplate =
 	    set Root(val) {
 	        this.Write(null, () => val);
 	    }
-	    Scope(valueFunction) {
-	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root));
+	    Scope(valueFunction, setFunction) {
+	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), (next) => setFunction(this.Root, next));
 	    }
 	    Get(id) {
 	        var paths = this.idToPathsMap.get(id);

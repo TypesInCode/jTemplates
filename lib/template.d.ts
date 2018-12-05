@@ -1,4 +1,5 @@
 import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
+import { Scope } from "./ObjectStore/objectStoreScope";
 export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
@@ -20,6 +21,9 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     Detach(): void;
     Destroy(): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;
+}
+export declare class Component<P, T> extends Template<Scope<P>, T> {
+    constructor(definition: BindingDefinition<P, T> | string);
 }
 export declare namespace Template {
     function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
