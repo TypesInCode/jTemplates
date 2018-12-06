@@ -124,8 +124,10 @@ export class Template<P, T> implements ITemplate<P, T> {
         BindingConfig.remove(this.Root);
     }
 
-    public Destroy() {
-        this.Detach();
+    public Destroy(isChild?: boolean) {
+        if(!isChild)
+            this.Detach();
+        
         this.bindingRoot = null;
         this.bindings.forEach(b => b.Destroy());
         this.bindings = [];

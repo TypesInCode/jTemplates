@@ -11,6 +11,7 @@ declare class DataBinding extends Binding<{
     activeKeys: Array<any>;
     keyFunction: (val: any) => any;
     constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any);
+    Destroy(): void;
     protected Init(config: {
         children: {
             (c: any, i: number): BindingDefinitions<any, any>;

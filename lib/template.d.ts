@@ -19,7 +19,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
     AttachAfter(bindingParent: any, template: Template<any, any>): void;
     Detach(): void;
-    Destroy(): void;
+    Destroy(isChild?: boolean): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;
 }
 export declare class Component<P, T> extends Template<Scope<P>, T> {
