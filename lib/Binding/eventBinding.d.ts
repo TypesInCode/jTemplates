@@ -6,7 +6,6 @@ declare class EventBinding extends Binding<any> {
     constructor(boundTo: Node, bindingFunction: {
         (): any;
     } | any);
-    Destroy(): void;
     protected Apply(): void;
 }
 export default EventBinding;

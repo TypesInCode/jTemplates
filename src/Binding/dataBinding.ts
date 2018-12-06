@@ -45,11 +45,11 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         super(boundTo, bindingWrapper, { children: childrenFunction, key: keyFunction });
     }
 
-    public Destroy() {
+    /* public Destroy() {
         super.Destroy();
-        this.DestroyTemplates(this.activeTemplateMap);
+        this.DestroyTemplates(this.activeTemplateMap, true);
         this.activeTemplateMap = null;
-    }
+    } */
 
     protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {
         this.activeTemplateMap = new Map();
