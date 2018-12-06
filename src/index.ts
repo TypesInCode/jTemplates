@@ -2,9 +2,10 @@ import { Template, BindingDefinition, Component } from "./template";
 import { Store } from './ObjectStore/objectStore';
 import { Scope } from "./ObjectStore/objectStoreScope";
 import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
+import { StoreAsync } from "./ObjectStore/objectStoreAsync";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Store, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Store, StoreAsync, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* interface IColumn {
     name: string;
@@ -57,9 +58,9 @@ var dataTable = Template.ToFunction("datatable", DataTable);
 
 class Root extends Template<any, any> {
 
-    state = Store.Create({ filter: "" });
+    state = StoreAsync.Create({ filter: "" });
 
-    columns = Store.Create([
+    columns = StoreAsync.Create([
         {
             id: "id",
             name: "Id",
@@ -80,7 +81,7 @@ class Root extends Template<any, any> {
         }
     ]);
 
-    data = Store.Create([
+    data = StoreAsync.Create([
         {
             id: 1,
             name: "Bart",
@@ -114,10 +115,12 @@ class Root extends Template<any, any> {
             input({ props: { type: 'text' }, on: { keyup: (e: any) => this.state.Root.filter = e.target.value } }),
             dataTable({ data: () => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }) }),
             input({ props: { type: 'button', value: 'add' }, on: { click: () => {
-                this.data.Push(this.data.Root, {
-                    id: this.data.Root.length + 1,
-                    name: `garbage ${this.data.Root.length + 1}`,
-                    title: `title ${this.data.Root.length + 1}`
+                this.data.Write(this.data.Root, (val) => {
+                    val.push({
+                        id: this.data.Root.length + 1,
+                        name: `garbage ${this.data.Root.length + 1}`,
+                        title: `title ${this.data.Root.length + 1}`
+                    });
                 });
             } } }),
             ul({ data: this.columns.Root }, (column) => [
