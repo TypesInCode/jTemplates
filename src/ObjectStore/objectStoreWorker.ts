@@ -38,7 +38,7 @@ function WorkerScope() {
         var newId = value && localIdFunction && localIdFunction(value);
         var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
 
-        if(oldId && oldId !== newId) {
+        if(oldId || newId) {
             response.processedIds.push({
                 newId: newId,
                 oldId: oldId,
