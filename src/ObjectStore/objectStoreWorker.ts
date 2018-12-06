@@ -35,7 +35,6 @@ function WorkerScope() {
             localIdFunction = idFunction;
 
         response.changedPaths.push(path);
-        // this.getterMap.delete(path);
         var newId = value && localIdFunction && localIdFunction(value);
         var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
 
@@ -45,29 +44,7 @@ function WorkerScope() {
                 oldId: oldId,
                 path: path
             });
-            /* var oldIdPaths = this.idToPathsMap.get(oldId);
-            oldIdPaths.delete(path);
-            if(oldIdPaths.size === 0)
-                this.idToPathsMap.delete(oldId); */
         }
-
-        // if(!skipDependents && newId) {
-        /* if(newId) {
-            var dependentPaths = this.idToPathsMap.get(newId);
-            if(!dependentPaths) {
-                dependentPaths = new Set([path]);
-                this.idToPathsMap.set(newId, dependentPaths);
-            }
-            else if(!dependentPaths.has(path))
-                dependentPaths.add(path);
-
-            dependentPaths.forEach(p => {
-                if(p === path || p.indexOf(rootPath) === 0)
-                    return;
-                
-                this.WriteTo(p, value, true);
-            });
-        } */
 
         var skipProperties = new Set();
         if(!IsValue(value)) {
@@ -78,18 +55,16 @@ function WorkerScope() {
             }
         }
 
-        CleanUp(oldValue, skipProperties, path, response);
-        // this.CleanUp(oldValue, skipProperties, path);
-        // this.EmitSet(path);
+        DeleteProperties(oldValue, skipProperties, path, response);
     }
 
-    function CleanUp(value: any, skipProperties: Set<string>, path: string, response: IPostMessage) {
+    function DeleteProperties(value: any, skipProperties: Set<string>, path: string, response: IPostMessage) {
         if(!IsValue(value)) {
             for(var key in value) {
                 if(!(skipProperties && skipProperties.has(key))) {
                     var childPath = [path, key].join(".");
                     response.deletedPaths.push(childPath);
-                    this.CleanUp(value[key], null, childPath);
+                    DeleteProperties(value[key], null, childPath, response);
                 }
             }
 
@@ -101,13 +76,6 @@ function WorkerScope() {
                         oldId: id,
                         path: path
                     });
-
-                    /* var paths = this.idToPathsMap.get(id);
-                    if(paths) {
-                        paths.delete(path);
-                        if(paths.size === 0)
-                            this.idToPathsMap.delete(id);
-                    } */
                 }
             }
         }

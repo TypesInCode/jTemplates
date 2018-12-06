@@ -38,46 +38,7 @@ export class StoreAsync<T> {
         this.worker.onmessage = (event) => {
             // console.log(event);
             var data = event.data as IPostMessage;
-            if(!data.wasNull) {
-                data.changedPaths.forEach(p => this.getterMap.delete(p));
-                data.changedPaths.forEach(p => this.EmitSet(p));
-            }
-
-            data.deletedPaths.forEach(p => {
-                this.getterMap.delete(p);
-                this.emitterMap.delete(p);
-            });
-
-            data.processedIds.forEach(idObj => {
-                var oldId = idObj.oldId;
-                var newId = idObj.newId;
-                var path = idObj.path;
-                if(oldId && oldId !== newId) {
-                    var oldIdPaths = this.idToPathsMap.get(oldId);
-                    oldIdPaths.delete(idObj.path);
-                    if(oldIdPaths.size === 0)
-                        this.idToPathsMap.delete(idObj.oldId);
-                }
-
-                if(!data.skipDependents && newId) {
-                    var value = this.ResolvePropertyPath(idObj.path);
-                    var dependentPaths = this.idToPathsMap.get(newId);
-                    if(!dependentPaths) {
-                        dependentPaths = new Set([path]);
-                        this.idToPathsMap.set(newId, dependentPaths);
-                    }
-                    else if(!dependentPaths.has(path))
-                        dependentPaths.add(path);
-        
-                    dependentPaths.forEach(p => {
-                        if(p === path || p.indexOf(data.rootPath) === 0)
-                            return;
-                        
-                        
-                        this.WriteTo(p, value, true);
-                    });
-                }
-            });
+            this.CleanMaps(data);
         };
     }
 
@@ -133,6 +94,17 @@ export class StoreAsync<T> {
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
+        var resp = {
+            wasNull: true,
+            skipDependents: false,
+            changedPaths: [],
+            deletedPaths: [],
+            processedIds: [],
+            rootPath: path
+        } as IPostMessage;
+
+        this.ProcessChanges(childPath, newValue, null, this.getIdCallback, resp);
+        this.CleanMaps(resp);
         this.EmitSet(path);
     }
 
@@ -150,7 +122,103 @@ export class StoreAsync<T> {
             idFunction: this.getIdCallback && this.getIdCallback.toString(),
             skipDependents: !!skipDependents
         } as IMessage)
-        // this.ProcessChanges(path, path, value, localValue, skipDependents);
+    }
+
+    private ProcessChanges(path: string, value: any, oldValue: any, idFunction: {(val: any): any} | string, response: IPostMessage) {
+        var localIdFunction = null as {(val: any): any};
+        if(typeof idFunction === 'string')
+            localIdFunction = eval(idFunction);
+        else if(idFunction)
+            localIdFunction = idFunction;
+
+        response.changedPaths.push(path);
+        var newId = value && localIdFunction && localIdFunction(value);
+        var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
+
+        if(oldId && oldId !== newId) {
+            response.processedIds.push({
+                newId: newId,
+                oldId: oldId,
+                path: path
+            });
+        }
+
+        var skipProperties = new Set();
+        if(!IsValue(value)) {
+            for(var key in value) {
+                var childPath = [path, key].join(".");
+                this.ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
+                skipProperties.add(key);
+            }
+        }
+
+       this. DeleteProperties(oldValue, skipProperties, path, response);
+    }
+
+    private DeleteProperties(value: any, skipProperties: Set<string>, path: string, response: IPostMessage) {
+        if(!IsValue(value)) {
+            for(var key in value) {
+                if(!(skipProperties && skipProperties.has(key))) {
+                    var childPath = [path, key].join(".");
+                    response.deletedPaths.push(childPath);
+                    this.DeleteProperties(value[key], null, childPath, response);
+                }
+            }
+
+            if(!skipProperties || skipProperties.size === 0) {
+                var id = this.getIdCallback && this.getIdCallback(value);
+                if(id) {
+                    response.processedIds.push({
+                        newId: null,
+                        oldId: id,
+                        path: path
+                    });
+                }
+            }
+        }
+    }
+
+    private CleanMaps(data: IPostMessage) {
+        if(!data.wasNull) {
+            data.changedPaths.forEach(p => this.getterMap.delete(p));
+            data.changedPaths.forEach(p => this.EmitSet(p));
+        }
+
+        data.deletedPaths.forEach(p => {
+            this.getterMap.delete(p);
+            this.emitterMap.delete(p);
+        });
+
+        data.processedIds.forEach(idObj => {
+            var oldId = idObj.oldId;
+            var newId = idObj.newId;
+            var path = idObj.path;
+            if(oldId && oldId !== newId) {
+                var oldIdPaths = this.idToPathsMap.get(oldId);
+                oldIdPaths.delete(idObj.path);
+                if(oldIdPaths.size === 0)
+                    this.idToPathsMap.delete(idObj.oldId);
+            }
+
+            if(!data.skipDependents && newId) {
+                var value = this.ResolvePropertyPath(idObj.path);
+                var dependentPaths = this.idToPathsMap.get(newId);
+                if(!dependentPaths) {
+                    dependentPaths = new Set([path]);
+                    this.idToPathsMap.set(newId, dependentPaths);
+                }
+                else if(!dependentPaths.has(path))
+                    dependentPaths.add(path);
+    
+                dependentPaths.forEach(p => {
+                    if(p === path || p.indexOf(data.rootPath) === 0)
+                        return;
+                    
+                    
+                    this.WriteTo(p, value, true);
+                });
+            }
+        });
     }
 
     /* private ProcessChanges(rootPath: string, path: string, value: any, oldValue: any, skipDependents?: boolean) {
