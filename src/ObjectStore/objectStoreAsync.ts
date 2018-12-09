@@ -46,7 +46,7 @@ export class StoreAsync<T> {
         return new Scope(() => valueFunction(this.Root), (next: O) => setFunction(this.Root, next));
     }
 
-    /* public Get<O>(id: string): O {
+    public Get<O>(id: string): O {
         var paths = this.idToPathsMap.get(id);
         if(!paths)
             return null;
@@ -55,7 +55,7 @@ export class StoreAsync<T> {
         this.EmitGet(path);
         var ret = this.getterMap.get(path);
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
-    } */
+    }
 
     public Write<O>(readOnly: O, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
         /* if(typeof readOnly === 'string') {

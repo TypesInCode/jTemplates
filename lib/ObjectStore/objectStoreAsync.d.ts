@@ -15,6 +15,7 @@ export declare class StoreAsync<T> {
     }, setFunction?: {
         (val: T, next: O): void;
     }): Scope<O>;
+    Get<O>(id: string): O;
     Write<O>(readOnly: O, updateCallback: {
         (current: O): O;
     } | {
