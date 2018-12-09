@@ -8,6 +8,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     private bindings;
     private bindingRoot;
     private templates;
+    private destroyed;
     protected readonly DefaultTemplates: Templates<T>;
     protected readonly Templates: Templates<T>;
     protected readonly Root: any;
@@ -19,7 +20,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
     AttachAfter(bindingParent: any, template: Template<any, any>): void;
     Detach(): void;
-    Destroy(isChild?: boolean): void;
+    Destroy(): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;
 }
 export declare class Component<P, T> extends Template<Scope<P>, T> {

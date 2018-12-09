@@ -2,6 +2,7 @@ import Emitter from "../emitter";
 import { globalEmitter } from './globalEmitter';
 import { Scope } from "./objectStoreScope";
 import { ObjectStoreWorker } from "./objectStoreWorker";
+import { WorkerQueue } from "./workerQueue";
 
 function IsValue(value: any) {
     if(!value)
@@ -15,8 +16,10 @@ export class StoreAsync<T> {
     private emitterMap: Map<string, Emitter>;
     private getterMap: Map<string, any>;
     private idToPathsMap: Map<any, Set<string>>;
+    // private getterRoot: T;
     private root: T;
-    private worker: Worker;
+    // private worker: Worker;
+    private workerQueue: WorkerQueue<IMessage, IPostMessage>;
 
     public get Root(): T {
         this.EmitGet("root");
@@ -25,28 +28,25 @@ export class StoreAsync<T> {
     }
 
     public set Root(val: T) {
-        this.Write(null, () => val);
+        // this.Write(null, () => val);
+        this.WriteToSync("root", val);
     }
 
     constructor(idCallback?: { (val: any): any }) {
         this.getIdCallback = idCallback;
         this.emitterMap = new Map();
         this.emitterMap.set("root", new Emitter());
-        this.getterMap = new Map();
+        //this.getterMap = new Map();
         this.idToPathsMap = new Map();
-        this.worker = ObjectStoreWorker.Create();
-        this.worker.onmessage = (event) => {
-            // console.log(event);
-            var data = event.data as IPostMessage;
-            this.CleanMaps(data);
-        };
+        // this.worker = null; //ObjectStoreWorker.Create();
+        this.workerQueue = new WorkerQueue(ObjectStoreWorker.Create);
     }
 
     public Scope<O>(valueFunction: {(root: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
         return new Scope(() => valueFunction(this.Root), (next: O) => setFunction(this.Root, next));
     }
 
-    public Get<O>(id: string): O {
+    /* public Get<O>(id: string): O {
         var paths = this.idToPathsMap.get(id);
         if(!paths)
             return null;
@@ -55,17 +55,17 @@ export class StoreAsync<T> {
         this.EmitGet(path);
         var ret = this.getterMap.get(path);
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
-    }
+    } */
 
-    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): void {
-        if(typeof readOnly === 'string') {
+    public Write<O>(readOnly: O, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
+        /* if(typeof readOnly === 'string') {
             readOnly = this.Get(readOnly);
             if(!readOnly)
                 return;
-        }
+        } */
         
         var path = readOnly ? (readOnly as any).___path : "root";
-        var localValue = this.ResolvePropertyPath(path) as O;
+        /* var localValue = this.ResolvePropertyPath(path) as O;
 
         var newValue = null;
         var mutableCopy = null;
@@ -74,67 +74,114 @@ export class StoreAsync<T> {
             newValue = (updateCallback as { (current: O): O })(mutableCopy);
         }
         else 
-            newValue = updateCallback;
+            newValue = updateCallback; */
 
-        this.WriteTo(path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+        return this.WriteToAsync(path, () => {
+            if(typeof updateCallback === 'function') {
+                var localValue = this.ResolvePropertyPath(path) as O;
+                var mutableCopy = this.CreateCopy(localValue);
+                var ret = (updateCallback as any)(mutableCopy);
+                return typeof ret === 'undefined' ? mutableCopy : ret;
+            }
+
+            return updateCallback;
+        });//typeof newValue !== "undefined" ? newValue : mutableCopy);
     }
 
-    public Push<O>(readOnly: Array<O>, newValue: O) {
+    public Push<O>(readOnly: Array<O>, newValue: O): Promise<any> {
         var path = (readOnly as any).___path;
         
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
-        var oldLength = localValue.length;
-
-        var childPath = [path, oldLength].join(".");
+        var childPath = [path, localValue.length].join(".");
         localValue.push(null);
-        // this.WriteTo(childPath, newValue);
-
-        this.AssignPropertyPath(newValue, childPath);
 
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
-        var resp = {
-            wasNull: true,
-            skipDependents: false,
-            changedPaths: [],
-            deletedPaths: [],
-            processedIds: [],
-            rootPath: path
-        } as IPostMessage;
-
-        this.ProcessChanges(childPath, newValue, null, this.getIdCallback, resp);
-        this.CleanMaps(resp);
-        this.EmitSet(path);
+        /* this.WriteToSync(childPath, newValue)
+        this.EmitSet(path); */
+        return new Promise((resolve, reject) => {
+            this.WriteToAsync(childPath, () => newValue).then(() => {
+                this.EmitSet(path);
+                resolve();
+            }, reject);
+        });
     }
 
-    private WriteTo(path: string, value: any, skipDependents?: boolean) {
+    private WriteToSync(path: string, value: any) {
         var localValue = this.ResolvePropertyPath(path);
         if(localValue === value)
             return;
 
         this.AssignPropertyPath(value, path);
 
+        var resp = {
+            wasNull: !localValue && localValue !== 0,
+            skipDependents: false,
+            changedPaths: null,
+            deletedPaths: [],
+            processedIds: [],
+            rootPath: path
+        } as IPostMessage;
+
+        resp.changedPaths = this.ProcessChanges(path, value, localValue, this.getIdCallback, resp);
+        this.CleanMaps(resp);
+    }
+
+    private WriteToAsync(path: string, valueCallback: {(): any}, skipDependents?: boolean): Promise<any> {
+        /* var localValue = this.ResolvePropertyPath(path);
+        if(localValue === value)
+            return; */
+
+        return new Promise((resolve, reject) => {
+            var value: any = null;
+            this.workerQueue.Push(() => {
+                value = valueCallback();
+                return {
+                    newValue: value,
+                    oldValue: this.ResolvePropertyPath(path),
+                    path: path,
+                    idFunction: this.getIdCallback && this.getIdCallback.toString(),
+                    skipDependents: !!skipDependents
+                }
+            }, (postMessage) => {
+                this.AssignPropertyPath(value, path);
+                this.CleanMaps(postMessage.data);
+                resolve();
+            });
+        });
+
+        /* this.worker && this.worker.terminate();
+        this.worker = ObjectStoreWorker.Create();
+        this.worker.onmessage = (event) => {
+            // console.log(event);
+            var data = event.data as IPostMessage;
+            this.CleanMaps(data);
+            this.worker.terminate();
+            this.worker = null;
+        };
         this.worker.postMessage({
             newValue: value,
             oldValue: localValue,
             path: path,
             idFunction: this.getIdCallback && this.getIdCallback.toString(),
             skipDependents: !!skipDependents
-        } as IMessage)
+        } as IMessage) */
     }
 
-    private ProcessChanges(path: string, value: any, oldValue: any, idFunction: {(val: any): any} | string, response: IPostMessage) {
+    private ProcessChanges(path: string, value: any, oldValue: any, idFunction: {(val: any): any} | string, response: IPostMessage): Array<string> {
+        // debugger;
         var localIdFunction = null as {(val: any): any};
         if(typeof idFunction === 'string')
             localIdFunction = eval(idFunction);
         else if(idFunction)
             localIdFunction = idFunction;
 
-        response.changedPaths.push(path);
+        var newIsValue = IsValue(value);
+        var oldIsValue = IsValue(oldValue);
+
         var newId = value && localIdFunction && localIdFunction(value);
         var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
-
         if(oldId || newId) {
             response.processedIds.push({
                 newId: newId,
@@ -144,45 +191,70 @@ export class StoreAsync<T> {
         }
 
         var skipProperties = new Set();
-        if(!IsValue(value)) {
-            for(var key in value) {
-                var childPath = [path, key].join(".");
-                this.ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
-                skipProperties.add(key);
+        var pathChanged = false;
+        var childChanges = null;
+        if(newIsValue)
+            pathChanged = value !== oldValue;
+        else {
+            pathChanged = oldIsValue;
+            if(!pathChanged) {
+                for(var key in value) {
+                    pathChanged = pathChanged || !(key in oldValue);
+                    var childPath = [path, key].join(".");
+                    childChanges = this.ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
+                    skipProperties.add(key);
+                }
             }
         }
 
-       this. DeleteProperties(oldValue, skipProperties, path, response);
+        var deletedCount = response.deletedPaths.length;
+        this.DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
+        pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
+
+        if(pathChanged && childChanges)
+            return [path].concat(childChanges);
+        else if(pathChanged)
+            return [path];
+        else if(childChanges)
+            return childChanges;
+        
+        return [];
     }
 
-    private DeleteProperties(value: any, skipProperties: Set<string>, path: string, response: IPostMessage) {
-        if(!IsValue(value)) {
-            for(var key in value) {
-                if(!(skipProperties && skipProperties.has(key))) {
-                    var childPath = [path, key].join(".");
-                    response.deletedPaths.push(childPath);
-                    this.DeleteProperties(value[key], null, childPath, response);
-                }
+    private DeleteProperties(value: any, skipProperties: Set<string>, path: string, response: IPostMessage, idFunction: {(val: any): any}) {
+        if(IsValue(value))
+            return;
+        
+        for(var key in value) {
+            if(!skipProperties || !skipProperties.has(key)) {
+                var childPath = [path, key].join(".");
+                response.deletedPaths.push(childPath);
+                this.DeleteProperties(value[key], null, childPath, response, idFunction);
             }
+        }
 
-            if(!skipProperties || skipProperties.size === 0) {
-                var id = this.getIdCallback && this.getIdCallback(value);
-                if(id) {
-                    response.processedIds.push({
-                        newId: null,
-                        oldId: id,
-                        path: path
-                    });
-                }
+        if(!skipProperties) {
+            var id = idFunction && idFunction(value);
+            if(id) {
+                response.processedIds.push({
+                    newId: null,
+                    oldId: id,
+                    path: path
+                });
             }
         }
     }
 
     private CleanMaps(data: IPostMessage) {
-        if(!data.wasNull) {
-            data.changedPaths.forEach(p => this.getterMap.delete(p));
-            data.changedPaths.forEach(p => this.EmitSet(p));
-        }
+        if(!data.wasNull)
+            data.changedPaths.forEach(p => {
+                this.getterMap.delete(p);
+                this.EmitSet(p);
+            });
+        
+        // var getter = this.ResolveGetterPath(data.rootPath);
+        // this.ClearGetterObject(getter);
+        // this.EmitSet(data.rootPath);
 
         data.deletedPaths.forEach(p => {
             this.getterMap.delete(p);
@@ -195,9 +267,11 @@ export class StoreAsync<T> {
             var path = idObj.path;
             if(oldId && oldId !== newId) {
                 var oldIdPaths = this.idToPathsMap.get(oldId);
-                oldIdPaths.delete(idObj.path);
-                if(oldIdPaths.size === 0)
-                    this.idToPathsMap.delete(idObj.oldId);
+                if(oldIdPaths) {
+                    oldIdPaths.delete(idObj.path);
+                    if(oldIdPaths.size === 0)
+                        this.idToPathsMap.delete(idObj.oldId);
+                }
             }
 
             if(!data.skipDependents && newId) {
@@ -215,78 +289,11 @@ export class StoreAsync<T> {
                         return;
                     
                     
-                    this.WriteTo(p, value, true);
+                    this.WriteToAsync(p, value, true);
                 });
             }
         });
     }
-
-    /* private ProcessChanges(rootPath: string, path: string, value: any, oldValue: any, skipDependents?: boolean) {
-        this.getterMap.delete(path);
-        var newId = value && this.getIdCallback && this.getIdCallback(value);
-        var oldId = oldValue && this.getIdCallback && this.getIdCallback(oldValue);
-
-        if(oldId && oldId !== newId) {
-            var oldIdPaths = this.idToPathsMap.get(oldId);
-            oldIdPaths.delete(path);
-            if(oldIdPaths.size === 0)
-                this.idToPathsMap.delete(oldId);
-        }
-
-        if(!skipDependents && newId) {
-            var dependentPaths = this.idToPathsMap.get(newId);
-            if(!dependentPaths) {
-                dependentPaths = new Set([path]);
-                this.idToPathsMap.set(newId, dependentPaths);
-            }
-            else if(!dependentPaths.has(path))
-                dependentPaths.add(path);
-
-            dependentPaths.forEach(p => {
-                if(p === path || p.indexOf(rootPath) === 0)
-                    return;
-                
-                this.WriteTo(p, value, true);
-            });
-        }
-
-        var skipProperties = new Set();
-        if(!IsValue(value)) {
-            for(var key in value) {
-                var childPath = [path, key].join(".");
-                this.ProcessChanges(rootPath, childPath, value[key], oldValue && oldValue[key], skipDependents);
-                skipProperties.add(key);
-            }
-        }
-
-        this.CleanUp(oldValue, skipProperties, path);
-        this.EmitSet(path);
-    }
-
-    private CleanUp(value: any, skipProperties: Set<string>, path: string) {
-        if(!IsValue(value)) {
-            for(var key in value) {
-                if(!(skipProperties && skipProperties.has(key))) {
-                    var childPath = [path, key].join(".");
-                    this.emitterMap.delete(childPath);
-                    this.getterMap.delete(childPath);
-                    this.CleanUp(value[key], null, childPath);
-                }
-            }
-
-            if(!skipProperties || skipProperties.size === 0) {
-                var id = this.getIdCallback && this.getIdCallback(value);
-                if(id) {
-                    var paths = this.idToPathsMap.get(id);
-                    if(paths) {
-                        paths.delete(path);
-                        if(paths.size === 0)
-                            this.idToPathsMap.delete(id);
-                    }
-                }
-            }
-        }
-    } */
 
     private AssignPropertyPath(value: any, path: string) {
         var parts = path.split(".");
@@ -297,6 +304,20 @@ export class StoreAsync<T> {
         (parentObj as any)[prop] = value;
     }
 
+    /* private ResolveGetterPath(path: string) {
+        if(!path)
+            return this;
+        
+        var parts = path.split(".");
+        parts[0] = "getterRoot";
+
+        var ret = parts.reduce((pre, curr) => {
+            return pre && (pre as any)[curr];
+        }, this);
+
+        return ret;
+    } */
+
     private ResolvePropertyPath(path: string) {
         if(!path)
             return this;
@@ -306,7 +327,91 @@ export class StoreAsync<T> {
         }, this);
     }
 
-    private CreateGetterObject(source: any, path: string) {
+    /* private ClearGetterObject(getter: any) {
+        if(!getter || typeof getter === 'function' || typeof getter === 'string' || typeof getter === 'number')
+            return;
+    
+        for(var key in getter)
+            this.ClearGetterObject(getter[key]);
+
+        getter.___clear && getter.___clear();
+    } */
+
+    private CreateGetterObject(source: any, path: string) { //, parentClear: {(): void}) {
+        if(IsValue(source))
+            return source;
+
+        var ret = null;
+        if(Array.isArray(source)) {
+            ret = new Array(source.length);
+            for(var x=0; x<source.length; x++)
+                ret[x] = this.CreateGetterObject(source[x], [path, x].join(".")); // , null);
+        }
+        else {
+            ret = Object.create(null) as { [key: string]: any };
+            for(var key in source)
+                this.CreateGetter(ret, path, key);
+        }
+
+        Object.defineProperty(ret, "___path", {
+            value: path,
+            configurable: false,
+            enumerable: false,
+            writable: false
+        });
+
+        /* if(parentClear)
+            Object.defineProperty(ret, "___clear", {
+                value: parentClear,
+                configurable: false,
+                enumerable: false,
+                writable: false
+            }); */
+
+        return ret;
+    }
+
+    private CreateGetter(target: any, parentPath: string, property: string) {
+        var path = [parentPath, property].join('.');
+        Object.defineProperty(target, property, {
+            enumerable: true,
+            get: () => {
+                this.EmitGet(path);
+                var ret = this.getterMap.get(path);
+                return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+            },
+            set: (val: any) => {
+                // this.WriteToSync(path, val);
+                this.WriteToAsync(path, () => val);
+            }
+        });
+    }
+
+    /* private CreateGetter(target: any, parentPath: string, property: string) {
+        var path = [parentPath, property].join('.');
+
+        var childGetter: any = null;
+        Object.defineProperty(target, property, {
+            enumerable: true,
+            get: () => {
+                if(!childGetter)
+                    childGetter = this.CreateGetterObject(this.ResolvePropertyPath(path), path, () => { 
+                        childGetter = null;
+                        this.EmitSet(path);
+                    });
+                
+                this.EmitGet(path);
+                return childGetter;
+                // var ret = this.getterMap.get(path);
+                //return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+            },
+            set: (val: any) => {
+                this.WriteToAsync(path, val);
+            }
+        });
+    } */
+
+    /* private CreateGetterObject(source: any, path: string) {
         if(IsValue(source))
             return source;
         
@@ -343,10 +448,10 @@ export class StoreAsync<T> {
                 return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
             },
             set: (val: any) => {
-                this.WriteTo(path, val);
+                this.WriteToAsync(path, val);
             }
         });
-    }
+    } */
 
     private CreateCopy<O>(source: O): O {
         if(IsValue(source))
@@ -371,22 +476,19 @@ export class StoreAsync<T> {
     private EmitSet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            // emitter = new ObjectStoreEmitter(path, this);
             emitter = new Emitter();
             this.emitterMap.set(path, emitter);
         }
         emitter.emit("set");
     }
 
-    private EmitGet(path: string) {
+    private EmitGet(path: string) {        
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
             emitter = new Emitter();
-            // emitter = new ObjectStoreEmitter(path, this);
             this.emitterMap.set(path, emitter);
         }
 
-        // globalEmitter.emit("get", emitter);
         globalEmitter.Register(emitter);
     }
 }

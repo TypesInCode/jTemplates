@@ -27,6 +27,7 @@
     "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
   },
   "dependencies": {
+    "webworker-threads": "^0.7.17",
     "xmldom": "^0.1.22"
   },
   "devDependencies": {

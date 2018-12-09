@@ -17,6 +17,6 @@ module.exports = {
     ]
   },
   plugins: [
-    new webpack.IgnorePlugin(/jsdom$/)
+    new webpack.IgnorePlugin(/jsdom|webworker-threads/)
   ]
 }

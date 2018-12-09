@@ -63,6 +63,7 @@ export class Template<P, T> implements ITemplate<P, T> {
     private bindings: Array<Binding<any>>;
     private bindingRoot: any;
     private templates: Templates<T>;
+    private destroyed: boolean;
 
     protected get DefaultTemplates(): Templates<T> {
         return {} as Templates<T>;
@@ -73,7 +74,7 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 
     protected get Root(): any {
-        if(!this.bindingRoot) {
+        if(!this.bindingRoot && !this.destroyed) {
             this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
             this.bindings = BindTarget(this.bindingRoot, this.definition);
         }
@@ -89,6 +90,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
         this.definition = definition;
+        this.destroyed = false;
     }
 
     public SetTemplates(templates: Templates<T>) {
@@ -124,13 +126,12 @@ export class Template<P, T> implements ITemplate<P, T> {
         BindingConfig.remove(this.Root);
     }
 
-    public Destroy(isChild?: boolean) {
-        if(!isChild)
-            this.Detach();
-        
+    public Destroy() {
+        this.Detach();
         this.bindingRoot = null;
         this.bindings.forEach(b => b.Destroy());
         this.bindings = [];
+        this.destroyed = true;
     }
 
     protected Template(c: P, i: number): BindingDefinitions<P, T> {

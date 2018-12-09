@@ -47,7 +47,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
 
     public Destroy() {
         super.Destroy();
-        this.DestroyTemplates(this.activeTemplateMap, true);
+        this.DestroyTemplates(this.activeTemplateMap);
         this.activeTemplateMap = null;
     }
 
@@ -105,8 +105,8 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         BindingConfig.addChildContainer(this.BoundTo, container);
     }
 
-    private DestroyTemplates(templateMap: Map<any, Array<Template<any, any>>>, isChild?: boolean) {
-        templateMap.forEach(templates => templates.forEach(t => t.Destroy(isChild)));
+    private DestroyTemplates(templateMap: Map<any, Array<Template<any, any>>>) {
+        templateMap.forEach(templates => templates.forEach(t => t.Destroy()));
     }
 }
 

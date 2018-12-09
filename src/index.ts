@@ -7,6 +7,41 @@ import { StoreAsync } from "./ObjectStore/objectStoreAsync";
 
 export { Template, Store, StoreAsync, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
+/* var store = StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
+
+var scope = store.Scope(root => root && root.length);
+
+scope.addListener("set", () => {
+    console.debug(store.Root);
+    console.log("In scope set");
+    console.log(scope.Value);
+})
+
+console.log(scope.Value);
+console.log(store.Root[0].value);
+
+store.Write(store.Root, (val) => {
+    val.push({
+        id: "second",
+        value: "second value"
+    });
+});
+
+store.Write(store.Root, (val) => {
+    val.push({
+        id: "second",
+        value: "third value"
+    });
+})
+
+console.log(scope.Value);
+
+store.Write(store.Root, () => null).then(() => {
+    debugger;
+    var s = store;
+    console.log("all done");
+}); */
+
 /* interface IColumn {
     name: string;
     id: string;

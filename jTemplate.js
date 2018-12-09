@@ -75,104 +75,34 @@ var jTemplate =
 	exports.tr = elements_1.tr;
 	exports.td = elements_1.td;
 	const objectStoreAsync_1 = __webpack_require__(15);
-	class DataTable extends template_1.Component {
-	    get DefaultTemplates() {
-	        return {
-	            cell: (scope) => elements_1.span({ text: () => {
-	                    var data = scope;
-	                    return `${data.data[scope.column.id]}`;
-	                } })
-	        };
-	    }
-	    Template(scope) {
-	        return [
-	            elements_1.table({ key: d => d, data: () => [{ id: "header" }, ...scope.Value.data] }, (data, index) => {
-	                if (index === 0)
-	                    return elements_1.tr({ key: c => c.id, data: () => scope.Value.columns }, (scope) => [
-	                        elements_1.th({ text: () => scope.name })
-	                    ]);
-	                return elements_1.tr({ key: c => c.id, data: () => scope.Value.columns }, (column, index) => [
-	                    elements_1.td({ data: () => ({ column: column, data: data }) }, (scope) => this.Templates.cell(scope, index))
-	                ]);
-	            })
-	        ];
-	    }
-	}
-	var dataTable = template_1.Template.ToFunction("datatable", DataTable);
-	class Root extends template_1.Template {
-	    constructor() {
-	        super("app");
-	        this.state = objectStoreAsync_1.StoreAsync.Create({ filter: "" });
-	        this.columns = objectStoreAsync_1.StoreAsync.Create([
-	            {
-	                id: "id",
-	                name: "Id",
-	                visible: true,
-	                sort: 0
-	            },
-	            {
-	                id: "name",
-	                name: "Name",
-	                visible: true,
-	                sort: 1
-	            },
-	            {
-	                id: "title",
-	                name: "Title",
-	                visible: true,
-	                sort: 2
-	            }
-	        ]);
-	        this.data = objectStoreAsync_1.StoreAsync.Create([
-	            {
-	                id: 1,
-	                name: "Bart",
-	                title: "Title 1"
-	            },
-	            {
-	                id: 2,
-	                name: "Craig",
-	                title: "Title 2"
-	            }
-	        ]);
-	        this.dataScope = this.data.Scope((root) => root.filter(d => d.name.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0 ||
-	            d.title.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0));
-	        this.columnsScope = this.columns.Scope((root) => root.filter(c => c.visible)).Scope((val) => {
-	            val.sort((a, b) => a.sort - b.sort);
-	            return val;
-	        });
-	    }
-	    Template() {
-	        return [
-	            elements_1.input({ props: { type: 'text' }, on: { keyup: (e) => this.state.Root.filter = e.target.value } }),
-	            dataTable({ data: () => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }) }),
-	            elements_1.input({ props: { type: 'button', value: 'add' }, on: { click: () => {
-	                        this.data.Write(this.data.Root, (val) => {
-	                            val.push({
-	                                id: this.data.Root.length + 1,
-	                                name: `garbage ${this.data.Root.length + 1}`,
-	                                title: `title ${this.data.Root.length + 1}`
-	                            });
-	                        });
-	                    } } }),
-	            elements_1.ul({ data: this.columns.Root }, (column) => [
-	                elements_1.li({}, () => [
-	                    elements_1.input({ props: () => ({ type: "checkbox", checked: column.visible }), on: {
-	                            change: () => column.visible = !column.visible
-	                        } }),
-	                    elements_1.span({ text: () => column.name }),
-	                    elements_1.input({ props: { type: "text", value: column.sort }, on: { keyup: (e) => {
-	                                var sort = parseInt(e.target.value);
-	                                if (!isNaN(sort))
-	                                    column.sort = sort;
-	                            } } })
-	                ])
-	            ])
-	        ];
-	    }
-	}
-	var list = new Root();
-	list.AttachTo(document.getElementById("container"));
+	exports.StoreAsync = objectStoreAsync_1.StoreAsync;
+	var store = objectStoreAsync_1.StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
+	var scope = store.Scope(root => root && root.length);
+	scope.addListener("set", () => {
+	    console.debug(store.Root);
+	    console.log("In scope set");
+	    console.log(scope.Value);
+	});
+	console.log(scope.Value);
+	console.log(store.Root[0].value);
+	store.Write(store.Root, (val) => {
+	    val.push({
+	        id: "second",
+	        value: "second value"
+	    });
+	});
+	store.Write(store.Root, (val) => {
+	    val.push({
+	        id: "second",
+	        value: "third value"
+	    });
+	});
+	console.log(scope.Value);
+	store.Write(store.Root, () => null).then(() => {
+	    debugger;
+	    var s = store;
+	    console.log("all done");
+	});
 
 
 /***/ }),
@@ -237,6 +167,7 @@ var jTemplate =
 	        this.SetTemplates(definition.templates);
 	        definition.children = definition.children || this.Template.bind(this);
 	        this.definition = definition;
+	        this.destroyed = false;
 	    }
 	    get DefaultTemplates() {
 	        return {};
@@ -245,7 +176,7 @@ var jTemplate =
 	        return this.templates;
 	    }
 	    get Root() {
-	        if (!this.bindingRoot) {
+	        if (!this.bindingRoot && !this.destroyed) {
 	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type);
 	            this.bindings = BindTarget(this.bindingRoot, this.definition);
 	        }
@@ -281,6 +212,7 @@ var jTemplate =
 	        this.bindingRoot = null;
 	        this.bindings.forEach(b => b.Destroy());
 	        this.bindings = [];
+	        this.destroyed = true;
 	    }
 	    Template(c, i) {
 	        return [];
@@ -780,11 +712,6 @@ var jTemplate =
 	    constructor(boundTo, bindingFunction) {
 	        super(boundTo, bindingFunction, null);
 	    }
-	    Destroy() {
-	        super.Destroy();
-	        for (var key in this.boundEvents)
-	            bindingConfig_1.BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
-	    }
 	    Apply() {
 	        for (var key in this.boundEvents)
 	            bindingConfig_1.BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
@@ -1130,6 +1057,7 @@ var jTemplate =
 	const globalEmitter_1 = __webpack_require__(9);
 	const objectStoreScope_1 = __webpack_require__(7);
 	const objectStoreWorker_1 = __webpack_require__(16);
+	const workerQueue_1 = __webpack_require__(17);
 	function IsValue(value) {
 	    if (!value)
 	        return true;
@@ -1140,46 +1068,8 @@ var jTemplate =
 	        this.getIdCallback = idCallback;
 	        this.emitterMap = new Map();
 	        this.emitterMap.set("root", new emitter_1.default());
-	        this.getterMap = new Map();
 	        this.idToPathsMap = new Map();
-	        this.worker = objectStoreWorker_1.ObjectStoreWorker.Create();
-	        this.worker.onmessage = (event) => {
-	            var data = event.data;
-	            if (!data.wasNull) {
-	                data.changedPaths.forEach(p => this.getterMap.delete(p));
-	                data.changedPaths.forEach(p => this.EmitSet(p));
-	            }
-	            data.deletedPaths.forEach(p => {
-	                this.getterMap.delete(p);
-	                this.emitterMap.delete(p);
-	            });
-	            data.processedIds.forEach(idObj => {
-	                var oldId = idObj.oldId;
-	                var newId = idObj.newId;
-	                var path = idObj.path;
-	                if (oldId && oldId !== newId) {
-	                    var oldIdPaths = this.idToPathsMap.get(oldId);
-	                    oldIdPaths.delete(idObj.path);
-	                    if (oldIdPaths.size === 0)
-	                        this.idToPathsMap.delete(idObj.oldId);
-	                }
-	                if (!data.skipDependents && newId) {
-	                    var value = this.ResolvePropertyPath(idObj.path);
-	                    var dependentPaths = this.idToPathsMap.get(newId);
-	                    if (!dependentPaths) {
-	                        dependentPaths = new Set([path]);
-	                        this.idToPathsMap.set(newId, dependentPaths);
-	                    }
-	                    else if (!dependentPaths.has(path))
-	                        dependentPaths.add(path);
-	                    dependentPaths.forEach(p => {
-	                        if (p === path || p.indexOf(data.rootPath) === 0)
-	                            return;
-	                        this.WriteTo(p, value, true);
-	                    });
-	                }
-	            });
-	        };
+	        this.workerQueue = new workerQueue_1.WorkerQueue(objectStoreWorker_1.ObjectStoreWorker.Create);
 	    }
 	    get Root() {
 	        this.EmitGet("root");
@@ -1187,60 +1077,160 @@ var jTemplate =
 	        return ret || this.CreateGetterObject(this.root, "root");
 	    }
 	    set Root(val) {
-	        this.Write(null, () => val);
+	        this.WriteToSync("root", val);
 	    }
 	    Scope(valueFunction, setFunction) {
 	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), (next) => setFunction(this.Root, next));
 	    }
-	    Get(id) {
-	        var paths = this.idToPathsMap.get(id);
-	        if (!paths)
-	            return null;
-	        var path = paths.values().next().value;
-	        this.EmitGet(path);
-	        var ret = this.getterMap.get(path);
-	        return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
-	    }
 	    Write(readOnly, updateCallback) {
-	        if (typeof readOnly === 'string') {
-	            readOnly = this.Get(readOnly);
-	            if (!readOnly)
-	                return;
-	        }
 	        var path = readOnly ? readOnly.___path : "root";
-	        var localValue = this.ResolvePropertyPath(path);
-	        var newValue = null;
-	        var mutableCopy = null;
-	        if (typeof updateCallback === 'function') {
-	            mutableCopy = this.CreateCopy(localValue);
-	            newValue = updateCallback(mutableCopy);
-	        }
-	        else
-	            newValue = updateCallback;
-	        this.WriteTo(path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+	        return this.WriteToAsync(path, () => {
+	            if (typeof updateCallback === 'function') {
+	                var localValue = this.ResolvePropertyPath(path);
+	                var mutableCopy = this.CreateCopy(localValue);
+	                var ret = updateCallback(mutableCopy);
+	                return typeof ret === 'undefined' ? mutableCopy : ret;
+	            }
+	            return updateCallback;
+	        });
 	    }
-	    Push(readOnly, newValue) {
-	        var path = readOnly.___path;
-	        var localValue = this.ResolvePropertyPath(path);
-	        var oldLength = localValue.length;
-	        var childPath = [path, oldLength].join(".");
-	        localValue.push(null);
-	        this.AssignPropertyPath(newValue, childPath);
-	        var getterValue = this.getterMap.get(path);
-	        getterValue.push(this.CreateGetterObject(newValue, childPath));
-	        this.EmitSet(path);
-	    }
-	    WriteTo(path, value, skipDependents) {
+	    WriteToSync(path, value) {
 	        var localValue = this.ResolvePropertyPath(path);
 	        if (localValue === value)
 	            return;
 	        this.AssignPropertyPath(value, path);
-	        this.worker.postMessage({
-	            newValue: value,
-	            oldValue: localValue,
-	            path: path,
-	            idFunction: this.getIdCallback && this.getIdCallback.toString(),
-	            skipDependents: !!skipDependents
+	        var resp = {
+	            wasNull: !localValue && localValue !== 0,
+	            skipDependents: false,
+	            changedPaths: null,
+	            deletedPaths: [],
+	            processedIds: [],
+	            rootPath: path
+	        };
+	        resp.changedPaths = this.ProcessChanges(path, value, localValue, this.getIdCallback, resp);
+	        this.CleanMaps(resp);
+	    }
+	    WriteToAsync(path, valueCallback, skipDependents) {
+	        return new Promise((resolve, reject) => {
+	            var value = null;
+	            this.workerQueue.Push(() => {
+	                value = valueCallback();
+	                return {
+	                    newValue: value,
+	                    oldValue: this.ResolvePropertyPath(path),
+	                    path: path,
+	                    idFunction: this.getIdCallback && this.getIdCallback.toString(),
+	                    skipDependents: !!skipDependents
+	                };
+	            }, (postMessage) => {
+	                this.AssignPropertyPath(value, path);
+	                this.CleanMaps(postMessage.data);
+	                resolve();
+	            });
+	        });
+	    }
+	    ProcessChanges(path, value, oldValue, idFunction, response) {
+	        var localIdFunction = null;
+	        if (typeof idFunction === 'string')
+	            localIdFunction = eval(idFunction);
+	        else if (idFunction)
+	            localIdFunction = idFunction;
+	        var newIsValue = IsValue(value);
+	        var oldIsValue = IsValue(oldValue);
+	        var newId = value && localIdFunction && localIdFunction(value);
+	        var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
+	        if (oldId || newId) {
+	            response.processedIds.push({
+	                newId: newId,
+	                oldId: oldId,
+	                path: path
+	            });
+	        }
+	        var skipProperties = new Set();
+	        var pathChanged = false;
+	        var childChanges = null;
+	        if (newIsValue)
+	            pathChanged = value !== oldValue;
+	        else {
+	            pathChanged = oldIsValue;
+	            if (!pathChanged) {
+	                for (var key in value) {
+	                    pathChanged = pathChanged || !(key in oldValue);
+	                    var childPath = [path, key].join(".");
+	                    childChanges = this.ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
+	                    skipProperties.add(key);
+	                }
+	            }
+	        }
+	        var deletedCount = response.deletedPaths.length;
+	        this.DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
+	        pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
+	        if (pathChanged && childChanges)
+	            return [path].concat(childChanges);
+	        else if (pathChanged)
+	            return [path];
+	        else if (childChanges)
+	            return childChanges;
+	        return [];
+	    }
+	    DeleteProperties(value, skipProperties, path, response, idFunction) {
+	        if (IsValue(value))
+	            return;
+	        for (var key in value) {
+	            if (!skipProperties || !skipProperties.has(key)) {
+	                var childPath = [path, key].join(".");
+	                response.deletedPaths.push(childPath);
+	                this.DeleteProperties(value[key], null, childPath, response, idFunction);
+	            }
+	        }
+	        if (!skipProperties) {
+	            var id = idFunction && idFunction(value);
+	            if (id) {
+	                response.processedIds.push({
+	                    newId: null,
+	                    oldId: id,
+	                    path: path
+	                });
+	            }
+	        }
+	    }
+	    CleanMaps(data) {
+	        if (!data.wasNull)
+	            data.changedPaths.forEach(p => {
+	                this.getterMap.delete(p);
+	                this.EmitSet(p);
+	            });
+	        data.deletedPaths.forEach(p => {
+	            this.getterMap.delete(p);
+	            this.emitterMap.delete(p);
+	        });
+	        data.processedIds.forEach(idObj => {
+	            var oldId = idObj.oldId;
+	            var newId = idObj.newId;
+	            var path = idObj.path;
+	            if (oldId && oldId !== newId) {
+	                var oldIdPaths = this.idToPathsMap.get(oldId);
+	                if (oldIdPaths) {
+	                    oldIdPaths.delete(idObj.path);
+	                    if (oldIdPaths.size === 0)
+	                        this.idToPathsMap.delete(idObj.oldId);
+	                }
+	            }
+	            if (!data.skipDependents && newId) {
+	                var value = this.ResolvePropertyPath(idObj.path);
+	                var dependentPaths = this.idToPathsMap.get(newId);
+	                if (!dependentPaths) {
+	                    dependentPaths = new Set([path]);
+	                    this.idToPathsMap.set(newId, dependentPaths);
+	                }
+	                else if (!dependentPaths.has(path))
+	                    dependentPaths.add(path);
+	                dependentPaths.forEach(p => {
+	                    if (p === path || p.indexOf(data.rootPath) === 0)
+	                        return;
+	                    this.WriteToAsync(p, value, true);
+	                });
+	            }
 	        });
 	    }
 	    AssignPropertyPath(value, path) {
@@ -1277,7 +1267,6 @@ var jTemplate =
 	            enumerable: false,
 	            writable: false
 	        });
-	        this.getterMap.set(path, ret);
 	        return ret;
 	    }
 	    CreateGetter(target, parentPath, property) {
@@ -1290,7 +1279,7 @@ var jTemplate =
 	                return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
 	            },
 	            set: (val) => {
-	                this.WriteTo(path, val);
+	                this.WriteToSync(path, val);
 	            }
 	        });
 	    }
@@ -1341,7 +1330,7 @@ var jTemplate =
 
 /***/ }),
 /* 16 */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -1351,13 +1340,13 @@ var jTemplate =
 	        var data = event.data;
 	        var resp = {
 	            wasNull: !data.oldValue && data.oldValue !== 0,
-	            changedPaths: [],
+	            changedPaths: null,
 	            deletedPaths: [],
 	            processedIds: [],
 	            skipDependents: data.skipDependents,
 	            rootPath: data.path
 	        };
-	        ProcessChanges(data.path, data.newValue, data.oldValue, data.idFunction, resp);
+	        resp.changedPaths = ProcessChanges(data.path, data.newValue, data.oldValue, data.idFunction, resp);
 	        ctx.postMessage(resp);
 	    });
 	    function IsValue(value) {
@@ -1371,10 +1360,11 @@ var jTemplate =
 	            localIdFunction = eval(idFunction);
 	        else if (idFunction)
 	            localIdFunction = idFunction;
-	        response.changedPaths.push(path);
+	        var newIsValue = IsValue(value);
+	        var oldIsValue = IsValue(oldValue);
 	        var newId = value && localIdFunction && localIdFunction(value);
 	        var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
-	        if (oldId && oldId !== newId) {
+	        if (oldId || newId) {
 	            response.processedIds.push({
 	                newId: newId,
 	                oldId: oldId,
@@ -1382,45 +1372,123 @@ var jTemplate =
 	            });
 	        }
 	        var skipProperties = new Set();
-	        if (!IsValue(value)) {
-	            for (var key in value) {
-	                var childPath = [path, key].join(".");
-	                ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
-	                skipProperties.add(key);
+	        var pathChanged = false;
+	        var childChanges = null;
+	        if (newIsValue)
+	            pathChanged = value !== oldValue;
+	        else {
+	            pathChanged = oldIsValue;
+	            if (!pathChanged) {
+	                for (var key in value) {
+	                    pathChanged = pathChanged || !(key in oldValue);
+	                    var childPath = [path, key].join(".");
+	                    childChanges = ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
+	                    skipProperties.add(key);
+	                }
 	            }
 	        }
-	        CleanUp(oldValue, skipProperties, path, response);
+	        var deletedCount = response.deletedPaths.length;
+	        DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
+	        pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
+	        if (pathChanged && childChanges)
+	            return [path].concat(childChanges);
+	        else if (pathChanged)
+	            return [path];
+	        else if (childChanges)
+	            return childChanges;
+	        return [];
 	    }
-	    function CleanUp(value, skipProperties, path, response) {
-	        if (!IsValue(value)) {
-	            for (var key in value) {
-	                if (!(skipProperties && skipProperties.has(key))) {
-	                    var childPath = [path, key].join(".");
-	                    response.deletedPaths.push(childPath);
-	                    this.CleanUp(value[key], null, childPath);
-	                }
+	    function DeleteProperties(value, skipProperties, path, response, idFunction) {
+	        if (IsValue(value))
+	            return;
+	        for (var key in value) {
+	            if (!skipProperties || !skipProperties.has(key)) {
+	                var childPath = [path, key].join(".");
+	                response.deletedPaths.push(childPath);
+	                DeleteProperties(value[key], null, childPath, response, idFunction);
 	            }
-	            if (!skipProperties || skipProperties.size === 0) {
-	                var id = this.getIdCallback && this.getIdCallback(value);
-	                if (id) {
-	                    response.processedIds.push({
-	                        newId: null,
-	                        oldId: id,
-	                        path: path
-	                    });
-	                }
+	        }
+	        if (!skipProperties) {
+	            var id = idFunction && idFunction(value);
+	            if (id) {
+	                response.processedIds.push({
+	                    newId: null,
+	                    oldId: id,
+	                    path: path
+	                });
 	            }
 	        }
 	    }
 	}
-	var workerString = URL.createObjectURL(new Blob([`(${WorkerScope})()`]));
 	var ObjectStoreWorker;
 	(function (ObjectStoreWorker) {
+	    var workerConstructor = null;
+	    var workerParameter = null;
+	    if (typeof Worker !== 'undefined') {
+	        workerConstructor = Worker;
+	        workerParameter = URL.createObjectURL(new Blob([`(${WorkerScope})()`]));
+	    }
+	    else {
+	        workerConstructor = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"webworker-threads\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).Worker;
+	        workerParameter = WorkerScope;
+	    }
 	    function Create() {
-	        return new Worker(workerString);
+	        return new workerConstructor(workerParameter);
 	    }
 	    ObjectStoreWorker.Create = Create;
 	})(ObjectStoreWorker = exports.ObjectStoreWorker || (exports.ObjectStoreWorker = {}));
+
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class WorkerQueue {
+	    constructor(workerFactory) {
+	        this.workerFactory = workerFactory;
+	        this.queue = [];
+	        this.queueIndex = 0;
+	        this.running = false;
+	    }
+	    Push(getMessage, completeCallback) {
+	        this.queue.push((next) => {
+	            var worker = this.workerFactory();
+	            worker.onmessage = (message) => {
+	                worker.terminate();
+	                completeCallback(message);
+	                next();
+	            };
+	            worker.onerror = (err) => {
+	                console.error(err);
+	                next();
+	            };
+	            worker.postMessage(getMessage());
+	        });
+	        this.ProcessQueue();
+	    }
+	    ProcessQueue() {
+	        if (this.running)
+	            return;
+	        this.queueIndex = 0;
+	        this.running = true;
+	        this.ProcessQueueRecursive();
+	    }
+	    ProcessQueueRecursive() {
+	        if (this.queueIndex >= this.queue.length) {
+	            this.queue = [];
+	            this.running = false;
+	            this.queueIndex = 0;
+	            return;
+	        }
+	        this.queue[this.queueIndex](() => {
+	            this.queueIndex++;
+	            this.ProcessQueueRecursive();
+	        });
+	    }
+	}
+	exports.WorkerQueue = WorkerQueue;
 
 
 /***/ })

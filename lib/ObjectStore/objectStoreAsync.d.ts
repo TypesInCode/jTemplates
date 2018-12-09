@@ -5,7 +5,7 @@ export declare class StoreAsync<T> {
     private getterMap;
     private idToPathsMap;
     private root;
-    private worker;
+    private workerQueue;
     Root: T;
     constructor(idCallback?: {
         (val: any): any;
@@ -15,14 +15,14 @@ export declare class StoreAsync<T> {
     }, setFunction?: {
         (val: T, next: O): void;
     }): Scope<O>;
-    Get<O>(id: string): O;
-    Write<O>(readOnly: O | string, updateCallback: {
+    Write<O>(readOnly: O, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;
-    } | O): void;
-    Push<O>(readOnly: Array<O>, newValue: O): void;
-    private WriteTo;
+    } | O): Promise<any>;
+    Push<O>(readOnly: Array<O>, newValue: O): Promise<any>;
+    private WriteToSync;
+    private WriteToAsync;
     private ProcessChanges;
     private DeleteProperties;
     private CleanMaps;
