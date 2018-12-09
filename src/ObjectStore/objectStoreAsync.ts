@@ -88,7 +88,7 @@ export class StoreAsync<T> {
         });//typeof newValue !== "undefined" ? newValue : mutableCopy);
     }
 
-    public Push<O>(readOnly: Array<O>, newValue: O): Promise<any> {
+    public Push<O>(readOnly: Array<O>, newValue: O): void {
         var path = (readOnly as any).___path;
         
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
@@ -98,14 +98,14 @@ export class StoreAsync<T> {
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
-        /* this.WriteToSync(childPath, newValue)
-        this.EmitSet(path); */
-        return new Promise((resolve, reject) => {
+        this.WriteToSync(childPath, newValue)
+        this.EmitSet(path);
+        /* return new Promise((resolve, reject) => {
             this.WriteToAsync(childPath, () => newValue).then(() => {
                 this.EmitSet(path);
                 resolve();
             }, reject);
-        });
+        }); */
     }
 
     private WriteToSync(path: string, value: any) {
@@ -128,7 +128,7 @@ export class StoreAsync<T> {
         this.CleanMaps(resp);
     }
 
-    private WriteToAsync(path: string, valueCallback: {(): any}, skipDependents?: boolean): Promise<any> {
+    private WriteToAsync(path: string, valueCallback: {(): any}, skipDependents?: boolean): Promise<void> {
         /* var localValue = this.ResolvePropertyPath(path);
         if(localValue === value)
             return; */

@@ -21,7 +21,7 @@ export declare class StoreAsync<T> {
     } | {
         (current: O): void;
     } | O): Promise<any>;
-    Push<O>(readOnly: Array<O>, newValue: O): Promise<any>;
+    Push<O>(readOnly: Array<O>, newValue: O): void;
     private WriteToSync;
     private WriteToAsync;
     private ProcessChanges;
