@@ -49,7 +49,7 @@ function WorkerScope() {
 
         var skipProperties = new Set();
         var pathChanged = false;
-        var childChanges = null;
+        var childChanges: Array<string> = [];
         if(newIsValue)
             pathChanged = value !== oldValue;
         else {
@@ -58,7 +58,7 @@ function WorkerScope() {
                 for(var key in value) {
                     pathChanged = pathChanged || !(key in oldValue);
                     var childPath = [path, key].join(".");
-                    childChanges = ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
+                    childChanges = childChanges.concat(ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response));
                     skipProperties.add(key);
                 }
             }
@@ -68,14 +68,10 @@ function WorkerScope() {
         DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
         pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
 
-        if(pathChanged && childChanges)
+        if(pathChanged)
             return [path].concat(childChanges);
-        else if(pathChanged)
-            return [path];
-        else if(childChanges)
-            return childChanges;
         
-        return [];
+        return childChanges;
     }
 
     function DeleteProperties(value: any, skipProperties: Set<string>, path: string, response: IPostMessage, idFunction: {(val: any): any}) {
