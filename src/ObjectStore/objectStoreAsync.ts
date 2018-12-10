@@ -36,7 +36,7 @@ export class StoreAsync<T> {
         this.getIdCallback = idCallback;
         this.emitterMap = new Map();
         this.emitterMap.set("root", new Emitter());
-        //this.getterMap = new Map();
+        this.getterMap = new Map();
         this.idToPathsMap = new Map();
         // this.worker = null; //ObjectStoreWorker.Create();
         this.workerQueue = new WorkerQueue(ObjectStoreWorker.Create);
