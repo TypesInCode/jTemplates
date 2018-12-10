@@ -367,7 +367,7 @@ export class StoreAsync<T> {
                 enumerable: false,
                 writable: false
             }); */
-
+        this.getterMap.set(path, ret);
         return ret;
     }
 
