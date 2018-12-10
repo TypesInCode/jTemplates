@@ -289,7 +289,7 @@ export class StoreAsync<T> {
                         return;
                     
                     
-                    this.WriteToAsync(p, value, true);
+                    this.WriteToAsync(p, () => value, true);
                 });
             }
         });
