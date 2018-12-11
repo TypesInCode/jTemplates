@@ -54,7 +54,10 @@ export class Store<T> {
         if(typeof readOnly === 'string')
             readOnly = this.Get(readOnly);
         
-        var path = readOnly ? (readOnly as any).___path : "root";
+        var path = readOnly && (readOnly as any).___path;
+        if(!path)
+            return;
+        
         return this.WriteTo(path, updateCallback);
     }
 
