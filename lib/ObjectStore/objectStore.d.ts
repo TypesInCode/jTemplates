@@ -15,7 +15,7 @@ export declare class Store<T> {
         (val: T, next: O): void;
     }): Scope<O>;
     Get<O>(id: string): O;
-    Write<O>(readOnly: O, updateCallback: {
+    Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;

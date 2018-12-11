@@ -54,7 +54,10 @@ export class StoreAsync<T> {
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
-    public Write<O>(readOnly: O, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
+    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
+        if(typeof readOnly === 'string')
+            readOnly = this.Get(readOnly);
+        
         var path = readOnly ? (readOnly as any).___path : "root";
 
         return this.WriteToAsync(path, updateCallback);

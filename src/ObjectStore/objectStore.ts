@@ -50,7 +50,10 @@ export class Store<T> {
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
-    public Write<O>(readOnly: O, updateCallback: { (current: O): O } | { (current: O): void } | O) {
+    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O) {
+        if(typeof readOnly === 'string')
+            readOnly = this.Get(readOnly);
+        
         var path = readOnly ? (readOnly as any).___path : "root";
         return this.WriteTo(path, updateCallback);
     }
