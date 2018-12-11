@@ -22,10 +22,8 @@ export declare class StoreAsync<T> {
         (current: O): void;
     } | O): Promise<any>;
     Push<O>(readOnly: Array<O>, newValue: O): void;
-    private WriteToSync;
+    private WriteTo;
     private WriteToAsync;
-    private ProcessChanges;
-    private DeleteProperties;
     private CleanMaps;
     private AssignPropertyPath;
     private ResolvePropertyPath;

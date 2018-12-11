@@ -7,7 +7,6 @@
   } */
 
 interface IPostMessage {
-    wasNull: boolean;
     changedPaths: Array<string>;
     deletedPaths: Array<string>;
     processedIds: Array<{
@@ -15,7 +14,6 @@ interface IPostMessage {
         oldId: string,
         path: string
     }>;
-    skipDependents: boolean;
     rootPath: string;
 }
 
@@ -24,5 +22,4 @@ interface IMessage {
     newValue: any;
     path: string;
     idFunction: string;
-    skipDependents: boolean;
 }

@@ -79,12 +79,10 @@ var jTemplate =
 	var store = objectStoreAsync_1.StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
 	var scope = store.Scope(root => root && root.length);
 	scope.addListener("set", () => {
-	    console.debug(store.Root);
+	    var s = store;
 	    console.log("In scope set");
 	    console.log(scope.Value);
 	});
-	console.log(scope.Value);
-	console.log(store.Root[0].value);
 	store.Write(store.Root, (val) => {
 	    val.push({
 	        id: "second",
@@ -1057,7 +1055,8 @@ var jTemplate =
 	const globalEmitter_1 = __webpack_require__(9);
 	const objectStoreScope_1 = __webpack_require__(7);
 	const objectStoreWorker_1 = __webpack_require__(16);
-	const workerQueue_1 = __webpack_require__(17);
+	const workerQueue_1 = __webpack_require__(18);
+	const objectDiff_1 = __webpack_require__(17);
 	function IsValue(value) {
 	    if (!value)
 	        return true;
@@ -1068,6 +1067,7 @@ var jTemplate =
 	        this.getIdCallback = idCallback;
 	        this.emitterMap = new Map();
 	        this.emitterMap.set("root", new emitter_1.default());
+	        this.getterMap = new Map();
 	        this.idToPathsMap = new Map();
 	        this.workerQueue = new workerQueue_1.WorkerQueue(objectStoreWorker_1.ObjectStoreWorker.Create);
 	    }
@@ -1077,129 +1077,70 @@ var jTemplate =
 	        return ret || this.CreateGetterObject(this.root, "root");
 	    }
 	    set Root(val) {
-	        this.WriteToSync("root", val);
+	        this.WriteTo("root", val);
 	    }
 	    Scope(valueFunction, setFunction) {
 	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), (next) => setFunction(this.Root, next));
 	    }
+	    Get(id) {
+	        var paths = this.idToPathsMap.get(id);
+	        if (!paths)
+	            return null;
+	        var path = paths.values().next().value;
+	        this.EmitGet(path);
+	        var ret = this.getterMap.get(path);
+	        return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+	    }
 	    Write(readOnly, updateCallback) {
 	        var path = readOnly ? readOnly.___path : "root";
-	        return this.WriteToAsync(path, () => {
-	            if (typeof updateCallback === 'function') {
-	                var localValue = this.ResolvePropertyPath(path);
-	                var mutableCopy = this.CreateCopy(localValue);
-	                var ret = updateCallback(mutableCopy);
-	                return typeof ret === 'undefined' ? mutableCopy : ret;
-	            }
-	            return updateCallback;
-	        });
+	        return this.WriteToAsync(path, updateCallback);
 	    }
-	    WriteToSync(path, value) {
+	    Push(readOnly, newValue) {
+	        var path = readOnly.___path;
 	        var localValue = this.ResolvePropertyPath(path);
-	        if (localValue === value)
-	            return;
-	        this.AssignPropertyPath(value, path);
-	        var resp = {
-	            wasNull: !localValue && localValue !== 0,
-	            skipDependents: false,
-	            changedPaths: null,
-	            deletedPaths: [],
-	            processedIds: [],
-	            rootPath: path
-	        };
-	        resp.changedPaths = this.ProcessChanges(path, value, localValue, this.getIdCallback, resp);
-	        this.CleanMaps(resp);
+	        var childPath = [path, localValue.length].join(".");
+	        localValue.push(null);
+	        var getterValue = this.getterMap.get(path);
+	        getterValue.push(this.CreateGetterObject(newValue, childPath));
+	        this.WriteTo(childPath, newValue);
+	        this.EmitSet(path);
 	    }
-	    WriteToAsync(path, valueCallback, skipDependents) {
-	        return new Promise((resolve, reject) => {
+	    WriteTo(path, value) {
+	        var localValue = this.ResolvePropertyPath(path);
+	        this.AssignPropertyPath(value, path);
+	        var resp = objectDiff_1.ObjectDiff(path, value, localValue, this.getIdCallback);
+	        this.CleanMaps(resp, false);
+	    }
+	    WriteToAsync(path, updateCallback, skipDependents) {
+	        return new Promise((resolve) => {
 	            var value = null;
 	            this.workerQueue.Push(() => {
-	                value = valueCallback();
+	                if (typeof updateCallback === 'function') {
+	                    var localValue = this.ResolvePropertyPath(path);
+	                    var mutableCopy = this.CreateCopy(localValue);
+	                    var ret = updateCallback(mutableCopy);
+	                    value = typeof ret === 'undefined' ? mutableCopy : ret;
+	                }
+	                else
+	                    value = updateCallback;
 	                return {
 	                    newValue: value,
 	                    oldValue: this.ResolvePropertyPath(path),
 	                    path: path,
-	                    idFunction: this.getIdCallback && this.getIdCallback.toString(),
-	                    skipDependents: !!skipDependents
+	                    idFunction: this.getIdCallback && this.getIdCallback.toString()
 	                };
 	            }, (postMessage) => {
 	                this.AssignPropertyPath(value, path);
-	                this.CleanMaps(postMessage.data);
+	                this.CleanMaps(postMessage.data, skipDependents);
 	                resolve();
 	            });
 	        });
 	    }
-	    ProcessChanges(path, value, oldValue, idFunction, response) {
-	        var localIdFunction = null;
-	        if (typeof idFunction === 'string')
-	            localIdFunction = eval(idFunction);
-	        else if (idFunction)
-	            localIdFunction = idFunction;
-	        var newIsValue = IsValue(value);
-	        var oldIsValue = IsValue(oldValue);
-	        var newId = value && localIdFunction && localIdFunction(value);
-	        var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
-	        if (oldId || newId) {
-	            response.processedIds.push({
-	                newId: newId,
-	                oldId: oldId,
-	                path: path
-	            });
-	        }
-	        var skipProperties = new Set();
-	        var pathChanged = false;
-	        var childChanges = null;
-	        if (newIsValue)
-	            pathChanged = value !== oldValue;
-	        else {
-	            pathChanged = oldIsValue;
-	            if (!pathChanged) {
-	                for (var key in value) {
-	                    pathChanged = pathChanged || !(key in oldValue);
-	                    var childPath = [path, key].join(".");
-	                    childChanges = this.ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
-	                    skipProperties.add(key);
-	                }
-	            }
-	        }
-	        var deletedCount = response.deletedPaths.length;
-	        this.DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
-	        pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
-	        if (pathChanged && childChanges)
-	            return [path].concat(childChanges);
-	        else if (pathChanged)
-	            return [path];
-	        else if (childChanges)
-	            return childChanges;
-	        return [];
-	    }
-	    DeleteProperties(value, skipProperties, path, response, idFunction) {
-	        if (IsValue(value))
-	            return;
-	        for (var key in value) {
-	            if (!skipProperties || !skipProperties.has(key)) {
-	                var childPath = [path, key].join(".");
-	                response.deletedPaths.push(childPath);
-	                this.DeleteProperties(value[key], null, childPath, response, idFunction);
-	            }
-	        }
-	        if (!skipProperties) {
-	            var id = idFunction && idFunction(value);
-	            if (id) {
-	                response.processedIds.push({
-	                    newId: null,
-	                    oldId: id,
-	                    path: path
-	                });
-	            }
-	        }
-	    }
-	    CleanMaps(data) {
-	        if (!data.wasNull)
-	            data.changedPaths.forEach(p => {
-	                this.getterMap.delete(p);
-	                this.EmitSet(p);
-	            });
+	    CleanMaps(data, skipDependents) {
+	        data.changedPaths.forEach(p => {
+	            this.getterMap.delete(p);
+	            this.EmitSet(p);
+	        });
 	        data.deletedPaths.forEach(p => {
 	            this.getterMap.delete(p);
 	            this.emitterMap.delete(p);
@@ -1216,7 +1157,7 @@ var jTemplate =
 	                        this.idToPathsMap.delete(idObj.oldId);
 	                }
 	            }
-	            if (!data.skipDependents && newId) {
+	            if (!skipDependents && newId) {
 	                var value = this.ResolvePropertyPath(idObj.path);
 	                var dependentPaths = this.idToPathsMap.get(newId);
 	                if (!dependentPaths) {
@@ -1228,7 +1169,7 @@ var jTemplate =
 	                dependentPaths.forEach(p => {
 	                    if (p === path || p.indexOf(data.rootPath) === 0)
 	                        return;
-	                    this.WriteToAsync(p, value, true);
+	                    this.WriteToAsync(p, () => value, true);
 	                });
 	            }
 	        });
@@ -1267,6 +1208,7 @@ var jTemplate =
 	            enumerable: false,
 	            writable: false
 	        });
+	        this.getterMap.set(path, ret);
 	        return ret;
 	    }
 	    CreateGetter(target, parentPath, property) {
@@ -1279,7 +1221,7 @@ var jTemplate =
 	                return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
 	            },
 	            set: (val) => {
-	                this.WriteToSync(path, val);
+	                this.WriteToAsync(path, () => val);
 	            }
 	        });
 	    }
@@ -1334,103 +1276,18 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	function WorkerScope() {
-	    const ctx = self;
-	    ctx.addEventListener("message", (event) => {
-	        var data = event.data;
-	        var resp = {
-	            wasNull: !data.oldValue && data.oldValue !== 0,
-	            changedPaths: null,
-	            deletedPaths: [],
-	            processedIds: [],
-	            skipDependents: data.skipDependents,
-	            rootPath: data.path
-	        };
-	        resp.changedPaths = ProcessChanges(data.path, data.newValue, data.oldValue, data.idFunction, resp);
-	        ctx.postMessage(resp);
-	    });
-	    function IsValue(value) {
-	        if (!value)
-	            return true;
-	        return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
-	    }
-	    function ProcessChanges(path, value, oldValue, idFunction, response) {
-	        var localIdFunction = null;
-	        if (typeof idFunction === 'string')
-	            localIdFunction = eval(idFunction);
-	        else if (idFunction)
-	            localIdFunction = idFunction;
-	        var newIsValue = IsValue(value);
-	        var oldIsValue = IsValue(oldValue);
-	        var newId = value && localIdFunction && localIdFunction(value);
-	        var oldId = oldValue && localIdFunction && localIdFunction(oldValue);
-	        if (oldId || newId) {
-	            response.processedIds.push({
-	                newId: newId,
-	                oldId: oldId,
-	                path: path
-	            });
-	        }
-	        var skipProperties = new Set();
-	        var pathChanged = false;
-	        var childChanges = null;
-	        if (newIsValue)
-	            pathChanged = value !== oldValue;
-	        else {
-	            pathChanged = oldIsValue;
-	            if (!pathChanged) {
-	                for (var key in value) {
-	                    pathChanged = pathChanged || !(key in oldValue);
-	                    var childPath = [path, key].join(".");
-	                    childChanges = ProcessChanges(childPath, value[key], oldValue && oldValue[key], localIdFunction, response);
-	                    skipProperties.add(key);
-	                }
-	            }
-	        }
-	        var deletedCount = response.deletedPaths.length;
-	        DeleteProperties(oldValue, skipProperties, path, response, localIdFunction);
-	        pathChanged = pathChanged || deletedCount !== response.deletedPaths.length;
-	        if (pathChanged && childChanges)
-	            return [path].concat(childChanges);
-	        else if (pathChanged)
-	            return [path];
-	        else if (childChanges)
-	            return childChanges;
-	        return [];
-	    }
-	    function DeleteProperties(value, skipProperties, path, response, idFunction) {
-	        if (IsValue(value))
-	            return;
-	        for (var key in value) {
-	            if (!skipProperties || !skipProperties.has(key)) {
-	                var childPath = [path, key].join(".");
-	                response.deletedPaths.push(childPath);
-	                DeleteProperties(value[key], null, childPath, response, idFunction);
-	            }
-	        }
-	        if (!skipProperties) {
-	            var id = idFunction && idFunction(value);
-	            if (id) {
-	                response.processedIds.push({
-	                    newId: null,
-	                    oldId: id,
-	                    path: path
-	                });
-	            }
-	        }
-	    }
-	}
+	const objectDiff_1 = __webpack_require__(17);
 	var ObjectStoreWorker;
 	(function (ObjectStoreWorker) {
 	    var workerConstructor = null;
 	    var workerParameter = null;
 	    if (typeof Worker !== 'undefined') {
 	        workerConstructor = Worker;
-	        workerParameter = URL.createObjectURL(new Blob([`(${WorkerScope})()`]));
+	        workerParameter = URL.createObjectURL(new Blob([`(${objectDiff_1.ObjectDiffScope})(true)`]));
 	    }
 	    else {
 	        workerConstructor = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"webworker-threads\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).Worker;
-	        workerParameter = WorkerScope;
+	        workerParameter = objectDiff_1.ObjectDiffScope;
 	    }
 	    function Create() {
 	        return new workerConstructor(workerParameter);
@@ -1441,6 +1298,131 @@ var jTemplate =
 
 /***/ }),
 /* 17 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	function ObjectDiffScope(asWorker) {
+	    if (asWorker) {
+	        const ctx = self;
+	        ctx.addEventListener && ctx.addEventListener("message", (event) => {
+	            var data = event.data;
+	            var resp = Start(data.path, data.newValue, data.oldValue, data.idFunction);
+	            ctx.postMessage(resp);
+	        });
+	    }
+	    function IsValue(value) {
+	        if (!value)
+	            return true;
+	        return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
+	    }
+	    class ObjectDiff {
+	        constructor(rootPath, newValue, oldvalue, idFunction) {
+	            this.rootPath = rootPath;
+	            this.newValue = newValue;
+	            this.oldvalue = oldvalue;
+	            this.idFunction = idFunction;
+	            this.changedPaths = [];
+	            this.deletedPaths = [];
+	            this.processedIds = [];
+	        }
+	        get Result() {
+	            if (!this.result) {
+	                this.Execute();
+	                this.result = Object.freeze({
+	                    changedPaths: this.changedPaths.reverse(),
+	                    deletedPaths: this.deletedPaths,
+	                    processedIds: this.processedIds,
+	                    rootPath: this.rootPath
+	                });
+	            }
+	            return this.result;
+	        }
+	        Execute() {
+	            this.DiffValues(this.rootPath, this.newValue, this.oldvalue);
+	        }
+	        DiffValues(path, newValue, oldValue) {
+	            var newIsObject = !IsValue(newValue);
+	            var oldIsObject = !IsValue(oldValue);
+	            var newId = newIsObject && newValue && this.idFunction && this.idFunction(newValue);
+	            var oldId = oldIsObject && oldValue && this.idFunction && this.idFunction(oldValue);
+	            if (oldId || newId) {
+	                this.processedIds.push({
+	                    newId: newId,
+	                    oldId: oldId,
+	                    path: path
+	                });
+	            }
+	            if (!newIsObject && !oldIsObject) {
+	                if (newValue !== oldValue)
+	                    this.changedPaths.push(path);
+	                return;
+	            }
+	            var newKeys = newIsObject ? new Set(Object.keys(newValue)) : new Set();
+	            var oldKeys = oldIsObject ? Object.keys(oldValue) : [];
+	            var pathChanged = false;
+	            for (var x = 0; x < oldKeys.length; x++) {
+	                var key = oldKeys[x];
+	                var childPath = [path, key].join(".");
+	                var deletedKey = !newKeys.has(key);
+	                if (!deletedKey)
+	                    newKeys.delete(key);
+	                pathChanged = pathChanged || deletedKey;
+	                if (deletedKey)
+	                    this.DeletePaths(childPath, oldValue[key]);
+	                else
+	                    this.DiffValues(childPath, newValue && newValue[key], oldValue[key]);
+	            }
+	            newKeys.forEach(key => this.FindNewIds([path, key].join("."), newValue[key]));
+	            if (pathChanged || newKeys.size > 0)
+	                this.changedPaths.push(path);
+	        }
+	        FindNewIds(path, value) {
+	            if (IsValue(value))
+	                return;
+	            var id = value && this.idFunction && this.idFunction(value);
+	            if (id)
+	                this.processedIds.push({
+	                    newId: id,
+	                    oldId: null,
+	                    path: path
+	                });
+	            for (var key in value)
+	                this.FindNewIds([path, key].join("."), value[key]);
+	        }
+	        DeletePaths(path, value) {
+	            this.deletedPaths.push(path);
+	            var id = value && this.idFunction && this.idFunction(value);
+	            if (id)
+	                this.processedIds.push({
+	                    newId: null,
+	                    oldId: id,
+	                    path: path
+	                });
+	            if (IsValue(value))
+	                return;
+	            for (var key in value) {
+	                var childPath = [path, key].join(".");
+	                this.DeletePaths(childPath, value[key]);
+	            }
+	        }
+	    }
+	    function Start(path, newValue, oldValue, idFunction) {
+	        var localIdFunction = null;
+	        if (typeof idFunction === 'string')
+	            localIdFunction = eval(idFunction);
+	        else if (idFunction)
+	            localIdFunction = idFunction;
+	        return (new ObjectDiff(path, newValue, oldValue, localIdFunction)).Result;
+	    }
+	    return Start;
+	}
+	exports.ObjectDiffScope = ObjectDiffScope;
+	exports.ObjectDiff = ObjectDiffScope(false);
+
+
+/***/ }),
+/* 18 */
 /***/ (function(module, exports) {
 
 	"use strict";

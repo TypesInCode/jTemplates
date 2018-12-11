@@ -15,15 +15,14 @@ export declare class Store<T> {
         (val: T, next: O): void;
     }): Scope<O>;
     Get<O>(id: string): O;
-    Write<O>(readOnly: O | string, updateCallback: {
+    Write<O>(readOnly: O, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;
     } | O): void;
     Push<O>(readOnly: Array<O>, newValue: O): void;
     private WriteTo;
-    private ProcessChanges;
-    private CleanUp;
+    private CleanMaps;
     private AssignPropertyPath;
     private ResolvePropertyPath;
     private CreateGetterObject;

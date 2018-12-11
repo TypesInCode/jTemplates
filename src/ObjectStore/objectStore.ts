@@ -1,6 +1,7 @@
 import Emitter from "../emitter";
 import { globalEmitter } from './globalEmitter';
 import { Scope } from "./objectStoreScope";
+import { ObjectDiff } from "./objectDiff";
 
 function IsValue(value: any) {
     if(!value)
@@ -23,7 +24,7 @@ export class Store<T> {
     }
 
     public set Root(val: T) {
-        this.Write(null, () => val);
+        this.WriteTo("root", val);
     }
 
     constructor(idCallback?: { (val: any): any }) {
@@ -49,118 +50,83 @@ export class Store<T> {
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
-    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): void {
-        if(typeof readOnly === 'string') {
-            readOnly = this.Get(readOnly);
-            if(!readOnly)
-                return;
-        }
-        
+    public Write<O>(readOnly: O, updateCallback: { (current: O): O } | { (current: O): void } | O) {
         var path = readOnly ? (readOnly as any).___path : "root";
-        var localValue = this.ResolvePropertyPath(path) as O;
-
-        var newValue = null;
-        var mutableCopy = null;
-        if(typeof updateCallback === 'function') {
-            mutableCopy = this.CreateCopy(localValue);
-            newValue = (updateCallback as { (current: O): O })(mutableCopy);
-        }
-        else 
-            newValue = updateCallback;
-
-        this.WriteTo(path, typeof newValue !== "undefined" ? newValue : mutableCopy);
+        return this.WriteTo(path, updateCallback);
     }
 
-    public Push<O>(readOnly: Array<O>, newValue: O) {
+    public Push<O>(readOnly: Array<O>, newValue: O): void {
         var path = (readOnly as any).___path;
         
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
-        var oldLength = localValue.length;
-
-        var childPath = [path, oldLength].join(".");
+        var childPath = [path, localValue.length].join(".");
         localValue.push(null);
-        this.WriteTo(childPath, newValue);
 
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
+        this.WriteTo(childPath, newValue)
         this.EmitSet(path);
     }
 
     private WriteTo(path: string, value: any, skipDependents?: boolean) {
         var localValue = this.ResolvePropertyPath(path);
-        if(localValue === value)
-            return;
+
+        if(typeof value === 'function') {
+            var localValue = this.ResolvePropertyPath(path);
+            var mutableCopy = this.CreateCopy(localValue);
+            var ret = (value as any)(mutableCopy);
+            value = typeof ret === 'undefined' ? mutableCopy : ret;
+        }
 
         this.AssignPropertyPath(value, path);
-        this.ProcessChanges(path, path, value, localValue, skipDependents);
+        var resp = ObjectDiff(path, value, localValue, this.getIdCallback);
+        this.CleanMaps(resp, skipDependents);
     }
 
-    private ProcessChanges(rootPath: string, path: string, value: any, oldValue: any, skipDependents?: boolean) {
-        this.getterMap.delete(path);
-        var newId = value && this.getIdCallback && this.getIdCallback(value);
-        var oldId = oldValue && this.getIdCallback && this.getIdCallback(oldValue);
+    private CleanMaps(data: IPostMessage, skipDependents: boolean) {
+        data.changedPaths.forEach(p => {
+            this.getterMap.delete(p);
+            this.EmitSet(p);
+        });
 
-        if(oldId && oldId !== newId) {
-            var oldIdPaths = this.idToPathsMap.get(oldId);
-            oldIdPaths.delete(path);
-            if(oldIdPaths.size === 0)
-                this.idToPathsMap.delete(oldId);
-        }
+        data.deletedPaths.forEach(p => {
+            this.getterMap.delete(p);
+            this.emitterMap.delete(p);
+        });
 
-        if(!skipDependents && newId) {
-            var dependentPaths = this.idToPathsMap.get(newId);
-            if(!dependentPaths) {
-                dependentPaths = new Set([path]);
-                this.idToPathsMap.set(newId, dependentPaths);
-            }
-            else if(!dependentPaths.has(path))
-                dependentPaths.add(path);
-
-            dependentPaths.forEach(p => {
-                if(p === path || p.indexOf(rootPath) === 0)
-                    return;
-                
-                this.WriteTo(p, value, true);
-            });
-        }
-
-        var skipProperties = new Set();
-        if(!IsValue(value)) {
-            for(var key in value) {
-                var childPath = [path, key].join(".");
-                this.ProcessChanges(rootPath, childPath, value[key], oldValue && oldValue[key], skipDependents);
-                skipProperties.add(key);
-            }
-        }
-
-        this.CleanUp(oldValue, skipProperties, path);
-        this.EmitSet(path);
-    }
-
-    private CleanUp(value: any, skipProperties: Set<string>, path: string) {
-        if(!IsValue(value)) {
-            for(var key in value) {
-                if(!(skipProperties && skipProperties.has(key))) {
-                    var childPath = [path, key].join(".");
-                    this.emitterMap.delete(childPath);
-                    this.getterMap.delete(childPath);
-                    this.CleanUp(value[key], null, childPath);
+        data.processedIds.forEach(idObj => {
+            var oldId = idObj.oldId;
+            var newId = idObj.newId;
+            var path = idObj.path;
+            if(oldId && oldId !== newId) {
+                var oldIdPaths = this.idToPathsMap.get(oldId);
+                if(oldIdPaths) {
+                    oldIdPaths.delete(idObj.path);
+                    if(oldIdPaths.size === 0)
+                        this.idToPathsMap.delete(idObj.oldId);
                 }
             }
 
-            if(!skipProperties || skipProperties.size === 0) {
-                var id = this.getIdCallback && this.getIdCallback(value);
-                if(id) {
-                    var paths = this.idToPathsMap.get(id);
-                    if(paths) {
-                        paths.delete(path);
-                        if(paths.size === 0)
-                            this.idToPathsMap.delete(id);
-                    }
+            if(!skipDependents && newId) {
+                var value = this.ResolvePropertyPath(idObj.path);
+                var dependentPaths = this.idToPathsMap.get(newId);
+                if(!dependentPaths) {
+                    dependentPaths = new Set([path]);
+                    this.idToPathsMap.set(newId, dependentPaths);
                 }
+                else if(!dependentPaths.has(path))
+                    dependentPaths.add(path);
+    
+                dependentPaths.forEach(p => {
+                    if(p === path || p.indexOf(data.rootPath) === 0)
+                        return;
+                    
+                    
+                    this.WriteTo(p, value, true);
+                });
             }
-        }
+        });
     }
 
     private AssignPropertyPath(value: any, path: string) {
@@ -184,7 +150,7 @@ export class Store<T> {
     private CreateGetterObject(source: any, path: string) {
         if(IsValue(source))
             return source;
-        
+
         var ret = null;
         if(Array.isArray(source)) {
             ret = new Array(source.length);
@@ -246,22 +212,19 @@ export class Store<T> {
     private EmitSet(path: string) {
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
-            // emitter = new ObjectStoreEmitter(path, this);
             emitter = new Emitter();
             this.emitterMap.set(path, emitter);
         }
         emitter.emit("set");
     }
 
-    private EmitGet(path: string) {
+    private EmitGet(path: string) {        
         var emitter = this.emitterMap.get(path);
         if(!emitter) {
             emitter = new Emitter();
-            // emitter = new ObjectStoreEmitter(path, this);
             this.emitterMap.set(path, emitter);
         }
 
-        // globalEmitter.emit("get", emitter);
         globalEmitter.Register(emitter);
     }
 }

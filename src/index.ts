@@ -12,13 +12,10 @@ export { Template, Store, StoreAsync, Scope, div, span, ul, li, input, b, a, br,
 var scope = store.Scope(root => root && root.length);
 
 scope.addListener("set", () => {
-    console.debug(store.Root);
+    var s = store;
     console.log("In scope set");
     console.log(scope.Value);
 })
-
-console.log(scope.Value);
-console.log(store.Root[0].value);
 
 store.Write(store.Root, (val) => {
     val.push({
