@@ -30,7 +30,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 return array.map((curr, index) => {
                     return {
                         value: curr,
-                        key: this.keyFunction && this.keyFunction(curr) || index
+                        key: keyFunction && keyFunction(curr) || index
                     };
                 });
             }
@@ -41,7 +41,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 return array.map((curr, index) => {
                     return {
                         value: curr,
-                        key: this.keyFunction && this.keyFunction(curr) || index
+                        key: keyFunction && keyFunction(curr) || index
                     };
                 });
             };
@@ -59,7 +59,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         this.activeTemplateMap = new Map();
         this.activeKeys = [];
         this.childrenFunction = config.children;
-        this.keyFunction = config.key;
+        // this.keyFunction = config.key;
         /* this.dataObservableScope = new Scope(() => {
             var value = ConvertToArray(this.Value);
             return value.map((curr, index) => {
