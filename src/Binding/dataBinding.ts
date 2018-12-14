@@ -44,7 +44,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                     key: this.keyFunction && this.keyFunction(curr) || index
                 };
             });
-        });
+        }, []);
     }
 
     protected Apply() {
