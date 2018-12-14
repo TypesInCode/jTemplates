@@ -27,13 +27,13 @@ export abstract class Binding<T> {
         return this.boundTo;
     }
 
-    constructor(boundTo: any, binding: PromiseOr<any>, defaultValue: any, config: T) {
+    constructor(boundTo: any, binding: PromiseOr<any>, config: T) {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
 
         if(typeof binding === 'function') {
-            this.observableScope = new Scope(binding, defaultValue);
+            this.observableScope = new Scope(binding);
             this.observableScope.addListener("set", this.setCallback);
         }
         else {

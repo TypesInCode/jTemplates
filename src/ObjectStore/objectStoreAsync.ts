@@ -40,8 +40,8 @@ export class StoreAsync<T> {
         this.workerQueue.Push(() => ({ method: "create", arguments: [this.getIdCallback && this.getIdCallback.toString()] }));
     }
 
-    public Scope<O>(valueFunction: {(root: T): O}, defaultValue?: O): Scope<O> {
-        return new Scope(() => valueFunction(this.Root), defaultValue);
+    public Scope<O>(valueFunction: {(root: T): O}): Scope<O> {
+        return new Scope(() => valueFunction(this.Root));
     }
 
     public async Get<O>(id: string): Promise<O> {

@@ -46,14 +46,6 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const template_1 = __webpack_require__(1);
 	exports.Template = template_1.Template;
@@ -83,44 +75,14 @@ var jTemplate =
 	exports.tr = elements_1.tr;
 	exports.td = elements_1.td;
 	const objectStore_1 = __webpack_require__(19);
-	function SyncTest() {
-	    var start = new Date();
-	    var store = objectStore_1.Store.Create([{ id: "first", value: "this and that" }], (val) => val.id);
-	    var scope = store.Scope(root => root && root.length);
-	    store.Write(store.Root, (val) => {
-	        for (var x = 0; x < 10000; x++)
-	            val.push({
-	                id: "id_" + x,
-	                value: "value_" + x
-	            });
-	    });
-	    console.log(scope.Value);
-	    var end = new Date();
-	    console.log("on SYNC write complete");
-	    console.log(end.getTime() - start.getTime() + " milliseconds");
+	exports.Store = objectStore_1.Store;
+	class Root extends template_1.Component {
+	    Template() {
+	        return elements_1.div({ text: "text" });
+	    }
 	}
-	function AsyncTest() {
-	    return __awaiter(this, void 0, void 0, function* () {
-	        var start = new Date();
-	        var store = yield objectStoreAsync_1.StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
-	        var scope = store.Scope(root => root && root.length);
-	        yield store.Write(store.Root, (val) => {
-	            for (var x = 0; x < 10000; x++)
-	                val.push({
-	                    id: "id_" + x,
-	                    value: "value_" + x
-	                });
-	        });
-	        console.log(scope.Value);
-	        yield store.WriteComplete();
-	        var end = new Date();
-	        console.log("on ASYNC write complete");
-	        console.log(end.getTime() - start.getTime() + " milliseconds");
-	    });
-	}
-	SyncTest();
-	console.log("between tests");
-	AsyncTest();
+	var root = new Root("root");
+	root.AttachTo(document.getElementById("container"));
 
 
 /***/ }),
@@ -178,9 +140,10 @@ var jTemplate =
 	    return ret;
 	}
 	class Template {
-	    constructor(definition) {
+	    constructor(definition, dataOverride) {
 	        if (typeof definition === 'string')
 	            definition = ComponentFunction(definition, this.constructor);
+	        definition.data = dataOverride || definition.data;
 	        this.templates = this.DefaultTemplates;
 	        this.SetTemplates(definition.templates);
 	        definition.children = definition.children || this.Template.bind(this);
@@ -240,7 +203,7 @@ var jTemplate =
 	class Component extends Template {
 	    constructor(definition) {
 	        if (typeof definition === 'string')
-	            super(definition);
+	            super(definition, true);
 	        else if (typeof definition.data === 'function') {
 	            definition.data = new objectStoreScope_1.Scope(definition.data);
 	            super(definition);
@@ -388,7 +351,7 @@ var jTemplate =
 	const binding_1 = __webpack_require__(6);
 	class PropertyBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, null);
+	        super(boundTo, bindingFunction, {}, null);
 	    }
 	    Apply() {
 	        this.lastValue = this.lastValue || {};
@@ -431,12 +394,12 @@ var jTemplate =
 	    BindingStatus[BindingStatus["Destroyed"] = 3] = "Destroyed";
 	})(BindingStatus || (BindingStatus = {}));
 	class Binding {
-	    constructor(boundTo, binding, config) {
+	    constructor(boundTo, binding, defaultValue, config) {
 	        this.boundTo = boundTo;
 	        this.status = BindingStatus.Init;
 	        this.setCallback = this.Update.bind(this);
 	        if (typeof binding === 'function') {
-	            this.observableScope = new objectStoreScope_1.Scope(binding);
+	            this.observableScope = new objectStoreScope_1.Scope(binding, defaultValue);
 	            this.observableScope.addListener("set", this.setCallback);
 	        }
 	        else {
@@ -487,30 +450,34 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(8);
 	const globalEmitter_1 = __webpack_require__(9);
 	class Scope extends emitter_1.Emitter {
-	    constructor(getFunction, setFunction) {
+	    constructor(getFunction) {
 	        super();
 	        this.getFunction = getFunction;
-	        this.setFunction = setFunction;
 	        this.trackedEmitters = new Set();
 	        this.setCallback = this.SetCallback.bind(this);
+	        this.dirty = true;
 	        this.UpdateValue();
 	    }
 	    get Value() {
 	        globalEmitter_1.globalEmitter.Register(this);
 	        if (!this.dirty)
-	            return this.value;
-	        this.UpdateValue();
-	        return this.value;
+	            return Promise.resolve(this.value);
+	        return this.UpdateValue();
 	    }
-	    set Value(val) {
-	        this.setFunction && this.setFunction(val);
-	    }
-	    Scope(getFunction, setFunction) {
-	        return new Scope(() => getFunction(this.Value), (val) => setFunction(this.Value, val));
+	    Scope(getFunction, defaultValue) {
+	        return new Scope(() => __awaiter(this, void 0, void 0, function* () { return getFunction(yield this.Value); }));
 	    }
 	    Destroy() {
 	        this.removeAllListeners();
@@ -518,21 +485,31 @@ var jTemplate =
 	        this.trackedEmitters.clear();
 	    }
 	    UpdateValue() {
-	        var newEmitters = globalEmitter_1.globalEmitter.Watch(() => {
-	            try {
-	                this.value = this.getFunction();
-	            }
-	            catch (err) {
-	                console.error(err);
-	            }
+	        return __awaiter(this, void 0, void 0, function* () {
+	            if (!this.updatingPromise)
+	                this.updatingPromise = new Promise((resolve) => {
+	                    var value = null;
+	                    var newEmitters = globalEmitter_1.globalEmitter.Watch(() => {
+	                        try {
+	                            value = this.getFunction();
+	                        }
+	                        catch (err) {
+	                            console.error(err);
+	                        }
+	                    });
+	                    this.trackedEmitters.forEach(emitter => {
+	                        if (!newEmitters.has(emitter))
+	                            emitter.removeListener("set", this.setCallback);
+	                    });
+	                    newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+	                    this.trackedEmitters = newEmitters;
+	                    this.dirty = false;
+	                    this.value = value;
+	                    this.updatingPromise = null;
+	                    resolve(value);
+	                });
+	            return this.updatingPromise;
 	        });
-	        this.trackedEmitters.forEach(emitter => {
-	            if (!newEmitters.has(emitter))
-	                emitter.removeListener("set", this.setCallback);
-	        });
-	        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
-	        this.trackedEmitters = newEmitters;
-	        this.dirty = false;
 	    }
 	    SetCallback() {
 	        this.dirty = true;
@@ -610,10 +587,19 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const binding_1 = __webpack_require__(6);
 	const template_1 = __webpack_require__(1);
 	const bindingConfig_1 = __webpack_require__(2);
+	const objectStoreScope_1 = __webpack_require__(7);
 	function ConvertToArray(val) {
 	    if (!val)
 	        return [];
@@ -623,27 +609,7 @@ var jTemplate =
 	}
 	class DataBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction, childrenFunction, keyFunction) {
-	        var bindingWrapper = null;
-	        if (typeof bindingFunction === 'function')
-	            bindingWrapper = () => {
-	                var value = bindingFunction();
-	                value = ConvertToArray(value);
-	                return value.map((curr, index) => {
-	                    return {
-	                        value: curr,
-	                        key: keyFunction && keyFunction(curr) || index
-	                    };
-	                });
-	            };
-	        else {
-	            bindingWrapper = ConvertToArray(bindingFunction).map((curr, index) => {
-	                return {
-	                    value: curr,
-	                    key: keyFunction && keyFunction(curr) || index
-	                };
-	            });
-	        }
-	        super(boundTo, bindingWrapper, { children: childrenFunction, key: keyFunction });
+	        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
 	    }
 	    Destroy() {
 	        super.Destroy();
@@ -655,42 +621,53 @@ var jTemplate =
 	        this.activeKeys = [];
 	        this.childrenFunction = config.children;
 	        this.keyFunction = config.key;
+	        this.dataObservableScope = new objectStoreScope_1.Scope(() => {
+	            var value = ConvertToArray(this.Value);
+	            return value.map((curr, index) => {
+	                return {
+	                    value: curr,
+	                    key: this.keyFunction && this.keyFunction(curr) || index
+	                };
+	            });
+	        }, []);
 	    }
 	    Apply() {
-	        var value = this.Value;
-	        var newTemplateMap = new Map();
-	        var newKeys = [];
-	        var container = bindingConfig_1.BindingConfig.createContainer();
-	        var previousTemplate = null;
-	        for (var x = 0; x < value.length; x++) {
-	            var newKey = value[x].key;
-	            newKeys.push(newKey);
-	            var newTemplates = this.activeTemplateMap.get(newKey);
-	            if (!newTemplates) {
-	                var newDefs = this.childrenFunction(value[x].value, x);
-	                if (!Array.isArray(newDefs))
-	                    newDefs = [newDefs];
-	                newTemplates = newDefs.map(d => template_1.Template.Create(d));
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var value = yield this.dataObservableScope.Value;
+	            var newTemplateMap = new Map();
+	            var newKeys = [];
+	            var container = bindingConfig_1.BindingConfig.createContainer();
+	            var previousTemplate = null;
+	            for (var x = 0; x < value.length; x++) {
+	                var newKey = value[x].key;
+	                newKeys.push(newKey);
+	                var newTemplates = this.activeTemplateMap.get(newKey);
+	                if (!newTemplates) {
+	                    var newDefs = this.childrenFunction(value[x].value, x);
+	                    if (!Array.isArray(newDefs))
+	                        newDefs = [newDefs];
+	                    newTemplates = newDefs.map(d => template_1.Template.Create(d));
+	                }
+	                newTemplateMap.set(newKey, newTemplates);
+	                this.activeTemplateMap.delete(newKey);
+	                if (x >= this.activeKeys.length)
+	                    newTemplates.forEach(t => {
+	                        t.AttachToContainer(container);
+	                        previousTemplate = t;
+	                    });
+	                else if (newKey !== this.activeKeys[x])
+	                    newTemplates.forEach(t => {
+	                        t.AttachAfter(this.BoundTo, previousTemplate);
+	                        previousTemplate = t;
+	                    });
+	                else
+	                    previousTemplate = newTemplates[newTemplates.length - 1] || previousTemplate;
 	            }
-	            newTemplateMap.set(newKey, newTemplates);
-	            this.activeTemplateMap.delete(newKey);
-	            if (x >= this.activeKeys.length)
-	                newTemplates.forEach(t => {
-	                    t.AttachToContainer(container);
-	                    previousTemplate = t;
-	                });
-	            else if (newKey !== this.activeKeys[x])
-	                newTemplates.forEach(t => {
-	                    t.AttachAfter(this.BoundTo, previousTemplate);
-	                    previousTemplate = t;
-	                });
-	            else
-	                previousTemplate = newTemplates[newTemplates.length - 1] || previousTemplate;
-	        }
-	        this.DestroyTemplates(this.activeTemplateMap);
-	        this.activeTemplateMap = newTemplateMap;
-	        this.activeKeys = newKeys;
-	        bindingConfig_1.BindingConfig.addChildContainer(this.BoundTo, container);
+	            this.DestroyTemplates(this.activeTemplateMap);
+	            this.activeTemplateMap = newTemplateMap;
+	            this.activeKeys = newKeys;
+	            bindingConfig_1.BindingConfig.addChildContainer(this.BoundTo, container);
+	        });
 	    }
 	    DestroyTemplates(templateMap) {
 	        templateMap.forEach(templates => templates.forEach(t => t.Destroy()));
@@ -709,7 +686,7 @@ var jTemplate =
 	const bindingConfig_1 = __webpack_require__(2);
 	class TextBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, null);
+	        super(boundTo, bindingFunction, "", null);
 	    }
 	    Apply() {
 	        bindingConfig_1.BindingConfig.setText(this.BoundTo, this.Value);
@@ -728,7 +705,7 @@ var jTemplate =
 	const bindingConfig_1 = __webpack_require__(2);
 	class EventBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, null);
+	        super(boundTo, bindingFunction, {}, null);
 	    }
 	    Apply() {
 	        for (var key in this.boundEvents)
@@ -786,8 +763,8 @@ var jTemplate =
 	    set Root(val) {
 	        this.WriteToAsync("root", val);
 	    }
-	    Scope(valueFunction, setFunction) {
-	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), (next) => setFunction(this.Root, next));
+	    Scope(valueFunction, defaultValue) {
+	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), defaultValue);
 	    }
 	    Get(id) {
 	        return __awaiter(this, void 0, void 0, function* () {
@@ -1387,8 +1364,8 @@ var jTemplate =
 	    set Root(val) {
 	        this.WriteToSync("root", val);
 	    }
-	    Scope(valueFunction, setFunction) {
-	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), (next) => setFunction(this.Root, next));
+	    Scope(valueFunction, defaultValue) {
+	        return new objectStoreScope_1.Scope(() => valueFunction(this.Root), defaultValue);
 	    }
 	    Get(id) {
 	        return __awaiter(this, void 0, void 0, function* () {

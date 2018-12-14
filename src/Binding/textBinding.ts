@@ -5,7 +5,7 @@ import { PromiseOr } from "../template.types";
 class TextBinding extends Binding<any> {
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<string>) {
-        super(boundTo, bindingFunction, "", null);
+        super(boundTo, bindingFunction, null);
     }
 
     protected Apply() {

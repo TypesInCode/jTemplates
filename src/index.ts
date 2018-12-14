@@ -7,6 +7,17 @@ import { Store } from "./ObjectStore/objectStore";
 
 export { Template, StoreAsync, Store, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
+/* class Root extends Component<any, any> {
+
+    Template() {
+        return div({ text: "text" });
+    }
+
+}
+
+var root = new Root("root");
+root.AttachTo(document.getElementById("container")); */
+
 /* function SyncTest() {
     var start = new Date();
     var store = Store.Create([{ id: "first", value: "this and that" }], (val) => val.id);

@@ -22,7 +22,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     dataObservableScope: Scope<Array<{key: any, value: any}>>;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
-        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
+        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
@@ -44,7 +44,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                     key: this.keyFunction && this.keyFunction(curr) || index
                 };
             });
-        }, []);
+        });
     }
 
     protected async Apply() {
