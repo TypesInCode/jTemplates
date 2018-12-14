@@ -2,6 +2,7 @@ import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
 import { PromiseOr } from "../template.types";
+import { Scope } from "../ObjectStore/objectStoreScope";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -18,32 +19,10 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     activeKeys: Array<any>;
     keyFunction: (val: any) => any;
+    dataObservableScope: Scope<Array<{key: any, value: any}>>;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
-        var bindingWrapper = null;
-        if(typeof bindingFunction === 'function')
-            bindingWrapper = async () => {
-                var value = await bindingFunction() as Array<any>;
-                value = ConvertToArray(value);
-
-                return value.map((curr, index) => {
-                    return {
-                        value: curr,
-                        key: keyFunction && keyFunction(curr) || index
-                    };
-                });
-            };
-        else {
-            bindingWrapper = ConvertToArray(bindingFunction).map((curr, index) => {
-                return {
-                    value: curr,
-                    key: keyFunction && keyFunction(curr) || index
-                };
-            });
-        }
-            
-
-        super(boundTo, bindingWrapper, [], { children: childrenFunction, key: keyFunction });
+        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
@@ -57,10 +36,19 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         this.activeKeys = [];
         this.childrenFunction = config.children;
         this.keyFunction = config.key;
+        this.dataObservableScope = new Scope(() => {
+            var value = ConvertToArray(this.Value);
+            return value.map((curr, index) => {
+                return {
+                    value: curr,
+                    key: this.keyFunction && this.keyFunction(curr) || index
+                };
+            });
+        });
     }
 
     protected Apply() {
-        var value = this.Value as Array<{ value: any, key: any }>;
+        var value = this.dataObservableScope.Value;
         /* if(!value)
             value = [];
         else if(!Array.isArray(value))
