@@ -158,6 +158,9 @@ export class Scope<T> extends Emitter {
     }
 
     private SetCallback() {
+        if(!this.dirty)
+            return;
+        
         this.dirty = true;
         this.emit("set");
     }
