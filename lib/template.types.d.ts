@@ -2,33 +2,22 @@ export declare type BindingDefinitions<P, T> = BindingDefinition<P, T> | Array<B
 export declare type Templates<T> = {
     [P in keyof T]: (c: any, i: number) => BindingDefinitions<any, any>;
 };
+export declare type PromiseOr<T> = {
+    (): Promise<T> | T;
+} | T;
 export interface BindingDefinition<P, T> {
     type: any;
-    props?: {
-        (): {
-            [name: string]: any;
-        };
-    } | {
+    props?: PromiseOr<{
         [name: string]: any;
-    };
-    on?: {
-        (): {
-            [name: string]: {
-                (event?: any): void;
-            };
-        };
-    } | {
+    }>;
+    on?: PromiseOr<{
         [name: string]: {
             (event?: any): void;
         };
-    };
-    data?: {
-        (): P | Array<P>;
-    } | P | Array<P>;
+    }>;
+    data?: PromiseOr<P | Array<P>>;
     key?: (val: P) => any;
-    text?: {
-        (): string;
-    } | string;
+    text?: PromiseOr<string>;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: {
         new (bindingDef?: BindingDefinition<any, any>): ITemplate<P, T>;
@@ -36,54 +25,28 @@ export interface BindingDefinition<P, T> {
     templates?: Templates<T>;
 }
 export interface TemplateDefinition<P> {
-    props?: {
-        (): {
-            [name: string]: any;
-        };
-    } | {
+    props?: PromiseOr<{
         [name: string]: any;
-    };
-    on?: {
-        (): {
-            [name: string]: {
-                (event?: any): void;
-            };
-        };
-    } | {
+    }>;
+    on?: PromiseOr<{
         [name: string]: {
             (event?: any): void;
         };
-    };
-    data?: {
-        (): P | Array<P>;
-    } | P | Array<P>;
+    }>;
+    data?: PromiseOr<P | Array<P>>;
     key?: (val: P) => any;
-    text?: {
-        (): string;
-    } | string;
+    text?: PromiseOr<string>;
 }
 export interface ComponentDefinition<P, T> {
-    props?: {
-        (): {
-            [name: string]: any;
-        };
-    } | {
+    props?: PromiseOr<{
         [name: string]: any;
-    };
-    on?: {
-        (): {
-            [name: string]: {
-                (event?: any): void;
-            };
-        };
-    } | {
+    }>;
+    on?: PromiseOr<{
         [name: string]: {
             (event?: any): void;
         };
-    };
-    data?: {
-        (): P | Array<P>;
-    } | P | Array<P>;
+    }>;
+    data?: PromiseOr<P | Array<P>>;
     key?: (val: P) => any;
 }
 export declare type BoundComponentFunction<P, T> = {

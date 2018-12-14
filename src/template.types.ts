@@ -4,30 +4,32 @@ export type Templates<T> = {
     [P in keyof T]: (c: any, i: number) => BindingDefinitions<any, any>
 }
 
+export type PromiseOr<T> = {(): Promise<T> | T} | T;
+
 export interface BindingDefinition<P, T> {
     type: any;
-    props?: {(): {[name: string]: any}} | {[name: string]: any};
-    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
-    data?: {(): P | Array<P>} | P | Array<P>;
+    props?: PromiseOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    on?: PromiseOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    data?: PromiseOr<P | Array<P>>; //{(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
-    text?: {(): string} | string;
+    text?: PromiseOr<string>; //{(): string} | string;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: { new(bindingDef?: BindingDefinition<any, any>): ITemplate<P, T> };
     templates?: Templates<T>;
 }
 
 export interface TemplateDefinition<P> {
-    props?: {(): {[name: string]: any}} | {[name: string]: any};
-    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
-    data?: {(): P | Array<P>} | P | Array<P>;
+    props?: PromiseOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    on?: PromiseOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    data?: PromiseOr<P | Array<P>>; // {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
-    text?: {(): string} | string;
+    text?: PromiseOr<string>; // {(): string} | string;
 }
 
 export interface ComponentDefinition<P, T> {
-    props?: {(): {[name: string]: any}} | {[name: string]: any};
-    on?: {(): {[name: string]: {(event?: any): void}}} | {[name: string] : {(event?: any): void}};
-    data?: {(): P | Array<P>} | P | Array<P>;
+    props?: PromiseOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    on?: PromiseOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    data?: PromiseOr<P | Array<P>>; // {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
 }
 

@@ -1,5 +1,6 @@
 import { Scope } from '../ObjectStore/objectStoreScope';
 import { BindingConfig } from './bindingConfig';
+import { PromiseOr } from '../template.types';
 
 enum BindingStatus {
     Init,
@@ -26,7 +27,7 @@ export abstract class Binding<T> {
         return this.boundTo;
     }
 
-    constructor(boundTo: any, binding: {(): any} | any, config: T) {
+    constructor(boundTo: any, binding: PromiseOr<any>, config: T) {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);

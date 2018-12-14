@@ -1,6 +1,7 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
+import { PromiseOr } from "../template.types";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -18,7 +19,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     activeKeys: Array<any>;
     keyFunction: (val: any) => any;
 
-    constructor(boundTo: Node, bindingFunction: () => any, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
+    constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
         var bindingWrapper = null;
         if(typeof bindingFunction === 'function')
             bindingWrapper = () => {

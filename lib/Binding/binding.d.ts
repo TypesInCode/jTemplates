@@ -1,3 +1,4 @@
+import { PromiseOr } from '../template.types';
 export declare abstract class Binding<T> {
     private boundTo;
     private isStatic;
@@ -7,9 +8,7 @@ export declare abstract class Binding<T> {
     private status;
     protected readonly Value: any;
     protected readonly BoundTo: any;
-    constructor(boundTo: any, binding: {
-        (): any;
-    } | any, config: T);
+    constructor(boundTo: any, binding: PromiseOr<any>, config: T);
     Update(): void;
     Destroy(): void;
     protected Init(config: T): void;
