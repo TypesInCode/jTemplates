@@ -1,25 +1,10 @@
-/* declare module "worker-loader!*" {
-    class WebpackWorker extends Worker {
-      constructor();
-    }
-  
-    export default WebpackWorker;
-  } */
-
-interface IPostMessage {
-    changedPaths: Array<string>;
-    deletedPaths: Array<string>;
-    processedIds: Array<{
-        newId: string,
-        oldId: string,
-        path: string
-    }>;
-    rootPath: string;
+interface IDiffMethod {
+    method: string;
+    arguments: Array<any>;
 }
 
-interface IMessage {
-    oldValue: any;
-    newValue: any;
-    path: string;
-    idFunction: string;
+interface IDiffResponse {
+    changedPaths: Array<string>;
+    deletedPaths: Array<string>;
+    pathDependencies: Array<{ path: string, targets: Array<string> }>;
 }

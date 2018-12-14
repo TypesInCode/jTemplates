@@ -1,6 +1,8 @@
 import Emitter from "../emitter";
 import { globalEmitter } from './globalEmitter';
 import { Scope } from "./objectStoreScope";
+import { ObjectStoreWorker } from "./objectStoreWorker";
+import { WorkerQueue } from "./workerQueue";
 import { ObjectDiff } from "./objectDiff";
 
 function IsValue(value: any) {
@@ -14,8 +16,8 @@ export class Store<T> {
     private getIdCallback: { (val: any): any };
     private emitterMap: Map<string, Emitter>;
     private getterMap: Map<string, any>;
-    private idToPathsMap: Map<any, Set<string>>;
     private root: T;
+    private diff: {(data: IDiffMethod): any};
 
     public get Root(): T {
         this.EmitGet("root");
@@ -24,7 +26,7 @@ export class Store<T> {
     }
 
     public set Root(val: T) {
-        this.WriteTo("root", val);
+        this.WriteToSync("root", val);
     }
 
     constructor(idCallback?: { (val: any): any }) {
@@ -32,36 +34,42 @@ export class Store<T> {
         this.emitterMap = new Map();
         this.emitterMap.set("root", new Emitter());
         this.getterMap = new Map();
-        this.idToPathsMap = new Map();
+        this.diff = ObjectDiff();
+        this.diff({
+            method: "create",
+            arguments: [this.getIdCallback]
+        })
     }
 
     public Scope<O>(valueFunction: {(root: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
         return new Scope(() => valueFunction(this.Root), (next: O) => setFunction(this.Root, next));
     }
 
-    public Get<O>(id: string): O {
-        var paths = this.idToPathsMap.get(id);
-        if(!paths)
-            return null;
-
-        var path = paths.values().next().value;
+    public async Get<O>(id: string): Promise<O> {
+        var path = this.diff({
+            method: "getpath",
+            arguments: [id]
+        }) as string;
+        if(!path)
+            return;
+        
         this.EmitGet(path);
         var ret = this.getterMap.get(path);
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
-    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O) {
+    public async Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
         if(typeof readOnly === 'string')
-            readOnly = this.Get(readOnly);
+            readOnly = await this.Get<O>(readOnly);
         
         var path = readOnly && (readOnly as any).___path;
         if(!path)
             return;
-        
-        return this.WriteTo(path, updateCallback);
+
+        return this.WriteToSync(path, updateCallback);
     }
 
-    public Push<O>(readOnly: Array<O>, newValue: O): void {
+    public async Push<O>(readOnly: Array<O>, newValue: O): Promise<void> {
         var path = (readOnly as any).___path;
         
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
@@ -71,26 +79,32 @@ export class Store<T> {
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
-        this.WriteTo(childPath, newValue)
+        await this.WriteToSync(childPath, newValue)
         this.EmitSet(path);
     }
 
-    private WriteTo(path: string, value: any, skipDependents?: boolean) {
-        var localValue = this.ResolvePropertyPath(path);
-
-        if(typeof value === 'function') {
-            var localValue = this.ResolvePropertyPath(path);
-            var mutableCopy = this.CreateCopy(localValue);
-            var ret = (value as any)(mutableCopy);
-            value = typeof ret === 'undefined' ? mutableCopy : ret;
-        }
-
+    private WriteToSync(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): void {
+        var value = this.ResolveUpdateCallback(path, updateCallback);
+        var diff = this.diff({
+            method: "diff",
+            arguments: [path, value, this.ResolvePropertyPath(path), skipDependents]
+        }) as IDiffResponse;
         this.AssignPropertyPath(value, path);
-        var resp = ObjectDiff(path, value, localValue, this.getIdCallback);
-        this.CleanMaps(resp, skipDependents);
+        this.ProcessDiff(diff);
     }
 
-    private CleanMaps(data: IPostMessage, skipDependents: boolean) {
+    private ResolveUpdateCallback(path: string, updateCallback: {(): any}): any {
+        if(typeof updateCallback === 'function') {
+            var localValue = this.ResolvePropertyPath(path);
+            var mutableCopy = this.CreateCopy(localValue);
+            var ret = (updateCallback as any)(mutableCopy);
+            return typeof ret === 'undefined' ? mutableCopy : ret;
+        }
+        
+        return updateCallback;
+    }
+
+    private ProcessDiff(data: IDiffResponse) {
         data.changedPaths.forEach(p => {
             this.getterMap.delete(p);
             this.EmitSet(p);
@@ -101,37 +115,11 @@ export class Store<T> {
             this.emitterMap.delete(p);
         });
 
-        data.processedIds.forEach(idObj => {
-            var oldId = idObj.oldId;
-            var newId = idObj.newId;
-            var path = idObj.path;
-            if(oldId && oldId !== newId) {
-                var oldIdPaths = this.idToPathsMap.get(oldId);
-                if(oldIdPaths) {
-                    oldIdPaths.delete(idObj.path);
-                    if(oldIdPaths.size === 0)
-                        this.idToPathsMap.delete(idObj.oldId);
-                }
-            }
-
-            if(!skipDependents && newId) {
-                var value = this.ResolvePropertyPath(idObj.path);
-                var dependentPaths = this.idToPathsMap.get(newId);
-                if(!dependentPaths) {
-                    dependentPaths = new Set([path]);
-                    this.idToPathsMap.set(newId, dependentPaths);
-                }
-                else if(!dependentPaths.has(path))
-                    dependentPaths.add(path);
-    
-                dependentPaths.forEach(p => {
-                    if(p === path || p.indexOf(data.rootPath) === 0)
-                        return;
-                    
-                    
-                    this.WriteTo(p, value, true);
-                });
-            }
+        data.pathDependencies.forEach(dep => {
+            var value = this.ResolvePropertyPath(dep.path);
+            dep.targets.forEach(target => {
+                this.WriteToSync(target, value, true);
+            });
         });
     }
 
@@ -153,15 +141,35 @@ export class Store<T> {
         }, this);
     }
 
-    private CreateGetterObject(source: any, path: string) {
+    private CreateGetterObject(source: any, path: string): any {
         if(IsValue(source))
             return source;
 
         var ret = null;
         if(Array.isArray(source)) {
-            ret = new Array(source.length);
-            for(var x=0; x<source.length; x++)
-                ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
+            ret = new Proxy(new Array(source.length), {
+                get: (obj: Array<any>, prop: any) => {
+                    var isInt = !isNaN(parseInt(prop));
+                    if(isInt) {
+                        var propPath = [path, prop].join(".");
+                        this.EmitGet(propPath);
+                        var ret = this.getterMap.get(propPath);
+                        return ret || this.CreateGetterObject(this.ResolvePropertyPath(propPath), propPath);
+                    }
+                    
+                    return obj[prop];
+                },
+                set: (obj: Array<any>, prop: any, value: any) => {
+                    if(!isNaN(parseInt(prop))) {
+                        var childPath = [path, prop].join(".");
+                        this.WriteToSync(childPath, value);
+                    }
+                    else
+                        obj[prop] = value;
+                    
+                    return true;
+                }
+            });
         }
         else {
             ret = Object.create(null) as { [key: string]: any };
@@ -190,7 +198,7 @@ export class Store<T> {
                 return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
             },
             set: (val: any) => {
-                this.WriteTo(path, val);
+                this.WriteToSync(path, val);
             }
         });
     }
@@ -244,30 +252,4 @@ export namespace Store {
         store.Root = value;
         return store;
     }
-
-    /* export function Watch(callback: {(): void}): Array<Emitter> {
-        var emitters = new Set();
-        globalEmitter.addListener("get", (emitter: Emitter) => {
-            if(!emitters.has(emitter))
-                emitters.add(emitter);
-        });
-
-        callback();
-
-        globalEmitter.removeAllListeners();
-        return [...emitters];
-    } */
-
-    /* export function Value<O>(valueFunction: { (): O }): Value<O> {
-        var val: O = null;
-        var emitters = ObjectStore.Watch(() => { val = valueFunction() }) as Array<ObjectStoreEmitter>;
-        if(emitters.length > 0) {
-            var emitter = emitters[emitters.length - 1];
-
-            if(emitter instanceof ObjectStoreEmitter)
-                return new StoreValue<O>(emitter.store, emitter.___path);
-        }
-
-        return new StaticValue(val);
-   } */
 }

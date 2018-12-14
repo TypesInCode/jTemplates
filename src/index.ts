@@ -1,42 +1,63 @@
 import { Template, BindingDefinition, Component } from "./template";
-import { Store } from './ObjectStore/objectStore';
+import { StoreAsync } from './ObjectStore/objectStoreAsync';
 import { Scope } from "./ObjectStore/objectStoreScope";
 import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
-import { StoreAsync } from "./ObjectStore/objectStoreAsync";
+import { Store } from "./ObjectStore/objectStore";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Store, StoreAsync, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, StoreAsync, Store, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
-/* var store = StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
+/* function SyncTest() {
+    var start = new Date();
+    var store = Store.Create([{ id: "first", value: "this and that" }], (val) => val.id);
+    var scope = store.Scope(root => root && root.length);
 
-var scope = store.Scope(root => root && root.length);
+    store.Write(store.Root, (val) => {
+        for(var x=0; x<10000; x++)
+            val.push({
+                id: "id_" + x,
+                value: "value_" + x
+            });
+    });
 
-scope.addListener("set", () => {
-    var s = store;
-    console.log("In scope set");
     console.log(scope.Value);
-})
+    var end = new Date();
+    console.log("on SYNC write complete");
+    console.log(end.getTime() - start.getTime() + " milliseconds");
+}
 
-store.Write(store.Root, (val) => {
-    val.push({
-        id: "second",
-        value: "second value"
-    });
-});
+async function AsyncTest() {
+    var start = new Date();
+    var store = await StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
+    var scope = store.Scope(root => root && root.length);
 
-store.Write(store.Root, (val) => {
-    val.push({
-        id: "second",
-        value: "third value"
-    });
-})
+    await store.Write(store.Root, (val) => {
+        for(var x=0; x<10000; x++)
+            val.push({
+                id: "id_" + x,
+                value: "value_" + x
+            });
+    })
+    console.log(scope.Value);
+    await store.WriteComplete();
+    var end = new Date();
+    console.log("on ASYNC write complete");
+    console.log(end.getTime() - start.getTime() + " milliseconds");
+}
 
-console.log(scope.Value);
+SyncTest();
+console.log("between tests");
+AsyncTest(); */
 
-store.Write(store.Root, () => null).then(() => {
-    debugger;
+/* store.Write(store.Root, () => null).then(() => {
     var s = store;
     console.log("all done");
+});
+
+store.OnWriteComplete().then(() => {
+    var end = new Date();
+    console.log("on ASYNC write complete");
+    console.log(end.getTime() - start.getTime() + " milliseconds");
 }); */
 
 /* interface IColumn {

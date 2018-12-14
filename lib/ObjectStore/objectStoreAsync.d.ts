@@ -3,8 +3,8 @@ export declare class StoreAsync<T> {
     private getIdCallback;
     private emitterMap;
     private getterMap;
-    private idToPathsMap;
     private root;
+    private worker;
     private workerQueue;
     Root: T;
     constructor(idCallback?: {
@@ -15,16 +15,17 @@ export declare class StoreAsync<T> {
     }, setFunction?: {
         (val: T, next: O): void;
     }): Scope<O>;
-    Get<O>(id: string): O;
+    Get<O>(id: string): Promise<O>;
+    WriteComplete(): Promise<any>;
     Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;
     } | O): Promise<any>;
-    Push<O>(readOnly: Array<O>, newValue: O): void;
-    private WriteTo;
+    Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
     private WriteToAsync;
-    private CleanMaps;
+    private ResolveUpdateCallback;
+    private ProcessDiff;
     private AssignPropertyPath;
     private ResolvePropertyPath;
     private CreateGetterObject;
@@ -36,5 +37,5 @@ export declare class StoreAsync<T> {
 export declare namespace StoreAsync {
     function Create<T>(value: T, idCallback?: {
         (val: any): any;
-    }): StoreAsync<T>;
+    }): Promise<StoreAsync<T>>;
 }

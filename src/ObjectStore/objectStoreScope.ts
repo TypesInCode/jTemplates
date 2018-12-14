@@ -28,7 +28,8 @@ export class Scope<T> extends Emitter {
         this.setFunction = setFunction;
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
-        this.dirty = true;
+        this.UpdateValue();
+        //this.dirty = true;
     }
 
     public Scope<O>(getFunction: {(val: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {

@@ -1,18 +1,15 @@
 export declare class WorkerQueue<S, R> {
-    private workerFactory;
-    private queue;
+    private promiseQueue;
+    private deferred;
     private queueIndex;
     private running;
-    constructor(workerFactory: {
-        (): Worker;
-    });
+    private worker;
+    readonly Running: boolean;
+    constructor(worker: Worker);
+    OnComplete(): Promise<any>;
     Push(getMessage: {
         (): S;
-    }, completeCallback: {
-        (postMessage: {
-            data: R;
-        }): void;
-    }): void;
-    private ProcessQueue;
+    }): Promise<R>;
+    Process(): void;
     private ProcessQueueRecursive;
 }

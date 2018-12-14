@@ -3,8 +3,8 @@ export declare class Store<T> {
     private getIdCallback;
     private emitterMap;
     private getterMap;
-    private idToPathsMap;
     private root;
+    private diff;
     Root: T;
     constructor(idCallback?: {
         (val: any): any;
@@ -14,15 +14,16 @@ export declare class Store<T> {
     }, setFunction?: {
         (val: T, next: O): void;
     }): Scope<O>;
-    Get<O>(id: string): O;
+    Get<O>(id: string): Promise<O>;
     Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;
     } | {
         (current: O): void;
-    } | O): void;
-    Push<O>(readOnly: Array<O>, newValue: O): void;
-    private WriteTo;
-    private CleanMaps;
+    } | O): Promise<any>;
+    Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
+    private WriteToSync;
+    private ResolveUpdateCallback;
+    private ProcessDiff;
     private AssignPropertyPath;
     private ResolvePropertyPath;
     private CreateGetterObject;

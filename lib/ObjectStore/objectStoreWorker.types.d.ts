@@ -1,16 +1,12 @@
-interface IPostMessage {
+interface IDiffMethod {
+    method: string;
+    arguments: Array<any>;
+}
+interface IDiffResponse {
     changedPaths: Array<string>;
     deletedPaths: Array<string>;
-    processedIds: Array<{
-        newId: string;
-        oldId: string;
+    pathDependencies: Array<{
         path: string;
+        targets: Array<string>;
     }>;
-    rootPath: string;
-}
-interface IMessage {
-    oldValue: any;
-    newValue: any;
-    path: string;
-    idFunction: string;
 }

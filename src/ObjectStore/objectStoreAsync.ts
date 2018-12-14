@@ -16,9 +16,9 @@ export class StoreAsync<T> {
     private getIdCallback: { (val: any): any };
     private emitterMap: Map<string, Emitter>;
     private getterMap: Map<string, any>;
-    private idToPathsMap: Map<any, Set<string>>;
     private root: T;
-    private workerQueue: WorkerQueue<IMessage, IPostMessage>;
+    private worker: Worker;
+    private workerQueue: WorkerQueue<IDiffMethod, any>;
 
     public get Root(): T {
         this.EmitGet("root");
@@ -27,7 +27,7 @@ export class StoreAsync<T> {
     }
 
     public set Root(val: T) {
-        this.WriteTo("root", val);
+        this.WriteToAsync("root", val);
     }
 
     constructor(idCallback?: { (val: any): any }) {
@@ -35,28 +35,40 @@ export class StoreAsync<T> {
         this.emitterMap = new Map();
         this.emitterMap.set("root", new Emitter());
         this.getterMap = new Map();
-        this.idToPathsMap = new Map();
-        this.workerQueue = new WorkerQueue(ObjectStoreWorker.Create);
+        this.worker = ObjectStoreWorker.Create();
+        this.workerQueue = new WorkerQueue(this.worker);
+        this.workerQueue.Push(() => ({ method: "create", arguments: [this.getIdCallback && this.getIdCallback.toString()] }));
     }
 
     public Scope<O>(valueFunction: {(root: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
         return new Scope(() => valueFunction(this.Root), (next: O) => setFunction(this.Root, next));
     }
 
-    public Get<O>(id: string): O {
-        var paths = this.idToPathsMap.get(id);
+    public async Get<O>(id: string): Promise<O> {
+        /* var paths = this.idToPathsMap.get(id);
         if(!paths)
             return null;
 
-        var path = paths.values().next().value;
+        var path = paths.values().next().value; */
+        var path = await this.workerQueue.Push(() => ({
+            method: "getpath",
+            arguments: [id]
+        })) as string;
+        if(!path)
+            return;
+
         this.EmitGet(path);
         var ret = this.getterMap.get(path);
         return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
     }
 
-    public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
+    public WriteComplete() {
+        return this.workerQueue.OnComplete();
+    }
+
+    public async Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<any> {
         if(typeof readOnly === 'string')
-            readOnly = this.Get(readOnly);
+            readOnly = await this.Get<O>(readOnly);
         
         var path = readOnly && (readOnly as any).___path;
         if(!path)
@@ -65,7 +77,7 @@ export class StoreAsync<T> {
         return this.WriteToAsync(path, updateCallback);
     }
 
-    public Push<O>(readOnly: Array<O>, newValue: O): void {
+    public async Push<O>(readOnly: Array<O>, newValue: O): Promise<void> {
         var path = (readOnly as any).___path;
         
         var localValue = this.ResolvePropertyPath(path) as Array<O>;
@@ -75,45 +87,40 @@ export class StoreAsync<T> {
         var getterValue = this.getterMap.get(path) as Array<O>;
         getterValue.push(this.CreateGetterObject(newValue, childPath));
 
-        this.WriteTo(childPath, newValue)
+        await this.WriteToAsync(childPath, newValue)
         this.EmitSet(path);
     }
 
-    private WriteTo(path: string, value: any, skipDependents?: boolean) {
-        var localValue = this.ResolvePropertyPath(path);
-        this.AssignPropertyPath(value, path);
-        var resp = ObjectDiff(path, value, localValue, this.getIdCallback);
-        this.CleanMaps(resp, skipDependents);
-    }
-
     private WriteToAsync(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): Promise<void> {
-        return new Promise((resolve) => {
+        return new Promise<void>(resolve => {
             var value: any = null;
-            this.workerQueue.Push(() => {
-                if(typeof updateCallback === 'function') {
-                    var localValue = this.ResolvePropertyPath(path);
-                    var mutableCopy = this.CreateCopy(localValue);
-                    var ret = (updateCallback as any)(mutableCopy);
-                    value = typeof ret === 'undefined' ? mutableCopy : ret;
-                }
-                else
-                    value = updateCallback;
-                    
+            var promise = this.workerQueue.Push(() => {
+                value = this.ResolveUpdateCallback(path, updateCallback);
                 return {
-                    newValue: value,
-                    oldValue: this.ResolvePropertyPath(path),
-                    path: path,
-                    idFunction: this.getIdCallback && this.getIdCallback.toString()
+                    method: "diff",
+                    arguments: [path, value, this.ResolvePropertyPath(path), skipDependents]
                 };
-            }, (postMessage) => {
+            }).then((resp: IDiffResponse) => {
                 this.AssignPropertyPath(value, path);
-                this.CleanMaps(postMessage.data, skipDependents);
-                resolve();
+                this.ProcessDiff(resp);
             });
+            resolve(promise);
+            this.workerQueue.Process();
         });
     }
 
-    private CleanMaps(data: IPostMessage, skipDependents: boolean) {
+    private ResolveUpdateCallback(path: string, updateCallback: {(): any}): any {
+        if(typeof updateCallback === 'function') {
+            var localValue = this.ResolvePropertyPath(path);
+            var mutableCopy = this.CreateCopy(localValue);
+            var ret = (updateCallback as any)(mutableCopy);
+            return typeof ret === 'undefined' ? mutableCopy : ret;
+        }
+        
+        return updateCallback;
+    }
+
+    private ProcessDiff(data: IDiffResponse) {
         data.changedPaths.forEach(p => {
             this.getterMap.delete(p);
             this.EmitSet(p);
@@ -124,36 +131,11 @@ export class StoreAsync<T> {
             this.emitterMap.delete(p);
         });
 
-        data.processedIds.forEach(idObj => {
-            var oldId = idObj.oldId;
-            var newId = idObj.newId;
-            var path = idObj.path;
-            if(oldId && oldId !== newId) {
-                var oldIdPaths = this.idToPathsMap.get(oldId);
-                if(oldIdPaths) {
-                    oldIdPaths.delete(idObj.path);
-                    if(oldIdPaths.size === 0)
-                        this.idToPathsMap.delete(idObj.oldId);
-                }
-            }
-
-            if(!skipDependents && newId) {
-                var value = this.ResolvePropertyPath(idObj.path);
-                var dependentPaths = this.idToPathsMap.get(newId);
-                if(!dependentPaths) {
-                    dependentPaths = new Set([path]);
-                    this.idToPathsMap.set(newId, dependentPaths);
-                }
-                else if(!dependentPaths.has(path))
-                    dependentPaths.add(path);
-    
-                dependentPaths.forEach(p => {
-                    if(p === path || p.indexOf(data.rootPath) === 0)
-                        return;
-                    
-                    this.WriteToAsync(p, value, true);
-                });
-            }
+        data.pathDependencies.forEach(dep => {
+            var value = this.ResolvePropertyPath(dep.path);
+            dep.targets.forEach(target => {
+                this.WriteToAsync(target, value, true);
+            });
         });
     }
 
@@ -181,9 +163,28 @@ export class StoreAsync<T> {
 
         var ret = null;
         if(Array.isArray(source)) {
-            ret = new Array(source.length);
-            for(var x=0; x<source.length; x++)
-                ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
+            ret = new Proxy(new Array(source.length), {
+                get: (obj: Array<any>, prop: any) => {
+                    var isInt = !isNaN(parseInt(prop));
+                    var childPath = [path, prop].join(".");
+                    if(isInt && typeof obj[prop] === 'undefined') {
+                        obj[prop] = this.CreateGetterObject(this.ResolvePropertyPath(childPath), childPath);
+                    }
+
+                    isInt && this.EmitGet(childPath);
+                    return obj[prop];
+                },
+                set: (obj: Array<any>, prop: any, value: any) => {
+                    if(!isNaN(parseInt(prop))) {
+                        var childPath = [path, prop].join(".");
+                        this.WriteToAsync(childPath, value);
+                    }
+                    else
+                        obj[prop] = value;             
+                    
+                    return true;
+                }
+            });
         }
         else {
             ret = Object.create(null) as { [key: string]: any };
@@ -258,12 +259,13 @@ export class StoreAsync<T> {
 }
 
 export namespace StoreAsync {
-    export function Create<T>(value: T, idCallback?: { (val: any): any }): StoreAsync<T> {
+    export async function Create<T>(value: T, idCallback?: { (val: any): any }): Promise<StoreAsync<T>> {
         if(IsValue(value))
             throw "Only arrays and JSON types are supported";
 
         var store = new StoreAsync<T>(idCallback);
         store.Root = value;
+        await store.WriteComplete();
         return store;
     }
 }

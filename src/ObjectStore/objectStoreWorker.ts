@@ -11,8 +11,8 @@ export namespace ObjectStoreWorker {
         workerConstructor = (require("webworker-threads") as any).Worker;
         workerParameter = ObjectDiffScope;
     }
-
+    
     export function Create() {
-        return new workerConstructor(workerParameter) as Worker;
+        return new workerConstructor(workerParameter) as Worker;;
     }
 }
