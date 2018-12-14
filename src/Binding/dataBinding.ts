@@ -47,8 +47,8 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         }, []);
     }
 
-    protected Apply() {
-        var value = this.dataObservableScope.Value;
+    protected async Apply() {
+        var value = await this.dataObservableScope.Value;
         /* if(!value)
             value = [];
         else if(!Array.isArray(value))

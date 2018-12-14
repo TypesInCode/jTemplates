@@ -7,7 +7,7 @@ export declare class Scope<T> extends Emitter {
     private updating;
     private value;
     private setCallback;
-    readonly Value: T;
+    readonly Value: Promise<T>;
     constructor(getFunction: {
         (): Promise<T> | T;
     }, defaultValue?: T);

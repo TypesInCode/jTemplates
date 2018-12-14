@@ -24,7 +24,7 @@ declare class DataBinding extends Binding<{
         };
         key: (val: any) => any;
     }): void;
-    protected Apply(): void;
+    protected Apply(): Promise<void>;
     private DestroyTemplates;
 }
 export default DataBinding;

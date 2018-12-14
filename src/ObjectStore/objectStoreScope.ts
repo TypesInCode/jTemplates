@@ -10,13 +10,13 @@ export class Scope<T> extends Emitter {
     private value: any;
     private setCallback: () => void;
 
-    public get Value(): T {
+    public get Value(): Promise<T> {
         globalEmitter.Register(this);
         if(!this.dirty)
             return this.value;
         
-        this.UpdateValue();
-        return typeof this.value === 'undefined' ? this.defaultValue : this.value;
+        return this.UpdateValue();
+        // return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
 
     constructor(getFunction: {(): Promise<T> | T}, defaultValue?: T) {
@@ -31,7 +31,7 @@ export class Scope<T> extends Emitter {
     }
 
     public Scope<O>(getFunction: {(val: T): O}, defaultValue?: O): Scope<O> {
-        return new Scope(() => getFunction(this.Value), defaultValue);
+        return new Scope(async () => getFunction(await this.Value), defaultValue);
     }
 
     public Destroy() {
@@ -73,11 +73,12 @@ export class Scope<T> extends Emitter {
 
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
-        
+
         this.value = await value;
         this.dirty = false;
         this.updating = false;
         this.emit("set");
+        return this.value as T;
     }
 
     private SetCallback() {
