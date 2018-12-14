@@ -11,8 +11,8 @@ export class Scope<T> extends Emitter {
 
     public get Value(): T {
         asyncWatcher.Register(this);
-        if(this.dirty)
-            this.UpdateValue();
+        /* if(this.dirty)
+            this.UpdateValue(); */
         
         return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
@@ -38,14 +38,11 @@ export class Scope<T> extends Emitter {
     }
 
     private async UpdateValue() {
-        this.dirty = false;
-
         var scope = await asyncWatcher.Get(this);
-        var newEmitters = await scope.Watch(() => (new Promise(resolve => {
-                var value = this.getFunction();
-                resolve(value);
-            })).then(value => {
-                this.value = value as T;
+        var value = null;
+        var newEmitters = await scope.Watch(() => new Promise(resolve => {
+                value = this.getFunction();
+                resolve();
             })
         );
 
@@ -57,6 +54,7 @@ export class Scope<T> extends Emitter {
         newEmitters.delete(this);
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
+        this.value = value;
         this.emit("set");
         /* asyncWatcher.Scope((new Promise(resolve => {
             var value = null;
@@ -158,10 +156,6 @@ export class Scope<T> extends Emitter {
     }
 
     private SetCallback() {
-        if(!this.dirty)
-            return;
-        
-        this.dirty = true;
-        this.emit("set");
+        this.UpdateValue();
     }
 }
