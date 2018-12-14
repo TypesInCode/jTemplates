@@ -38,6 +38,7 @@ export class Scope<T> extends Emitter {
     }
 
     private UpdateValue() {
+        this.dirty = false;
         (new Promise(resolve => {
             var value = null;
             var newEmitters = globalEmitter.Watch(() => {
@@ -58,7 +59,6 @@ export class Scope<T> extends Emitter {
             this.trackedEmitters = newEmitters;
             resolve(value);
         })).then(value => {
-            this.dirty = false;
             this.value = value as T;
             this.emit("set");
         });
