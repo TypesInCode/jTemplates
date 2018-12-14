@@ -82,10 +82,11 @@ export class Template<P, T> implements ITemplate<P, T> {
         return this.bindingRoot;
     }
 
-    constructor(definition: BindingDefinition<P, T> | string) {
+    constructor(definition: BindingDefinition<P, T> | string, dataOverride?: any) {
         if(typeof definition === 'string')
             definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
         
+        definition.data = dataOverride || definition.data;
         this.templates = this.DefaultTemplates;
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
@@ -142,7 +143,7 @@ export class Template<P, T> implements ITemplate<P, T> {
 export class Component<P, T> extends Template<Scope<P>, T> {
     constructor(definition: BindingDefinition<P, T> | string) {
         if(typeof definition === 'string')
-            super(definition);
+            super(definition, true);
         else if(typeof definition.data === 'function') {
             (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as ({(): P}));
             super(definition as any as BindingDefinition<Scope<P>, T>);

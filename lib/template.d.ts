@@ -12,7 +12,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     protected readonly DefaultTemplates: Templates<T>;
     protected readonly Templates: Templates<T>;
     protected readonly Root: any;
-    constructor(definition: BindingDefinition<P, T> | string);
+    constructor(definition: BindingDefinition<P, T> | string, dataOverride?: any);
     SetTemplates(templates: Templates<T>): void;
     UpdateComplete(callback: () => void): void;
     AttachTo(bindingParent: any): void;
