@@ -24,8 +24,8 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
         var localBinding = null;
         if(typeof bindingFunction === 'function') {
-            localBinding = () => {
-                var value = bindingFunction();
+            localBinding = async () => {
+                var value = await bindingFunction();
                 var array = ConvertToArray(value);
                 return array.map((curr, index) => {
                     return {
