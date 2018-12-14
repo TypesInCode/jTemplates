@@ -1,22 +1,18 @@
 import { Emitter } from '../emitter';
 export declare class Scope<T> extends Emitter {
     private getFunction;
-    private setFunction;
+    private defaultValue;
     private trackedEmitters;
     private dirty;
     private value;
     private setCallback;
-    Value: T;
+    readonly Value: T;
     constructor(getFunction: {
         (): Promise<T> | T;
-    }, setFunction?: {
-        (val: T): void;
-    });
+    }, defaultValue?: T);
     Scope<O>(getFunction: {
         (val: T): O;
-    }, setFunction?: {
-        (val: T, next: O): void;
-    }): Scope<O>;
+    }, defaultValue?: O): Scope<O>;
     Destroy(): void;
     private UpdateValue;
     private SetCallback;

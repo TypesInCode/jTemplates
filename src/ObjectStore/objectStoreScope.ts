@@ -3,7 +3,7 @@ import { globalEmitter} from './globalEmitter';
 
 export class Scope<T> extends Emitter {
     private getFunction: {(): Promise<T> | T};
-    private setFunction: {(val: T): void};
+    private defaultValue: T;
     private trackedEmitters: Set<Emitter>;
     private dirty: boolean;
     private value: any;
@@ -15,25 +15,21 @@ export class Scope<T> extends Emitter {
             return this.value;
         
         this.UpdateValue();
-        return this.value;
+        return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
 
-    public set Value(val: T) {
-        this.setFunction && this.setFunction(val);
-    }
-
-    constructor(getFunction: {(): Promise<T> | T}, setFunction?: {(val: T): void}) {
+    constructor(getFunction: {(): Promise<T> | T}, defaultValue?: T) {
         super();
         this.getFunction = getFunction;
-        this.setFunction = setFunction;
+        this.defaultValue = defaultValue;
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
         this.UpdateValue();
         //this.dirty = true;
     }
 
-    public Scope<O>(getFunction: {(val: T): O}, setFunction?: {(val: T, next: O): void}): Scope<O> {
-        return new Scope(() => getFunction(this.Value), (val) => setFunction(this.Value, val));
+    public Scope<O>(getFunction: {(val: T): O}, defaultValue?: O): Scope<O> {
+        return new Scope(() => getFunction(this.Value), defaultValue);
     }
 
     public Destroy() {
