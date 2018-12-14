@@ -150,7 +150,7 @@ export class Component<P, T> extends Template<Scope<P>, T> {
         }
         else {
             var data = definition.data;
-            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data, data);
+            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data, data || true as any);
             super(definition as any as BindingDefinition<Scope<P> ,T>);
         }
     }
