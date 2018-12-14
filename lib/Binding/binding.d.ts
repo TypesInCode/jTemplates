@@ -8,7 +8,7 @@ export declare abstract class Binding<T> {
     private status;
     protected readonly Value: any;
     protected readonly BoundTo: any;
-    constructor(boundTo: any, binding: PromiseOr<any>, config: T);
+    constructor(boundTo: any, binding: PromiseOr<any>, defaultValue: any, config: T);
     Update(): void;
     Destroy(): void;
     protected Init(config: T): void;

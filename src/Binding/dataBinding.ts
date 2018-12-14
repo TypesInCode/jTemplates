@@ -22,8 +22,8 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
         var bindingWrapper = null;
         if(typeof bindingFunction === 'function')
-            bindingWrapper = () => {
-                var value = bindingFunction() as Array<any>;
+            bindingWrapper = async () => {
+                var value = await bindingFunction() as Array<any>;
                 value = ConvertToArray(value);
 
                 return value.map((curr, index) => {
@@ -43,7 +43,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         }
             
 
-        super(boundTo, bindingWrapper, { children: childrenFunction, key: keyFunction });
+        super(boundTo, bindingWrapper, [], { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
