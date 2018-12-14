@@ -6,6 +6,7 @@ export class Scope<T> extends Emitter {
     private defaultValue: T;
     private trackedEmitters: Set<Emitter>;
     private dirty: boolean;
+    private updating: boolean;
     private value: any;
     private setCallback: () => void;
 
@@ -24,6 +25,7 @@ export class Scope<T> extends Emitter {
         this.defaultValue = defaultValue;
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
+        this.dirty = true;
         this.UpdateValue();
         //this.dirty = true;
     }
@@ -39,7 +41,10 @@ export class Scope<T> extends Emitter {
     }
 
     private async UpdateValue() {
-        this.dirty = false;
+        if(this.updating)
+            return;
+        
+        this.updating = true;
         var newEmitters = await globalEmitter.Watch(async () => {
             try {
                 this.value = await this.getFunction();
@@ -67,6 +72,8 @@ export class Scope<T> extends Emitter {
 
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
+        this.dirty = false;
+        this.updating = false;
         this.emit("set");
     }
 

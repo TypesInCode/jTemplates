@@ -4,6 +4,7 @@ export declare class Scope<T> extends Emitter {
     private defaultValue;
     private trackedEmitters;
     private dirty;
+    private updating;
     private value;
     private setCallback;
     readonly Value: T;
