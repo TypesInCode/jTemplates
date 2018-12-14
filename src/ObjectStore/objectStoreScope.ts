@@ -41,8 +41,10 @@ export class Scope<T> extends Emitter {
         var scope = await asyncWatcher.Get(this);
         var value = null;
         var newEmitters = await scope.Watch(() => new Promise(resolve => {
-                value = this.getFunction();
-                resolve();
+                var v = this.getFunction();
+                resolve(v);
+            }).then(v => {
+                value = v;
             })
         );
 
