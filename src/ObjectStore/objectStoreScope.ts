@@ -53,6 +53,7 @@ export class Scope<T> extends Emitter {
                 emitter.removeListener("set", this.setCallback);
         });
 
+        newEmitters.delete(this);
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
         this.emit("set");
