@@ -22,6 +22,16 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     dataObservableScope: Scope<Array<{key: any, value: any}>>;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
+        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
+    }
+
+    public Destroy() {
+        super.Destroy();
+        this.DestroyTemplates(this.activeTemplateMap);
+        this.activeTemplateMap = null;
+    }
+
+    protected OverrideBinding(bindingFunction: PromiseOr<any>, config: { key: (val: any) => any }) {
         var localBinding = null;
         if(typeof bindingFunction === 'function') {
             localBinding = async () => {
@@ -30,7 +40,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 return array.map((curr, index) => {
                     return {
                         value: curr,
-                        key: keyFunction && keyFunction(curr) || index
+                        key: config.key && config.key(curr) || index
                     };
                 });
             }
@@ -41,18 +51,12 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 return array.map((curr, index) => {
                     return {
                         value: curr,
-                        key: keyFunction && keyFunction(curr) || index
+                        key: config.key && config.key(curr) || index
                     };
                 });
             };
-        
-        super(boundTo, localBinding, [], { children: childrenFunction, key: keyFunction });
-    }
 
-    public Destroy() {
-        super.Destroy();
-        this.DestroyTemplates(this.activeTemplateMap);
-        this.activeTemplateMap = null;
+        return localBinding;
     }
 
     protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {

@@ -18,6 +18,15 @@ declare class DataBinding extends Binding<{
     }>>;
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any);
     Destroy(): void;
+    protected OverrideBinding(bindingFunction: PromiseOr<any>, config: {
+        key: (val: any) => any;
+    }): (() => Promise<{
+        value: any;
+        key: any;
+    }[]>) | (() => {
+        value: any;
+        key: any;
+    }[]);
     protected Init(config: {
         children: {
             (c: any, i: number): BindingDefinitions<any, any>;

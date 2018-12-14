@@ -11,6 +11,7 @@ export declare abstract class Binding<T> {
     constructor(boundTo: any, binding: PromiseOr<any>, defaultValue: any, config: T);
     Update(): void;
     Destroy(): void;
+    protected OverrideBinding(binding: PromiseOr<any>, config: T): any;
     protected Init(config: T): void;
     protected abstract Apply(): void;
 }

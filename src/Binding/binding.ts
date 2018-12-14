@@ -31,6 +31,7 @@ export abstract class Binding<T> {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
+        binding = this.OverrideBinding(binding, config);
 
         if(typeof binding === 'function') {
             this.observableScope = new Scope(binding, defaultValue);
@@ -69,6 +70,10 @@ export abstract class Binding<T> {
     public Destroy(): void {
         this.observableScope && this.observableScope.Destroy();
         this.status = BindingStatus.Destroyed;
+    }
+
+    protected OverrideBinding(binding: PromiseOr<any>, config: T) {
+        return binding;
     }
 
     protected Init(config: T): void { };
