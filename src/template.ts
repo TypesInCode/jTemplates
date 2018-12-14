@@ -135,7 +135,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.destroyed = true;
     }
 
-    protected Template(c: P, i: number): BindingDefinitions<P, T> {
+    protected Template(c: P, i: number): BindingDefinitions<any, any> {
         return [];
     }
 }
