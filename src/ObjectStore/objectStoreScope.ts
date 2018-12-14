@@ -27,7 +27,7 @@ export class Scope<T> extends Emitter {
         this.UpdateValue();
     }
 
-    public Scope<O>(getFunction: {(val: T): O}, defaultValue: O): Scope<O> {
+    public Scope<O>(getFunction: {(val: T): Promise<O> | O }, defaultValue: O): Scope<O> {
         return new Scope(async () => getFunction(await this.Value), defaultValue);
     }
 

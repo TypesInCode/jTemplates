@@ -11,7 +11,7 @@ export declare class Scope<T> extends Emitter {
         (): Promise<T> | T;
     }, defaultValue: T);
     Scope<O>(getFunction: {
-        (val: T): O;
+        (val: T): Promise<O> | O;
     }, defaultValue: O): Scope<O>;
     Destroy(): void;
     private UpdateValue;

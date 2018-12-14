@@ -10,7 +10,7 @@ export declare class Store<T> {
         (val: any): any;
     });
     Scope<O>(valueFunction: {
-        (root: T): O;
+        (root: T): Promise<O> | O;
     }, defaultValue: O): Scope<O>;
     Get<O>(id: string): Promise<O>;
     Write<O>(readOnly: O | string, updateCallback: {
