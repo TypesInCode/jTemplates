@@ -1,5 +1,5 @@
 import Emitter from "../emitter";
-import { globalEmitter } from './globalEmitter';
+import { asyncWatcher } from './asyncWatcher';
 import { Scope } from "./objectStoreScope";
 import { ObjectStoreWorker } from "./objectStoreWorker";
 import { WorkerQueue } from "./workerQueue";
@@ -263,7 +263,7 @@ export class StoreAsync<T> {
             this.emitterMap.set(path, emitter);
         }
 
-        globalEmitter.Register(emitter);
+        asyncWatcher.Register(emitter);
     }
 }
 

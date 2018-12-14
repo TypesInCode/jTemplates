@@ -1,5 +1,5 @@
 import { Emitter } from '../emitter';
-import { globalEmitter} from './globalEmitter';
+import { asyncWatcher } from './asyncWatcher';
 
 export class Scope<T> extends Emitter {
     private getFunction: {(): Promise<T> | T};
@@ -10,7 +10,7 @@ export class Scope<T> extends Emitter {
     private defaultValue: T;
 
     public get Value(): T {
-        globalEmitter.Register(this);
+        asyncWatcher.Register(this);
         if(this.dirty)
             this.UpdateValue();
         
@@ -37,9 +37,26 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters.clear();
     }
 
-    private UpdateValue() {
+    private async UpdateValue() {
         this.dirty = false;
-        (new Promise(resolve => {
+
+        var scope = await asyncWatcher.Get();
+        var newEmitters = await scope.Watch((new Promise(resolve => {
+            var value = this.getFunction();
+            resolve(value);
+        })).then(value => {
+            this.value = value as T;
+        }));
+
+        this.trackedEmitters.forEach(emitter => {
+            if(!newEmitters.has(emitter))
+                emitter.removeListener("set", this.setCallback);
+        });
+
+        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+        this.trackedEmitters = newEmitters;
+        this.emit("set");
+        /* asyncWatcher.Scope((new Promise(resolve => {
             var value = null;
             var newEmitters = globalEmitter.Watch(() => {
                 try {
@@ -61,7 +78,30 @@ export class Scope<T> extends Emitter {
         })).then(value => {
             this.value = value as T;
             this.emit("set");
-        });
+        })); */
+        /* (new Promise(resolve => {
+            var value = null;
+            var newEmitters = globalEmitter.Watch(() => {
+                try {
+                    value = this.getFunction();
+                }
+                catch(err) {
+                    console.error(err);
+                }
+            });
+
+            this.trackedEmitters.forEach(emitter => {
+                if(!newEmitters.has(emitter))
+                    emitter.removeListener("set", this.setCallback);
+            });
+
+            newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+            this.trackedEmitters = newEmitters;
+            resolve(value);
+        })).then(value => {
+            this.value = value as T;
+            this.emit("set");
+        }); */
         /* if(!this.valuePromise)
             this.valuePromise = new Promise((resolve) => {
                 var value = null;
