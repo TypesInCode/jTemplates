@@ -3,7 +3,7 @@ declare class GlobalEmitter {
     private emitterStack;
     Watch(callback: {
         (): void;
-    }): Promise<Set<Emitter>>;
+    }): Set<Emitter>;
     Register(emitter: Emitter): void;
 }
 export declare var globalEmitter: GlobalEmitter;

@@ -3,9 +3,9 @@ import Emitter from "../emitter";
 class GlobalEmitter {
     private emitterStack: Array<Set<Emitter>> = [];
 
-    public async Watch(callback: {(): void}): Promise<Set<Emitter>> {
+    public Watch(callback: {(): void}): Set<Emitter> {
         this.emitterStack.push(new Set());
-        await callback();
+        callback();
         return this.emitterStack.pop();
     }
 
