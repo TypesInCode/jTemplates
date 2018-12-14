@@ -55,8 +55,10 @@ export class StoreAsync<T> {
                 method: "getpath",
                 arguments: [id]
             })).then(path => {
-                if(!path)
+                if(!path) {
                     resolve();
+                    return;
+                }
     
                 this.EmitGet(path);
                 var ret = this.getterMap.get(path);
