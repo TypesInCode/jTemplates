@@ -4,7 +4,7 @@ import { DeferredPromise } from "./deferredPromise";
 class AsyncScope {
     private emitters: Set<Emitter> = new Set();
 
-    constructor(private watcher: AsyncWatcher) { }
+    constructor(private watcher: AsyncWatcher, private parent: any) { }
 
     public async Watch(promiseCallback: () => Promise<any>) {
         this.watcher.Scope = this;
@@ -15,6 +15,11 @@ class AsyncScope {
     }
 
     public Add(emitter: Emitter) {
+        if(emitter === this.parent) {
+            console.log("skipping parent");
+            return;
+        }
+        
         this.emitters.add(emitter);
     }
 }
@@ -27,8 +32,8 @@ class AsyncWatcher {
         this.activeScope = val;
     }
 
-    public Get(): Promise<AsyncScope> {
-        var deferred = new DeferredPromise<AsyncScope>((resolve) => resolve(new AsyncScope(this)));
+    public Get(parent: any): Promise<AsyncScope> {
+        var deferred = new DeferredPromise<AsyncScope>((resolve) => resolve(new AsyncScope(this, parent)));
         this.deferredQueue.push(deferred);
         if(this.deferredQueue.length === 1)
             this.deferredQueue[0].Invoke();
