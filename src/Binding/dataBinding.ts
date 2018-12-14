@@ -22,7 +22,31 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     dataObservableScope: Scope<Array<{key: any, value: any}>>;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
-        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
+        var localBinding = null;
+        if(typeof bindingFunction === 'function') {
+            localBinding = () => {
+                var value = bindingFunction();
+                var array = ConvertToArray(value);
+                return array.map((curr, index) => {
+                    return {
+                        value: curr,
+                        key: this.keyFunction && this.keyFunction(curr) || index
+                    };
+                });
+            }
+        }
+        else
+            localBinding = () => {
+                var array = ConvertToArray(bindingFunction);
+                return array.map((curr, index) => {
+                    return {
+                        value: curr,
+                        key: this.keyFunction && this.keyFunction(curr) || index
+                    };
+                });
+            };
+        
+        super(boundTo, localBinding, [], { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy() {
@@ -36,7 +60,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         this.activeKeys = [];
         this.childrenFunction = config.children;
         this.keyFunction = config.key;
-        this.dataObservableScope = new Scope(() => {
+        /* this.dataObservableScope = new Scope(() => {
             var value = ConvertToArray(this.Value);
             return value.map((curr, index) => {
                 return {
@@ -44,11 +68,11 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                     key: this.keyFunction && this.keyFunction(curr) || index
                 };
             });
-        }, []);
+        }, []); */
     }
 
     protected Apply() {
-        var value = this.dataObservableScope.Value;
+        var value = this.Value;
         /* if(!value)
             value = [];
         else if(!Array.isArray(value))
