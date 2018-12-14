@@ -147,29 +147,31 @@ export class Store<T> {
 
         var ret = null;
         if(Array.isArray(source)) {
-            ret = new Proxy(new Array(source.length), {
+            ret = new Array(source.length);
+            for(var x=0; x<source.length; x++)
+                ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
+            /* ret = new Proxy(new Array(source.length), {
                 get: (obj: Array<any>, prop: any) => {
                     var isInt = !isNaN(parseInt(prop));
-                    if(isInt) {
-                        var propPath = [path, prop].join(".");
-                        this.EmitGet(propPath);
-                        var ret = this.getterMap.get(propPath);
-                        return ret || this.CreateGetterObject(this.ResolvePropertyPath(propPath), propPath);
+                    var childPath = [path, prop].join(".");
+                    if(isInt && typeof obj[prop] === 'undefined') {
+                        obj[prop] = this.CreateGetterObject(this.ResolvePropertyPath(childPath), childPath);
                     }
-                    
+
+                    isInt && this.EmitGet(childPath);
                     return obj[prop];
                 },
                 set: (obj: Array<any>, prop: any, value: any) => {
                     if(!isNaN(parseInt(prop))) {
                         var childPath = [path, prop].join(".");
-                        this.WriteToSync(childPath, value);
+                        this.WriteToAsync(childPath, value);
                     }
                     else
-                        obj[prop] = value;
+                        obj[prop] = value;             
                     
                     return true;
                 }
-            });
+            }); */
         }
         else {
             ret = Object.create(null) as { [key: string]: any };

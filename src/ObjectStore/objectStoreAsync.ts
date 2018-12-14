@@ -169,7 +169,10 @@ export class StoreAsync<T> {
 
         var ret = null;
         if(Array.isArray(source)) {
-            ret = new Proxy(new Array(source.length), {
+            ret = new Array(source.length);
+            for(var x=0; x<source.length; x++)
+                ret[x] = this.CreateGetterObject(source[x], [path, x].join("."));
+            /* ret = new Proxy(new Array(source.length), {
                 get: (obj: Array<any>, prop: any) => {
                     var isInt = !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
@@ -190,7 +193,7 @@ export class StoreAsync<T> {
                     
                     return true;
                 }
-            });
+            }); */
         }
         else {
             ret = Object.create(null) as { [key: string]: any };
