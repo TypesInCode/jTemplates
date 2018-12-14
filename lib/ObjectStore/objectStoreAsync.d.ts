@@ -12,7 +12,7 @@ export declare class StoreAsync<T> {
     });
     Scope<O>(valueFunction: {
         (root: T): O;
-    }): Scope<O>;
+    }, defaultValue: O): Scope<O>;
     Get<O>(id: string): Promise<O>;
     WriteComplete(): Promise<any>;
     Write<O>(readOnly: O | string, updateCallback: {

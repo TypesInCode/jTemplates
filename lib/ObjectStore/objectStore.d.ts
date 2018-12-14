@@ -11,7 +11,7 @@ export declare class Store<T> {
     });
     Scope<O>(valueFunction: {
         (root: T): O;
-    }): Scope<O>;
+    }, defaultValue: O): Scope<O>;
     Get<O>(id: string): Promise<O>;
     Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;

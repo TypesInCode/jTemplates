@@ -5,7 +5,7 @@ class PropertyBinding extends Binding<any> {
     private lastValue: any;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>) {
-        super(boundTo, bindingFunction, null);
+        super(boundTo, bindingFunction, {}, null);
     }
 
     protected Apply() {
