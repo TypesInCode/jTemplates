@@ -44,22 +44,26 @@ export class StoreAsync<T> {
         return new Scope(() => valueFunction(this.Root));
     }
 
-    public async Get<O>(id: string): Promise<O> {
+    public Get<O>(id: string): Promise<O> {
         /* var paths = this.idToPathsMap.get(id);
         if(!paths)
             return null;
 
         var path = paths.values().next().value; */
-        var path = await this.workerQueue.Push(() => ({
-            method: "getpath",
-            arguments: [id]
-        })) as string;
-        if(!path)
-            return;
-
-        this.EmitGet(path);
-        var ret = this.getterMap.get(path);
-        return ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path);
+        return new Promise((resolve, reject) => {
+            this.workerQueue.Push(() => ({
+                method: "getpath",
+                arguments: [id]
+            })).then(path => {
+                if(!path)
+                    resolve();
+    
+                this.EmitGet(path);
+                var ret = this.getterMap.get(path);
+                resolve(ret || this.CreateGetterObject(this.ResolvePropertyPath(path), path));
+            }).catch(reject);
+            this.workerQueue.Process();
+        });
     }
 
     public WriteComplete() {
