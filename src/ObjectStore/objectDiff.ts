@@ -26,7 +26,7 @@ export function ObjectDiffScope(asWorker: boolean) {
                 case "diff":
                     return tracker.Diff.apply(tracker, data.arguments);
                 case "getpath":
-                    return tracker.Diff.apply(tracker, data.arguments);
+                    return tracker.GetPath.apply(tracker, data.arguments);
                 default:
                     throw `${data.method} is not supported`;
             }
