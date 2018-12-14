@@ -3,7 +3,7 @@ declare class AsyncScope {
     private watcher;
     private emitters;
     constructor(watcher: AsyncWatcher);
-    Watch(promise: Promise<any>): Promise<Set<Emitter>>;
+    Watch(promiseCallback: () => Promise<any>): Promise<Set<Emitter>>;
     Add(emitter: Emitter): void;
 }
 declare class AsyncWatcher {

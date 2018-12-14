@@ -41,12 +41,13 @@ export class Scope<T> extends Emitter {
         this.dirty = false;
 
         var scope = await asyncWatcher.Get();
-        var newEmitters = await scope.Watch((new Promise(resolve => {
-            var value = this.getFunction();
-            resolve(value);
-        })).then(value => {
-            this.value = value as T;
-        }));
+        var newEmitters = await scope.Watch(() => (new Promise(resolve => {
+                var value = this.getFunction();
+                resolve(value);
+            })).then(value => {
+                this.value = value as T;
+            })
+        );
 
         this.trackedEmitters.forEach(emitter => {
             if(!newEmitters.has(emitter))

@@ -6,9 +6,9 @@ class AsyncScope {
 
     constructor(private watcher: AsyncWatcher) { }
 
-    public async Watch(promise: Promise<any>) {
+    public async Watch(promiseCallback: () => Promise<any>) {
         this.watcher.Scope = this;
-        await promise;
+        await promiseCallback();
         this.watcher.Scope = null;
         this.watcher.Next();
         return this.emitters;
