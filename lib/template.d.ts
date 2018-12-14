@@ -23,7 +23,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     Destroy(): void;
     protected Template(c: P, i: number): BindingDefinitions<P, T>;
 }
-export declare class Component<P, T> extends Template<Scope<P>, T> {
+export declare class Component<P, T> extends Template<Scope<P | P[]>, T> {
     constructor(definition: BindingDefinition<P, T> | string);
 }
 export declare namespace Template {

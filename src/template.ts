@@ -140,18 +140,18 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 }
 
-export class Component<P, T> extends Template<Scope<P>, T> {
+export class Component<P, T> extends Template<Scope<P | P[]>, T> {
     constructor(definition: BindingDefinition<P, T> | string) {
         if(typeof definition === 'string')
             super(definition, true);
         else if(typeof definition.data === 'function') {
-            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(definition.data as any, true as any);
+            (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P}, true as any as P);
             super(definition as any as BindingDefinition<Scope<P>, T>);
         }
         else {
             var data = definition.data;
-            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data, data || true as any);
-            super(definition as any as BindingDefinition<Scope<P> ,T>);
+            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data, data || true as any as P);
+            super(definition as any as BindingDefinition<Scope<P | P[]> ,T>);
         }
     }
 }
