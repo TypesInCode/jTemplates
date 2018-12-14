@@ -2,7 +2,7 @@ import { Emitter } from '../emitter';
 import { globalEmitter} from './globalEmitter';
 
 export class Scope<T> extends Emitter {
-    private getFunction: {(): T};
+    private getFunction: {(): Promise<T> | T};
     private setFunction: {(val: T): void};
     private trackedEmitters: Set<Emitter>;
     private dirty: boolean;
@@ -22,7 +22,7 @@ export class Scope<T> extends Emitter {
         this.setFunction && this.setFunction(val);
     }
 
-    constructor(getFunction: {(): T}, setFunction?: {(val: T): void}) {
+    constructor(getFunction: {(): Promise<T> | T}, setFunction?: {(val: T): void}) {
         super();
         this.getFunction = getFunction;
         this.setFunction = setFunction;

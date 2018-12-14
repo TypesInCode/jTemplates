@@ -8,7 +8,7 @@ export declare class Scope<T> extends Emitter {
     private setCallback;
     Value: T;
     constructor(getFunction: {
-        (): T;
+        (): Promise<T> | T;
     }, setFunction?: {
         (val: T): void;
     });
