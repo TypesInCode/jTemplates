@@ -42,10 +42,11 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters.clear();
     }
 
-    private UpdateValue() {
-        var newEmitters = globalEmitter.Watch(() => {
+    private async UpdateValue() {
+        this.dirty = false;
+        var newEmitters = await globalEmitter.Watch(async () => {
             try {
-                this.value = this.getFunction();
+                this.value = await this.getFunction();
             }
             catch(err) {
                 console.error(err);
@@ -70,7 +71,7 @@ export class Scope<T> extends Emitter {
 
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
-        this.dirty = false;
+        this.emit("set");
     }
 
     private SetCallback() {
