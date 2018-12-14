@@ -28,7 +28,7 @@ class AsyncWatcher {
     }
 
     public Get(): Promise<AsyncScope> {
-        var deferred = new DeferredPromise<AsyncScope>(() => new AsyncScope(this));
+        var deferred = new DeferredPromise<AsyncScope>((resolve) => resolve(new AsyncScope(this)));
         this.deferredQueue.push(deferred);
         if(this.deferredQueue.length === 1)
             this.deferredQueue[0].Invoke();
