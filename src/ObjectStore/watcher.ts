@@ -12,17 +12,18 @@ class Watcher {
         return this.emitterStack.pop();
     }
 
-    public WatchAsync(callback: {(): Promise<any>}): Promise<Set<Emitter>> {
+    public WatchAsync(callback: {(): Promise<any>}): Promise<{ emitters: Set<Emitter>, value: any }> {
         var def = new DeferredPromise(resolve => resolve())
-        var prom = def.then(async () => {
+        var prom = def.then(() => {
             this.emitterStack.push(new Set());
-            await callback();
-            return this.emitterStack.pop();
+            return callback();
+        }).then((value) => {
+            return { emitters: this.emitterStack.pop(), value: value };
         });
         
         this.asyncQueue.push(def);
         this.ProcessAsyncQueue();
-        return prom as Promise<Set<Emitter>>;
+        return prom;
     }
 
     public Register(emitter: Emitter) {

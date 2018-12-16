@@ -52,13 +52,14 @@ export class Scope<T> extends Emitter {
     private UpdateValue() {
         this.dirty = false;
         if(!this.isSync) {
-            watcher.WatchAsync(async () => {
+            watcher.WatchAsync(() => {
                 var val = this.getFunction();
                 var promise = Promise.resolve(val);
                 this.isSync = promise !== val;
-                this.value = await promise;
-            }).then(emitters => {
-                this.UpdateEmitters(emitters);
+                return promise;
+            }).then(val => {
+                this.UpdateEmitters(val.emitters);
+                this.value = val.value;
                 this.emit("set");
             });
             /* watcherAsync.Get()

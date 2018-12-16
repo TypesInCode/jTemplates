@@ -8,7 +8,10 @@ declare class Watcher {
     }): Set<Emitter>;
     WatchAsync(callback: {
         (): Promise<any>;
-    }): Promise<Set<Emitter>>;
+    }): Promise<{
+        emitters: Set<Emitter>;
+        value: any;
+    }>;
     Register(emitter: Emitter): void;
     private ProcessAsyncQueue;
 }
