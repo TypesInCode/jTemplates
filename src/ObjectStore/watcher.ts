@@ -35,8 +35,8 @@ class Watcher {
             set.add(emitter);
     }
 
-    private ProcessAsyncQueue() {
-        if(this.processingAsync)
+    private ProcessAsyncQueue(recurse?: boolean) {
+        if(this.processingAsync && !recurse)
             return;
         
         this.processingAsync = true;
@@ -46,7 +46,9 @@ class Watcher {
         }
 
         var def = this.asyncQueue.shift();
-        def.then(() => this.ProcessAsyncQueue());
+        def.then(() => {
+            this.ProcessAsyncQueue(true);
+        });
         def.Invoke();
     }
 }
