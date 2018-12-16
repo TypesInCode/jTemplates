@@ -7,6 +7,7 @@ export declare class Scope<T> extends Emitter {
     private defaultValue;
     private dirty;
     private isSync;
+    private suppressEmit;
     readonly Value: T;
     constructor(getFunction: {
         (): Promise<T> | T;
