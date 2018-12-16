@@ -13,17 +13,24 @@ class Watcher {
     }
 
     public WatchAsync(callback: {(): Promise<any>}): Promise<{ emitters: Set<Emitter>, value: any }> {
-        var def = new DeferredPromise(resolve => resolve())
+        var def = new DeferredPromise<{ emitters: Set<Emitter>, value: any }>(resolve => {
+            this.emitterStack.push(new Set());
+            callback().then((value) => {
+                var emitters = this.emitterStack.pop();
+                resolve({ value: value, emitters: emitters });
+            });
+        });
+        /* var def = new DeferredPromise(resolve => resolve())
         var prom = def.then(() => {
             this.emitterStack.push(new Set());
             return callback();
         }).then((value) => {
             var ret = { emitters: this.emitterStack.pop(), value: value };
             return ret;
-        });
+        }); */
         
         this.asyncQueue.push(def);
-        return prom;
+        return def;
     }
 
     public Register(emitter: Emitter) {
