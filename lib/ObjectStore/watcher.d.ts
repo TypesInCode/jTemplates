@@ -13,6 +13,7 @@ declare class Watcher {
         value: any;
     }>;
     Register(emitter: Emitter): void;
+    GoAsync(): void;
     private ProcessAsyncQueue;
 }
 export declare var watcher: Watcher;

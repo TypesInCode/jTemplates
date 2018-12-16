@@ -62,6 +62,7 @@ export class Scope<T> extends Emitter {
                 this.value = val.value;
                 this.emit("set");
             });
+            watcher.GoAsync();
             /* watcherAsync.Get()
             .then(scope => 
                 scope.Watch(() => {

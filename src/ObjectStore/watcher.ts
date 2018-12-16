@@ -19,12 +19,10 @@ class Watcher {
             return callback();
         }).then((value) => {
             var ret = { emitters: this.emitterStack.pop(), value: value };
-            this.ProcessAsyncQueue(true);
             return ret;
         });
         
         this.asyncQueue.push(def);
-        this.ProcessAsyncQueue();
         return prom;
     }
 
@@ -35,6 +33,10 @@ class Watcher {
         var set = this.emitterStack[this.emitterStack.length - 1];
         if(!set.has(emitter))
             set.add(emitter);
+    }
+
+    public GoAsync() {
+        this.ProcessAsyncQueue();
     }
 
     private ProcessAsyncQueue(recurse?: boolean) {
@@ -48,6 +50,9 @@ class Watcher {
         }
 
         var def = this.asyncQueue.shift();
+        def.then(() => {
+            this.ProcessAsyncQueue(true);
+        });
         def.Invoke();
     }
 }
