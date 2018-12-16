@@ -4,6 +4,7 @@ import { DeferredPromise } from "./deferredPromise";
 class Watcher {
     private emitterStack: Array<Set<Emitter>> = [];
     private asyncQueue: Array<DeferredPromise<any>> = [];
+    private processingAsync: boolean = false;
 
     public Watch(callback: {(): void}): Set<Emitter> {
         this.emitterStack.push(new Set());
@@ -20,7 +21,7 @@ class Watcher {
         });
         
         this.asyncQueue.push(def);
-
+        this.ProcessAsyncQueue();
         return prom as Promise<Set<Emitter>>;
     }
 
@@ -34,8 +35,14 @@ class Watcher {
     }
 
     private ProcessAsyncQueue() {
-        if(this.asyncQueue.length === 0)
+        if(this.processingAsync)
             return;
+        
+        this.processingAsync = true;
+        if(this.asyncQueue.length === 0) {
+            this.processingAsync = false;
+            return;
+        }
 
         var def = this.asyncQueue.shift();
         def.then(() => this.ProcessAsyncQueue());

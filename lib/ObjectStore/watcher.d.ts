@@ -2,6 +2,7 @@ import Emitter from "../emitter";
 declare class Watcher {
     private emitterStack;
     private asyncQueue;
+    private processingAsync;
     Watch(callback: {
         (): void;
     }): Set<Emitter>;
