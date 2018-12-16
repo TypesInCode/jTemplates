@@ -8,14 +8,14 @@ export class Scope<T> extends Emitter {
     private setCallback: () => void;
     private value: T;
     private defaultValue: T;
-    // private isAsync: boolean;
+    private dirty: boolean;
     private isSync: boolean;
 
     public get Value(): T {
         watcherAsync.Register(this);
         watcher.Register(this);
-        /* if(this.dirty)
-            this.UpdateValue(); */
+        if(this.dirty)
+            this.UpdateValue();
         
         return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
@@ -26,7 +26,6 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
         this.defaultValue = defaultValue;
-        // this.isAsync = false;
         this.isSync = false;
         this.UpdateValue();
     }
@@ -51,10 +50,12 @@ export class Scope<T> extends Emitter {
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
         this.value = value;
+        this.dirty = false;
         this.emit("set");
     }
 
     private UpdateValue() {
+        this.dirty = false;
         if(!this.isSync) {
             watcherAsync.Get()
             .then(scope => 
@@ -66,6 +67,7 @@ export class Scope<T> extends Emitter {
                 })
             ).then(resp => {
                 this.UpdateScope(resp[0], resp[1]);
+                this.emit("set");
             });
         }
         else {
@@ -176,6 +178,8 @@ export class Scope<T> extends Emitter {
     }
 
     private SetCallback() {
-        this.UpdateValue();
+        // this.UpdateValue();
+        this.dirty = true;
+        this.emit("set");
     }
 }

@@ -5,6 +5,7 @@ export declare class Scope<T> extends Emitter {
     private setCallback;
     private value;
     private defaultValue;
+    private dirty;
     private isSync;
     readonly Value: T;
     constructor(getFunction: {
