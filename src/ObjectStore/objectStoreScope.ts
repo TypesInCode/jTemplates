@@ -51,7 +51,6 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters = newEmitters;
         this.value = value;
         this.dirty = false;
-        this.emit("set");
     }
 
     private UpdateValue() {
