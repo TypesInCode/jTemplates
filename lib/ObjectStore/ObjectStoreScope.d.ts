@@ -15,7 +15,7 @@ export declare class Scope<T> extends Emitter {
         (val: T): Promise<O> | O;
     }, defaultValue: O): Scope<O>;
     Destroy(): void;
-    private UpdateScope;
+    private UpdateEmitters;
     private UpdateValue;
     private SetCallback;
 }

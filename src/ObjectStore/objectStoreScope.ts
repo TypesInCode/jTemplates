@@ -1,5 +1,4 @@
 import { Emitter } from '../emitter';
-import { watcherAsync } from './watcherAsync';
 import { watcher } from './watcher';
 
 export class Scope<T> extends Emitter {
@@ -12,7 +11,6 @@ export class Scope<T> extends Emitter {
     private isSync: boolean;
 
     public get Value(): T {
-        watcherAsync.Register(this);
         watcher.Register(this);
         if(this.dirty)
             this.UpdateValue();
@@ -40,7 +38,7 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters.clear();
     }
 
-    private UpdateScope(newEmitters: Set<Emitter>, value: any) {
+    private UpdateEmitters(newEmitters: Set<Emitter>) {
         this.trackedEmitters.forEach(emitter => {
             if(!newEmitters.has(emitter))
                 emitter.removeListener("set", this.setCallback);
@@ -49,13 +47,21 @@ export class Scope<T> extends Emitter {
         newEmitters.delete(this);
         newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
         this.trackedEmitters = newEmitters;
-        this.value = value;
     }
 
     private UpdateValue() {
         this.dirty = false;
         if(!this.isSync) {
-            watcherAsync.Get()
+            watcher.WatchAsync(async () => {
+                var val = this.getFunction();
+                var promise = Promise.resolve(val);
+                this.isSync = promise !== val;
+                this.value = await promise;
+            }).then(emitters => {
+                this.UpdateEmitters(emitters);
+                this.emit("set");
+            });
+            /* watcherAsync.Get()
             .then(scope => 
                 scope.Watch(() => {
                     var val = this.getFunction();
@@ -66,14 +72,13 @@ export class Scope<T> extends Emitter {
             ).then(resp => {
                 this.UpdateScope(resp[0], resp[1]);
                 this.emit("set");
-            });
+            }); */
         }
         else {
-            var syncValue: any = null;
             var syncEmitters = watcher.Watch(() => {
-                syncValue = this.getFunction();
+                this.value = this.getFunction() as T;
             });
-            this.UpdateScope(syncEmitters, syncValue);
+            this.UpdateEmitters(syncEmitters);
         }
 
         /* asyncWatcher.Scope((new Promise(resolve => {

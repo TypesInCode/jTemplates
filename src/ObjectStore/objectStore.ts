@@ -1,8 +1,5 @@
 import Emitter from "../emitter";
-import { watcherAsync } from './watcherAsync';
 import { Scope } from "./objectStoreScope";
-import { ObjectStoreWorker } from "./objectStoreWorker";
-import { WorkerQueue } from "./workerQueue";
 import { ObjectDiff } from "./objectDiff";
 import { watcher } from "./watcher";
 
@@ -242,7 +239,6 @@ export class Store<T> {
             this.emitterMap.set(path, emitter);
         }
 
-        watcherAsync.Register(emitter);
         watcher.Register(emitter);
     }
 }

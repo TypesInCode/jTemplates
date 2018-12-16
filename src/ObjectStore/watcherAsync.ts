@@ -1,4 +1,4 @@
-import Emitter from "../emitter";
+/* import Emitter from "../emitter";
 import { DeferredPromise } from "./deferredPromise";
 
 class ScopeAsync {
@@ -15,12 +15,6 @@ class ScopeAsync {
     }
 
     public Add(emitter: Emitter) {
-        /*if(emitter === this.parent) {
-            console.log("skipping parent");
-            return;
-        }
-        
-        this.emitters.add(emitter);*/
         if(!this.emitters.has(emitter))
             this.emitters.add(emitter);
     }
@@ -55,4 +49,4 @@ class WatcherAsync {
     }
 }
 
-export var watcherAsync = new WatcherAsync();
+export var watcherAsync = new WatcherAsync(); */
