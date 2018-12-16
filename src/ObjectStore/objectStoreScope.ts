@@ -8,7 +8,8 @@ export class Scope<T> extends Emitter {
     private setCallback: () => void;
     private value: T;
     private defaultValue: T;
-    private isAsync: boolean;
+    // private isAsync: boolean;
+    private isSync: boolean;
 
     public get Value(): T {
         watcherAsync.Register(this);
@@ -25,7 +26,8 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
         this.defaultValue = defaultValue;
-        this.isAsync = false;
+        // this.isAsync = false;
+        this.isSync = false;
         this.UpdateValue();
     }
 
@@ -53,36 +55,26 @@ export class Scope<T> extends Emitter {
     }
 
     private UpdateValue() {
-        if(!this.isAsync) {
-            var syncValue: any = null;
-            var syncEmitters = watcher.Watch(() => {
-                syncValue = this.getFunction();
-            });
-            if(Promise.resolve(syncValue) === syncValue)
-                this.isAsync = true;
-            else
-                this.UpdateScope(syncEmitters, syncValue);
-        }
-
-        if(this.isAsync) {
+        if(!this.isSync) {
             var asyncValue: any = null;
             watcherAsync.Get(this)
             .then(scope => 
                 scope.Watch(() => {
-                    return (this.getFunction() as Promise<any>).then(val => asyncValue = val);
+                    var val = this.getFunction();
+                    var promise = Promise.resolve(val);
+                    this.isSync = promise !== val;
+                    return promise.then(val => asyncValue = val);
                 })
             ).then(asyncEmitters => {
                 this.UpdateScope(asyncEmitters, asyncValue);
             });
-            /* var scope = await watcherAsync.Get(this);
-            var value = null;
-            var newEmitters = await scope.Watch(() => new Promise(resolve => {
-                    var v = this.getFunction();
-                    resolve(v);
-                }).then(v => {
-                    value = v;
-                })
-            ); */
+        }
+        else {
+            var syncValue: any = null;
+            var syncEmitters = watcher.Watch(() => {
+                syncValue = this.getFunction();
+            });
+            this.UpdateScope(syncEmitters, syncValue);
         }
 
         /* asyncWatcher.Scope((new Promise(resolve => {
