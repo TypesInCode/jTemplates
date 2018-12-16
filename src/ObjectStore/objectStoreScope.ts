@@ -56,17 +56,16 @@ export class Scope<T> extends Emitter {
 
     private UpdateValue() {
         if(!this.isSync) {
-            var asyncValue: any = null;
-            watcherAsync.Get(this)
+            watcherAsync.Get()
             .then(scope => 
                 scope.Watch(() => {
                     var val = this.getFunction();
                     var promise = Promise.resolve(val);
                     this.isSync = promise !== val;
-                    return promise.then(val => asyncValue = val);
+                    return promise;
                 })
-            ).then(asyncEmitters => {
-                this.UpdateScope(asyncEmitters, asyncValue);
+            ).then(resp => {
+                this.UpdateScope(resp[0], resp[1]);
             });
         }
         else {
