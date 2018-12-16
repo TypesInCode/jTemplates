@@ -10,7 +10,6 @@ export class Scope<T> extends Emitter {
     private defaultValue: T;
     private dirty: boolean;
     private isSync: boolean;
-    private suppressEmit: boolean;
 
     public get Value(): T {
         watcherAsync.Register(this);
@@ -28,7 +27,6 @@ export class Scope<T> extends Emitter {
         this.setCallback = this.SetCallback.bind(this);
         this.defaultValue = defaultValue;
         this.isSync = false;
-        this.suppressEmit = false;
         this.UpdateValue();
     }
 
@@ -67,9 +65,7 @@ export class Scope<T> extends Emitter {
                 })
             ).then(resp => {
                 this.UpdateScope(resp[0], resp[1]);
-                this.suppressEmit = true;
                 this.emit("set");
-                this.suppressEmit = false;
             });
         }
         else {
@@ -180,10 +176,7 @@ export class Scope<T> extends Emitter {
     }
 
     private SetCallback() {
-        // this.UpdateValue();
-        if(this.suppressEmit)
-            return;
-        
+        // this.UpdateValue();        
         this.dirty = true;
         this.emit("set");
     }

@@ -3,6 +3,7 @@ export interface Callback {
 }
 export declare class Emitter {
     private callbackMap;
+    private emitting;
     addListener(name: string, callback: Callback): void;
     removeListener(name: string, callback: Callback): void;
     emit(name: string, ...args: any[]): void;
