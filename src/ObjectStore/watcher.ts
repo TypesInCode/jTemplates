@@ -1,6 +1,6 @@
 import Emitter from "../emitter";
 
-class GlobalEmitter {
+class Watcher {
     private emitterStack: Array<Set<Emitter>> = [];
 
     public Watch(callback: {(): void}): Set<Emitter> {
@@ -19,4 +19,4 @@ class GlobalEmitter {
     }
 }
 
-export var globalEmitter = new GlobalEmitter();
+export var watcher = new Watcher();

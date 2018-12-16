@@ -1,9 +1,10 @@
 import Emitter from "../emitter";
-import { asyncWatcher } from './asyncWatcher';
+import { watcherAsync } from './watcherAsync';
 import { Scope } from "./objectStoreScope";
 import { ObjectStoreWorker } from "./objectStoreWorker";
 import { WorkerQueue } from "./workerQueue";
 import { ObjectDiff } from "./objectDiff";
+import { watcher } from "./watcher";
 
 function IsValue(value: any) {
     if(!value)
@@ -263,7 +264,8 @@ export class StoreAsync<T> {
             this.emitterMap.set(path, emitter);
         }
 
-        asyncWatcher.Register(emitter);
+        watcherAsync.Register(emitter);
+        watcher.Register(emitter);
     }
 }
 

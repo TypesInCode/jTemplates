@@ -3,9 +3,9 @@ export declare class Scope<T> extends Emitter {
     private getFunction;
     private trackedEmitters;
     private setCallback;
-    private dirty;
     private value;
     private defaultValue;
+    private isAsync;
     readonly Value: T;
     constructor(getFunction: {
         (): Promise<T> | T;
@@ -14,6 +14,7 @@ export declare class Scope<T> extends Emitter {
         (val: T): Promise<O> | O;
     }, defaultValue: O): Scope<O>;
     Destroy(): void;
+    private UpdateScope;
     private UpdateValue;
     private SetCallback;
 }

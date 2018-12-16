@@ -1,16 +1,18 @@
 import { Emitter } from '../emitter';
-import { asyncWatcher } from './asyncWatcher';
+import { watcherAsync } from './watcherAsync';
+import { watcher } from './watcher';
 
 export class Scope<T> extends Emitter {
     private getFunction: {(): Promise<T> | T};
     private trackedEmitters: Set<Emitter>;
     private setCallback: () => void;
-    private dirty: boolean = false;
     private value: T;
     private defaultValue: T;
+    private isAsync: boolean;
 
     public get Value(): T {
-        asyncWatcher.Register(this);
+        watcherAsync.Register(this);
+        watcher.Register(this);
         /* if(this.dirty)
             this.UpdateValue(); */
         
@@ -23,7 +25,7 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters = new Set<Emitter>();
         this.setCallback = this.SetCallback.bind(this);
         this.defaultValue = defaultValue;
-        this.dirty = false;
+        this.isAsync = false;
         this.UpdateValue();
     }
 
@@ -37,17 +39,7 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters.clear();
     }
 
-    private async UpdateValue() {
-        var scope = await asyncWatcher.Get(this);
-        var value = null;
-        var newEmitters = await scope.Watch(() => new Promise(resolve => {
-                var v = this.getFunction();
-                resolve(v);
-            }).then(v => {
-                value = v;
-            })
-        );
-
+    private UpdateScope(newEmitters: Set<Emitter>, value: any) {
         this.trackedEmitters.forEach(emitter => {
             if(!newEmitters.has(emitter))
                 emitter.removeListener("set", this.setCallback);
@@ -58,6 +50,41 @@ export class Scope<T> extends Emitter {
         this.trackedEmitters = newEmitters;
         this.value = value;
         this.emit("set");
+    }
+
+    private UpdateValue() {
+        if(!this.isAsync) {
+            var syncValue: any = null;
+            var syncEmitters = watcher.Watch(() => {
+                syncValue = this.getFunction();
+            });
+            if(Promise.resolve(syncValue) === syncValue)
+                this.isAsync = true;
+            else
+                this.UpdateScope(syncEmitters, syncValue);
+        }
+
+        if(this.isAsync) {
+            var asyncValue: any = null;
+            watcherAsync.Get(this)
+            .then(scope => 
+                scope.Watch(() => {
+                    return (this.getFunction() as Promise<any>).then(val => asyncValue = val);
+                })
+            ).then(asyncEmitters => {
+                this.UpdateScope(asyncEmitters, asyncValue);
+            });
+            /* var scope = await watcherAsync.Get(this);
+            var value = null;
+            var newEmitters = await scope.Watch(() => new Promise(resolve => {
+                    var v = this.getFunction();
+                    resolve(v);
+                }).then(v => {
+                    value = v;
+                })
+            ); */
+        }
+
         /* asyncWatcher.Scope((new Promise(resolve => {
             var value = null;
             var newEmitters = globalEmitter.Watch(() => {
