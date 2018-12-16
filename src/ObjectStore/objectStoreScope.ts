@@ -31,7 +31,7 @@ export class Scope<T> extends Emitter {
     }
 
     public Scope<O>(getFunction: {(val: T): Promise<O> | O }, defaultValue: O): Scope<O> {
-        return new Scope(async () => getFunction(await this.Value), defaultValue);
+        return new Scope(() => getFunction(this.Value), defaultValue);
     }
 
     public Destroy() {
