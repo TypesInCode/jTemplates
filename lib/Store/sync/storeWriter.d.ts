@@ -10,6 +10,7 @@ export declare class StoreWriter<T> {
     } | {
         (current: O): void;
     } | O): void;
+    Push<O>(readOnly: Array<O>, newValue: O): void;
     Query<O>(callback: {
         (reader: StoreReader<T>): O;
     }): StoreQuery<O>;

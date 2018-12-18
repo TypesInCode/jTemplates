@@ -23,6 +23,20 @@ export class StoreWriter<T> {
         this.WriteTo(path, updateCallback);
     }
 
+    public Push<O>(readOnly: Array<O>, newValue: O) {
+        var path = (readOnly as any).___path;
+        
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var childPath = [path, localValue.length].join(".");
+        localValue.push(null);
+
+        /* var getterValue = this.getterMap.get(path) as Array<O>;
+        getterValue.push(this.CreateGetterObject(newValue, childPath)); */
+
+        this.WriteTo(childPath, newValue)
+        this.EmitSet(path);
+    }
+
     public Query<O>(callback: {(reader: StoreReader<T>): O}) {
         return new StoreQuery<O>(this.store, callback);
     }

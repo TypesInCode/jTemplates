@@ -23,6 +23,20 @@ export class StoreAsyncWriter<T> {
         await this.WriteTo(path, updateCallback);
     }
 
+    public async Push<O>(readOnly: Array<O>, newValue: O): Promise<void> {
+        var path = (readOnly as any).___path;
+        
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var childPath = [path, localValue.length].join(".");
+        localValue.push(null);
+
+        /* var getterValue = this.getterMap.get(path) as Array<O>;
+        getterValue.push(this.CreateGetterObject(newValue, childPath)); */
+
+        await this.WriteTo(childPath, newValue)
+        this.EmitSet(path);
+    }
+
     public OnWriteComplete() {
         return this.store.OnStoreQueueComplete();
     }
