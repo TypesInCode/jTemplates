@@ -1,4 +1,4 @@
-import { Scope } from '../ObjectStore/objectStoreScope';
+import { Scope } from '../Store/scope';
 import { BindingConfig } from './bindingConfig';
 import { PromiseOr } from '../template.types';
 
@@ -34,7 +34,7 @@ export abstract class Binding<T> {
         binding = this.OverrideBinding(binding, config);
 
         if(typeof binding === 'function') {
-            this.observableScope = new Scope(binding, defaultValue);
+            this.observableScope = new Scope(binding);
             this.observableScope.addListener("set", this.setCallback);
         }
         else {

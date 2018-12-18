@@ -5,7 +5,7 @@ import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
 import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, PromiseOr } from './template.types';
-import { Scope } from "./ObjectStore/objectStoreScope";
+import { Scope } from "./Store/scope";
 
 export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
@@ -145,12 +145,12 @@ export class Component<P, T> extends Template<Scope<P | P[]>, T> {
         if(typeof definition === 'string')
             super(definition, true);
         else if(typeof definition.data === 'function') {
-            (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P}, true as any as P);
+            (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P});
             super(definition as any as BindingDefinition<Scope<P>, T>);
         }
         else {
             var data = definition.data;
-            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data, data || true as any as P);
+            (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data);
             super(definition as any as BindingDefinition<Scope<P | P[]> ,T>);
         }
     }

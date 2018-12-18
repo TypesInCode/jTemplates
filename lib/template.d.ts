@@ -1,5 +1,5 @@
 import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
-import { Scope } from "./ObjectStore/objectStoreScope";
+import { Scope } from "./Store/scope";
 export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;

@@ -1,8 +1,10 @@
-import { ObjectDiff } from "./ObjectStore/objectDiff";
+import { Store } from "./Store/sync/store";
+import { StoreAsync } from "./Store/async/storeAsync";
 
-/* var resp = ObjectDiff("root", { id: "first", value: "second", other: { child: "value" } }, { id: "first", value: "second", other: { child: "value" } }, (val: any) => val.id);
-console.log(resp); */
-
-/* store.Write(store.Root, () => {
-    return null;
-}); */
+StoreAsync.Create({ temp: "test", temp2: "test2" }).then(store => {
+    var query = store.Query("", async reader => reader.Root.temp);
+    console.log(query.Value);
+    query.addListener("set", () => {
+        console.log(query.Value)
+    });
+});

@@ -2,7 +2,6 @@ import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
 import { PromiseOr } from "../template.types";
-import { Scope } from "../ObjectStore/objectStoreScope";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -19,7 +18,6 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     activeKeys: Array<any>;
     keyFunction: (val: any) => any;
-    dataObservableScope: Scope<Array<{key: any, value: any}>>;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
         super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
