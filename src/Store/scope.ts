@@ -8,7 +8,7 @@ export class Scope<T> extends ScopeBase<T> {
         super(getFunction, null);
     }
 
-    public Scope<O>(callback: {(parent: T): O}): ScopeBase<O> {
+    public Scope<O>(callback: {(parent: T): O}): Scope<O> {
         return new Scope(() => callback(this.Value));
     }
     

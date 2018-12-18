@@ -10,7 +10,7 @@ export class StoreAsyncQuery<T> extends ScopeBase<T> {
         super(getFunction, defaultValue);
     }
 
-    public Scope<O>(callback: {(parent: T): O}): ScopeBase<O> {
+    public Scope<O>(callback: {(parent: T): O}): Scope<O> {
         return new Scope(() => callback(this.Value));
     }
     

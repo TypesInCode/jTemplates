@@ -6,6 +6,6 @@ export declare class Scope<T> extends ScopeBase<T> {
     });
     Scope<O>(callback: {
         (parent: T): O;
-    }): ScopeBase<O>;
+    }): Scope<O>;
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void;
 }
