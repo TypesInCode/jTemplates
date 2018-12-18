@@ -29,7 +29,7 @@ export class StoreReader<T> {
     public Get<O>(id: string): O {
         var path = this.store.GetPathById(id);
         this.RegisterEmitter(path);
-        return this.store.ResolvePropertyPath(path);
+        return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
     }
 
     private CreateGetterObject(source: any, path: string): any {
