@@ -2,11 +2,16 @@ import { Store } from './store';
 import { Emitter } from '../../emitter';
 import { IsValue } from '../utils';
 import { scopeCollector } from '../scopeCollector';
+import { StoreWriter } from './storeWriter';
 
 
 export class StoreReader<T> {
     
     private emitterSet: Set<Emitter>;
+
+    public get Writer(): StoreWriter<T> {
+        return this.store.GetWriter();
+    }
 
     public get Root(): T {
         var root = this.store.ResolvePropertyPath('root');

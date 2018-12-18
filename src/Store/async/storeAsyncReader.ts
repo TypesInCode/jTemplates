@@ -2,11 +2,16 @@ import { StoreAsync } from './storeAsync';
 import { Emitter } from '../../emitter';
 import { IsValue } from '../utils';
 import { scopeCollector } from '../scopeCollector';
+import { StoreAsyncWriter } from '../..';
 
 
 export class StoreAsyncReader<T> {
     
     private emitterSet: Set<Emitter>;
+
+    public get Writer(): StoreAsyncWriter<T> {
+        return this.store.GetWriter();
+    }
 
     public get Root(): T {
         var root = this.store.ResolvePropertyPath('root');
