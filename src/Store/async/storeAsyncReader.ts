@@ -28,6 +28,9 @@ export class StoreAsyncReader<T> {
 
     public async Get<O>(id: string): Promise<O> {
         var path = await this.store.GetPathById(id);
+        if(!path)
+            return undefined;
+        
         this.RegisterEmitter(path);
         return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
     }
