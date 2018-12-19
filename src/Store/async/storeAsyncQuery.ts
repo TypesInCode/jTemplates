@@ -16,9 +16,12 @@ export class StoreAsyncQuery<T> extends ScopeBase<T> {
     
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
         var reader = this.store.GetReader();
-        (this.GetNewValue(reader) as Promise<T>).then(value => {
-            callback(reader.Emitters, value);
-        });
+        this.store.QueryStart()
+            .then(() => this.GetNewValue(reader) as Promise<T>)
+            .then(value => {
+                this.store.QueryEnd();
+                callback(reader.Emitters, value);
+            });
     }
     
 }

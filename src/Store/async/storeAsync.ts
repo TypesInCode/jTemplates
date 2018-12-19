@@ -11,12 +11,14 @@ export class StoreAsync<T> {
     private emitterMap: Map<string, Emitter>;
     private worker: Worker;
     private workerQueue: WorkerQueue<IDiffMethod, any>;
+    private queryQueue: Array<DeferredPromise<any>>;
 
     constructor(idFunction: {(val: any): any}) {
         this.emitterMap = new Map();
         this.worker = StoreWorker.Create();
         this.workerQueue = new WorkerQueue(this.worker);
         this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()]}));
+        this.queryQueue = [];
     }
 
     public GetReader(): StoreAsyncReader<T> {
@@ -29,6 +31,20 @@ export class StoreAsync<T> {
 
     public ProcessStoreQueue() {
         this.workerQueue.Process();
+    }
+    
+    public QueryStart(): Promise<void> {
+        this.queryQueue.push(new DeferredPromise(resolve => resolve()));
+        if(this.queryQueue.length === 1)
+            this.queryQueue[0].Invoke();
+
+        return this.queryQueue[this.queryQueue.length - 1];
+    }
+
+    public QueryEnd() {
+        this.queryQueue.shift();
+        if(this.queryQueue.length > 0)
+            this.queryQueue[0].Invoke();
     }
 
     public Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse> {
