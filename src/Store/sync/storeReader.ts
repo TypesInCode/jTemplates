@@ -36,7 +36,7 @@ export class StoreReader<T> {
     }
 
     private CreateGetterObject(source: any, path: string): any {
-        if(IsValue(source)) {
+        if(IsValue(source) || source.___storeProxy) {
             this.RegisterEmitter(path);
             return source;
         }
@@ -45,6 +45,9 @@ export class StoreReader<T> {
         if(Array.isArray(source)) {
             ret = new Proxy([], {
                 get: (obj: any, prop: any) => {
+                    if(prop === '___storeProxy')
+                        return true;
+                    
                     if(prop === '___path')
                         return path;
                     
@@ -86,6 +89,9 @@ export class StoreReader<T> {
         else {
             ret = new Proxy({}, {
                 get: (obj: any, prop: any) => {
+                    if(prop === '___storeProxy')
+                        return true;
+
                     if(prop === '___path')
                         return path;
 
