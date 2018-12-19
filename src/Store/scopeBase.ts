@@ -8,7 +8,7 @@ export abstract class ScopeBase<T> extends Emitter {
     private defaultValue: T;
     private value: T;
     private dirty: boolean;
-    private valueScopes: Set<Emitter>;
+    private isAsync: boolean;
 
     public get Value(): T {
         scopeCollector.Register(this);
@@ -25,6 +25,23 @@ export abstract class ScopeBase<T> extends Emitter {
         this.setCallback = this.SetCallback.bind(this);
         this.defaultValue = defaultValue;
         this.dirty = true;
+        this.isAsync = false;
+    }
+
+    public AsPromise() {
+        return new Promise((resolve) => {
+            var temp = this.Value;
+            if(!this.isAsync) {
+                resolve(temp);
+                this.Destroy();
+                return;
+            }
+
+            this.addListener("set", () => {
+                resolve(this.Value);
+                this.Destroy();
+            });
+        });
     }
 
     public Destroy() {
@@ -41,14 +58,15 @@ export abstract class ScopeBase<T> extends Emitter {
 
     private UpdateValueBase() {
         this.dirty = false;
-        var async = false;
+        var callbackFired = false;
         this.UpdateValue((emitters, value) => {
+            callbackFired = true;
             this.UpdateEmitters(emitters);
             this.value = value;
-            if(async)
+            if(this.isAsync)
                 this.emit("set");
         });
-        async = true;
+        this.isAsync = !callbackFired;
     }
 
     private UpdateEmitters(newEmitters: Set<Emitter>) {

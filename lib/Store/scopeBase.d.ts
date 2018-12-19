@@ -6,11 +6,12 @@ export declare abstract class ScopeBase<T> extends Emitter {
     private defaultValue;
     private value;
     private dirty;
-    private valueScopes;
+    private isAsync;
     readonly Value: T;
     constructor(getFunction: {
         (...args: Array<any>): T | Promise<T>;
     }, defaultValue?: T);
+    AsPromise(): Promise<{}>;
     Destroy(): void;
     protected abstract UpdateValue(callback: {
         (emitters: Set<Emitter>, value: T): void;
