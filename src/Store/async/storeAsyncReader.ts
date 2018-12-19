@@ -80,7 +80,7 @@ export class StoreAsyncReader<T> {
 
                     var childPath = [path, prop].join(".");
                     this.RegisterEmitter(childPath);
-                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), path);
+                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
                 },
                 set: (obj: any, prop: any, value: any) => {
                     var childPath = [path, prop].join(".");
