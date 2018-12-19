@@ -32,8 +32,8 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     protected OverrideBinding(bindingFunction: PromiseOr<any>, config: { key: (val: any) => any }) {
         var localBinding = null;
         if(typeof bindingFunction === 'function') {
-            localBinding = async () => {
-                var value = await bindingFunction();
+            localBinding = () => {
+                var value = bindingFunction();
                 var array = ConvertToArray(value);
                 return array.map((curr, index) => {
                     return {
