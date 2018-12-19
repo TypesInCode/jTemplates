@@ -37,10 +37,6 @@ export class StoreAsyncWriter<T> {
         this.EmitSet(path);
     }
 
-    public OnWriteComplete() {
-        return this.store.OnStoreQueueComplete();
-    }
-
     public Query<O>(defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
         return new StoreAsyncQuery<O>(this.store, callback, defaultValue);
     }

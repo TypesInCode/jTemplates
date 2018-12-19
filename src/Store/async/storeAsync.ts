@@ -30,10 +30,6 @@ export class StoreAsync<T> {
         this.workerQueue.Process();
     }
 
-    public OnStoreQueueComplete() {
-        return this.workerQueue.OnComplete();
-    }
-
     public Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse> {
         return new Promise(resolve => {
             var oldValue = this.ResolvePropertyPath(path);
@@ -92,11 +88,10 @@ export class StoreAsync<T> {
 }
 
 export namespace StoreAsync {
-    export async function Create<T>(init: T, idFunction?: {(val: any): any}): Promise<StoreAsyncWriter<T>> {
+    export function Create<T>(init: T, idFunction?: {(val: any): any}): StoreAsyncWriter<T> {
         var store = new StoreAsync<T>(idFunction);
         var writer = store.GetWriter();
         writer.Root = init;
-        await writer.OnWriteComplete();
         return writer;
     }
 }

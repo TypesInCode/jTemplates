@@ -12,7 +12,6 @@ export declare class StoreAsync<T> {
     GetReader(): StoreAsyncReader<T>;
     GetWriter(): StoreAsyncWriter<T>;
     ProcessStoreQueue(): void;
-    OnStoreQueueComplete(): Promise<any>;
     Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse>;
     GetPathById(id: string): Promise<string>;
     EnsureEmitter(path: string): Emitter;
@@ -23,5 +22,5 @@ export declare class StoreAsync<T> {
 export declare namespace StoreAsync {
     function Create<T>(init: T, idFunction?: {
         (val: any): any;
-    }): Promise<StoreAsyncWriter<T>>;
+    }): StoreAsyncWriter<T>;
 }

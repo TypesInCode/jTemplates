@@ -13,10 +13,10 @@ export class StoreAsyncReader<T> {
         return this.store.GetWriter();
     }
 
-    public get Root(): T {
+    /* public get Root(): T {
         var root = this.store.ResolvePropertyPath('root');
         return this.CreateGetterObject(root, 'root');
-    }
+    } */
 
     public get Emitters() {
         return this.emitterSet;

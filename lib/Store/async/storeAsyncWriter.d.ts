@@ -11,7 +11,6 @@ export declare class StoreAsyncWriter<T> {
         (current: O): void;
     } | O): Promise<void>;
     Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
-    OnWriteComplete(): Promise<any>;
     Query<O>(defaultValue: any, callback: {
         (reader: StoreAsyncReader<T>): Promise<O>;
     }): StoreAsyncQuery<O>;
