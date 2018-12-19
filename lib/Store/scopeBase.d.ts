@@ -11,7 +11,7 @@ export declare abstract class ScopeBase<T> extends Emitter {
     constructor(getFunction: {
         (...args: Array<any>): T | Promise<T>;
     }, defaultValue?: T);
-    AsPromise(): Promise<{}>;
+    AsPromise(): Promise<T>;
     Destroy(): void;
     protected abstract UpdateValue(callback: {
         (emitters: Set<Emitter>, value: T): void;
