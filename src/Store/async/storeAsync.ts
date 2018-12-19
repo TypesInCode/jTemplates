@@ -30,6 +30,10 @@ export class StoreAsync<T> {
         this.workerQueue.Process();
     }
 
+    public OnComplete(): Promise<void> {
+        return this.workerQueue.OnComplete();
+    }
+
     public Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse> {
         return new Promise(resolve => {
             var oldValue = this.ResolvePropertyPath(path);

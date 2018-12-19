@@ -12,6 +12,7 @@ export declare class StoreAsync<T> {
     GetReader(): StoreAsyncReader<T>;
     GetWriter(): StoreAsyncWriter<T>;
     ProcessStoreQueue(): void;
+    OnComplete(): Promise<void>;
     Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse>;
     GetPathById(id: string): Promise<string>;
     EnsureEmitter(path: string): Emitter;
