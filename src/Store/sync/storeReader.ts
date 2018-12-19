@@ -51,14 +51,21 @@ export class StoreReader<T> {
                     if(prop === '___path')
                         return path;
                     
-                    var isInt = !isNaN(parseInt(prop));
-                    var childPath = [path, prop].join(".");
-                    if(isInt)
-                        this.RegisterEmitter(childPath);
-                    
-                    if(isInt || prop === 'length')
-                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+                    if(typeof prop !== 'symbol') {
+                        var isInt = !isNaN(parseInt(prop));
+                        var childPath = [path, prop].join(".");
 
+                        if(prop === 'toJSON')
+                            return () => {
+                                JSON.stringify(this.store.ResolvePropertyPath(childPath))
+                            };
+
+                        if(isInt)
+                            this.RegisterEmitter(childPath);
+                        
+                        if(isInt || prop === 'length')
+                            return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+                    }
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
                         var arr = this.store.ResolvePropertyPath(path);
@@ -90,13 +97,19 @@ export class StoreReader<T> {
                 get: (obj: any, prop: any) => {
                     if(prop === '___storeProxy')
                         return true;
-
+                    
                     if(prop === '___path')
                         return path;
 
                     var childPath = [path, prop].join(".");
+
+                    if(prop === 'toJSON')
+                        return () => {
+                            JSON.stringify(this.store.ResolvePropertyPath(childPath))
+                        };
+
                     this.RegisterEmitter(childPath);
-                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), path);
+                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
                 },
                 set: (obj: any, prop: any, value: any) => {
                     var childPath = [path, prop].join(".");
