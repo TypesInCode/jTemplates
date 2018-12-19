@@ -48,14 +48,15 @@ export class StoreAsyncReader<T> {
                     if(prop === '___path')
                         return path;
                     
-                    var isInt = typeof prop !== 'symbol' && !isNaN(parseInt(prop));
-                    var childPath = [path, prop].join(".");
-                    if(isInt)
-                        this.RegisterEmitter(childPath);
-                    
-                    if(isInt || prop === 'length')
-                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
-
+                    if(typeof prop !== 'symbol') {
+                        var isInt = !isNaN(parseInt(prop));
+                        var childPath = [path, prop].join(".");
+                        if(isInt)
+                            this.RegisterEmitter(childPath);
+                        
+                        if(isInt || prop === 'length')
+                            return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+                    }
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
                         var arr = this.store.ResolvePropertyPath(path);
@@ -69,7 +70,7 @@ export class StoreAsyncReader<T> {
                     return ret;
                 },
                 set: (obj: any, prop: any, value: any) => {
-                    var isInt = typeof prop !== 'symbol' && !isNaN(parseInt(prop));
+                    var isInt = !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
                     if(isInt) {
                         this.store.AssignPropertyPath(value, childPath);
