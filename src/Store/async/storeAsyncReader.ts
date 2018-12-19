@@ -50,15 +50,15 @@ export class StoreAsyncReader<T> {
                     
                     if(prop === '___path')
                         return path;
+
+                    if(prop === 'toJSON')
+                        return () => {
+                            JSON.stringify(this.store.ResolvePropertyPath(path))
+                        };
                     
                     if(typeof prop !== 'symbol') {
                         var isInt = !isNaN(parseInt(prop));
                         var childPath = [path, prop].join(".");
-
-                        if(prop === 'toJSON')
-                            return () => {
-                                JSON.stringify(this.store.ResolvePropertyPath(childPath))
-                            };
 
                         if(isInt)
                             this.RegisterEmitter(childPath);
@@ -101,13 +101,12 @@ export class StoreAsyncReader<T> {
                     if(prop === '___path')
                         return path;
 
-                    var childPath = [path, prop].join(".");
-
                     if(prop === 'toJSON')
                         return () => {
-                            JSON.stringify(this.store.ResolvePropertyPath(childPath))
+                            JSON.stringify(this.store.ResolvePropertyPath(path))
                         };
 
+                    var childPath = [path, prop].join(".");
                     this.RegisterEmitter(childPath);
                     return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
                 },
