@@ -8,6 +8,7 @@ export declare class StoreAsyncReader<T> {
     readonly Emitters: Set<Emitter>;
     constructor(store: StoreAsync<T>);
     Get<O>(id: string): Promise<O>;
+    private GetCachedArray;
     private CreateGetterObject;
     private RegisterEmitter;
 }

@@ -9,6 +9,7 @@ export class StoreAsync<T> {
 
     private root: T;
     private emitterMap: Map<string, Emitter>;
+    private arrayCacheMap: Map<string, Array<any>>;
     private worker: Worker;
     private workerQueue: WorkerQueue<IDiffMethod, any>;
     private queryQueue: Array<DeferredPromise<any>>;
@@ -19,6 +20,7 @@ export class StoreAsync<T> {
         this.workerQueue = new WorkerQueue(this.worker);
         this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()]}));
         this.queryQueue = [];
+        this.arrayCacheMap = new Map();
     }
 
     public GetReader(): StoreAsyncReader<T> {
@@ -70,16 +72,6 @@ export class StoreAsync<T> {
         });
     }
 
-    public EnsureEmitter(path: string): Emitter {
-        var emitter = this.emitterMap.get(path);
-        if(!emitter) {
-            emitter = new Emitter();
-            this.emitterMap.set(path, emitter);
-        }
-
-        return emitter;
-    }
-
     public AssignPropertyPath(value: any, path: string) {
         var parts = path.split(".");
         var prop = parts[parts.length - 1];
@@ -98,8 +90,26 @@ export class StoreAsync<T> {
         }, this);
     }
 
+    public EnsureEmitter(path: string): Emitter {
+        var emitter = this.emitterMap.get(path);
+        if(!emitter) {
+            emitter = new Emitter();
+            this.emitterMap.set(path, emitter);
+        }
+
+        return emitter;
+    }
+
     public DeleteEmitter(path: string) {
         this.emitterMap.delete(path);
+    }
+
+    public GetCachedArray(path: string) {
+        return this.arrayCacheMap.get(path);
+    }
+
+    public SetCachedArray(path: string, array: Array<any>) {
+        this.arrayCacheMap.set(path, array);
     }
 
 }

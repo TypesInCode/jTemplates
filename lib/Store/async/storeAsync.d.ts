@@ -4,6 +4,7 @@ import { StoreAsyncWriter } from "./storeAsyncWriter";
 export declare class StoreAsync<T> {
     private root;
     private emitterMap;
+    private arrayCacheMap;
     private worker;
     private workerQueue;
     private queryQueue;
@@ -17,10 +18,12 @@ export declare class StoreAsync<T> {
     QueryEnd(): void;
     Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse>;
     GetPathById(id: string): Promise<string>;
-    EnsureEmitter(path: string): Emitter;
     AssignPropertyPath(value: any, path: string): void;
     ResolvePropertyPath(path: string): any;
+    EnsureEmitter(path: string): Emitter;
     DeleteEmitter(path: string): void;
+    GetCachedArray(path: string): any[];
+    SetCachedArray(path: string, array: Array<any>): void;
 }
 export declare namespace StoreAsync {
     function Create<T>(init: T, idFunction?: {

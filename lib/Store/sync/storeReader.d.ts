@@ -9,6 +9,7 @@ export declare class StoreReader<T> {
     readonly Emitters: Set<Emitter>;
     constructor(store: Store<T>);
     Get<O>(id: string): O;
+    private GetCachedArray;
     private CreateGetterObject;
     private RegisterEmitter;
     private EmitSet;

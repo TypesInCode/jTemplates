@@ -35,6 +35,20 @@ export class StoreAsyncReader<T> {
         return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
     }
 
+    private GetCachedArray(path: string) {
+        var localArray = this.store.ResolvePropertyPath(path) as Array<any>;
+        var cachedArray = this.store.GetCachedArray(path);
+        if(cachedArray && cachedArray.length === localArray.length)
+            return cachedArray;
+
+        cachedArray = new Array(localArray.length);
+        for(var x=0; x<cachedArray.length; x++)
+            cachedArray[x] = this.CreateGetterObject(localArray[x], [path, x].join("."));
+
+        this.store.SetCachedArray(path, cachedArray);
+        return cachedArray;
+    }
+
     private CreateGetterObject(source: any, path: string): any {
         if(IsValue(source) || source.___storeProxy) {
             this.RegisterEmitter(path);
@@ -42,7 +56,6 @@ export class StoreAsyncReader<T> {
         }
 
         var ret = null;
-        var cachedArray: Array<any> = null;
         if(Array.isArray(source)) {
             ret = new Proxy([], {
                 get: (obj: any, prop: any) => {
@@ -67,15 +80,10 @@ export class StoreAsyncReader<T> {
                         if(isInt || prop === 'length')
                             return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
                     }
+                    
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
-                        var arr = this.store.ResolvePropertyPath(path);
-                        if(!cachedArray || cachedArray.length !== arr.length) {
-                            cachedArray = new Array(arr.length);
-                            for(var x=0; x<arr.length; x++)
-                                cachedArray[x] = this.CreateGetterObject(arr[x], [path, x].join("."));
-                        }
-
+                        var cachedArray = this.GetCachedArray(path);
                         return ret.bind(cachedArray);
                     }
 
