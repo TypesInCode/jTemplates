@@ -6,13 +6,15 @@ export declare class StoreAsync<T> {
     private emitterMap;
     private worker;
     private workerQueue;
+    private queryQueue;
     constructor(idFunction: {
         (val: any): any;
     });
     GetReader(): StoreAsyncReader<T>;
     GetWriter(): StoreAsyncWriter<T>;
     ProcessStoreQueue(): void;
-    OnComplete(): Promise<void>;
+    QueryStart(): Promise<void>;
+    QueryEnd(): void;
     Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse>;
     GetPathById(id: string): Promise<string>;
     EnsureEmitter(path: string): Emitter;
