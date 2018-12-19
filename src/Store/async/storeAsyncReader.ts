@@ -48,7 +48,7 @@ export class StoreAsyncReader<T> {
                     if(prop === '___path')
                         return path;
                     
-                    var isInt = !isNaN(parseInt(prop));
+                    var isInt = typeof prop !== 'symbol' && !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
                     if(isInt)
                         this.RegisterEmitter(childPath);
@@ -69,7 +69,7 @@ export class StoreAsyncReader<T> {
                     return ret;
                 },
                 set: (obj: any, prop: any, value: any) => {
-                    var isInt = !isNaN(parseInt(prop));
+                    var isInt = typeof prop !== 'symbol' && !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
                     if(isInt) {
                         this.store.AssignPropertyPath(value, childPath);
