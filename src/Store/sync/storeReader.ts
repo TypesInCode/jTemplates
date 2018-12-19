@@ -56,7 +56,17 @@ export class StoreReader<T> {
                     if(isInt || prop === 'length')
                         return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
 
-                    return obj[prop];
+                    var ret = obj[prop];
+                    if(typeof ret === 'function') {
+                        var arr = this.store.ResolvePropertyPath(path);
+                        var tempArr = new Array(arr.length);
+                        for(var x=0; x<arr.length; x++)
+                            tempArr[x] = this.CreateGetterObject(arr[x], [path, x].join("."));
+
+                        return ret.bind(tempArr);
+                    }
+
+                    return ret;
                 },
                 set: (obj: any, prop: any, value: any) => {
                     var isInt = !isNaN(parseInt(prop));
