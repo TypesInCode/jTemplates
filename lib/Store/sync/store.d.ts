@@ -5,7 +5,6 @@ export declare class Store<T> {
     private root;
     private emitterMap;
     private diff;
-    private arrayCacheMap;
     constructor(idFunction: {
         (val: any): any;
     });
@@ -17,8 +16,6 @@ export declare class Store<T> {
     AssignPropertyPath(value: any, path: string): void;
     ResolvePropertyPath(path: string): any;
     DeleteEmitter(path: string): void;
-    GetCachedArray(path: string): any[];
-    SetCachedArray(path: string, array: Array<any>): void;
 }
 export declare namespace Store {
     function Create<T>(init: T, idFunction?: {

@@ -12,9 +12,9 @@ export declare class StoreAsyncWriter<T> {
     } | O): Promise<void>;
     WritePath(path: string, value: any): Promise<void>;
     Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
-    Query<O>(defaultValue: any, callback: {
+    Query<O>(id: string, defaultValue: any, callback: {
         (reader: StoreAsyncReader<T>): Promise<O>;
-    }): StoreAsyncQuery<O>;
+    }): StoreAsyncQuery<any>;
     private WriteTo;
     private ResolveUpdateCallback;
     private CreateCopy;

@@ -8,7 +8,7 @@ export class Store<T> {
     private root: T;
     private emitterMap: Map<string, Emitter>;
     private diff: {(data: IDiffMethod): any};
-    private arrayCacheMap: Map<string, Array<any>>;
+    // private arrayCacheMap: Map<string, Array<any>>;
 
     constructor(idFunction: {(val: any): any}) {
         this.emitterMap = new Map();
@@ -17,7 +17,7 @@ export class Store<T> {
             method: "create",
             arguments: [idFunction]
         });
-        this.arrayCacheMap = new Map();
+        // this.arrayCacheMap = new Map();
     }
 
     public GetReader(): StoreReader<T> {
@@ -79,13 +79,13 @@ export class Store<T> {
         this.emitterMap.delete(path);
     }
 
-    public GetCachedArray(path: string) {
+    /* public GetCachedArray(path: string) {
         return this.arrayCacheMap.get(path);
     }
 
     public SetCachedArray(path: string, array: Array<any>) {
         this.arrayCacheMap.set(path, array);
-    }
+    } */
 
 }
 

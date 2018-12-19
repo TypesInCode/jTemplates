@@ -41,8 +41,8 @@ export class StoreAsyncWriter<T> {
         this.EmitSet(path);
     }
 
-    public Query<O>(defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
-        return new StoreAsyncQuery<O>(this.store, callback, defaultValue);
+    public Query<O>(id: string, defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
+        return this.store.GetQuery(id, defaultValue, callback);
     }
 
     private async WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): Promise<void> {

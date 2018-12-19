@@ -37,15 +37,15 @@ export class StoreReader<T> {
 
     private GetCachedArray(path: string) {
         var localArray = this.store.ResolvePropertyPath(path) as Array<any>;
-        var cachedArray = this.store.GetCachedArray(path);
+        /* var cachedArray = this.store.GetCachedArray(path);
         if(cachedArray && cachedArray.length === localArray.length)
-            return cachedArray;
+            return cachedArray; */
 
-        cachedArray = new Array(localArray.length);
+        var cachedArray = new Array(localArray.length);
         for(var x=0; x<cachedArray.length; x++)
             cachedArray[x] = this.CreateGetterObject(localArray[x], [path, x].join("."));
 
-        this.store.SetCachedArray(path, cachedArray);
+        // this.store.SetCachedArray(path, cachedArray);
         return cachedArray;
     }
 

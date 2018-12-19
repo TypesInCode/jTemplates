@@ -4,15 +4,17 @@ import { StoreAsyncWriter } from "./storeAsyncWriter";
 import { WorkerQueue } from "./workerQueue";
 import { StoreWorker } from "./storeWorker";
 import { DeferredPromise } from "../deferredPromise";
+import { StoreAsyncQuery } from "./storeAsyncQuery";
 
 export class StoreAsync<T> {
 
     private root: T;
     private emitterMap: Map<string, Emitter>;
-    private arrayCacheMap: Map<string, Array<any>>;
+    // private arrayCacheMap: Map<string, Array<any>>;
     private worker: Worker;
     private workerQueue: WorkerQueue<IDiffMethod, any>;
     private queryQueue: Array<DeferredPromise<any>>;
+    private queryCache: Map<string, StoreAsyncQuery<any>>;
 
     constructor(idFunction: {(val: any): any}) {
         this.emitterMap = new Map();
@@ -20,7 +22,17 @@ export class StoreAsync<T> {
         this.workerQueue = new WorkerQueue(this.worker);
         this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()]}));
         this.queryQueue = [];
-        this.arrayCacheMap = new Map();
+        // this.arrayCacheMap = new Map();
+        this.queryCache = new Map();
+    }
+
+    public GetQuery<O>(id: string, defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
+        var query = this.queryCache.get(id);
+        if(!query) {
+            query = new StoreAsyncQuery<O>(this, callback, defaultValue);
+            this.queryCache.set(id, query);
+        }
+        return query;
     }
 
     public GetReader(): StoreAsyncReader<T> {
@@ -104,13 +116,13 @@ export class StoreAsync<T> {
         this.emitterMap.delete(path);
     }
 
-    public GetCachedArray(path: string) {
+    /* public GetCachedArray(path: string) {
         return this.arrayCacheMap.get(path);
     }
 
     public SetCachedArray(path: string, array: Array<any>) {
         this.arrayCacheMap.set(path, array);
-    }
+    } */
 
 }
 

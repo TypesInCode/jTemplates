@@ -1,16 +1,20 @@
 import { Emitter } from "../../emitter";
 import { StoreAsyncReader } from "./storeAsyncReader";
 import { StoreAsyncWriter } from "./storeAsyncWriter";
+import { StoreAsyncQuery } from "./storeAsyncQuery";
 export declare class StoreAsync<T> {
     private root;
     private emitterMap;
-    private arrayCacheMap;
     private worker;
     private workerQueue;
     private queryQueue;
+    private queryCache;
     constructor(idFunction: {
         (val: any): any;
     });
+    GetQuery<O>(id: string, defaultValue: any, callback: {
+        (reader: StoreAsyncReader<T>): Promise<O>;
+    }): StoreAsyncQuery<any>;
     GetReader(): StoreAsyncReader<T>;
     GetWriter(): StoreAsyncWriter<T>;
     ProcessStoreQueue(): void;
@@ -22,8 +26,6 @@ export declare class StoreAsync<T> {
     ResolvePropertyPath(path: string): any;
     EnsureEmitter(path: string): Emitter;
     DeleteEmitter(path: string): void;
-    GetCachedArray(path: string): any[];
-    SetCachedArray(path: string, array: Array<any>): void;
 }
 export declare namespace StoreAsync {
     function Create<T>(init: T, idFunction?: {
