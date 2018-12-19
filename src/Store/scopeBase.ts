@@ -83,7 +83,11 @@ export abstract class ScopeBase<T> extends Emitter {
     }
 
     private SetCallback() {
-        this.dirty = true;
-        this.emit("set");
+        if(!this.isAsync) {
+            this.dirty = true;
+            this.emit("set");
+        }
+        else
+            this.UpdateValueBase();
     }
 }
