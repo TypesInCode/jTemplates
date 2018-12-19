@@ -53,7 +53,7 @@ export class StoreReader<T> {
 
                     if(prop === 'toJSON')
                         return () => {
-                            JSON.stringify(this.store.ResolvePropertyPath(path))
+                            return JSON.stringify(this.store.ResolvePropertyPath(path))
                         };
                     
                     if(typeof prop !== 'symbol') {
@@ -103,7 +103,7 @@ export class StoreReader<T> {
 
                     if(prop === 'toJSON')
                         return () => {
-                            JSON.stringify(this.store.ResolvePropertyPath(path))
+                            return JSON.stringify(this.store.ResolvePropertyPath(path))
                         };
 
                     var childPath = [path, prop].join(".");
