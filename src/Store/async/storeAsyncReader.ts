@@ -42,6 +42,7 @@ export class StoreAsyncReader<T> {
         }
 
         var ret = null;
+        var cachedArray: Array<any> = null;
         if(Array.isArray(source)) {
             ret = new Proxy([], {
                 get: (obj: any, prop: any) => {
@@ -69,11 +70,13 @@ export class StoreAsyncReader<T> {
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
                         var arr = this.store.ResolvePropertyPath(path);
-                        var tempArr = new Array(arr.length);
-                        for(var x=0; x<arr.length; x++)
-                            tempArr[x] = this.CreateGetterObject(arr[x], [path, x].join("."));
+                        if(!cachedArray || cachedArray.length !== arr.length) {
+                            cachedArray = new Array(arr.length);
+                            for(var x=0; x<arr.length; x++)
+                                cachedArray[x] = this.CreateGetterObject(arr[x], [path, x].join("."));
+                        }
 
-                        return ret.bind(tempArr);
+                        return ret.bind(cachedArray);
                     }
 
                     return ret;
