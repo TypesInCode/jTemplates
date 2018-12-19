@@ -23,6 +23,10 @@ export class StoreAsyncWriter<T> {
         await this.WriteTo(path, updateCallback);
     }
 
+    public async WritePath(path: string, value: any) {
+        await this.WriteTo(path, value);
+    }
+
     public async Push<O>(readOnly: Array<O>, newValue: O): Promise<void> {
         var path = (readOnly as any).___path;
         

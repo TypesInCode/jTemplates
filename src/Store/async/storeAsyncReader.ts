@@ -76,7 +76,7 @@ export class StoreAsyncReader<T> {
                     var isInt = !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
                     if(isInt) {
-                        this.store.AssignPropertyPath(value, childPath);
+                        this.Writer.WritePath(childPath, value);
                     }
                     else {
                         obj[prop] = value;
@@ -101,7 +101,7 @@ export class StoreAsyncReader<T> {
                 },
                 set: (obj: any, prop: any, value: any) => {
                     var childPath = [path, prop].join(".");
-                    this.store.AssignPropertyPath(value, childPath);
+                    this.Writer.WritePath(childPath, value);
                     return true;
                 }
             });

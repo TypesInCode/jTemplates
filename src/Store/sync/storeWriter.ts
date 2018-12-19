@@ -23,6 +23,10 @@ export class StoreWriter<T> {
         this.WriteTo(path, updateCallback);
     }
 
+    public WritePath(path: string, value: any) {
+        this.WriteTo(path, value);
+    }
+
     public Push<O>(readOnly: Array<O>, newValue: O) {
         var path = (readOnly as any).___path;
         
