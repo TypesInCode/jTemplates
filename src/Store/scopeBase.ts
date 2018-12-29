@@ -31,7 +31,7 @@ export abstract class ScopeBase<T> extends Emitter {
     public AsPromise(): Promise<T> {
         return new Promise((resolve) => {
             var temp = this.Value;
-            if(!this.isAsync) {
+            if(!this.isAsync || !this.dirty) {
                 resolve(temp);
                 this.Destroy();
                 return;

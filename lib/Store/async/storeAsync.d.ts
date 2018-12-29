@@ -26,6 +26,7 @@ export declare class StoreAsync<T> {
     ResolvePropertyPath(path: string): any;
     EnsureEmitter(path: string): Emitter;
     DeleteEmitter(path: string): void;
+    Destroy(): void;
 }
 export declare namespace StoreAsync {
     function Create<T>(init: T, idFunction?: {

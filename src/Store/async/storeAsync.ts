@@ -10,7 +10,6 @@ export class StoreAsync<T> {
 
     private root: T;
     private emitterMap: Map<string, Emitter>;
-    // private arrayCacheMap: Map<string, Array<any>>;
     private worker: Worker;
     private workerQueue: WorkerQueue<IDiffMethod, any>;
     private queryQueue: Array<DeferredPromise<any>>;
@@ -22,7 +21,6 @@ export class StoreAsync<T> {
         this.workerQueue = new WorkerQueue(this.worker);
         this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()]}));
         this.queryQueue = [];
-        // this.arrayCacheMap = new Map();
         this.queryCache = new Map();
     }
 
@@ -116,13 +114,13 @@ export class StoreAsync<T> {
         this.emitterMap.delete(path);
     }
 
-    /* public GetCachedArray(path: string) {
-        return this.arrayCacheMap.get(path);
+    public Destroy() {
+        this.worker.terminate();
+        this.queryCache.forEach(q => q.Destroy());
+        this.queryCache.clear();
+        this.emitterMap.forEach(e => e.removeAllListeners());
+        this.emitterMap.clear();
     }
-
-    public SetCachedArray(path: string, array: Array<any>) {
-        this.arrayCacheMap.set(path, array);
-    } */
 
 }
 
