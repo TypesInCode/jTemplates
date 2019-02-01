@@ -3,9 +3,11 @@ import { div, span, ul, li, input, b, a, br, img, video, source, option, select,
 import { StoreAsync } from "./Store/async/storeAsync";
 import { Store } from "./Store/sync/store";
 import { Scope } from "./Store/scope";
+import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
+import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, StoreAsync, Store, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, StoreAsync, StoreAsyncQuery, Store, StoreQuery, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* class Root extends Component<any, any> {
 

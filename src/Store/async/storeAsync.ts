@@ -52,6 +52,7 @@ export class StoreAsync<T> {
             query.removeListener("destroy", destroy);
         };
         query.addListener("destroy", destroy);
+        this.queryCache.set(id, query);
 
         return query;
     }

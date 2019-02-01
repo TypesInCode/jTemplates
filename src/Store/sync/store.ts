@@ -31,9 +31,12 @@ export class Store<T> {
             return this.queryCache.get(id);
 
         var query = new StoreQuery<T, O>(this.manager, queryFunc);
-        query.addListener("destroy", () => {
+        var destroy = () => {
             this.queryCache.delete(id);
-        });
+            query.removeListener("destroy", destroy);
+        };
+        query.addListener("destroy", destroy);
+        this.queryCache.set(id, query);
 
         return query;
     }
