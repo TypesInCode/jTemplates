@@ -1,20 +1,14 @@
-import { StoreAsync } from "./storeAsync";
+import { StoreAsyncManager } from "./storeAsyncManager";
 import { IsValue } from "../utils";
-import { StoreAsyncReader } from "./storeAsyncReader";
-import { StoreAsyncQuery } from "./storeAsyncQuery";
 
 export class StoreAsyncWriter<T> {
-
-    public set Root(val: T) {
-        this.WriteTo("root", val);
-    }
     
-    constructor(private store: StoreAsync<T>) { }
+    constructor(private store: StoreAsyncManager<T>) { }
 
     public async Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<void> {
         var path = null;
         if(typeof readOnly === 'string')
-            path = await this.store.GetPathById(readOnly);
+            path = this.store.GetPathById(readOnly);
         
         var path = path || readOnly && (readOnly as any).___path;
         if(!path)
@@ -23,7 +17,7 @@ export class StoreAsyncWriter<T> {
         await this.WriteTo(path, updateCallback);
     }
 
-    public async WritePath(path: string, value: any) {
+    public async WritePath(path: string, value: any): Promise<void> {
         await this.WriteTo(path, value);
     }
 
@@ -34,15 +28,8 @@ export class StoreAsyncWriter<T> {
         var childPath = [path, localValue.length].join(".");
         localValue.push(null);
 
-        /* var getterValue = this.getterMap.get(path) as Array<O>;
-        getterValue.push(this.CreateGetterObject(newValue, childPath)); */
-
         await this.WriteTo(childPath, newValue)
         this.EmitSet(path);
-    }
-
-    public Query<O>(id: string, defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
-        return this.store.GetQuery(id, defaultValue, callback);
     }
 
     private async WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): Promise<void> {

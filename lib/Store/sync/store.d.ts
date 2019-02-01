@@ -1,24 +1,18 @@
-import { Emitter } from "../../emitter";
-import { StoreReader } from "./storeReader";
-import { StoreWriter } from "./storeWriter";
+import { ActionCallback, FuncCallback } from "./store.types";
+import { StoreQuery } from "./storeQuery";
 export declare class Store<T> {
-    private root;
-    private emitterMap;
-    private diff;
-    constructor(idFunction: {
-        (val: any): any;
-    });
-    GetReader(): StoreReader<T>;
-    GetWriter(): StoreWriter<T>;
-    Diff(path: string, newValue: any, skipDependents: boolean): IDiffResponse;
-    GetPathById(id: string): string;
-    EnsureEmitter(path: string): Emitter;
-    AssignPropertyPath(value: any, path: string): void;
-    ResolvePropertyPath(path: string): any;
-    DeleteEmitter(path: string): void;
+    private manager;
+    private reader;
+    private writer;
+    private queryCache;
+    readonly Root: T;
+    constructor(idFunction: (val: any) => any);
+    Action(action: ActionCallback<T>): void;
+    Query<O>(id: string, queryFunc: FuncCallback<T, O>): StoreQuery<T, O>;
+    Destroy(): void;
 }
 export declare namespace Store {
     function Create<T>(init: T, idFunction?: {
         (val: any): any;
-    }): StoreWriter<T>;
+    }): Store<T>;
 }

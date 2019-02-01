@@ -1,14 +1,18 @@
-import { StoreAsync } from './storeAsync';
+import { StoreAsyncManager } from './storeAsyncManager';
 import { Emitter } from '../../emitter';
-import { StoreAsyncWriter } from '../..';
 export declare class StoreAsyncReader<T> {
     private store;
     private emitterSet;
-    readonly Writer: StoreAsyncWriter<T>;
+    private writer;
+    private watching;
+    private destroyed;
+    readonly Root: T;
     readonly Emitters: Set<Emitter>;
-    constructor(store: StoreAsync<T>);
+    Watching: boolean;
+    constructor(store: StoreAsyncManager<T>);
     Get<O>(id: string): Promise<O>;
-    private GetCachedArray;
+    Destroy(): void;
+    private GetArray;
     private CreateGetterObject;
     private RegisterEmitter;
 }

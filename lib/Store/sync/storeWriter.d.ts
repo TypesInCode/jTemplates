@@ -1,10 +1,7 @@
-import { Store } from "./store";
-import { StoreReader } from "./storeReader";
-import { StoreQuery } from "./storeQuery";
+import { StoreManager } from "./storeManager";
 export declare class StoreWriter<T> {
     private store;
-    Root: T;
-    constructor(store: Store<T>);
+    constructor(store: StoreManager<T>);
     Write<O>(readOnly: O | string, updateCallback: {
         (current: O): O;
     } | {
@@ -12,9 +9,6 @@ export declare class StoreWriter<T> {
     } | O): void;
     WritePath(path: string, value: any): void;
     Push<O>(readOnly: Array<O>, newValue: O): void;
-    Query<O>(callback: {
-        (reader: StoreReader<T>): O;
-    }): StoreQuery<O>;
     private WriteTo;
     private ResolveUpdateCallback;
     private CreateCopy;

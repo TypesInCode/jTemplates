@@ -72,7 +72,7 @@ var jTemplate =
 	exports.td = elements_1.td;
 	const storeAsync_1 = __webpack_require__(15);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
-	const store_1 = __webpack_require__(24);
+	const store_1 = __webpack_require__(26);
 	exports.Store = store_1.Store;
 	const scope_1 = __webpack_require__(7);
 	exports.Scope = scope_1.Scope;
@@ -460,7 +460,7 @@ var jTemplate =
 	    UpdateValue(callback) {
 	        var value = null;
 	        var emitters = scopeCollector_1.scopeCollector.Watch(() => {
-	            value = this.GetNewValue();
+	            value = this.GetFunction();
 	        });
 	        callback(emitters, value);
 	    }
@@ -482,8 +482,10 @@ var jTemplate =
 	        this.getFunction = getFunction;
 	        this.emitters = new Set();
 	        this.setCallback = this.SetCallback.bind(this);
+	        this.destroyCallback = this.DestroyCallback.bind(this);
 	        this.defaultValue = defaultValue;
 	        this.dirty = true;
+	        this.isAsync = false;
 	    }
 	    get Value() {
 	        scopeCollector_1.scopeCollector.Register(this);
@@ -491,38 +493,76 @@ var jTemplate =
 	            this.UpdateValueBase();
 	        return typeof this.value === 'undefined' ? this.defaultValue : this.value;
 	    }
-	    Destroy() {
-	        this.removeAllListeners();
-	        this.emitters.forEach(e => e.removeListener("set", this.setCallback));
-	        this.emitters.clear();
+	    get GetFunction() {
+	        return this.getFunction;
 	    }
-	    GetNewValue(...args) {
-	        return this.getFunction(...args);
+	    AsPromise() {
+	        return new Promise((resolve) => {
+	            var temp = this.Value;
+	            if (!this.isAsync || this.defaultValue !== temp) {
+	                resolve(temp);
+	                return;
+	            }
+	            var setCallback = () => {
+	                resolve(this.Value);
+	                this.removeListener("set", setCallback);
+	            };
+	            this.addListener("set", setCallback);
+	        });
+	    }
+	    Destroy() {
+	        this.emitters.forEach(e => {
+	            e.removeListener("set", this.setCallback);
+	            e.removeListener("destroy", this.destroyCallback);
+	        });
+	        this.emitters.clear();
+	        this.emit("destroy", this);
+	        this.removeAllListeners();
 	    }
 	    UpdateValueBase() {
 	        this.dirty = false;
-	        var async = false;
+	        var callbackFired = false;
 	        this.UpdateValue((emitters, value) => {
+	            callbackFired = true;
 	            this.UpdateEmitters(emitters);
 	            this.value = value;
-	            if (async)
+	            if (this.isAsync)
 	                this.emit("set");
 	        });
-	        async = true;
+	        this.isAsync = !callbackFired;
 	    }
 	    UpdateEmitters(newEmitters) {
-	        this.emitters.forEach(emitter => {
-	            if (!newEmitters.has(emitter))
-	                emitter.removeListener("set", this.setCallback);
+	        this.emitters.forEach(e => {
+	            if (!newEmitters.has(e)) {
+	                this.RemoveListenersFrom(e);
+	            }
 	        });
-	        while (newEmitters.has(this))
-	            newEmitters.delete(this);
-	        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+	        newEmitters.forEach(e => {
+	            this.AddListenersTo(e);
+	        });
 	        this.emitters = newEmitters;
 	    }
 	    SetCallback() {
-	        this.dirty = true;
-	        this.emit("set");
+	        if (!this.isAsync) {
+	            this.dirty = true;
+	            this.emit("set");
+	        }
+	        else
+	            this.UpdateValueBase();
+	    }
+	    DestroyCallback(emitter) {
+	        this.RemoveListenersFrom(emitter);
+	        this.emitters.delete(emitter);
+	        if (this.emitters.size === 0)
+	            this.Destroy();
+	    }
+	    AddListenersTo(emitter) {
+	        emitter.addListener("set", this.setCallback);
+	        emitter.addListener("destroy", this.destroyCallback);
+	    }
+	    RemoveListenersFrom(emitter) {
+	        emitter.removeListener("set", this.setCallback);
+	        emitter.removeListener("destroy", this.destroyCallback);
 	    }
 	}
 	exports.ScopeBase = ScopeBase;
@@ -601,14 +641,6 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const binding_1 = __webpack_require__(6);
 	const template_1 = __webpack_require__(1);
@@ -632,8 +664,8 @@ var jTemplate =
 	    OverrideBinding(bindingFunction, config) {
 	        var localBinding = null;
 	        if (typeof bindingFunction === 'function') {
-	            localBinding = () => __awaiter(this, void 0, void 0, function* () {
-	                var value = yield bindingFunction();
+	            localBinding = () => {
+	                var value = bindingFunction();
 	                var array = ConvertToArray(value);
 	                return array.map((curr, index) => {
 	                    return {
@@ -641,7 +673,7 @@ var jTemplate =
 	                        key: config.key && config.key(curr) || index
 	                    };
 	                });
-	            });
+	            };
 	        }
 	        else
 	            localBinding = () => {
@@ -851,50 +883,92 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(9);
-	const storeAsyncReader_1 = __webpack_require__(16);
-	const storeAsyncWriter_1 = __webpack_require__(18);
-	const workerQueue_1 = __webpack_require__(20);
-	const storeWorker_1 = __webpack_require__(22);
+	const storeAsyncManager_1 = __webpack_require__(16);
+	const storeAsyncReader_1 = __webpack_require__(22);
+	const storeAsyncWriter_1 = __webpack_require__(24);
+	const storeAsyncQuery_1 = __webpack_require__(25);
+	const promiseQueue_1 = __webpack_require__(18);
 	class StoreAsync {
+	    constructor(idFunction) {
+	        this.manager = new storeAsyncManager_1.StoreAsyncManager(idFunction);
+	        this.reader = new storeAsyncReader_1.StoreAsyncReader(this.manager);
+	        this.writer = new storeAsyncWriter_1.StoreAsyncWriter(this.manager);
+	        this.promiseQueue = new promiseQueue_1.PromiseQueue();
+	        this.queryCache = new Map();
+	    }
+	    get OnComplete() {
+	        return this.promiseQueue.OnComplete.then(() => {
+	            return this;
+	        });
+	    }
+	    Action(action) {
+	        return this.promiseQueue.Push(resolve => resolve(action(this.reader, this.writer)));
+	    }
+	    Query(id, defaultValue, queryFunc) {
+	        if (this.queryCache.has(id))
+	            return this.queryCache.get(id);
+	        var query = new storeAsyncQuery_1.StoreAsyncQuery(this.manager, defaultValue, (reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            return yield this.promiseQueue.Push(resolve => {
+	                resolve(queryFunc(reader, writer));
+	            });
+	        }));
+	        var destroy = () => {
+	            this.queryCache.delete(id);
+	            query.removeListener("destroy", destroy);
+	        };
+	        query.addListener("destroy", destroy);
+	        return query;
+	    }
+	    Destroy() {
+	        this.promiseQueue.Stop();
+	        this.queryCache.forEach(q => q.Destroy());
+	        this.queryCache.clear();
+	        this.manager.Destroy();
+	    }
+	}
+	exports.StoreAsync = StoreAsync;
+	(function (StoreAsync) {
+	    function Create(init, idFunction) {
+	        var store = new StoreAsync(idFunction);
+	        store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            yield writer.WritePath("root", init);
+	        }));
+	        return store;
+	    }
+	    StoreAsync.Create = Create;
+	})(StoreAsync = exports.StoreAsync || (exports.StoreAsync = {}));
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const emitter_1 = __webpack_require__(9);
+	const workerQueue_1 = __webpack_require__(17);
+	const storeWorker_1 = __webpack_require__(20);
+	class StoreAsyncManager {
 	    constructor(idFunction) {
 	        this.emitterMap = new Map();
 	        this.worker = storeWorker_1.StoreWorker.Create();
 	        this.workerQueue = new workerQueue_1.WorkerQueue(this.worker);
 	        this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()] }));
 	    }
-	    GetReader() {
-	        return new storeAsyncReader_1.StoreAsyncReader(this);
-	    }
-	    GetWriter() {
-	        return new storeAsyncWriter_1.StoreAsyncWriter(this);
-	    }
-	    ProcessStoreQueue() {
-	        this.workerQueue.Process();
-	    }
-	    OnStoreQueueComplete() {
-	        return this.workerQueue.OnComplete();
-	    }
 	    Diff(path, newValue, skipDependents) {
-	        return new Promise(resolve => {
+	        return this.workerQueue.Push(() => {
 	            var oldValue = this.ResolvePropertyPath(path);
-	            var promise = this.workerQueue.Push(() => ({
+	            return {
 	                method: "diff",
 	                arguments: [path, newValue, oldValue, skipDependents]
-	            }));
-	            resolve(promise);
-	            this.ProcessStoreQueue();
+	            };
 	        });
 	    }
 	    GetPathById(id) {
-	        return new Promise(resolve => {
-	            var promise = this.workerQueue.Push(() => ({
-	                method: "getpath",
-	                arguments: [id]
-	            }));
-	            resolve(promise);
-	            this.ProcessStoreQueue();
-	        });
+	        return this.workerQueue.Push(() => ({
+	            method: "getpath",
+	            arguments: [id]
+	        }));
 	    }
 	    EnsureEmitter(path) {
 	        var emitter = this.emitterMap.get(path);
@@ -919,280 +993,36 @@ var jTemplate =
 	        }, this);
 	    }
 	    DeleteEmitter(path) {
-	        this.emitterMap.delete(path);
+	        var emitter = this.emitterMap.get(path);
+	        if (emitter) {
+	            this.emitterMap.delete(path);
+	            emitter.emit("destroy", emitter);
+	        }
+	    }
+	    Destroy() {
+	        this.root = null;
+	        this.emitterMap.forEach(value => value.removeAllListeners());
+	        this.emitterMap.clear();
+	        this.workerQueue.Stop();
 	    }
 	}
-	exports.StoreAsync = StoreAsync;
-	(function (StoreAsync) {
-	    function Create(init, idFunction) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            var store = new StoreAsync(idFunction);
-	            var writer = store.GetWriter();
-	            writer.Root = init;
-	            yield writer.OnWriteComplete();
-	            return writer;
-	        });
-	    }
-	    StoreAsync.Create = Create;
-	})(StoreAsync = exports.StoreAsync || (exports.StoreAsync = {}));
-
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(17);
-	const scopeCollector_1 = __webpack_require__(10);
-	class StoreAsyncReader {
-	    constructor(store) {
-	        this.store = store;
-	        this.emitterSet = new Set();
-	    }
-	    get Root() {
-	        var root = this.store.ResolvePropertyPath('root');
-	        return this.CreateGetterObject(root, 'root');
-	    }
-	    get Emitters() {
-	        return this.emitterSet;
-	    }
-	    Get(id) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            var path = yield this.store.GetPathById(id);
-	            this.RegisterEmitter(path);
-	            return this.store.ResolvePropertyPath(path);
-	        });
-	    }
-	    CreateGetterObject(source, path) {
-	        if (utils_1.IsValue(source)) {
-	            this.RegisterEmitter(path);
-	            return source;
-	        }
-	        var ret = null;
-	        if (Array.isArray(source)) {
-	            ret = new Proxy([], {
-	                get: (obj, prop) => {
-	                    if (prop === '___path')
-	                        return path;
-	                    var isInt = !isNaN(parseInt(prop));
-	                    var childPath = [path, prop].join(".");
-	                    if (isInt)
-	                        this.RegisterEmitter(childPath);
-	                    if (isInt || prop === 'length')
-	                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
-	                    return obj[prop];
-	                },
-	                set: (obj, prop, value) => {
-	                    var isInt = !isNaN(parseInt(prop));
-	                    var childPath = [path, prop].join(".");
-	                    if (isInt) {
-	                        this.store.AssignPropertyPath(value, childPath);
-	                    }
-	                    else {
-	                        obj[prop] = value;
-	                    }
-	                    return true;
-	                }
-	            });
-	        }
-	        else {
-	            ret = new Proxy({}, {
-	                get: (obj, prop) => {
-	                    if (prop === '___path')
-	                        return path;
-	                    var childPath = [path, prop].join(".");
-	                    this.RegisterEmitter(childPath);
-	                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), path);
-	                },
-	                set: (obj, prop, value) => {
-	                    var childPath = [path, prop].join(".");
-	                    this.store.AssignPropertyPath(value, childPath);
-	                    return true;
-	                }
-	            });
-	        }
-	        return ret;
-	    }
-	    RegisterEmitter(path) {
-	        var emitter = this.store.EnsureEmitter(path);
-	        if (!this.emitterSet.has(emitter))
-	            this.emitterSet.add(emitter);
-	        scopeCollector_1.scopeCollector.Register(emitter);
-	    }
-	}
-	exports.StoreAsyncReader = StoreAsyncReader;
+	exports.StoreAsyncManager = StoreAsyncManager;
 
 
 /***/ }),
 /* 17 */
-/***/ (function(module, exports) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	function IsValue(value) {
-	    if (!value)
-	        return true;
-	    return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
-	}
-	exports.IsValue = IsValue;
-
-
-/***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(17);
-	const storeAsyncQuery_1 = __webpack_require__(19);
-	class StoreAsyncWriter {
-	    constructor(store) {
-	        this.store = store;
-	    }
-	    set Root(val) {
-	        this.WriteTo("root", val);
-	    }
-	    Write(readOnly, updateCallback) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            var path = null;
-	            if (typeof readOnly === 'string')
-	                path = yield this.store.GetPathById(readOnly);
-	            var path = path || readOnly && readOnly.___path;
-	            if (!path)
-	                return;
-	            yield this.WriteTo(path, updateCallback);
-	        });
-	    }
-	    OnWriteComplete() {
-	        return this.store.OnStoreQueueComplete();
-	    }
-	    Query(defaultValue, callback) {
-	        return new storeAsyncQuery_1.StoreAsyncQuery(this.store, callback, defaultValue);
-	    }
-	    WriteTo(path, updateCallback, skipDependents) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            var value = this.ResolveUpdateCallback(path, updateCallback);
-	            var diff = yield this.store.Diff(path, value, !!skipDependents);
-	            this.store.AssignPropertyPath(value, path);
-	            this.ProcessDiff(diff);
-	        });
-	    }
-	    ResolveUpdateCallback(path, updateCallback) {
-	        if (typeof updateCallback === 'function') {
-	            var localValue = this.store.ResolvePropertyPath(path);
-	            var mutableCopy = this.CreateCopy(localValue);
-	            var ret = updateCallback(mutableCopy);
-	            return typeof ret === 'undefined' ? mutableCopy : ret;
-	        }
-	        return updateCallback;
-	    }
-	    CreateCopy(source) {
-	        if (utils_1.IsValue(source))
-	            return source;
-	        var ret = null;
-	        if (Array.isArray(source)) {
-	            ret = new Array(source.length);
-	            for (var x = 0; x < source.length; x++)
-	                ret[x] = this.CreateCopy(source[x]);
-	            return ret;
-	        }
-	        ret = {};
-	        for (var key in source)
-	            ret[key] = this.CreateCopy(source[key]);
-	        return ret;
-	    }
-	    ProcessDiff(data) {
-	        data.changedPaths.forEach(p => {
-	            this.EmitSet(p);
-	        });
-	        data.deletedPaths.forEach(p => {
-	            this.store.DeleteEmitter(p);
-	        });
-	        data.pathDependencies.forEach(dep => {
-	            var value = this.store.ResolvePropertyPath(dep.path);
-	            dep.targets.forEach(target => {
-	                this.WriteTo(target, value, true);
-	            });
-	        });
-	    }
-	    EmitSet(path) {
-	        var emitter = this.store.EnsureEmitter(path);
-	        emitter.emit("set");
-	    }
-	}
-	exports.StoreAsyncWriter = StoreAsyncWriter;
-
-
-/***/ }),
-/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(8);
-	const scope_1 = __webpack_require__(7);
-	class StoreAsyncQuery extends scopeBase_1.ScopeBase {
-	    constructor(store, getFunction, defaultValue) {
-	        super(getFunction, defaultValue);
-	        this.store = store;
-	    }
-	    Scope(callback) {
-	        return new scope_1.Scope(() => callback(this.Value));
-	    }
-	    UpdateValue(callback) {
-	        var reader = this.store.GetReader();
-	        this.GetNewValue(reader).then(value => {
-	            callback(reader.Emitters, value);
-	        });
-	    }
-	}
-	exports.StoreAsyncQuery = StoreAsyncQuery;
-
-
-/***/ }),
-/* 20 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(21);
+	const promiseQueue_1 = __webpack_require__(18);
 	class WorkerQueue {
 	    constructor(worker) {
-	        this.promiseQueue = [];
-	        this.deferred = null;
-	        this.queueIndex = 0;
-	        this.running = false;
-	        this.worker = null;
 	        this.worker = worker;
-	    }
-	    get Running() {
-	        return this.running;
-	    }
-	    OnComplete() {
-	        if (!this.running)
-	            return Promise.resolve();
-	        this.deferred = new deferredPromise_1.DeferredPromise(resolve => resolve());
-	        return this.deferred;
+	        this.promiseQueue = new promiseQueue_1.PromiseQueue();
 	    }
 	    Push(getMessage) {
-	        var p = new deferredPromise_1.DeferredPromise((resolve, reject) => {
+	        return this.promiseQueue.Push((resolve, reject) => {
 	            this.worker.onmessage = (message) => {
 	                resolve(message.data);
 	            };
@@ -1203,36 +1033,68 @@ var jTemplate =
 	            };
 	            this.worker.postMessage(getMessage());
 	        });
-	        this.promiseQueue.push(p);
-	        return p;
 	    }
-	    Process() {
-	        if (this.running)
-	            return;
-	        this.running = true;
-	        this.ProcessQueueRecursive();
-	    }
-	    ProcessQueueRecursive() {
-	        if (this.queueIndex >= this.promiseQueue.length) {
-	            this.running = false;
-	            this.queueIndex = 0;
-	            this.promiseQueue = [];
-	            this.deferred && this.deferred.Invoke();
-	            this.deferred = null;
-	            return;
-	        }
-	        this.promiseQueue[this.queueIndex].Invoke();
-	        this.promiseQueue[this.queueIndex].then(() => {
-	            this.queueIndex++;
-	            this.ProcessQueueRecursive();
-	        });
+	    Stop() {
+	        this.promiseQueue.Stop();
 	    }
 	}
 	exports.WorkerQueue = WorkerQueue;
 
 
 /***/ }),
-/* 21 */
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const deferredPromise_1 = __webpack_require__(19);
+	class PromiseQueue {
+	    constructor() {
+	        this.running = false;
+	        this.queue = [];
+	    }
+	    get OnComplete() {
+	        if (!this.running)
+	            return Promise.resolve();
+	        if (!this.onComplete)
+	            this.onComplete = new deferredPromise_1.DeferredPromise(resolve => {
+	                resolve();
+	            });
+	        return this.onComplete;
+	    }
+	    Push(executor) {
+	        var p = new deferredPromise_1.DeferredPromise(executor);
+	        this.queue.push(p);
+	        this.Execute();
+	        return p;
+	    }
+	    Stop() {
+	        this.queue = [];
+	    }
+	    Execute() {
+	        if (this.running)
+	            return;
+	        this.running = true;
+	        this.ExecuteRecursive();
+	    }
+	    ExecuteRecursive(queueIndex) {
+	        queueIndex = queueIndex || 0;
+	        if (queueIndex >= this.queue.length) {
+	            this.running = false;
+	            this.queue = [];
+	            this.onComplete && this.onComplete.Invoke();
+	            this.onComplete = null;
+	            return;
+	        }
+	        this.queue[queueIndex].Invoke();
+	        this.queue[queueIndex].then(() => this.ExecuteRecursive(++queueIndex));
+	    }
+	}
+	exports.PromiseQueue = PromiseQueue;
+
+
+/***/ }),
+/* 19 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1258,12 +1120,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(23);
+	const objectDiff_1 = __webpack_require__(21);
 	var StoreWorker;
 	(function (StoreWorker) {
 	    var workerConstructor = null;
@@ -1284,7 +1146,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 23 */
+/* 21 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1439,16 +1301,355 @@ var jTemplate =
 
 
 /***/ }),
+/* 22 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const utils_1 = __webpack_require__(23);
+	const scopeCollector_1 = __webpack_require__(10);
+	const storeAsyncWriter_1 = __webpack_require__(24);
+	class StoreAsyncReader {
+	    constructor(store) {
+	        this.store = store;
+	        this.watching = false;
+	        this.writer = new storeAsyncWriter_1.StoreAsyncWriter(store);
+	    }
+	    get Root() {
+	        var root = this.store.ResolvePropertyPath("root");
+	        this.RegisterEmitter("root");
+	        return this.CreateGetterObject(root, "root");
+	    }
+	    get Emitters() {
+	        return this.emitterSet;
+	    }
+	    get Watching() {
+	        return this.watching;
+	    }
+	    set Watching(val) {
+	        this.emitterSet = val ? new Set() : this.emitterSet;
+	        this.watching = val;
+	    }
+	    Get(id) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var path = yield this.store.GetPathById(id);
+	            if (!path)
+	                return undefined;
+	            this.RegisterEmitter(path);
+	            return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
+	        });
+	    }
+	    Destroy() {
+	        this.destroyed = true;
+	        this.watching = false;
+	        this.emitterSet.clear();
+	    }
+	    GetArray(path) {
+	        var localArray = this.store.ResolvePropertyPath(path);
+	        var cachedArray = new Array(localArray.length);
+	        for (var x = 0; x < cachedArray.length; x++)
+	            cachedArray[x] = this.CreateGetterObject(localArray[x], [path, x].join("."));
+	        return cachedArray;
+	    }
+	    CreateGetterObject(source, path) {
+	        if (utils_1.IsValue(source) || source.___storeProxy) {
+	            this.RegisterEmitter(path);
+	            return source;
+	        }
+	        var ret = null;
+	        if (Array.isArray(source)) {
+	            ret = new Proxy([], {
+	                get: (obj, prop) => {
+	                    if (prop === '___storeProxy')
+	                        return true;
+	                    if (prop === '___path')
+	                        return path;
+	                    if (prop === 'toJSON')
+	                        return () => {
+	                            return this.store.ResolvePropertyPath(path);
+	                        };
+	                    if (typeof prop !== 'symbol') {
+	                        var isInt = !isNaN(parseInt(prop));
+	                        var childPath = [path, prop].join(".");
+	                        if (isInt)
+	                            this.RegisterEmitter(childPath);
+	                        if (isInt || prop === 'length')
+	                            return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+	                    }
+	                    var ret = obj[prop];
+	                    if (typeof ret === 'function') {
+	                        var cachedArray = this.GetArray(path);
+	                        return ret.bind(cachedArray);
+	                    }
+	                    return ret;
+	                },
+	                set: (obj, prop, value) => {
+	                    var isInt = !isNaN(parseInt(prop));
+	                    var childPath = [path, prop].join(".");
+	                    if (isInt) {
+	                        this.writer.WritePath(childPath, value);
+	                    }
+	                    else {
+	                        obj[prop] = value;
+	                    }
+	                    return true;
+	                }
+	            });
+	        }
+	        else {
+	            ret = new Proxy({}, {
+	                get: (obj, prop) => {
+	                    if (prop === '___storeProxy')
+	                        return true;
+	                    if (prop === '___path')
+	                        return path;
+	                    if (prop === 'toJSON')
+	                        return () => {
+	                            return this.store.ResolvePropertyPath(path);
+	                        };
+	                    if (typeof prop !== 'symbol') {
+	                        var childPath = [path, prop].join(".");
+	                        this.RegisterEmitter(childPath);
+	                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+	                    }
+	                    return obj[prop];
+	                },
+	                set: (obj, prop, value) => {
+	                    var childPath = [path, prop].join(".");
+	                    this.writer.WritePath(childPath, value);
+	                    return true;
+	                }
+	            });
+	        }
+	        return ret;
+	    }
+	    RegisterEmitter(path) {
+	        if (this.destroyed)
+	            return;
+	        var emitter = this.store.EnsureEmitter(path);
+	        if (this.watching && !this.emitterSet.has(emitter))
+	            this.emitterSet.add(emitter);
+	        scopeCollector_1.scopeCollector.Register(emitter);
+	    }
+	}
+	exports.StoreAsyncReader = StoreAsyncReader;
+
+
+/***/ }),
+/* 23 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	function IsValue(value) {
+	    if (!value)
+	        return true;
+	    return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
+	}
+	exports.IsValue = IsValue;
+
+
+/***/ }),
 /* 24 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const utils_1 = __webpack_require__(23);
+	class StoreAsyncWriter {
+	    constructor(store) {
+	        this.store = store;
+	    }
+	    Write(readOnly, updateCallback) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var path = null;
+	            if (typeof readOnly === 'string')
+	                path = this.store.GetPathById(readOnly);
+	            var path = path || readOnly && readOnly.___path;
+	            if (!path)
+	                return;
+	            yield this.WriteTo(path, updateCallback);
+	        });
+	    }
+	    WritePath(path, value) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.WriteTo(path, value);
+	        });
+	    }
+	    Push(readOnly, newValue) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var path = readOnly.___path;
+	            var localValue = this.store.ResolvePropertyPath(path);
+	            var childPath = [path, localValue.length].join(".");
+	            localValue.push(null);
+	            yield this.WriteTo(childPath, newValue);
+	            this.EmitSet(path);
+	        });
+	    }
+	    WriteTo(path, updateCallback, skipDependents) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var value = this.ResolveUpdateCallback(path, updateCallback);
+	            var diff = yield this.store.Diff(path, value, !!skipDependents);
+	            this.store.AssignPropertyPath(value, path);
+	            this.ProcessDiff(diff);
+	        });
+	    }
+	    ResolveUpdateCallback(path, updateCallback) {
+	        if (typeof updateCallback === 'function') {
+	            var localValue = this.store.ResolvePropertyPath(path);
+	            var mutableCopy = this.CreateCopy(localValue);
+	            var ret = updateCallback(mutableCopy);
+	            return typeof ret === 'undefined' ? mutableCopy : ret;
+	        }
+	        return updateCallback;
+	    }
+	    CreateCopy(source) {
+	        if (utils_1.IsValue(source))
+	            return source;
+	        var ret = null;
+	        if (Array.isArray(source)) {
+	            ret = new Array(source.length);
+	            for (var x = 0; x < source.length; x++)
+	                ret[x] = this.CreateCopy(source[x]);
+	            return ret;
+	        }
+	        ret = {};
+	        for (var key in source)
+	            ret[key] = this.CreateCopy(source[key]);
+	        return ret;
+	    }
+	    ProcessDiff(data) {
+	        data.changedPaths.forEach(p => {
+	            this.EmitSet(p);
+	        });
+	        data.deletedPaths.forEach(p => {
+	            this.store.DeleteEmitter(p);
+	        });
+	        data.pathDependencies.forEach(dep => {
+	            var value = this.store.ResolvePropertyPath(dep.path);
+	            dep.targets.forEach(target => {
+	                this.WriteTo(target, value, true);
+	            });
+	        });
+	    }
+	    EmitSet(path) {
+	        var emitter = this.store.EnsureEmitter(path);
+	        emitter.emit("set");
+	    }
+	}
+	exports.StoreAsyncWriter = StoreAsyncWriter;
+
+
+/***/ }),
+/* 25 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const scopeBase_1 = __webpack_require__(8);
+	const storeAsyncReader_1 = __webpack_require__(22);
+	const storeAsyncWriter_1 = __webpack_require__(24);
+	const scope_1 = __webpack_require__(7);
+	class StoreAsyncQuery extends scopeBase_1.ScopeBase {
+	    constructor(store, defaultValue, getFunction) {
+	        super(getFunction, defaultValue);
+	        this.reader = new storeAsyncReader_1.StoreAsyncReader(store);
+	        this.writer = new storeAsyncWriter_1.StoreAsyncWriter(store);
+	    }
+	    Scope(callback) {
+	        return new scope_1.Scope(() => callback(this.Value));
+	    }
+	    Destroy() {
+	        super.Destroy();
+	        this.reader.Destroy();
+	    }
+	    UpdateValue(callback) {
+	        this.reader.Watching = true;
+	        this.GetFunction(this.reader, this.writer).then(value => {
+	            this.reader.Watching = false;
+	            callback(this.reader.Emitters, value);
+	        });
+	    }
+	}
+	exports.StoreAsyncQuery = StoreAsyncQuery;
+
+
+/***/ }),
+/* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const storeManager_1 = __webpack_require__(27);
+	const storeReader_1 = __webpack_require__(28);
+	const storeWriter_1 = __webpack_require__(29);
+	const storeQuery_1 = __webpack_require__(30);
+	class Store {
+	    constructor(idFunction) {
+	        this.manager = new storeManager_1.StoreManager(idFunction);
+	        this.reader = new storeReader_1.StoreReader(this.manager);
+	        this.writer = new storeWriter_1.StoreWriter(this.manager);
+	        this.queryCache = new Map();
+	    }
+	    get Root() {
+	        return this.reader.Root;
+	    }
+	    Action(action) {
+	        action(this.reader, this.writer);
+	    }
+	    Query(id, queryFunc) {
+	        if (this.queryCache.has(id))
+	            return this.queryCache.get(id);
+	        var query = new storeQuery_1.StoreQuery(this.manager, queryFunc);
+	        query.addListener("destroy", () => {
+	            this.queryCache.delete(id);
+	        });
+	        return query;
+	    }
+	    Destroy() {
+	        this.queryCache.forEach(q => q.Destroy());
+	        this.queryCache.clear();
+	        this.manager.Destroy();
+	    }
+	}
+	exports.Store = Store;
+	(function (Store) {
+	    function Create(init, idFunction) {
+	        var store = new Store(idFunction);
+	        store.Action((reader, writer) => {
+	            writer.WritePath("root", init);
+	        });
+	        return store;
+	    }
+	    Store.Create = Create;
+	})(Store = exports.Store || (exports.Store = {}));
+
+
+/***/ }),
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(9);
-	const objectDiff_1 = __webpack_require__(23);
-	const storeReader_1 = __webpack_require__(25);
-	const storeWriter_1 = __webpack_require__(26);
-	class Store {
+	const objectDiff_1 = __webpack_require__(21);
+	class StoreManager {
 	    constructor(idFunction) {
 	        this.emitterMap = new Map();
 	        this.diff = objectDiff_1.ObjectDiff();
@@ -1456,12 +1657,6 @@ var jTemplate =
 	            method: "create",
 	            arguments: [idFunction]
 	        });
-	    }
-	    GetReader() {
-	        return new storeReader_1.StoreReader(this);
-	    }
-	    GetWriter() {
-	        return new storeWriter_1.StoreWriter(this);
 	    }
 	    Diff(path, newValue, skipDependents) {
 	        var oldValue = this.ResolvePropertyPath(path);
@@ -1502,48 +1697,72 @@ var jTemplate =
 	        }, this);
 	    }
 	    DeleteEmitter(path) {
-	        this.emitterMap.delete(path);
+	        var emitter = this.emitterMap.get(path);
+	        if (emitter) {
+	            this.emitterMap.delete(path);
+	            emitter.emit("destroy", emitter);
+	        }
+	    }
+	    Destroy() {
+	        this.root = null;
+	        this.emitterMap.forEach(value => value.removeAllListeners());
+	        this.emitterMap.clear();
 	    }
 	}
-	exports.Store = Store;
-	(function (Store) {
-	    function Create(init, idFunction) {
-	        var store = new Store(idFunction);
-	        var writer = store.GetWriter();
-	        writer.Root = init;
-	        return writer;
-	    }
-	    Store.Create = Create;
-	})(Store = exports.Store || (exports.Store = {}));
+	exports.StoreManager = StoreManager;
 
 
 /***/ }),
-/* 25 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(17);
+	const utils_1 = __webpack_require__(23);
 	const scopeCollector_1 = __webpack_require__(10);
+	const storeWriter_1 = __webpack_require__(29);
 	class StoreReader {
 	    constructor(store) {
 	        this.store = store;
-	        this.emitterSet = new Set();
+	        this.watching = false;
+	        this.writer = new storeWriter_1.StoreWriter(store);
 	    }
 	    get Root() {
-	        var root = this.store.ResolvePropertyPath('root');
-	        return this.CreateGetterObject(root, 'root');
+	        var root = this.store.ResolvePropertyPath("root");
+	        this.RegisterEmitter("root");
+	        return this.CreateGetterObject(root, "root");
 	    }
 	    get Emitters() {
 	        return this.emitterSet;
 	    }
+	    get Watching() {
+	        return this.watching;
+	    }
+	    set Watching(val) {
+	        this.emitterSet = val ? new Set() : this.emitterSet;
+	        this.watching = val;
+	    }
 	    Get(id) {
 	        var path = this.store.GetPathById(id);
+	        if (!path)
+	            return undefined;
 	        this.RegisterEmitter(path);
-	        return this.store.ResolvePropertyPath(path);
+	        return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
+	    }
+	    Destroy() {
+	        this.destroyed = true;
+	        this.watching = false;
+	        this.emitterSet.clear();
+	    }
+	    GetArray(path) {
+	        var localArray = this.store.ResolvePropertyPath(path);
+	        var cachedArray = new Array(localArray.length);
+	        for (var x = 0; x < cachedArray.length; x++)
+	            cachedArray[x] = this.CreateGetterObject(localArray[x], [path, x].join("."));
+	        return cachedArray;
 	    }
 	    CreateGetterObject(source, path) {
-	        if (utils_1.IsValue(source)) {
+	        if (utils_1.IsValue(source) || source.___storeProxy) {
 	            this.RegisterEmitter(path);
 	            return source;
 	        }
@@ -1551,22 +1770,34 @@ var jTemplate =
 	        if (Array.isArray(source)) {
 	            ret = new Proxy([], {
 	                get: (obj, prop) => {
+	                    if (prop === '___storeProxy')
+	                        return true;
 	                    if (prop === '___path')
 	                        return path;
-	                    var isInt = !isNaN(parseInt(prop));
-	                    var childPath = [path, prop].join(".");
-	                    if (isInt)
-	                        this.RegisterEmitter(childPath);
-	                    if (isInt || prop === 'length')
-	                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
-	                    return obj[prop];
+	                    if (prop === 'toJSON')
+	                        return () => {
+	                            return this.store.ResolvePropertyPath(path);
+	                        };
+	                    if (typeof prop !== 'symbol') {
+	                        var isInt = !isNaN(parseInt(prop));
+	                        var childPath = [path, prop].join(".");
+	                        if (isInt)
+	                            this.RegisterEmitter(childPath);
+	                        if (isInt || prop === 'length')
+	                            return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+	                    }
+	                    var ret = obj[prop];
+	                    if (typeof ret === 'function') {
+	                        var cachedArray = this.GetArray(path);
+	                        return ret.bind(cachedArray);
+	                    }
+	                    return ret;
 	                },
 	                set: (obj, prop, value) => {
 	                    var isInt = !isNaN(parseInt(prop));
 	                    var childPath = [path, prop].join(".");
 	                    if (isInt) {
-	                        this.store.AssignPropertyPath(value, childPath);
-	                        this.EmitSet(childPath);
+	                        this.writer.WritePath(childPath, value);
 	                    }
 	                    else {
 	                        obj[prop] = value;
@@ -1578,16 +1809,24 @@ var jTemplate =
 	        else {
 	            ret = new Proxy({}, {
 	                get: (obj, prop) => {
+	                    if (prop === '___storeProxy')
+	                        return true;
 	                    if (prop === '___path')
 	                        return path;
-	                    var childPath = [path, prop].join(".");
-	                    this.RegisterEmitter(childPath);
-	                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), path);
+	                    if (prop === 'toJSON')
+	                        return () => {
+	                            return this.store.ResolvePropertyPath(path);
+	                        };
+	                    if (typeof prop !== 'symbol') {
+	                        var childPath = [path, prop].join(".");
+	                        this.RegisterEmitter(childPath);
+	                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+	                    }
+	                    return obj[prop];
 	                },
 	                set: (obj, prop, value) => {
 	                    var childPath = [path, prop].join(".");
-	                    this.store.AssignPropertyPath(value, childPath);
-	                    this.EmitSet(childPath);
+	                    this.writer.WritePath(childPath, value);
 	                    return true;
 	                }
 	            });
@@ -1595,33 +1834,27 @@ var jTemplate =
 	        return ret;
 	    }
 	    RegisterEmitter(path) {
+	        if (this.destroyed)
+	            return;
 	        var emitter = this.store.EnsureEmitter(path);
-	        if (!this.emitterSet.has(emitter))
+	        if (this.watching && !this.emitterSet.has(emitter))
 	            this.emitterSet.add(emitter);
 	        scopeCollector_1.scopeCollector.Register(emitter);
-	    }
-	    EmitSet(path) {
-	        var emitter = this.store.EnsureEmitter(path);
-	        emitter.emit("set");
 	    }
 	}
 	exports.StoreReader = StoreReader;
 
 
 /***/ }),
-/* 26 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(17);
-	const storeQuery_1 = __webpack_require__(27);
+	const utils_1 = __webpack_require__(23);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
-	    }
-	    set Root(val) {
-	        this.WriteTo("root", val);
 	    }
 	    Write(readOnly, updateCallback) {
 	        var path = null;
@@ -1632,8 +1865,16 @@ var jTemplate =
 	            return;
 	        this.WriteTo(path, updateCallback);
 	    }
-	    Query(callback) {
-	        return new storeQuery_1.StoreQuery(this.store, callback);
+	    WritePath(path, value) {
+	        this.WriteTo(path, value);
+	    }
+	    Push(readOnly, newValue) {
+	        var path = readOnly.___path;
+	        var localValue = this.store.ResolvePropertyPath(path);
+	        var childPath = [path, localValue.length].join(".");
+	        localValue.push(null);
+	        this.WriteTo(childPath, newValue);
+	        this.EmitSet(path);
 	    }
 	    WriteTo(path, updateCallback, skipDependents) {
 	        var value = this.ResolveUpdateCallback(path, updateCallback);
@@ -1688,25 +1929,33 @@ var jTemplate =
 
 
 /***/ }),
-/* 27 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scopeBase_1 = __webpack_require__(8);
+	const storeReader_1 = __webpack_require__(28);
 	const scope_1 = __webpack_require__(7);
+	const storeWriter_1 = __webpack_require__(29);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, getFunction) {
 	        super(getFunction, null);
-	        this.store = store;
+	        this.reader = new storeReader_1.StoreReader(store);
+	        this.writer = new storeWriter_1.StoreWriter(store);
 	    }
 	    Scope(callback) {
 	        return new scope_1.Scope(() => callback(this.Value));
 	    }
+	    Destroy() {
+	        super.Destroy();
+	        this.reader.Destroy();
+	    }
 	    UpdateValue(callback) {
-	        var reader = this.store.GetReader();
-	        var value = this.GetNewValue(reader);
-	        callback(reader.Emitters, value);
+	        this.reader.Watching = true;
+	        var value = this.GetFunction(this.reader, this.writer);
+	        this.reader.Watching = false;
+	        callback(this.reader.Emitters, value);
 	    }
 	}
 	exports.StoreQuery = StoreQuery;

@@ -1,15 +1,9 @@
-import { Store } from "./store";
+import { StoreManager } from "./storeManager";
 import { IsValue } from "../utils";
-import { StoreReader } from "./storeReader";
-import { StoreQuery } from "./storeQuery";
 
 export class StoreWriter<T> {
-
-    public set Root(val: T) {
-        this.WriteTo("root", val);
-    }
     
-    constructor(private store: Store<T>) { }
+    constructor(private store: StoreManager<T>) { }
 
     public Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O) {
         var path = null;
@@ -34,15 +28,8 @@ export class StoreWriter<T> {
         var childPath = [path, localValue.length].join(".");
         localValue.push(null);
 
-        /* var getterValue = this.getterMap.get(path) as Array<O>;
-        getterValue.push(this.CreateGetterObject(newValue, childPath)); */
-
         this.WriteTo(childPath, newValue)
         this.EmitSet(path);
-    }
-
-    public Query<O>(callback: {(reader: StoreReader<T>): O}) {
-        return new StoreQuery<O>(this.store, callback);
     }
 
     private WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean) {

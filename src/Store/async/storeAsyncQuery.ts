@@ -1,27 +1,38 @@
 import { ScopeBase } from "../scopeBase";
 import { Emitter } from "../../emitter";
-import { StoreAsync } from "./storeAsync";
+import { StoreAsyncManager } from "./storeAsyncManager";
 import { StoreAsyncReader } from "./storeAsyncReader";
+import { StoreAsyncWriter } from "./storeAsyncWriter";
 import { Scope } from "../scope";
+import { AsyncFuncCallback } from "./storeAsync.types";
+import { FuncCallback } from "../sync/store.types";
 
-export class StoreAsyncQuery<T> extends ScopeBase<T> {
+export class StoreAsyncQuery<T, O> extends ScopeBase<O, AsyncFuncCallback<T, O>> {
 
-    constructor(private store: StoreAsync<any>, getFunction: {(reader: StoreAsyncReader<any>): Promise<T>}, defaultValue: any) {
+    private reader: StoreAsyncReader<T>;
+    private writer: StoreAsyncWriter<T>;
+
+    constructor(store: StoreAsyncManager<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>) {
         super(getFunction, defaultValue);
+        this.reader = new StoreAsyncReader(store);
+        this.writer = new StoreAsyncWriter(store);
     }
 
-    public Scope<O>(callback: {(parent: T): O}): Scope<O> {
-        return new Scope(() => callback(this.Value));
+    public Scope<R>(callback: {(parent: O): R}): Scope<R, FuncCallback<T, R>> {
+        return new Scope<R, FuncCallback<T, R>>(() => callback(this.Value));
+    }
+
+    public Destroy() {
+        super.Destroy();
+        this.reader.Destroy();
     }
     
-    protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
-        var reader = this.store.GetReader();
-        this.store.QueryStart()
-            .then(() => this.GetNewValue(reader) as Promise<T>)
-            .then(value => {
-                this.store.QueryEnd();
-                callback(reader.Emitters, value);
-            });
+    protected UpdateValue(callback: (emitters: Set<Emitter>, value: O) => void): void {
+        this.reader.Watching = true;
+        this.GetFunction(this.reader, this.writer).then(value => {
+            this.reader.Watching = false;
+            callback(this.reader.Emitters, value as O);
+        });
     }
     
 }

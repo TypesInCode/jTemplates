@@ -6,25 +6,28 @@ const expect = chai.expect;
 
 describe("Store (Async)", () => {
   it("Basic Test", (done) => {
-    StoreAsync.Create({ temp: "test", temp2: "test2" }).then(store => {
-      var query = store.Query("", async reader => reader.Root.temp);
-      expect(query.Value).to.equal("");
-      query.addListener("set", () => {
-          expect(query.Value).to.equal("test");
-          done();
-      });
+    var store = StoreAsync.Create({ temp: "test", temp2: "test2" });
+    var query = store.Query("", "", async reader => reader.Root.temp);
+    expect(query.Value).to.equal("");
+
+    store.OnComplete.then(store => {
+        expect(query.Value).to.equal("test");
+        done();
     });
   });
-  it("Update", () => {
-    /* var store = Store.Create({ temp: "test", temp2: "test2" });
-    var tempQuery = store.Query(reader => reader.Root.temp);
-    expect(tempQuery.Value).to.equal("test");
+  /* it("Sample", () => {
+    var store = StoreAsync.Create({ whatever: "whatever" });
+    
+    // returns a promise
+    store.Action((reader, writer) => {
+      // so this is a one time thing
+      
+    });
 
-    var rootQuery = store.Query(reader => reader.Root);
-    var eventFired = false;
-    tempQuery.addListener("set", () => eventFired = true);
-    rootQuery.Value.temp = "different";
-    expect(tempQuery.Value).to.equal("different");
-    expect(eventFired).to.be.true; */
-  });
+    var query = store.Watch("", "", (reader, writer) => {
+      // so this becomes a cached and watched thing that emits changes
+    });
+
+    query.Value;
+  }); */
 });

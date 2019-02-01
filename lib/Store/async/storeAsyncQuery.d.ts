@@ -1,15 +1,16 @@
 import { ScopeBase } from "../scopeBase";
 import { Emitter } from "../../emitter";
-import { StoreAsync } from "./storeAsync";
-import { StoreAsyncReader } from "./storeAsyncReader";
+import { StoreAsyncManager } from "./storeAsyncManager";
 import { Scope } from "../scope";
-export declare class StoreAsyncQuery<T> extends ScopeBase<T> {
-    private store;
-    constructor(store: StoreAsync<any>, getFunction: {
-        (reader: StoreAsyncReader<any>): Promise<T>;
-    }, defaultValue: any);
-    Scope<O>(callback: {
-        (parent: T): O;
-    }): Scope<O>;
-    protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void;
+import { AsyncFuncCallback } from "./storeAsync.types";
+import { FuncCallback } from "../sync/store.types";
+export declare class StoreAsyncQuery<T, O> extends ScopeBase<O, AsyncFuncCallback<T, O>> {
+    private reader;
+    private writer;
+    constructor(store: StoreAsyncManager<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>);
+    Scope<R>(callback: {
+        (parent: O): R;
+    }): Scope<R, FuncCallback<T, R>>;
+    Destroy(): void;
+    protected UpdateValue(callback: (emitters: Set<Emitter>, value: O) => void): void;
 }

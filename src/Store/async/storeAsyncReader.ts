@@ -1,29 +1,39 @@
-import { StoreAsync } from './storeAsync';
+import { StoreAsyncManager } from './storeAsyncManager';
 import { Emitter } from '../../emitter';
 import { IsValue } from '../utils';
 import { scopeCollector } from '../scopeCollector';
-import { StoreAsyncWriter } from '../..';
+import { StoreAsyncWriter } from './storeAsyncWriter';
 
 
 export class StoreAsyncReader<T> {
     
     private emitterSet: Set<Emitter>;
+    private writer: StoreAsyncWriter<T>;
+    private watching: boolean;
+    private destroyed: boolean;
 
-    public get Writer(): StoreAsyncWriter<T> {
-        return this.store.GetWriter();
+    public get Root(): T {
+        var root = this.store.ResolvePropertyPath("root");
+        this.RegisterEmitter("root");
+        return this.CreateGetterObject(root, "root");
     }
-
-    /* public get Root(): T {
-        var root = this.store.ResolvePropertyPath('root');
-        return this.CreateGetterObject(root, 'root');
-    } */
 
     public get Emitters() {
         return this.emitterSet;
     }
 
-    constructor(private store: StoreAsync<T>) {
-        this.emitterSet = new Set();
+    public get Watching() {
+        return this.watching;
+    }
+
+    public set Watching(val: boolean) {
+        this.emitterSet = val ? new Set() : this.emitterSet;
+        this.watching = val;
+    }
+
+    constructor(private store: StoreAsyncManager<T>) {
+        this.watching = false;
+        this.writer = new StoreAsyncWriter<T>(store);
     }
 
     public async Get<O>(id: string): Promise<O> {
@@ -35,17 +45,18 @@ export class StoreAsyncReader<T> {
         return this.CreateGetterObject(this.store.ResolvePropertyPath(path), path);
     }
 
-    private GetCachedArray(path: string) {
-        var localArray = this.store.ResolvePropertyPath(path) as Array<any>;
-        /* var cachedArray = this.store.GetCachedArray(path);
-        if(cachedArray && cachedArray.length === localArray.length)
-            return cachedArray; */
+    public Destroy() {
+        this.destroyed = true;
+        this.watching = false;
+        this.emitterSet.clear();
+    }
 
+    private GetArray(path: string) {
+        var localArray = this.store.ResolvePropertyPath(path) as Array<any>;
         var cachedArray = new Array(localArray.length);
         for(var x=0; x<cachedArray.length; x++)
             cachedArray[x] = this.CreateGetterObject(localArray[x], [path, x].join("."));
 
-        // this.store.SetCachedArray(path, cachedArray);
         return cachedArray;
     }
 
@@ -80,10 +91,10 @@ export class StoreAsyncReader<T> {
                         if(isInt || prop === 'length')
                             return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
                     }
-
+                    
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
-                        var cachedArray = this.GetCachedArray(path);
+                        var cachedArray = this.GetArray(path);
                         return ret.bind(cachedArray);
                     }
 
@@ -93,7 +104,7 @@ export class StoreAsyncReader<T> {
                     var isInt = !isNaN(parseInt(prop));
                     var childPath = [path, prop].join(".");
                     if(isInt) {
-                        this.Writer.WritePath(childPath, value);
+                        this.writer.WritePath(childPath, value);
                     }
                     else {
                         obj[prop] = value;
@@ -117,13 +128,17 @@ export class StoreAsyncReader<T> {
                             return this.store.ResolvePropertyPath(path);
                         };
 
-                    var childPath = [path, prop].join(".");
-                    this.RegisterEmitter(childPath);
-                    return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+                    if(typeof prop !== 'symbol') {
+                        var childPath = [path, prop].join(".");
+                        this.RegisterEmitter(childPath);
+                        return this.CreateGetterObject(this.store.ResolvePropertyPath(childPath), childPath);
+                    }
+
+                    return obj[prop];
                 },
                 set: (obj: any, prop: any, value: any) => {
                     var childPath = [path, prop].join(".");
-                    this.Writer.WritePath(childPath, value);
+                    this.writer.WritePath(childPath, value);
                     return true;
                 }
             });
@@ -132,11 +147,15 @@ export class StoreAsyncReader<T> {
         return ret;
     }
 
-    private RegisterEmitter(path: string) {        
+    private RegisterEmitter(path: string) {
+        if(this.destroyed)
+            return;
+
         var emitter = this.store.EnsureEmitter(path);
-        if(!this.emitterSet.has(emitter))
+        if(this.watching && !this.emitterSet.has(emitter))
             this.emitterSet.add(emitter);
-        
+
         scopeCollector.Register(emitter);
     }
+
 }

@@ -1,134 +1,79 @@
-import { Emitter } from "../../emitter";
+import { StoreAsyncManager } from "./storeAsyncManager";
 import { StoreAsyncReader } from "./storeAsyncReader";
 import { StoreAsyncWriter } from "./storeAsyncWriter";
-import { WorkerQueue } from "./workerQueue";
-import { StoreWorker } from "./storeWorker";
-import { DeferredPromise } from "../deferredPromise";
 import { StoreAsyncQuery } from "./storeAsyncQuery";
+import { AsyncActionCallback, AsyncQueryCallback, AsyncFuncCallback } from "./storeAsync.types";
+import { PromiseQueue } from "../../Promise/promiseQueue";
 
 export class StoreAsync<T> {
 
-    private root: T;
-    private emitterMap: Map<string, Emitter>;
-    private worker: Worker;
-    private workerQueue: WorkerQueue<IDiffMethod, any>;
-    private queryQueue: Array<DeferredPromise<any>>;
-    private queryCache: Map<string, StoreAsyncQuery<any>>;
+    private manager: StoreAsyncManager<T>;
+    private reader: StoreAsyncReader<T>;
+    private writer: StoreAsyncWriter<T>;
+    private queryCache: Map<string, StoreAsyncQuery<any, any>>;
+    private promiseQueue: PromiseQueue<any>;
 
-    constructor(idFunction: {(val: any): any}) {
-        this.emitterMap = new Map();
-        this.worker = StoreWorker.Create();
-        this.workerQueue = new WorkerQueue(this.worker);
-        this.workerQueue.Push(() => ({ method: "create", arguments: [idFunction && idFunction.toString()]}));
-        this.queryQueue = [];
+    public get OnComplete(): Promise<StoreAsync<T>> {
+        return this.promiseQueue.OnComplete.then(() => {
+            return this;
+        });
+    }
+
+    public get Root(): T {
+        return this.reader.Root;
+    }
+
+    constructor(idFunction: (val: any) => any) {
+        this.manager = new StoreAsyncManager(idFunction);
+        this.reader = new StoreAsyncReader<T>(this.manager);
+        this.writer = new StoreAsyncWriter<T>(this.manager);
+        this.promiseQueue = new PromiseQueue();
         this.queryCache = new Map();
     }
 
-    public GetQuery<O>(id: string, defaultValue: any, callback: {(reader: StoreAsyncReader<T>): Promise<O>}) {
-        var query = this.queryCache.get(id);
-        if(!query) {
-            query = new StoreAsyncQuery<O>(this, callback, defaultValue);
-            this.queryCache.set(id, query);
-        }
+    public Action(action: AsyncActionCallback<T>): Promise<void> {
+        return this.promiseQueue.Push(resolve => 
+            resolve(action(this.reader, this.writer))
+        );
+    }
+
+    public Query<O>(id: string, defaultValue: O, queryFunc: AsyncFuncCallback<T, O>): StoreAsyncQuery<T, O> {
+        if(this.queryCache.has(id))
+            return this.queryCache.get(id);
+
+        var query = new StoreAsyncQuery<T, O>(this.manager, defaultValue, async (reader, writer) => {
+            return await this.promiseQueue.Push(resolve => {
+                resolve(queryFunc(reader, writer));
+            });
+        });
+
+        var destroy = () => {
+            this.queryCache.delete(id);
+            query.removeListener("destroy", destroy);
+        };
+        query.addListener("destroy", destroy);
+
         return query;
     }
 
-    public GetReader(): StoreAsyncReader<T> {
-        return new StoreAsyncReader(this);
-    }
-
-    public GetWriter(): StoreAsyncWriter<T> {
-        return new StoreAsyncWriter(this);
-    }
-
-    public ProcessStoreQueue() {
-        this.workerQueue.Process();
-    }
-    
-    public QueryStart(): Promise<void> {
-        this.queryQueue.push(new DeferredPromise(resolve => resolve()));
-        if(this.queryQueue.length === 1)
-            this.queryQueue[0].Invoke();
-
-        return this.queryQueue[this.queryQueue.length - 1];
-    }
-
-    public QueryEnd() {
-        this.queryQueue.shift();
-        if(this.queryQueue.length > 0)
-            this.queryQueue[0].Invoke();
-    }
-
-    public Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse> {
-        return new Promise(resolve => {
-            var oldValue = this.ResolvePropertyPath(path);
-            var promise = this.workerQueue.Push(() => ({
-                method: "diff",
-                arguments: [path, newValue, oldValue, skipDependents]
-            }));
-            resolve(promise);
-            this.ProcessStoreQueue();
-        });
-    }
-
-    public GetPathById(id: string): Promise<string> {
-        return new Promise(resolve => {
-            var promise = this.workerQueue.Push(() => ({
-                method: "getpath",
-                arguments: [id]
-            }));
-            resolve(promise);
-            this.ProcessStoreQueue();
-        });
-    }
-
-    public AssignPropertyPath(value: any, path: string) {
-        var parts = path.split(".");
-        var prop = parts[parts.length - 1];
-        var parentParts = parts.slice(0, parts.length - 1);
-        var parentObj = this.ResolvePropertyPath(parentParts.join("."));
-
-        (parentObj as any)[prop] = value;
-    }
-
-    public ResolvePropertyPath(path: string) {
-        if(!path)
-            return this;
-        
-        return path.split(".").reduce((pre, curr) => {
-            return pre && (pre as any)[curr];
-        }, this);
-    }
-
-    public EnsureEmitter(path: string): Emitter {
-        var emitter = this.emitterMap.get(path);
-        if(!emitter) {
-            emitter = new Emitter();
-            this.emitterMap.set(path, emitter);
-        }
-
-        return emitter;
-    }
-
-    public DeleteEmitter(path: string) {
-        this.emitterMap.delete(path);
-    }
-
     public Destroy() {
-        this.worker.terminate();
+        this.promiseQueue.Stop();
         this.queryCache.forEach(q => q.Destroy());
         this.queryCache.clear();
-        this.emitterMap.forEach(e => e.removeAllListeners());
-        this.emitterMap.clear();
+        this.manager.Destroy();
     }
 
 }
 
 export namespace StoreAsync {
-    export function Create<T>(init: T, idFunction?: {(val: any): any}): StoreAsyncWriter<T> {
+
+    export function Create<T>(init: T, idFunction?: {(val: any): any}): StoreAsync<T> {
         var store = new StoreAsync<T>(idFunction);
-        var writer = store.GetWriter();
-        writer.Root = init;
-        return writer;
+        store.Action(async (reader, writer) => {
+            await writer.WritePath("root", init);
+        });
+
+        return store;
     }
+
 }

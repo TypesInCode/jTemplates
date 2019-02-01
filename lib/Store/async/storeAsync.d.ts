@@ -1,35 +1,20 @@
-import { Emitter } from "../../emitter";
-import { StoreAsyncReader } from "./storeAsyncReader";
-import { StoreAsyncWriter } from "./storeAsyncWriter";
 import { StoreAsyncQuery } from "./storeAsyncQuery";
+import { AsyncActionCallback, AsyncFuncCallback } from "./storeAsync.types";
 export declare class StoreAsync<T> {
-    private root;
-    private emitterMap;
-    private worker;
-    private workerQueue;
-    private queryQueue;
+    private manager;
+    private reader;
+    private writer;
     private queryCache;
-    constructor(idFunction: {
-        (val: any): any;
-    });
-    GetQuery<O>(id: string, defaultValue: any, callback: {
-        (reader: StoreAsyncReader<T>): Promise<O>;
-    }): StoreAsyncQuery<any>;
-    GetReader(): StoreAsyncReader<T>;
-    GetWriter(): StoreAsyncWriter<T>;
-    ProcessStoreQueue(): void;
-    QueryStart(): Promise<void>;
-    QueryEnd(): void;
-    Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse>;
-    GetPathById(id: string): Promise<string>;
-    AssignPropertyPath(value: any, path: string): void;
-    ResolvePropertyPath(path: string): any;
-    EnsureEmitter(path: string): Emitter;
-    DeleteEmitter(path: string): void;
+    private promiseQueue;
+    readonly OnComplete: Promise<StoreAsync<T>>;
+    readonly Root: T;
+    constructor(idFunction: (val: any) => any);
+    Action(action: AsyncActionCallback<T>): Promise<void>;
+    Query<O>(id: string, defaultValue: O, queryFunc: AsyncFuncCallback<T, O>): StoreAsyncQuery<T, O>;
     Destroy(): void;
 }
 export declare namespace StoreAsync {
     function Create<T>(init: T, idFunction?: {
         (val: any): any;
-    }): StoreAsyncWriter<T>;
+    }): StoreAsync<T>;
 }

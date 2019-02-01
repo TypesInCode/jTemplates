@@ -1,10 +1,12 @@
 import Emitter from "../emitter";
 import { scopeCollector } from "./scopeCollector";
+import { ScopeValueCallback } from "./scopeBase.types";
 
-export abstract class ScopeBase<T> extends Emitter {
-    private getFunction: {(...args: Array<any>): T | Promise<T>};
+export abstract class ScopeBase<T, C extends ScopeValueCallback<T>> extends Emitter {
+    private getFunction: C;
     private emitters: Set<Emitter>;
     private setCallback: () => void;
+    private destroyCallback: (emitter: Emitter) => void;
     private defaultValue: T;
     private value: T;
     private dirty: boolean;
@@ -18,11 +20,16 @@ export abstract class ScopeBase<T> extends Emitter {
         return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
 
-    constructor(getFunction: {(...args: Array<any>): T | Promise<T>}, defaultValue?: T) {
+    protected get GetFunction(): C {
+        return this.getFunction;
+    }
+
+    constructor(getFunction: C, defaultValue?: T) {
         super();
         this.getFunction = getFunction;
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
+        this.destroyCallback = this.DestroyCallback.bind(this);
         this.defaultValue = defaultValue;
         this.dirty = true;
         this.isAsync = false;
@@ -33,28 +40,29 @@ export abstract class ScopeBase<T> extends Emitter {
             var temp = this.Value;
             if(!this.isAsync || this.defaultValue !== temp) {
                 resolve(temp);
-                this.Destroy();
                 return;
             }
 
-            this.addListener("set", () => {
+            var setCallback = () => {
                 resolve(this.Value);
-                this.Destroy();
-            });
+                this.removeListener("set", setCallback);
+            };
+
+            this.addListener("set", setCallback);
         });
     }
 
     public Destroy() {
-        this.removeAllListeners();
-        this.emitters.forEach(e => e.removeListener("set", this.setCallback));
+        this.emitters.forEach(e => {
+            e.removeListener("set", this.setCallback);
+            e.removeListener("destroy", this.destroyCallback);
+        });
         this.emitters.clear();
+        this.emit("destroy", this);
+        this.removeAllListeners();
     }
 
     protected abstract UpdateValue(callback: {(emitters: Set<Emitter>, value: T): void}): void;
-
-    protected GetNewValue(...args: Array<any>): any {
-        return this.getFunction(...args);
-    }
 
     private UpdateValueBase() {
         this.dirty = false;
@@ -70,15 +78,18 @@ export abstract class ScopeBase<T> extends Emitter {
     }
 
     private UpdateEmitters(newEmitters: Set<Emitter>) {
-        this.emitters.forEach(emitter => {
-            if(!newEmitters.has(emitter))
-                emitter.removeListener("set", this.setCallback);
+        this.emitters.forEach(e => {
+            if(!newEmitters.has(e)) {
+                this.RemoveListenersFrom(e);
+            }
         });
 
-        while(newEmitters.has(this))
-            newEmitters.delete(this);
+        /* while(newEmitters.has(this))
+            newEmitters.delete(this); */
             
-        newEmitters.forEach(emitter => emitter.addListener("set", this.setCallback));
+        newEmitters.forEach(e => {
+            this.AddListenersTo(e);
+        });
         this.emitters = newEmitters;
     }
 
@@ -89,5 +100,22 @@ export abstract class ScopeBase<T> extends Emitter {
         }
         else
             this.UpdateValueBase();
+    }
+
+    private DestroyCallback(emitter: Emitter) {
+        this.RemoveListenersFrom(emitter);
+        this.emitters.delete(emitter);
+        if(this.emitters.size === 0)
+            this.Destroy();
+    }
+
+    private AddListenersTo(emitter: Emitter) {
+        emitter.addListener("set", this.setCallback);
+        emitter.addListener("destroy", this.destroyCallback);
+    }
+
+    private RemoveListenersFrom(emitter: Emitter) {
+        emitter.removeListener("set", this.setCallback);
+        emitter.removeListener("destroy", this.destroyCallback);
     }
 }

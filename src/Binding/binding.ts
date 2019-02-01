@@ -13,7 +13,7 @@ export abstract class Binding<T> {
     private boundTo: any;
     private isStatic: boolean;
     private staticValue: any;
-    private observableScope: Scope<any>;
+    private observableScope: Scope<any, any>;
     private setCallback: () => void;
     private status: BindingStatus;
 
