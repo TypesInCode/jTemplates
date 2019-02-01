@@ -2,8 +2,8 @@ import Emitter from "../emitter";
 import { scopeCollector } from "./scopeCollector";
 import { ScopeValueCallback } from "./scopeBase.types";
 
-export abstract class ScopeBase<T, C extends ScopeValueCallback<T>> extends Emitter {
-    private getFunction: C;
+export abstract class ScopeBase<T> extends Emitter {
+    private getFunction: ScopeValueCallback<T>;
     private emitters: Set<Emitter>;
     private setCallback: () => void;
     private destroyCallback: (emitter: Emitter) => void;
@@ -20,11 +20,11 @@ export abstract class ScopeBase<T, C extends ScopeValueCallback<T>> extends Emit
         return typeof this.value === 'undefined' ? this.defaultValue : this.value;
     }
 
-    protected get GetFunction(): C {
+    protected get GetFunction(): ScopeValueCallback<T> {
         return this.getFunction;
     }
 
-    constructor(getFunction: C, defaultValue?: T) {
+    constructor(getFunction: ScopeValueCallback<T>, defaultValue?: T) {
         super();
         this.getFunction = getFunction;
         this.emitters = new Set();

@@ -3,14 +3,14 @@ import { Emitter } from "../emitter";
 import { scopeCollector } from "./scopeCollector";
 import { ScopeValueCallback } from "./scopeBase.types";
 
-export class Scope<T, C extends ScopeValueCallback<T>> extends ScopeBase<T, C> {
+export class Scope<T> extends ScopeBase<T> {
 
-    constructor(getFunction: C) {
+    constructor(getFunction: ScopeValueCallback<T>) {
         super(getFunction, null);
     }
 
-    public Scope<O, C1 extends ScopeValueCallback<O>>(callback: {(parent: T): O}): Scope<O, C1> {
-        return new Scope<O, any>(() => callback(this.Value));
+    public Scope<O>(callback: {(parent: T): O}): Scope<O> {
+        return new Scope<O>(() => callback(this.Value));
     }
     
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
