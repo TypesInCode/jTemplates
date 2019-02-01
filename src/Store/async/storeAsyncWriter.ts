@@ -8,7 +8,7 @@ export class StoreAsyncWriter<T> {
     public async Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O): Promise<void> {
         var path = null;
         if(typeof readOnly === 'string')
-            path = this.store.GetPathById(readOnly);
+            path = await this.store.GetPathById(readOnly);
         
         var path = path || readOnly && (readOnly as any).___path;
         if(!path)
