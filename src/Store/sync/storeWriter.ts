@@ -43,6 +43,17 @@ export class StoreWriter<T> {
         this.EmitSet(path);
     }
 
+    public async Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
+        var path = (readOnly as any).___path;
+
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var ret = localValue.splice(start, deleteCount, ...items);
+
+        this.WriteTo(path, localValue)
+        this.EmitSet(path);
+        return ret;
+    }
+
     private WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean) {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var diff = this.store.Diff(path, value, !!skipDependents);

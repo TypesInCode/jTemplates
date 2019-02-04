@@ -10,6 +10,7 @@ export declare class StoreAsyncWriter<T> {
     WritePath(path: string, value: any): Promise<void>;
     Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
     Unshift<O>(readOnly: Array<O>, newValue: O): Promise<void>;
+    Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>): Promise<O[]>;
     private WriteTo;
     private ResolveUpdateCallback;
     private CreateCopy;

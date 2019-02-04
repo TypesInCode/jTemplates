@@ -43,6 +43,17 @@ export class StoreAsyncWriter<T> {
         this.EmitSet(path);
     }
 
+    public async Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
+        var path = (readOnly as any).___path;
+
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var ret = localValue.splice(start, deleteCount, ...items);
+
+        await this.WriteTo(path, localValue)
+        this.EmitSet(path);
+        return ret;
+    }
+
     private async WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): Promise<void> {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var diff = await this.store.Diff(path, value, !!skipDependents);
