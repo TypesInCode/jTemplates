@@ -47,7 +47,11 @@ export class StoreWriter<T> {
         var path = (readOnly as any).___path;
 
         var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
-        var ret = localValue.splice(start, deleteCount, ...items);
+        var ret = null;
+        if(deleteCount)
+            ret = localValue.splice(start, deleteCount, ...items);
+        else
+            ret = localValue.splice(start);
 
         this.WriteTo(path, localValue)
         this.EmitSet(path);
