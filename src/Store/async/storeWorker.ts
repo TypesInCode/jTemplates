@@ -8,7 +8,7 @@ export namespace StoreWorker {
         workerParameter = URL.createObjectURL(new Blob([`(${ObjectDiffScope})(false)`]));
     }
     else {
-        workerConstructor = (require("webworker-threads") as any).Worker;
+        workerConstructor = (require("webworker-threads").Worker as any);
         workerParameter = ObjectDiffScope;
     }
     

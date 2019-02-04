@@ -1,4 +1,3 @@
-import { DeferredPromise } from "../../Promise/deferredPromise";
 import { PromiseQueue } from "../../Promise/promiseQueue";
 
 export class WorkerQueue<S, R> {

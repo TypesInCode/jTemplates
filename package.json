@@ -27,15 +27,14 @@
     "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
   },
   "dependencies": {
-    "webworker-threads": "^0.7.17",
-    "xmldom": "^0.1.22"
+    "jsdom": "^13.2.0",
+    "webworker-threads": "^0.7.17"
   },
   "devDependencies": {
     "@types/chai": "3.4.30",
     "@types/mocha": "2.2.29",
     "@types/node": "^6.0.117",
     "chai": "^3.5.0",
-    "jsdom": "^11.0.0",
     "mocha": "^3.0.1",
     "rimraf": "^2.5.4",
     "ts-loader": "^1.2.0",
