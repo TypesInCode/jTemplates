@@ -9,6 +9,7 @@ export declare class StoreWriter<T> {
     } | O): void;
     WritePath(path: string, value: any): void;
     Push<O>(readOnly: Array<O>, newValue: O): void;
+    Unshift<O>(readOnly: Array<O>, newValue: O): void;
     private WriteTo;
     private ResolveUpdateCallback;
     private CreateCopy;

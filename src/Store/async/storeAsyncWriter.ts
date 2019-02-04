@@ -32,6 +32,17 @@ export class StoreAsyncWriter<T> {
         this.EmitSet(path);
     }
 
+    public async Unshift<O>(readOnly: Array<O>, newValue: O) {
+        var path = (readOnly as any).___path;
+
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var childPath = [path, 0].join(".");
+        localValue.unshift(null);
+
+        await this.WriteTo(childPath, newValue)
+        this.EmitSet(path);
+    }
+
     private async WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean): Promise<void> {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var diff = await this.store.Diff(path, value, !!skipDependents);

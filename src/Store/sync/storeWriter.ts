@@ -32,6 +32,17 @@ export class StoreWriter<T> {
         this.EmitSet(path);
     }
 
+    public Unshift<O>(readOnly: Array<O>, newValue: O) {
+        var path = (readOnly as any).___path;
+
+        var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
+        var childPath = [path, 0].join(".");
+        localValue.unshift(null);
+
+        this.WriteTo(childPath, newValue)
+        this.EmitSet(path);
+    }
+
     private WriteTo(path: string, updateCallback: {(): any} | any, skipDependents?: boolean) {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var diff = this.store.Diff(path, value, !!skipDependents);
