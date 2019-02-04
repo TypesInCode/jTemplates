@@ -22,10 +22,10 @@ export class StoreAsyncManager<T> {
         return this.workerQueue.Push(() => {
             var oldValue = this.ResolvePropertyPath(path);
 
-            if(oldValue.___storeProxy)
+            if(oldValue && oldValue.___storeProxy)
                 oldValue = oldValue.toJSON();
         
-            if(newValue.___storeProxy)
+            if(newValue && newValue.___storeProxy)
                 newValue = newValue.toJSON();
 
             return {

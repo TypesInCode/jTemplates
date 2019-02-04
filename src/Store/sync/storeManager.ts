@@ -18,10 +18,10 @@ export class StoreManager<T> {
 
     public Diff(path: string, newValue: any, skipDependents: boolean) {
         var oldValue = this.ResolvePropertyPath(path);
-        if(oldValue.___storeProxy)
-            oldValue = oldValue.toJSON();
+        if(oldValue && oldValue.___storeProxy)
+                oldValue = oldValue.toJSON();
         
-        if(newValue.___storeProxy)
+        if(newValue && newValue.___storeProxy)
             newValue = newValue.toJSON();
         
         return this.diff({
