@@ -21,6 +21,13 @@ export class StoreAsyncManager<T> {
     public Diff(path: string, newValue: any, skipDependents: boolean): Promise<IDiffResponse> {
         return this.workerQueue.Push(() => {
             var oldValue = this.ResolvePropertyPath(path);
+
+            if(oldValue.___storeProxy)
+                oldValue = oldValue.toJSON();
+        
+            if(newValue.___storeProxy)
+                newValue = newValue.toJSON();
+
             return {
                 method: "diff",
                 arguments: [path, newValue, oldValue, skipDependents]
