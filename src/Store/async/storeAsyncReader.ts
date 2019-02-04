@@ -81,7 +81,7 @@ export class StoreAsyncReader<T> {
                             return this.store.ResolvePropertyPath(path);
                         };
                     
-                    var isInt = !isNaN(parseInt(prop));
+                    var isInt = typeof(prop) !== 'symbol' && !isNaN(parseInt(prop));
                     if(isInt || prop === 'length') {
                         var childPath = [path, prop].join(".");
 
