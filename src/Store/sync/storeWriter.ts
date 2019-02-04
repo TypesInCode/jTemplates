@@ -43,7 +43,7 @@ export class StoreWriter<T> {
         this.EmitSet(path);
     }
 
-    public async Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
+    public Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
         var path = (readOnly as any).___path;
 
         var localValue = this.store.ResolvePropertyPath(path) as Array<O>;

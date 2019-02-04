@@ -10,7 +10,7 @@ export declare class StoreWriter<T> {
     WritePath(path: string, value: any): void;
     Push<O>(readOnly: Array<O>, newValue: O): void;
     Unshift<O>(readOnly: Array<O>, newValue: O): void;
-    Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>): Promise<O[]>;
+    Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>): O[];
     private WriteTo;
     private ResolveUpdateCallback;
     private CreateCopy;
