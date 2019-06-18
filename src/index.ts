@@ -1,286 +1,184 @@
-import { Template, BindingDefinition, Component } from "./template";
+import { Template, Component } from "./template";
 import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
-import { StoreAsync } from "./Store/async/storeAsync";
-import { Store } from "./Store/sync/store";
-import { Scope } from "./Store/scope";
-import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
-import { StoreQuery } from "./Store/sync/storeQuery";
+import { Scope } from "./Store/scope/scope";
+import { StoreAsync } from "./Store/storeAsync";
+import { StoreSync } from "./Store/storeSync";
+//import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
+// import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, StoreAsync, StoreAsyncQuery, Store, StoreQuery, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, /* StoreAsync, StoreAsyncQuery, */ StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
-/* class Root extends Component<any, any> {
+/* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
-    Template() {
-        return div({ text: "text" });
-    }
+interface ToDo { id: number, task: string, completed: boolean, assignee: Assignee, deleted: boolean }
+interface Assignee { id: number, name: string }
 
-}
+class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assignees: Array<Assignee> }> {
+    private nextId = 100;
+    // private todos = new StoreAsync((val) => val.id, { loading: false, todos: [] as Array<ToDo>, assignees: [] as Array<Assignee> }); //Store.Create({ loading: false, todos: [] as Array<ToDo>, assignees: [] as Array<Assignee> }, (val) => val.id);
 
-var root = new Root("root");
-root.AttachTo(document.getElementById("container")); */
+    private todoQuery = this.Query("todos", [], async (reader, writer) => {
 
-/* function SyncTest() {
-    var start = new Date();
-    var store = Store.Create([{ id: "first", value: "this and that" }], (val) => val.id);
-    var scope = store.Scope(root => root && root.length);
-
-    store.Write(store.Root, (val) => {
-        for(var x=0; x<10000; x++)
-            val.push({
-                id: "id_" + x,
-                value: "value_" + x
-            });
+        return reader.Root.todos;
     });
 
-    console.log(scope.Value);
-    var end = new Date();
-    console.log("on SYNC write complete");
-    console.log(end.getTime() - start.getTime() + " milliseconds");
-}
-
-async function AsyncTest() {
-    var start = new Date();
-    var store = await StoreAsync.Create([{ id: "first", value: "this and that" }], (val) => val.id);
-    var scope = store.Scope(root => root && root.length);
-
-    await store.Write(store.Root, (val) => {
-        for(var x=0; x<10000; x++)
-            val.push({
-                id: "id_" + x,
-                value: "value_" + x
-            });
-    })
-    console.log(scope.Value);
-    await store.WriteComplete();
-    var end = new Date();
-    console.log("on ASYNC write complete");
-    console.log(end.getTime() - start.getTime() + " milliseconds");
-}
-
-SyncTest();
-console.log("between tests");
-AsyncTest(); */
-
-/* store.Write(store.Root, () => null).then(() => {
-    var s = store;
-    console.log("all done");
-});
-
-store.OnWriteComplete().then(() => {
-    var end = new Date();
-    console.log("on ASYNC write complete");
-    console.log(end.getTime() - start.getTime() + " milliseconds");
-}); */
-
-/* interface IColumn {
-    name: string;
-    id: string;
-    visible: boolean;
-    sort: number;
-}
-
-interface ITableData {
-    columns: Array<IColumn>;
-    data: Array<any>;
-}
-
-interface ICellData {
-    column: IColumn;
-    data: any;
-}
-
-interface ITableCell {
-    cell: (cell: Scope<ICellData>, index: number) => BindingDefinition<any, any>;
-}
-
-class DataTable extends Component<ITableData, ITableCell> {
-    get DefaultTemplates() {
-        return {
-            cell: (scope: ICellData) => span({ text: () => {
-                var data = scope;
-                return `${data.data[scope.column.id]}`;
-             } })
-        };
-    }
-
-    Template(scope: Scope<ITableData>) {
-        return [
-            table({ key: d => d, data: () => [{ id: "header" }, ...scope.Value.data] }, (data: any, index: number) => {
-                if(index === 0)
-                    return tr({ key: c => c.id, data: () => scope.Value.columns }, (scope) => [
-                        th({ text: () => scope.name })
-                    ]);
-                
-                return tr({ key: c => c.id, data: () => scope.Value.columns }, (column, index) => [
-                    td({ data: () => ({ column: column, data: data }) }, (scope) => this.Templates.cell(scope, index))
-                ])
-            })
-        ];
-    }
-}
-
-var dataTable = Template.ToFunction("datatable", DataTable);
-
-class Root extends Template<any, any> {
-
-    state = StoreAsync.Create({ filter: "" });
-
-    columns = StoreAsync.Create([
-        {
-            id: "id",
-            name: "Id",
-            visible: true,
-            sort: 0
-        },
-        {
-            id: "name",
-            name: "Name",
-            visible: true,
-            sort: 1
-        },
-        {
-            id: "title",
-            name: "Title",
-            visible: true,
-            sort: 2
-        }
-    ]);
-
-    data = StoreAsync.Create([
-        {
-            id: 1,
-            name: "Bart",
-            title: "Title 1"
-        },
-        {
-            id: 2,
-            name: "Craig",
-            title: "Title 2"
-        }
-    ]);
-
-    dataScope = this.data.Scope((root) => root.filter(d => 
-        d.name.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0 ||
-        d.title.toLowerCase().indexOf(this.state.Root.filter.toLowerCase()) >= 0
-    ));
-
-    columnsScope = this.columns.Scope((root) => 
-        root.filter(c => c.visible)
-    ).Scope((val) => {
-        val.sort((a, b) => a.sort - b.sort);
-        return val;
+    private assigneeQuery = this.Query("assignees", [], async reader => {
+        return reader.Root.assignees;
     });
 
-    constructor() {
-        super("app");
-    }
+    private loadingQuery = this.Query("loading", false, async (reader) => {
+        return reader.Root.loading;
+    });
 
-    Template() {
-        return [
-            input({ props: { type: 'text' }, on: { keyup: (e: any) => this.state.Root.filter = e.target.value } }),
-            dataTable({ data: () => ({ columns: this.columnsScope.Value, data: this.dataScope.Value }) }),
-            input({ props: { type: 'button', value: 'add' }, on: { click: () => {
-                this.data.Write(this.data.Root, (val) => {
-                    val.push({
-                        id: this.data.Root.length + 1,
-                        name: `garbage ${this.data.Root.length + 1}`,
-                        title: `title ${this.data.Root.length + 1}`
-                    });
-                });
-            } } }),
-            ul({ data: this.columns.Root }, (column) => [
-                li({}, () => [
-                    input({ props: () => ({ type: "checkbox", checked: column.visible }), on: { 
-                        change: () => column.visible = !column.visible
-                    } }),
-                    span({ text: () => column.name }),
-                    input({ props: { type: "text", value: column.sort }, on: { keyup: (e: any) => {
-                        var sort = parseInt(e.target.value);
-                        if(!isNaN(sort))
-                            column.sort = sort;
-                    } } })
-                ])
-            ])
-        ];
-    }
-}
-var list = new Root();
-list.AttachTo(document.getElementById("container"));
+    private completedScope = this.todoQuery.Scope(root => {
+        // return 10;
+        return root.filter(t => t.completed).length;
+    });
 
-/* var store = ObjectStore.Create(["first", "third", "second"]);
-var scope1 = new ObjectStoreScope(() => {
-    console.log("updating scope 1");
-    return store.Root.slice().sort();
-});
-scope1.addListener("set", () => console.log("Scope1 set"));
+    private reportScope = this.todoQuery.Scope(root => {
+        // return "static";
 
-var scope2 = new ObjectStoreScope(() => {
-    console.log("updating scope 2");
-    return scope1.Value[scope1.Value.length - 1];
-});
-scope2.addListener("set", () => console.log("Scope2 set"));
-
-console.log(scope2.Value);
-
-store.Push(store.Root, "zzzz");
-
-console.log(scope2.Value); */
-
-
-/* class Store {
-    todos = ObjectStore.Create([] as Array<{ task: string, completed: boolean, assignee: string }>);
-
-    constructor() {
-        var scope = new ObjectStoreScope(() => this.report);
-        scope.addListener("set", () => console.log(scope.Value));
-    }
-
-    get report() {
-        if(this.todos.Root.length === 0)
+        if(!root || root.length === 0)
             return "<none>";
 
-        return `Next todo: ${this.todos.Root[0].task}. Progress: ${this.completedCount}/${this.todos.Root.length}`;
+        var nextTask = root.find((val) => !val.completed);
+        return `Next todo: ${nextTask ? nextTask.task : 'none'}. Progress: ${this.CompletedCount}/${root.length}`;
+    });
+
+    private smallReportScope = this.reportScope.Scope(report => {
+        return report.replace(/[a-z]{3}[\s:]/gi, " ");
+    });
+
+    public get Assignees() {
+        return this.assigneeQuery.Value;
     }
 
-    get completedCount() {
-        return this.todos.Root.filter(t => t.completed).length;
+    public get ToDos() {
+        return this.todoQuery.Value;
+    }
+
+    public get Report() {
+        return this.reportScope.Value;
+    }
+
+    public get SmallReport() {
+        return this.smallReportScope.Value;
+    }
+
+    public get CompletedCount() {
+        return this.completedScope.Value;
+    }
+
+    public get Loading() {
+        return this.loadingQuery.Value;
+    }
+
+    constructor() {
+        super((val: any) => val.id, { loading: false, todos: [] as Array<ToDo>, assignees: [] as Array<Assignee> });
     }
 
     addTodo(val: string) {
-        this.todos.Push(this.todos.Root, {
+        var nextTodo = {
+            id: this.nextId++,
             task: val,
             completed: false,
-            assignee: null
+            deleted: false,
+            assignee: null as any
+        };
+        this.Action(async (reader, writer) => {
+            await writer.Push(reader.Root.todos, nextTodo);
         });
+    }
+
+    removeTodo(todo: { id: number }) {
+        this.Action(async (reader, writer) => {
+            var index = reader.Root.todos.findIndex(t => t.id === todo.id);
+            writer.Splice(reader.Root.todos, index, 1);
+        });
+    }
+
+    replaceTodos() {
+        this.Action(async (reader, writer) => {
+            var newTodos = [];
+            for(var x=0; x<1000; x++) {
+                newTodos.push({
+                    id: this.nextId++,
+                    task: `New todo ${this.nextId}`,
+                    completed: (Math.random() >= .5),
+                    deleted: false,
+                    assignee: null
+                });
+            }
+            await writer.Write(reader.Root.todos, newTodos);
+        });
+    }
+
+    addAssignee(name: string) {
+        var nextAssignee = {
+            id: 100000 + this.nextId++,
+            name: name
+        };
+        this.Action(async (reader, writer) => {
+            await writer.Push(reader.Root.assignees, nextAssignee);
+        });
+    }
+
+    setAssignee(todoId: number, assigneeId: number) {
+        this.Action(async (reader, writer) => {
+            var todo = reader.Get<ToDo>(todoId.toString());
+            var assignee = reader.Get<Assignee>(assigneeId.toString());
+            await writer.Write(todo, (todo) => { todo.assignee = assignee });
+        });
+    }
+
+    resetIds() {
+        this.nextId = 100;
     }
 }
 
-var t = new Store();
+var t = new TodoStore();
 t.addTodo("val 1");
 t.addTodo("val 2");
-t.todos.Root[0].completed = true;
-t.todos.Root[1].task = "changed val 2";
-t.todos.Root[0].task = "changed val 1";
+t.addAssignee("Bart Simpson");
+t.addAssignee("Homer Simpson");
 
-class TodoView extends Template<{ task: string, completed: boolean, assignee: string }, any> {
+class TodoView extends Template<ToDo, { remove: any }> {
 
-    Template(todo: { task: string, completed: boolean, assignee: string }) {
+    get DefaultTemplates() {
+        return {
+            remove: (data: any, index: number) => span({ text: "" })
+        };
+    }
+
+    Template(todo: ToDo, index: number) {
         return li({ on: () => ({ dblclick: this.onRename.bind(this, todo) }) }, () => [
             input({ 
                 props: () => ({ type: 'checkbox', checked: todo.completed }), 
                 on: () => ({ change: this.onToggleCompleted.bind(this, todo) }) 
             }),
-            span({ text: () => `${todo.task} ${todo.assignee || ''}` }),
+            span({ text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}` }),
+            span({}, () => this.Templates.remove(todo, index)),
+            input({ 
+                props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
+                on: () => ({ keyup: this.onAssigneeIdChange.bind(this, todo) })
+            })
         ]);
     }
 
-    onToggleCompleted(todo: { task: string, completed: boolean, assignee: string }) {
-        todo.completed = !todo.completed;
+    onToggleCompleted(todo: ToDo) {
+        t.Write(todo, (todo) => { todo.completed = !todo.completed });
     }
 
-    onRename(todo: { task: string, completed: boolean, assignee: string }) {
+    onRename(todo: ToDo) {
         todo.task = prompt('Task name', todo.task) || todo.task;
+    }
+
+    onAssigneeIdChange(todo: ToDo, event: Event) {
+        var value = (event.target as HTMLInputElement).value;
+        var id = parseInt(value);
+        if(!isNaN(id))
+            t.setAssignee(todo.id, id);
     }
 
 }
@@ -295,9 +193,34 @@ class TodoList extends Template<any, any> {
 
     Template() {
         return div({}, () => [
-            span({ text: () => t.report }),
-            todoView({ data: () => t.todos.Root }),
-            input({ props: () => ({ type: "button", value: "New Todo" }), on: () => ({ click: this.onNewTodo.bind(this) }) })
+            div({ text: () => t.Report }),
+            div({ text: () => t.SmallReport }),
+            todoView({ key: val => val.id, data: () => t.ToDos }, {
+                remove: (data) => 
+                    input({ 
+                        props: () => ({ type: "button", value: "delete" }), 
+                        on: () => ({ click: this.onRemoveTodo.bind(this, data) }) 
+                    })
+            }),
+            div({ text: () => t.Loading ? 'Loading...' : '' }),
+            input({ 
+                props: () => ({ type: "button", value: "New Todo" }), 
+                on: () => ({ click: this.onNewTodo.bind(this) }) 
+            }),
+            input({ 
+                props: () => ({ type: "button", value: "Replace Todos" }), 
+                on: () => ({ click: this.onReplaceTodos.bind(this) }) 
+            }),
+            input({
+                props: () => ({ type: "button", value: "Reset IDs"}),
+                on: () => ({ click: this.onResetIds.bind(this) })
+            }),
+            div({ key: (val) => val.id, data: () => t.Assignees }, (assignee) => 
+                div({ 
+                    text: () => `${assignee.id} - ${assignee.name}`,
+                    on: () => ({ dblclick: this.onAssigneeDblClick.bind(this, assignee) })
+                })
+            )
         ]);
     }
 
@@ -305,8 +228,24 @@ class TodoList extends Template<any, any> {
         t.addTodo(prompt("Enter a new todo:"));
     }
 
+    onRemoveTodo(data: any) {
+        t.removeTodo(data);
+    }
+
+    onReplaceTodos() {
+        t.replaceTodos();
+    }
+
+    onResetIds() {
+        t.resetIds();
+    }
+
+    onAssigneeDblClick(assignee: Assignee) {
+        t.Write(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
+        // assignee.name = prompt("New Name", assignee.name) || assignee.name;
+    }
 }
 
 var list = new TodoList();
-list.AttachTo(document.getElementById("container")); */
-
+list.AttachTo(document.getElementById("container"));
+*/

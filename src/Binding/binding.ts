@@ -1,4 +1,4 @@
-import { Scope } from '../Store/scope';
+import { Scope } from '../Store/scope/scope';
 import { BindingConfig } from './bindingConfig';
 import { PromiseOr } from '../template.types';
 
@@ -67,7 +67,7 @@ export abstract class Binding<T> {
         }
     }
 
-    public Destroy(): void {
+    public Destroy(parentDestroyed = false): void {
         this.observableScope && this.observableScope.Destroy();
         this.status = BindingStatus.Destroyed;
     }

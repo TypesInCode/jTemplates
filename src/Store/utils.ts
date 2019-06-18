@@ -1,6 +1,156 @@
+import { TreeNode } from "./tree/treeNode";
+import { StoreManager } from "./store/storeManager";
+import { StoreReader } from "./store/storeReader";
+
 export function IsValue(value: any) {
     if(!value)
         return true;
     
     return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor))
+}
+
+export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //, manager: StoreManager<any>): any {
+    var value = node && node.Value;
+    reader && reader.Register(node.Emitter);
+    if(node !== node.Self)
+        reader && reader.Register(node.Self.Emitter);
+
+    if(IsValue(value))
+        return value;
+
+    return CreateProxyObject(node, reader); //, manager);
+}
+
+function CreateProxyObject(node: TreeNode, reader: StoreReader<any>): any { //, manager: StoreManager<any>): any {    
+    var ret = null;
+    var value = node.Value;
+
+    if(Array.isArray(value)) {
+        ret = new Proxy([], {
+            get: (obj: any, prop: any) => {
+                if(node.Destroyed)
+                    return undefined;
+                
+                if(prop === '___storeProxy')
+                    return true;
+
+                if(prop === "___node")
+                    return node;
+
+                if(prop === 'toJSON')
+                    return () => {
+                        return node.Self.Value;
+                    };
+                
+                var isInt = typeof(prop) !== 'symbol' && !isNaN(parseInt(prop));
+                if(isInt || prop === 'length') {
+                    var childNode = node.Self.EnsureChild(prop);
+                    if(!childNode)
+                        return null;
+
+                    /* if(isInt)
+                        reader.Register(childNode.Emitter); */
+                    
+                    if(isInt || prop === 'length')
+                        return CreateProxy(childNode, reader); //, manager);
+                }
+                
+                var ret = obj[prop];
+                if(typeof ret === 'function') {
+                    var cachedArray = CreateProxyArray(node.Self, reader); //, manager);
+                    return ret.bind(cachedArray);
+                }
+
+                return ret;
+            }/* ,
+            set: (obj: any, prop: any, value: any) => {
+                var isInt = !isNaN(parseInt(prop));
+                var childPath = [node.Self.Path, prop].join(".");
+                if(isInt) {
+                    manager.WritePath(childPath, value);
+                }
+                else {
+                    // obj[prop] = value;
+                    throw "Modifying non-integer array properties is not supported";
+                }
+
+                return true;
+            } */
+        });
+    }
+    else {
+        ret = new Proxy({}, {
+            get: (obj: any, prop: any) => {
+                if(node.Destroyed)
+                    return undefined;
+                
+                if(prop === '___storeProxy')
+                    return true;
+
+                if(prop === '___node')
+                    return node;
+
+                if(prop === 'toJSON')
+                    return () => {
+                        return node.Self.Value;
+                    };
+
+                if(typeof prop !== 'symbol') {
+                    var childNode = node.Self.EnsureChild(prop);
+                    if(!childNode) 
+                        return null;
+
+                    // reader.Register(childNode.Emitter);
+                    return CreateProxy(childNode, reader); //, manager);
+                }
+
+                return obj[prop];
+            } /* ,
+            set: (obj: any, prop: any, value: any) => {
+                var childPath = [node.Self.Path, prop].join(".");
+                manager.WritePath(childPath, value);
+                return true;
+            } */
+        });
+    }
+
+    return ret;
+}
+
+export function CreateProxyArray(node: TreeNode, reader: StoreReader<any>) { //, manager: StoreManager<any>) {
+    var localArray = node.Value;
+    if(node.NodeCache) {
+        var cache = node.NodeCache;
+        if(cache && Array.isArray(cache) && cache.length === localArray.length)
+            return cache;
+    }
+
+    var proxyArray = new Array(localArray.length);
+    for(var x=0; x<proxyArray.length; x++) {
+        var childNode = node.EnsureChild(x.toString());
+        proxyArray[x] = CreateProxy(childNode, reader); //, manager);
+    }
+
+    node.NodeCache = proxyArray;
+    return proxyArray;
+}
+
+export function CreateCopy<O>(source: O): O {
+    if(IsValue(source))
+        return source;
+
+    var ret = null;
+    if(Array.isArray(source)) {
+        ret = new Array(source.length);
+        for(var x=0; x<source.length; x++)
+            ret[x] = this.CreateCopy(source[x]);
+
+        return ret as any as O;
+    }
+
+    ret = {} as { [key: string]: any };
+    for(var key in source)
+        ret[key] = this.CreateCopy(source[key]);
+
+    return ret as any as O;
 }

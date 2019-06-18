@@ -17,6 +17,6 @@ module.exports = {
   plugins: [
     // new webpack.optimize.UglifyJsPlugin({minimize: true}),
     new Uglify(),
-    new webpack.IgnorePlugin(/jsdom$/)
+    new webpack.IgnorePlugin(/jsdom|webworker-threads/)
   ]
 }

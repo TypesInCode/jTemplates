@@ -4,7 +4,7 @@ import { wndw } from './window';
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
 var updateIndex = 0;
-var batchSize = 3000;
+var batchSize = 100;
 
 function processUpdates() {
     var batchEnd = batchSize + updateIndex;
@@ -56,7 +56,8 @@ export var DOMBindingConfig: IBindingConfig = {
             return;
         }
 
-        root.insertBefore(child, sibling);
+        if(child !== sibling)
+            root.insertBefore(child, sibling);
     },
     addChildAfter: function(root: Node, sibling: Node, child: Node) {
         if(!sibling) {

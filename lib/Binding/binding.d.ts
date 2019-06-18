@@ -10,7 +10,7 @@ export declare abstract class Binding<T> {
     protected readonly BoundTo: any;
     constructor(boundTo: any, binding: PromiseOr<any>, defaultValue: any, config: T);
     Update(): void;
-    Destroy(): void;
+    Destroy(parentDestroyed?: boolean): void;
     protected OverrideBinding(binding: PromiseOr<any>, config: T): any;
     protected Init(config: T): void;
     protected abstract Apply(): void;

@@ -9,16 +9,12 @@ declare class DataBinding extends Binding<{
 }> {
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
-    activeKeys: Array<any>;
     keyFunction: (val: any) => any;
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any);
-    Destroy(): void;
+    Destroy(parentDestroyed?: boolean): void;
     protected OverrideBinding(bindingFunction: PromiseOr<any>, config: {
         key: (val: any) => any;
-    }): () => {
-        value: any;
-        key: any;
-    }[];
+    }): () => any[];
     protected Init(config: {
         children: {
             (c: any, i: number): BindingDefinitions<any, any>;

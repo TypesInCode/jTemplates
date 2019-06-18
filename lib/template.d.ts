@@ -1,5 +1,5 @@
 import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor } from './template.types';
-import { Scope } from "./Store/scope";
+import { Scope } from "./Store/scope/scope";
 export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
@@ -20,7 +20,7 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
     AttachAfter(bindingParent: any, template: Template<any, any>): void;
     Detach(): void;
-    Destroy(): void;
+    Destroy(parentDestroyed?: boolean): void;
     protected Template(c: P, i: number): BindingDefinitions<any, any>;
 }
 export declare class Component<P, T> extends Template<Scope<P | P[]>, T> {

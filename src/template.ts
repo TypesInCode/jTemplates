@@ -5,7 +5,7 @@ import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
 import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, PromiseOr } from './template.types';
-import { Scope } from "./Store/scope";
+import { Scope } from "./Store/scope/scope";
 
 export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export type BindingDefinition<P, T> = BindingDefinition<P, T>;
@@ -127,10 +127,12 @@ export class Template<P, T> implements ITemplate<P, T> {
         BindingConfig.remove(this.Root);
     }
 
-    public Destroy() {
-        this.Detach();
+    public Destroy(parentDestroyed = false) {
+        if(!parentDestroyed)
+            this.Detach();
+        
         this.bindingRoot = null;
-        this.bindings.forEach(b => b.Destroy());
+        this.bindings.forEach(b => b.Destroy(true));
         this.bindings = [];
         this.destroyed = true;
     }
