@@ -9,7 +9,7 @@ export function IsValue(value: any) {
 }
 
 export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //, manager: StoreManager<any>): any {
-    var value = node && node.Self.Value;
+    var value = node && node.Value;
     reader && reader.Register(node.Emitter);
     if(node !== node.Self)
         reader && reader.Register(node.Self.Emitter);

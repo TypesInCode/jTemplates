@@ -7,7 +7,7 @@ export namespace TreeNodeRefId {
         if(!str || typeof str !== 'string')
             return undefined;
         
-        var matches = str.match(/TreeNodeRefId\.(\d+$)/);
+        var matches = str.match(/TreeNodeRefId\.([^.]+$)/);
         if(!matches)
             return undefined;
 
