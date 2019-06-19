@@ -32,13 +32,13 @@ export class Store<T> {
     }
 
     public Action(action: AsyncActionCallback<T>) {
-        this.promiseQueue.Push((resolve) => {
+        return this.promiseQueue.Push((resolve) => {
             resolve(action(this.reader, this.writer));
         });
     }
 
     public Write<O>(readOnly: O, updateCallback: { (val: O): void }) {
-        this.Action(async (reader, writer) => {
+        return this.Action(async (reader, writer) => {
             await writer.Write(readOnly, updateCallback);
         });
     }
