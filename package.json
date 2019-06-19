@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -26,14 +26,13 @@
     "webdevbuild": "npm run clean && webpack",
     "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
   },
-  "dependencies": {
-    "jsdom": "^13.2.0"
-  },
+  "dependencies": { },
   "devDependencies": {
     "@types/chai": "3.4.30",
     "@types/mocha": "2.2.29",
     "@types/node": "^6.0.117",
     "chai": "^3.5.0",
+    "jsdom": "^13.2.0",
     "mocha": "^3.0.1",
     "rimraf": "^2.5.4",
     "ts-loader": "^1.2.0",
