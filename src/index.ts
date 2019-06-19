@@ -3,11 +3,12 @@ import { div, span, ul, li, input, b, a, br, img, video, source, option, select,
 import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
+import { Store } from "./Store/store/store";
 //import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, /* StoreAsync, StoreAsyncQuery, */ StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, /* StoreAsync, StoreAsyncQuery, */ Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 

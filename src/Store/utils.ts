@@ -1,5 +1,4 @@
 import { TreeNode } from "./tree/treeNode";
-import { StoreManager } from "./store/storeManager";
 import { StoreReader } from "./store/storeReader";
 
 export function IsValue(value: any) {
