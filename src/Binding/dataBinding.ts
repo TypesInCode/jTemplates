@@ -33,12 +33,11 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         var localBinding = null;
         if(typeof bindingFunction === 'function') {
             localBinding = () => {
-                var time = (new Date()).getTime();
                 var value = bindingFunction();
                 var array = ConvertToArray(value);
                 var ret = new Array(array.length);
                 for(var x=0; x<ret.length; x++)
-                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) || time++ };
+                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) };
 
                 return ret;
                 /* return array.map((curr, index) => {
@@ -51,12 +50,11 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         }
         else
             localBinding = () => {
-                var time = (new Date()).getTime();
                 var array = ConvertToArray(bindingFunction);
                 return array.map((curr, index) => {
                     return {
                         value: curr,
-                        key: config.key && config.key(curr) || time++
+                        key: config.key && config.key(curr)
                     };
                 });
             };
@@ -79,7 +77,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         // var previousTemplate = null as Template<any, any>;
 
         for(var x=0; x<value.length; x++) {
-            var newKey = value[x].key;
+            var newKey = value[x].key || x;
             // newKeys.push(newKey);
             newTemplateMap.set(newKey, this.activeTemplateMap.get(newKey));
             this.activeTemplateMap.delete(newKey);

@@ -147,7 +147,6 @@ export class Component<P, T> extends Template<Scope<P | P[]>, T> {
         if(typeof definition === 'string')
             super(definition, true);
         else {
-            definition.key = () => "component";
             if(typeof definition.data === 'function') {
                 (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P});
                 super(definition as any as BindingDefinition<Scope<P>, T>);
