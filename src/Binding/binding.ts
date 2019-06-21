@@ -27,7 +27,11 @@ export abstract class Binding<T> {
         return this.boundTo;
     }
 
-    constructor(boundTo: any, binding: PromiseOr<any>, defaultValue: any, config: T) {
+    protected get IsStatic() {
+        return this.isStatic;
+    }
+
+    constructor(boundTo: any, binding: PromiseOr<any>, config: T) {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);

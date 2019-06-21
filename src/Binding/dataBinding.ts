@@ -20,7 +20,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     keyFunction: (val: any) => any;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
-        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
+        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
     }
 
     public Destroy(parentDestroyed = false) {
@@ -40,16 +40,17 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                     ret[x] = { value: array[x], key: config.key && config.key(array[x]) };
 
                 return ret;
-                /* return array.map((curr, index) => {
-                    return {
-                        value: curr,
-                        key: config.key && config.key(curr) || time++
-                    };
-                }); */
             }
         }
-        else
-            localBinding = () => {
+        else {
+            localBinding = ConvertToArray(bindingFunction).map((curr, index) => {
+                return {
+                    value: curr,
+                    key: config.key && config.key(curr)
+                }
+            });
+        }
+            /* localBinding = () => {
                 var array = ConvertToArray(bindingFunction);
                 return array.map((curr, index) => {
                     return {
@@ -57,7 +58,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                         key: config.key && config.key(curr)
                     };
                 });
-            };
+            }; */
 
         return localBinding;
     }
@@ -65,11 +66,12 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {
         this.activeTemplateMap = new Map();
         // this.activeKeys = [];
+        this.keyFunction = config.key;
         this.childrenFunction = config.children;
     }
 
     protected Apply() {
-        var value = this.Value;
+        var value = this.Value; //ConvertToArray(this.Value);
         var newTemplateMap = new Map() as Map<any, Array<Template<any, any>>>;
         // var newKeys = [];
         var currentRowCount = this.activeTemplateMap.size;
@@ -77,7 +79,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         // var previousTemplate = null as Template<any, any>;
 
         for(var x=0; x<value.length; x++) {
-            var newKey = value[x].key || x;
+            var newKey = value[x].key || x; //this.keyFunction && this.keyFunction(value[x]) || x;
             // newKeys.push(newKey);
             newTemplateMap.set(newKey, this.activeTemplateMap.get(newKey));
             this.activeTemplateMap.delete(newKey);
@@ -92,7 +94,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 if(!Array.isArray(newDefs))
                     newDefs = [newDefs];
                 
-                templates = newDefs.map(d => Template.Create(d));
+                templates = newDefs.map(d => Template.Create(d, !this.IsStatic));
                 newTemplateMap.set(key, templates);
             }
 

@@ -5,7 +5,7 @@ class PropertyBinding extends Binding<any> {
     private lastValue: any;
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>) {
-        super(boundTo, bindingFunction, {}, null);
+        super(boundTo, bindingFunction, {});
     }
 
     protected Apply() {
@@ -20,15 +20,11 @@ class PropertyBinding extends Binding<any> {
 
         for(var key in source) {
             var val = source[key];
-            if(target[key] && val !== null && typeof val === 'object' && val.constructor === {}.constructor) {
-                lastValue[key] = lastValue[key] || {};
-                this.ApplyRecursive(target[key], lastValue[key], val);
+            if(typeof val === 'object') {
+                this.ApplyRecursive(target[key] || {}, lastValue[key], val);
             }
-            else {
-                val = val && val.valueOf();
-                if(lastValue[key] !== val)
-                    target[key] = val;
-            }
+            else if(lastValue[key] !== val)
+                target[key] = val;
         }
     }
 }

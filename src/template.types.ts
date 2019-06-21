@@ -14,7 +14,7 @@ export interface BindingDefinition<P, T> {
     key?: (val: P) => any;
     text?: PromiseOr<string>; //{(): string} | string;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
-    class?: { new(bindingDef?: BindingDefinition<any, any>): ITemplate<P, T> };
+    class?: { new(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): ITemplate<P, T> };
     templates?: Templates<T>;
 }
 

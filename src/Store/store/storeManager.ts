@@ -133,6 +133,7 @@ export class StoreManager<T> {
             return pre && (pre as any)[curr];
         }, this.data);
         return skipCopy ? value : CreateCopy(value);
+        // return value;
     }
 
     private ResolveUpdateCallback(path: string, updateCallback: {(): any} | any): any {

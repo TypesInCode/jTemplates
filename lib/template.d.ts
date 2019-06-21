@@ -4,6 +4,7 @@ export declare type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
 export declare type BindingDefinition<P, T> = BindingDefinition<P, T>;
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any>;
 export declare class Template<P, T> implements ITemplate<P, T> {
+    private deferBinding;
     private definition;
     private bindings;
     private bindingRoot;
@@ -12,9 +13,8 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     protected readonly DefaultTemplates: Templates<T>;
     protected readonly Templates: Templates<T>;
     protected readonly Root: any;
-    constructor(definition: BindingDefinition<P, T> | string, dataOverride?: any);
+    constructor(definition: BindingDefinition<P, T> | string, deferBinding?: boolean);
     SetTemplates(templates: Templates<T>): void;
-    UpdateComplete(callback: () => void): void;
     AttachTo(bindingParent: any): void;
     AttachToContainer(container: any): void;
     AttachBefore(bindingParent: any, template: Template<any, any>): void;
@@ -24,9 +24,9 @@ export declare class Template<P, T> implements ITemplate<P, T> {
     protected Template(c: P, i: number): BindingDefinitions<any, any>;
 }
 export declare class Component<P, T> extends Template<Scope<P | P[]>, T> {
-    constructor(definition: BindingDefinition<P, T> | string);
+    constructor(definition: BindingDefinition<P, T> | string, deferBinding?: boolean);
 }
 export declare namespace Template {
     function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
-    function Create(bindingDef: BindingDefinition<any, any>): Template<any, any>;
+    function Create(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any>;
 }

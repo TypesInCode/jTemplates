@@ -4,10 +4,24 @@ import { wndw } from './window';
 var pendingUpdates: Array<() => void> = [];
 var updateScheduled = false;
 var updateIndex = 0;
-var batchSize = 100;
+var batchSize = 1000;
 
 function processUpdates() {
-    var batchEnd = batchSize + updateIndex;
+    var start = new Date();
+    while(updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 66) {
+        pendingUpdates[updateIndex]();
+        updateIndex++;
+    }
+
+    if(updateIndex === pendingUpdates.length) {
+        updateIndex = 0;
+        pendingUpdates = [];
+        updateScheduled = false;
+    }
+    else
+        wndw.requestAnimationFrame(processUpdates);
+
+    /* var batchEnd = batchSize + updateIndex;
     for(var x=updateIndex; x<batchEnd && x<pendingUpdates.length; x++, updateIndex++)
         pendingUpdates[x]();
 
@@ -18,7 +32,7 @@ function processUpdates() {
     }
     else {
         wndw.requestAnimationFrame(processUpdates);
-    }
+    } */
 }
 
 export var DOMBindingConfig: IBindingConfig = {

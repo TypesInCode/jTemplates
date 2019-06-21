@@ -16,13 +16,12 @@ export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //,
 
     if(IsValue(value))
         return value;
-
-    return CreateProxyObject(node, reader); //, manager);
+        
+    return CreateProxyObject(node, reader, value);
 }
 
-function CreateProxyObject(node: TreeNode, reader: StoreReader<any>): any { //, manager: StoreManager<any>): any {    
+function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any): any { //, manager: StoreManager<any>): any {    
     var ret = null;
-    var value = node.Value;
 
     if(Array.isArray(value)) {
         ret = new Proxy([], {

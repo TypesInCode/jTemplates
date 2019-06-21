@@ -57,6 +57,7 @@ var jTemplate =
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const template_1 = __webpack_require__(1);
 	exports.Template = template_1.Template;
+	exports.Component = template_1.Component;
 	const elements_1 = __webpack_require__(14);
 	exports.div = elements_1.div;
 	exports.span = elements_1.span;
@@ -78,11 +79,14 @@ var jTemplate =
 	exports.th = elements_1.th;
 	exports.tr = elements_1.tr;
 	exports.td = elements_1.td;
-	const store_1 = __webpack_require__(15);
-	exports.Store = store_1.Store;
 	const scope_1 = __webpack_require__(7);
 	exports.Scope = scope_1.Scope;
-	const storeAsync_1 = __webpack_require__(26);
+	const storeAsync_1 = __webpack_require__(15);
+	exports.StoreAsync = storeAsync_1.StoreAsync;
+	const storeSync_1 = __webpack_require__(31);
+	exports.StoreSync = storeSync_1.StoreSync;
+	const store_1 = __webpack_require__(16);
+	exports.Store = store_1.Store;
 	class TodoStore extends storeAsync_1.StoreAsync {
 	    constructor() {
 	        super((val) => val.id, { loading: false, todos: [], assignees: [] });
@@ -148,7 +152,7 @@ var jTemplate =
 	    replaceTodos() {
 	        this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
 	            var newTodos = [];
-	            for (var x = 0; x < 1000; x++) {
+	            for (var x = 0; x < 10000; x++) {
 	                newTodos.push({
 	                    id: this.nextId++,
 	                    task: `New todo ${this.nextId}`,
@@ -195,13 +199,13 @@ var jTemplate =
 	        return elements_1.li({ on: () => ({ dblclick: this.onRename.bind(this, todo) }) }, () => [
 	            elements_1.input({
 	                props: () => ({ type: 'checkbox', checked: todo.completed }),
-	                on: () => ({ change: this.onToggleCompleted.bind(this, todo) })
+	                on: { change: this.onToggleCompleted.bind(this, todo) }
 	            }),
 	            elements_1.span({ text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}` }),
 	            elements_1.span({}, () => this.Templates.remove(todo, index)),
 	            elements_1.input({
 	                props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
-	                on: () => ({ keyup: this.onAssigneeIdChange.bind(this, todo) })
+	                on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
 	            })
 	        ]);
 	    }
@@ -229,26 +233,26 @@ var jTemplate =
 	            elements_1.div({ text: () => t.SmallReport }),
 	            todoView({ key: val => val.id, data: () => t.ToDos }, {
 	                remove: (data) => elements_1.input({
-	                    props: () => ({ type: "button", value: "delete" }),
-	                    on: () => ({ click: this.onRemoveTodo.bind(this, data) })
+	                    props: { type: "button", value: "delete" },
+	                    on: { click: this.onRemoveTodo.bind(this, data) }
 	                })
 	            }),
 	            elements_1.div({ text: () => t.Loading ? 'Loading...' : '' }),
 	            elements_1.input({
-	                props: () => ({ type: "button", value: "New Todo" }),
-	                on: () => ({ click: this.onNewTodo.bind(this) })
+	                props: { type: "button", value: "New Todo" },
+	                on: { click: this.onNewTodo.bind(this) }
 	            }),
 	            elements_1.input({
-	                props: () => ({ type: "button", value: "Replace Todos" }),
-	                on: () => ({ click: this.onReplaceTodos.bind(this) })
+	                props: { type: "button", value: "Replace Todos" },
+	                on: { click: this.onReplaceTodos.bind(this) }
 	            }),
 	            elements_1.input({
-	                props: () => ({ type: "button", value: "Reset IDs" }),
-	                on: () => ({ click: this.onResetIds.bind(this) })
+	                props: { type: "button", value: "Reset IDs" },
+	                on: { click: this.onResetIds.bind(this) }
 	            }),
 	            elements_1.div({ key: (val) => val.id, data: () => t.Assignees }, (assignee) => elements_1.div({
 	                text: () => `${assignee.id} - ${assignee.name}`,
-	                on: () => ({ dblclick: this.onAssigneeDblClick.bind(this, assignee) })
+	                on: { dblclick: this.onAssigneeDblClick.bind(this, assignee) }
 	            }))
 	        ]);
 	    }
@@ -321,16 +325,16 @@ var jTemplate =
 	    if (def1.text)
 	        ret.push(new textBinding_1.default(bindingTarget, def1.text));
 	    else if (def1.children) {
-	        def1.data = def1.data || DefaultDataCallback;
+	        def1.data = def1.data || true;
 	        ret.push(new dataBinding_1.default(bindingTarget, def1.data, def1.children, def1.key));
 	    }
 	    return ret;
 	}
 	class Template {
-	    constructor(definition, dataOverride) {
+	    constructor(definition, deferBinding = false) {
+	        this.deferBinding = deferBinding;
 	        if (typeof definition === 'string')
 	            definition = ComponentFunction(definition, this.constructor);
-	        definition.data = dataOverride || definition.data;
 	        this.templates = this.DefaultTemplates;
 	        this.SetTemplates(definition.templates);
 	        definition.children = definition.children || this.Template.bind(this);
@@ -346,7 +350,10 @@ var jTemplate =
 	    get Root() {
 	        if (!this.bindingRoot && !this.destroyed) {
 	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type);
-	            this.bindings = BindTarget(this.bindingRoot, this.definition);
+	            if (!this.deferBinding)
+	                this.bindings = BindTarget(this.bindingRoot, this.definition);
+	            else
+	                bindingConfig_1.BindingConfig.scheduleUpdate(() => this.bindings = BindTarget(this.bindingRoot, this.definition));
 	        }
 	        return this.bindingRoot;
 	    }
@@ -356,9 +363,6 @@ var jTemplate =
 	        for (var key in templates) {
 	            this.templates[key] = templates[key];
 	        }
-	    }
-	    UpdateComplete(callback) {
-	        bindingConfig_1.BindingConfig.updateComplete(callback);
 	    }
 	    AttachTo(bindingParent) {
 	        bindingConfig_1.BindingConfig.addChild(bindingParent, this.Root);
@@ -389,17 +393,19 @@ var jTemplate =
 	}
 	exports.Template = Template;
 	class Component extends Template {
-	    constructor(definition) {
+	    constructor(definition, deferBinding = false) {
 	        if (typeof definition === 'string')
-	            super(definition, true);
-	        else if (typeof definition.data === 'function') {
-	            definition.data = new scope_1.Scope(definition.data);
-	            super(definition);
-	        }
+	            super(definition, deferBinding);
 	        else {
-	            var data = definition.data;
-	            definition.data = new scope_1.Scope(() => data);
-	            super(definition);
+	            if (typeof definition.data === 'function') {
+	                definition.data = new scope_1.Scope(definition.data);
+	                super(definition, deferBinding);
+	            }
+	            else {
+	                var data = definition.data;
+	                definition.data = new scope_1.Scope(() => data);
+	                super(definition, deferBinding);
+	            }
 	        }
 	    }
 	}
@@ -409,9 +415,9 @@ var jTemplate =
 	        return CreateComponentFunction(type, classType);
 	    }
 	    Template.ToFunction = ToFunction;
-	    function Create(bindingDef) {
+	    function Create(bindingDef, deferBinding) {
 	        var constructor = (bindingDef.class || Template);
-	        var template = new constructor(bindingDef);
+	        var template = new constructor(bindingDef, deferBinding);
 	        return template;
 	    }
 	    Template.Create = Create;
@@ -438,19 +444,20 @@ var jTemplate =
 	var pendingUpdates = [];
 	var updateScheduled = false;
 	var updateIndex = 0;
-	var batchSize = 100;
+	var batchSize = 1000;
 	function processUpdates() {
-	    var batchEnd = batchSize + updateIndex;
-	    for (var x = updateIndex; x < batchEnd && x < pendingUpdates.length; x++, updateIndex++)
-	        pendingUpdates[x]();
-	    if (updateIndex == pendingUpdates.length) {
+	    var start = new Date();
+	    while (updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 33) {
+	        pendingUpdates[updateIndex]();
+	        updateIndex++;
+	    }
+	    if (updateIndex === pendingUpdates.length) {
 	        updateIndex = 0;
 	        pendingUpdates = [];
 	        updateScheduled = false;
 	    }
-	    else {
+	    else
 	        window_1.wndw.requestAnimationFrame(processUpdates);
-	    }
 	}
 	exports.DOMBindingConfig = {
 	    scheduleUpdate: function (callback) {
@@ -540,7 +547,7 @@ var jTemplate =
 	const binding_1 = __webpack_require__(6);
 	class PropertyBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, {}, null);
+	        super(boundTo, bindingFunction, {});
 	    }
 	    Apply() {
 	        this.lastValue = this.lastValue || {};
@@ -552,15 +559,11 @@ var jTemplate =
 	            throw "Property binding must resolve to an object";
 	        for (var key in source) {
 	            var val = source[key];
-	            if (target[key] && val !== null && typeof val === 'object' && val.constructor === {}.constructor) {
-	                lastValue[key] = lastValue[key] || {};
-	                this.ApplyRecursive(target[key], lastValue[key], val);
+	            if (typeof val === 'object') {
+	                this.ApplyRecursive(target[key] || {}, lastValue[key], val);
 	            }
-	            else {
-	                val = val && val.valueOf();
-	                if (lastValue[key] !== val)
-	                    target[key] = val;
-	            }
+	            else if (lastValue[key] !== val)
+	                target[key] = val;
 	        }
 	    }
 	}
@@ -583,7 +586,7 @@ var jTemplate =
 	    BindingStatus[BindingStatus["Destroyed"] = 3] = "Destroyed";
 	})(BindingStatus || (BindingStatus = {}));
 	class Binding {
-	    constructor(boundTo, binding, defaultValue, config) {
+	    constructor(boundTo, binding, config) {
 	        this.boundTo = boundTo;
 	        this.status = BindingStatus.Init;
 	        this.setCallback = this.Update.bind(this);
@@ -606,6 +609,9 @@ var jTemplate =
 	    }
 	    get BoundTo() {
 	        return this.boundTo;
+	    }
+	    get IsStatic() {
+	        return this.isStatic;
 	    }
 	    Update() {
 	        if (this.status === BindingStatus.Destroyed)
@@ -836,7 +842,7 @@ var jTemplate =
 	}
 	class DataBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction, childrenFunction, keyFunction) {
-	        super(boundTo, bindingFunction, [], { children: childrenFunction, key: keyFunction });
+	        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
 	    }
 	    Destroy(parentDestroyed = false) {
 	        super.Destroy(parentDestroyed);
@@ -847,30 +853,27 @@ var jTemplate =
 	        var localBinding = null;
 	        if (typeof bindingFunction === 'function') {
 	            localBinding = () => {
-	                var time = (new Date()).getTime();
 	                var value = bindingFunction();
 	                var array = ConvertToArray(value);
 	                var ret = new Array(array.length);
 	                for (var x = 0; x < ret.length; x++)
-	                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) || time++ };
+	                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) };
 	                return ret;
 	            };
 	        }
-	        else
-	            localBinding = () => {
-	                var time = (new Date()).getTime();
-	                var array = ConvertToArray(bindingFunction);
-	                return array.map((curr, index) => {
-	                    return {
-	                        value: curr,
-	                        key: config.key && config.key(curr) || time++
-	                    };
-	                });
-	            };
+	        else {
+	            localBinding = ConvertToArray(bindingFunction).map((curr, index) => {
+	                return {
+	                    value: curr,
+	                    key: config.key && config.key(curr)
+	                };
+	            });
+	        }
 	        return localBinding;
 	    }
 	    Init(config) {
 	        this.activeTemplateMap = new Map();
+	        this.keyFunction = config.key;
 	        this.childrenFunction = config.children;
 	    }
 	    Apply() {
@@ -879,7 +882,7 @@ var jTemplate =
 	        var currentRowCount = this.activeTemplateMap.size;
 	        var container = bindingConfig_1.BindingConfig.createContainer();
 	        for (var x = 0; x < value.length; x++) {
-	            var newKey = value[x].key;
+	            var newKey = value[x].key || x;
 	            newTemplateMap.set(newKey, this.activeTemplateMap.get(newKey));
 	            this.activeTemplateMap.delete(newKey);
 	        }
@@ -891,7 +894,7 @@ var jTemplate =
 	                var newDefs = this.childrenFunction(value[index].value, index);
 	                if (!Array.isArray(newDefs))
 	                    newDefs = [newDefs];
-	                templates = newDefs.map(d => template_1.Template.Create(d));
+	                templates = newDefs.map(d => template_1.Template.Create(d, !this.IsStatic));
 	                newTemplateMap.set(key, templates);
 	            }
 	            if (index >= currentRowCount) {
@@ -928,7 +931,7 @@ var jTemplate =
 	const bindingConfig_1 = __webpack_require__(2);
 	class TextBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, "", null);
+	        super(boundTo, bindingFunction, "");
 	    }
 	    Apply() {
 	        bindingConfig_1.BindingConfig.setText(this.BoundTo, this.Value);
@@ -947,7 +950,7 @@ var jTemplate =
 	const bindingConfig_1 = __webpack_require__(2);
 	class EventBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, {}, null);
+	        super(boundTo, bindingFunction, {});
 	    }
 	    Apply() {
 	        for (var key in this.boundEvents)
@@ -1057,6 +1060,22 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const store_1 = __webpack_require__(16);
+	const diffAsync_1 = __webpack_require__(27);
+	class StoreAsync extends store_1.Store {
+	    constructor(idFunction, init) {
+	        super(idFunction, init, new diffAsync_1.DiffAsync());
+	    }
+	}
+	exports.StoreAsync = StoreAsync;
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
 	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
 	    return new (P || (P = Promise))(function (resolve, reject) {
 	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -1066,11 +1085,11 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeManager_1 = __webpack_require__(16);
-	const storeReader_1 = __webpack_require__(21);
-	const storeWriter_1 = __webpack_require__(22);
-	const promiseQueue_1 = __webpack_require__(23);
-	const storeQuery_1 = __webpack_require__(25);
+	const storeManager_1 = __webpack_require__(17);
+	const storeReader_1 = __webpack_require__(22);
+	const storeWriter_1 = __webpack_require__(23);
+	const promiseQueue_1 = __webpack_require__(24);
+	const storeQuery_1 = __webpack_require__(26);
 	class Store {
 	    constructor(idFunction, init, diff) {
 	        this.manager = new storeManager_1.StoreManager(idFunction, diff);
@@ -1087,12 +1106,12 @@ var jTemplate =
 	        return this.Query("root", this.init, (reader) => Promise.resolve(reader.Root));
 	    }
 	    Action(action) {
-	        this.promiseQueue.Push((resolve) => {
+	        return this.promiseQueue.Push((resolve) => {
 	            resolve(action(this.reader, this.writer));
 	        });
 	    }
 	    Write(readOnly, updateCallback) {
-	        this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	        return this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
 	            yield writer.Write(readOnly, updateCallback);
 	        }));
 	    }
@@ -1122,7 +1141,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1135,10 +1154,10 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const tree_1 = __webpack_require__(17);
-	const treeNode_1 = __webpack_require__(18);
-	const utils_1 = __webpack_require__(20);
-	const treeNodeRefId_1 = __webpack_require__(19);
+	const tree_1 = __webpack_require__(18);
+	const treeNode_1 = __webpack_require__(19);
+	const utils_1 = __webpack_require__(21);
+	const treeNodeRefId_1 = __webpack_require__(20);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
@@ -1257,12 +1276,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const treeNode_1 = __webpack_require__(18);
+	const treeNode_1 = __webpack_require__(19);
 	class Tree {
 	    constructor(resolvePath) {
 	        this.root = new treeNode_1.TreeNode(this, null, "root", resolvePath);
@@ -1289,19 +1308,25 @@ var jTemplate =
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(9);
-	const treeNodeRefId_1 = __webpack_require__(19);
+	const treeNodeRefId_1 = __webpack_require__(20);
 	class TreeNode {
 	    get NodeCache() {
 	        return this.nodeCache;
 	    }
 	    set NodeCache(val) {
 	        this.nodeCache = val;
+	    }
+	    get NodeProxy() {
+	        return this.nodeProxy;
+	    }
+	    set NodeProxy(val) {
+	        this.nodeProxy = val;
 	    }
 	    get Destroyed() {
 	        return this.destroyed;
@@ -1393,6 +1418,8 @@ var jTemplate =
 	            return;
 	        this.parentNode && this.parentNode.Children.delete(this.property);
 	        this.parentNode = null;
+	        this.nodeCache = null;
+	        this.nodeProxy = null;
 	        this.children.forEach(val => val.Destroy());
 	        this.destroyed = true;
 	        this.emitter.emit("destroy", this.emitter);
@@ -1403,7 +1430,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1417,7 +1444,7 @@ var jTemplate =
 	    function GetIdFrom(str) {
 	        if (!str || typeof str !== 'string')
 	            return undefined;
-	        var matches = str.match(/TreeNodeRefId\.(\d+$)/);
+	        var matches = str.match(/TreeNodeRefId\.([^.]+$)/);
 	        if (!matches)
 	            return undefined;
 	        return matches[1];
@@ -1427,7 +1454,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1445,12 +1472,11 @@ var jTemplate =
 	        reader && reader.Register(node.Self.Emitter);
 	    if (IsValue(value))
 	        return value;
-	    return CreateProxyObject(node, reader);
+	    return CreateProxyObject(node, reader, value);
 	}
 	exports.CreateProxy = CreateProxy;
-	function CreateProxyObject(node, reader) {
+	function CreateProxyObject(node, reader, value) {
 	    var ret = null;
-	    var value = node.Value;
 	    if (Array.isArray(value)) {
 	        ret = new Proxy([], {
 	            get: (obj, prop) => {
@@ -1541,12 +1567,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(20);
+	const utils_1 = __webpack_require__(21);
 	const scopeCollector_1 = __webpack_require__(10);
 	class StoreReader {
 	    constructor(store) {
@@ -1587,7 +1613,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1600,7 +1626,7 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(20);
+	const utils_1 = __webpack_require__(21);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -1660,12 +1686,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(24);
+	const deferredPromise_1 = __webpack_require__(25);
 	class PromiseQueue {
 	    constructor() {
 	        this.running = false;
@@ -1712,7 +1738,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1738,14 +1764,14 @@ var jTemplate =
 
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scopeBase_1 = __webpack_require__(8);
-	const storeReader_1 = __webpack_require__(21);
-	const storeWriter_1 = __webpack_require__(22);
+	const storeReader_1 = __webpack_require__(22);
+	const storeWriter_1 = __webpack_require__(23);
 	const scope_1 = __webpack_require__(7);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, defaultValue, getFunction) {
@@ -1769,22 +1795,6 @@ var jTemplate =
 	    }
 	}
 	exports.StoreQuery = StoreQuery;
-
-
-/***/ }),
-/* 26 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(15);
-	const diffAsync_1 = __webpack_require__(27);
-	class StoreAsync extends store_1.Store {
-	    constructor(idFunction, init) {
-	        super(idFunction, init, new diffAsync_1.DiffAsync());
-	    }
-	}
-	exports.StoreAsync = StoreAsync;
 
 
 /***/ }),
@@ -1816,7 +1826,7 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const promiseQueue_1 = __webpack_require__(23);
+	const promiseQueue_1 = __webpack_require__(24);
 	class WorkerQueue {
 	    constructor(worker) {
 	        this.worker = worker;
@@ -1858,8 +1868,7 @@ var jTemplate =
 	        workerParameter = URL.createObjectURL(new Blob([`(${objectDiff_1.ObjectDiffScope})(false)`]));
 	    }
 	    else {
-	        workerConstructor = __webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"webworker-threads\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).Worker;
-	        workerParameter = objectDiff_1.ObjectDiffScope;
+	        throw "Worker is not available";
 	    }
 	    function Create() {
 	        return new workerConstructor(workerParameter);
@@ -1959,6 +1968,47 @@ var jTemplate =
 	}
 	exports.ObjectDiffScope = ObjectDiffScope;
 	exports.ObjectDiff = ObjectDiffScope(true);
+
+
+/***/ }),
+/* 31 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const store_1 = __webpack_require__(16);
+	const diffSync_1 = __webpack_require__(32);
+	class StoreSync extends store_1.Store {
+	    constructor(idFunction, init) {
+	        super(idFunction, init, new diffSync_1.DiffSync());
+	    }
+	}
+	exports.StoreSync = StoreSync;
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const objectDiff_1 = __webpack_require__(30);
+	class DiffSync {
+	    constructor() {
+	        this.diff = objectDiff_1.ObjectDiff();
+	        this.diff({
+	            method: "create",
+	            arguments: []
+	        });
+	    }
+	    Diff(path, newValue, resolveOldValue) {
+	        return Promise.resolve(this.diff({
+	            method: "diff",
+	            arguments: [path, newValue, resolveOldValue()]
+	        }));
+	    }
+	}
+	exports.DiffSync = DiffSync;
 
 
 /***/ })

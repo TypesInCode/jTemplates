@@ -14,7 +14,10 @@ declare class DataBinding extends Binding<{
     Destroy(parentDestroyed?: boolean): void;
     protected OverrideBinding(bindingFunction: PromiseOr<any>, config: {
         key: (val: any) => any;
-    }): () => any[];
+    }): (() => any[]) | {
+        value: any;
+        key: any;
+    }[];
     protected Init(config: {
         children: {
             (c: any, i: number): BindingDefinitions<any, any>;

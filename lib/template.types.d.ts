@@ -20,7 +20,7 @@ export interface BindingDefinition<P, T> {
     text?: PromiseOr<string>;
     children?: (c?: P, i?: number) => BindingDefinitions<P, T>;
     class?: {
-        new (bindingDef?: BindingDefinition<any, any>): ITemplate<P, T>;
+        new (bindingDef: BindingDefinition<any, any>, deferBinding: boolean): ITemplate<P, T>;
     };
     templates?: Templates<T>;
 }

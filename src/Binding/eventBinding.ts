@@ -6,7 +6,7 @@ class EventBinding extends Binding<any> {
     boundEvents: { [name: string]: any };
 
     constructor(boundTo: Node, bindingFunction: PromiseOr<any>) {
-        super(boundTo, bindingFunction, {}, null);
+        super(boundTo, bindingFunction, {});
     }
 
     /* public Destroy() {

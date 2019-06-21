@@ -102,7 +102,7 @@ class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assig
     replaceTodos() {
         this.Action(async (reader, writer) => {
             var newTodos = [];
-            for(var x=0; x<1000; x++) {
+            for(var x=0; x<10000; x++) {
                 newTodos.push({
                     id: this.nextId++,
                     task: `New todo ${this.nextId}`,
@@ -156,13 +156,13 @@ class TodoView extends Template<ToDo, { remove: any }> {
         return li({ on: () => ({ dblclick: this.onRename.bind(this, todo) }) }, () => [
             input({ 
                 props: () => ({ type: 'checkbox', checked: todo.completed }), 
-                on: () => ({ change: this.onToggleCompleted.bind(this, todo) }) 
+                on: { change: this.onToggleCompleted.bind(this, todo) }
             }),
             span({ text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}` }),
             span({}, () => this.Templates.remove(todo, index)),
             input({ 
                 props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
-                on: () => ({ keyup: this.onAssigneeIdChange.bind(this, todo) })
+                on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
             })
         ]);
     }
@@ -199,27 +199,27 @@ class TodoList extends Template<any, any> {
             todoView({ key: val => val.id, data: () => t.ToDos }, {
                 remove: (data) => 
                     input({ 
-                        props: () => ({ type: "button", value: "delete" }), 
-                        on: () => ({ click: this.onRemoveTodo.bind(this, data) }) 
+                        props: { type: "button", value: "delete" }, 
+                        on: { click: this.onRemoveTodo.bind(this, data) } 
                     })
             }),
             div({ text: () => t.Loading ? 'Loading...' : '' }),
             input({ 
-                props: () => ({ type: "button", value: "New Todo" }), 
-                on: () => ({ click: this.onNewTodo.bind(this) }) 
+                props: { type: "button", value: "New Todo" }, 
+                on: { click: this.onNewTodo.bind(this) } 
             }),
             input({ 
-                props: () => ({ type: "button", value: "Replace Todos" }), 
-                on: () => ({ click: this.onReplaceTodos.bind(this) }) 
+                props: { type: "button", value: "Replace Todos" }, 
+                on: { click: this.onReplaceTodos.bind(this) } 
             }),
             input({
-                props: () => ({ type: "button", value: "Reset IDs"}),
-                on: () => ({ click: this.onResetIds.bind(this) })
+                props: { type: "button", value: "Reset IDs"},
+                on: { click: this.onResetIds.bind(this) }
             }),
             div({ key: (val) => val.id, data: () => t.Assignees }, (assignee) => 
                 div({ 
                     text: () => `${assignee.id} - ${assignee.name}`,
-                    on: () => ({ dblclick: this.onAssigneeDblClick.bind(this, assignee) })
+                    on: { dblclick: this.onAssigneeDblClick.bind(this, assignee) }
                 })
             )
         ]);

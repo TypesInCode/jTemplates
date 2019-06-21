@@ -51,7 +51,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
     if(def1.text)
         ret.push(new TextBinding(bindingTarget, def1.text));
     else if(def1.children) {
-        def1.data = def1.data || DefaultDataCallback;
+        def1.data = def1.data || true; //DefaultDataCallback;
         ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.key));
     }
 
@@ -76,17 +76,19 @@ export class Template<P, T> implements ITemplate<P, T> {
     protected get Root(): any {
         if(!this.bindingRoot && !this.destroyed) {
             this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
-            this.bindings = BindTarget(this.bindingRoot, this.definition);
+            if(!this.deferBinding)
+                this.bindings = BindTarget(this.bindingRoot, this.definition);
+            else
+                BindingConfig.scheduleUpdate(() => this.bindings = BindTarget(this.bindingRoot, this.definition));
         }
         
         return this.bindingRoot;
     }
 
-    constructor(definition: BindingDefinition<P, T> | string, dataOverride?: any) {
+    constructor(definition: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
         if(typeof definition === 'string')
             definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
         
-        definition.data = dataOverride || definition.data;
         this.templates = this.DefaultTemplates;
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
@@ -103,9 +105,9 @@ export class Template<P, T> implements ITemplate<P, T> {
         }
     }
 
-    public UpdateComplete(callback: () => void) {
+    /* public UpdateComplete(callback: () => void) {
         BindingConfig.updateComplete(callback);
-    }
+    } */
 
     public AttachTo(bindingParent: any) {
         BindingConfig.addChild(bindingParent, this.Root);
@@ -143,18 +145,18 @@ export class Template<P, T> implements ITemplate<P, T> {
 }
 
 export class Component<P, T> extends Template<Scope<P | P[]>, T> {
-    constructor(definition: BindingDefinition<P, T> | string) {
+    constructor(definition: BindingDefinition<P, T> | string, deferBinding = false) {
         if(typeof definition === 'string')
-            super(definition, true);
+            super(definition, deferBinding);
         else {
             if(typeof definition.data === 'function') {
                 (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P});
-                super(definition as any as BindingDefinition<Scope<P>, T>);
+                super(definition as any as BindingDefinition<Scope<P>, T>, deferBinding);
             }
             else {
                 var data = definition.data;
                 (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data);
-                super(definition as any as BindingDefinition<Scope<P | P[]> ,T>);
+                super(definition as any as BindingDefinition<Scope<P | P[]> ,T>, deferBinding);
             }
         }
     }
@@ -165,9 +167,9 @@ export namespace Template {
         return CreateComponentFunction(type, classType);
     }
 
-    export function Create(bindingDef: BindingDefinition<any, any>): Template<any, any> {
-        var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>): Template<any, any> };
-        var template = new constructor(bindingDef);
+    export function Create(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> {
+        var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> };
+        var template = new constructor(bindingDef, deferBinding);
         return template;
     }
 }
