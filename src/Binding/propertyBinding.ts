@@ -9,7 +9,6 @@ class PropertyBinding extends Binding<any> {
     }
 
     protected Apply() {
-        this.lastValue = this.lastValue || {};
         this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
         this.lastValue = this.Value;
     }
@@ -21,9 +20,9 @@ class PropertyBinding extends Binding<any> {
         for(var key in source) {
             var val = source[key];
             if(typeof val === 'object') {
-                this.ApplyRecursive(target[key] || {}, lastValue[key], val);
+                this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
             }
-            else if(lastValue[key] !== val)
+            else if(!lastValue || lastValue[key] !== val)
                 target[key] = val;
         }
     }

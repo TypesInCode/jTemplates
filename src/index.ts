@@ -158,7 +158,12 @@ class TodoView extends Template<ToDo, { remove: any }> {
                 props: () => ({ type: 'checkbox', checked: todo.completed }), 
                 on: { change: this.onToggleCompleted.bind(this, todo) }
             }),
-            span({ text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}` }),
+            span({ 
+                text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}`, 
+                props: { 
+                    style: { color: "red" } 
+                } 
+            }),
             span({}, () => this.Templates.remove(todo, index)),
             input({ 
                 props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
@@ -193,7 +198,7 @@ class TodoList extends Template<any, any> {
     }
 
     Template() {
-        return div({}, () => [
+        return div({ props: { style: { color: "red" } } }, () => [
             div({ text: () => t.Report }),
             div({ text: () => t.SmallReport }),
             todoView({ key: val => val.id, data: () => t.ToDos }, {

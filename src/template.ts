@@ -79,7 +79,10 @@ export class Template<P, T> implements ITemplate<P, T> {
             if(!this.deferBinding)
                 this.bindings = BindTarget(this.bindingRoot, this.definition);
             else
-                BindingConfig.scheduleUpdate(() => this.bindings = BindTarget(this.bindingRoot, this.definition));
+                BindingConfig.scheduleUpdate(() => {
+                    if(!this.destroyed)
+                        this.bindings = BindTarget(this.bindingRoot, this.definition);
+                });
         }
         
         return this.bindingRoot;

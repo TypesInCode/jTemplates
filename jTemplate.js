@@ -201,7 +201,12 @@ var jTemplate =
 	                props: () => ({ type: 'checkbox', checked: todo.completed }),
 	                on: { change: this.onToggleCompleted.bind(this, todo) }
 	            }),
-	            elements_1.span({ text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}` }),
+	            elements_1.span({
+	                text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}`,
+	                props: {
+	                    style: { color: "red" }
+	                }
+	            }),
 	            elements_1.span({}, () => this.Templates.remove(todo, index)),
 	            elements_1.input({
 	                props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
@@ -228,7 +233,7 @@ var jTemplate =
 	        super("todo-list");
 	    }
 	    Template() {
-	        return elements_1.div({}, () => [
+	        return elements_1.div({ props: { style: { color: "red" } } }, () => [
 	            elements_1.div({ text: () => t.Report }),
 	            elements_1.div({ text: () => t.SmallReport }),
 	            todoView({ key: val => val.id, data: () => t.ToDos }, {
@@ -353,7 +358,10 @@ var jTemplate =
 	            if (!this.deferBinding)
 	                this.bindings = BindTarget(this.bindingRoot, this.definition);
 	            else
-	                bindingConfig_1.BindingConfig.scheduleUpdate(() => this.bindings = BindTarget(this.bindingRoot, this.definition));
+	                bindingConfig_1.BindingConfig.scheduleUpdate(() => {
+	                    if (!this.destroyed)
+	                        this.bindings = BindTarget(this.bindingRoot, this.definition);
+	                });
 	        }
 	        return this.bindingRoot;
 	    }
@@ -447,7 +455,7 @@ var jTemplate =
 	var batchSize = 1000;
 	function processUpdates() {
 	    var start = new Date();
-	    while (updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 33) {
+	    while (updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 66) {
 	        pendingUpdates[updateIndex]();
 	        updateIndex++;
 	    }
@@ -550,7 +558,6 @@ var jTemplate =
 	        super(boundTo, bindingFunction, {});
 	    }
 	    Apply() {
-	        this.lastValue = this.lastValue || {};
 	        this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
 	        this.lastValue = this.Value;
 	    }
@@ -560,9 +567,9 @@ var jTemplate =
 	        for (var key in source) {
 	            var val = source[key];
 	            if (typeof val === 'object') {
-	                this.ApplyRecursive(target[key] || {}, lastValue[key], val);
+	                this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
 	            }
-	            else if (lastValue[key] !== val)
+	            else if (!lastValue || lastValue[key] !== val)
 	                target[key] = val;
 	        }
 	    }
@@ -1322,12 +1329,6 @@ var jTemplate =
 	    set NodeCache(val) {
 	        this.nodeCache = val;
 	    }
-	    get NodeProxy() {
-	        return this.nodeProxy;
-	    }
-	    set NodeProxy(val) {
-	        this.nodeProxy = val;
-	    }
 	    get Destroyed() {
 	        return this.destroyed;
 	    }
@@ -1418,8 +1419,6 @@ var jTemplate =
 	            return;
 	        this.parentNode && this.parentNode.Children.delete(this.property);
 	        this.parentNode = null;
-	        this.nodeCache = null;
-	        this.nodeProxy = null;
 	        this.children.forEach(val => val.Destroy());
 	        this.destroyed = true;
 	        this.emitter.emit("destroy", this.emitter);
