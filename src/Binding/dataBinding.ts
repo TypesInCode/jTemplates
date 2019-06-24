@@ -40,10 +40,10 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                     ret[x] = { value: array[x], key: config.key && config.key(array[x]) };
 
                 return ret;
-            }
+            };
         }
         else {
-            localBinding = ConvertToArray(bindingFunction).map((curr, index) => {
+            localBinding = () => ConvertToArray(bindingFunction).map((curr, index) => {
                 return {
                     value: curr,
                     key: config.key && config.key(curr)
