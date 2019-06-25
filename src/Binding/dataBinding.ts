@@ -30,20 +30,33 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
     }
 
     protected OverrideBinding(bindingFunction: PromiseOr<any>, config: { key: (val: any) => any }) {
-        var localBinding = null;
+        var binding = null;
         if(typeof bindingFunction === 'function') {
-            localBinding = () => {
+            binding = () => {
                 var value = bindingFunction();
                 var array = ConvertToArray(value);
-                var ret = new Array(array.length);
+                var ret = array.map((val, index) => ({
+                    value: val, 
+                    key: config.key && config.key(val)
+                }));
+                /* var ret = new Array(array.length);
                 for(var x=0; x<ret.length; x++)
-                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) };
+                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) }; */
+                
 
                 return ret;
             };
         }
+        else if(config.key) {
+            binding = () => ConvertToArray(bindingFunction).map((curr, index) => {
+                return {
+                    value: curr,
+                    key: config.key && config.key(curr)
+                }
+            });
+        }
         else {
-            localBinding = () => ConvertToArray(bindingFunction).map((curr, index) => {
+            binding = ConvertToArray(bindingFunction).map((curr, index) => {
                 return {
                     value: curr,
                     key: config.key && config.key(curr)
@@ -60,7 +73,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
                 });
             }; */
 
-        return localBinding;
+        return binding;
     }
 
     protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {
