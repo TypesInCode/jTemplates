@@ -1221,20 +1221,17 @@ var jTemplate =
 	            var value = this.ResolveUpdateCallback(path, updateCallback);
 	            var breakUpMap = new Map();
 	            var brokenValue = this.BreakUpValue(path, value, breakUpMap);
-	            var diff = yield this.Diff(path, brokenValue);
-	            this.AssignPropertyPath(brokenValue, path);
-	            var promises = [];
-	            breakUpMap.forEach((breakValue, breakPath) => {
-	                promises.push(new Promise((resolve, reject) => {
-	                    this.Diff(breakPath, breakValue).then((val) => {
-	                        this.AssignPropertyPath(breakValue, breakPath);
-	                        diff.changedPaths.push(...val.changedPaths);
-	                        diff.deletedPaths.push(...val.deletedPaths);
-	                        resolve();
-	                    });
-	                }));
+	            var batch = [{ path: path, newValue: brokenValue, oldValue: this.ResolvePropertyPath(path) }];
+	            breakUpMap.forEach((value, key) => {
+	                batch.push({
+	                    path: key,
+	                    newValue: value,
+	                    oldValue: this.ResolvePropertyPath(key)
+	                });
 	            });
-	            yield Promise.all(promises);
+	            var diff = yield this.diff.DiffBatch(batch);
+	            for (var x = 0; x < batch.length; x++)
+	                this.AssignPropertyPath(batch[x].newValue, batch[x].path);
 	            this.ProcessDiff(diff);
 	        });
 	    }
@@ -1834,6 +1831,12 @@ var jTemplate =
 	        this.workerQueue = new workerQueue_1.WorkerQueue(storeWorker_1.StoreWorker.Create());
 	        this.workerQueue.Push(() => ({ method: "create", arguments: [] }));
 	    }
+	    DiffBatch(batch) {
+	        return this.workerQueue.Push(() => ({
+	            method: "diffbatch",
+	            arguments: [batch]
+	        }));
+	    }
 	    Diff(path, newValue, resolveOldValue) {
 	        return this.workerQueue.Push(() => ({
 	            method: "diff",
@@ -1925,6 +1928,8 @@ var jTemplate =
 	                    break;
 	                case "diff":
 	                    return tracker.Diff.apply(tracker, data.arguments);
+	                case "diffbatch":
+	                    return tracker.DiffBatch.apply(tracker, data.arguments);
 	                default:
 	                    throw `${data.method} is not supported`;
 	            }
@@ -1943,11 +1948,17 @@ var jTemplate =
 	        constructor() {
 	            this.idToPathsMap = new Map();
 	        }
-	        GetPath(id) {
-	            var paths = this.idToPathsMap.get(id);
-	            if (paths)
-	                return paths.values().next().value;
-	            return null;
+	        DiffBatch(batch) {
+	            var resp = {
+	                changedPaths: [],
+	                deletedPaths: []
+	            };
+	            for (var x = 0; x < batch.length; x++) {
+	                var diffResp = this.Diff(batch[x].path, batch[x].newValue, batch[x].oldValue);
+	                resp.changedPaths.push(...diffResp.changedPaths);
+	                resp.deletedPaths.push(...diffResp.deletedPaths);
+	            }
+	            return resp;
 	        }
 	        Diff(path, newValue, oldValue) {
 	            var resp = {
@@ -2023,6 +2034,12 @@ var jTemplate =
 	            method: "create",
 	            arguments: []
 	        });
+	    }
+	    DiffBatch(batch) {
+	        return Promise.resolve(this.diff({
+	            method: "diffbatch",
+	            arguments: [batch]
+	        }));
 	    }
 	    Diff(path, newValue, resolveOldValue) {
 	        return Promise.resolve(this.diff({

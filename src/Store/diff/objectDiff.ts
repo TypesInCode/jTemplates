@@ -21,6 +21,8 @@ export function ObjectDiffScope(notWorker: boolean) {
                     break;
                 case "diff" :
                     return tracker.Diff.apply(tracker, data.arguments);
+                case "diffbatch" :
+                    return tracker.DiffBatch.apply(tracker, data.arguments);
                 /* case "getpath" :
                     return tracker.GetPath.apply(tracker, data.arguments); */
                 default :
@@ -49,16 +51,31 @@ export function ObjectDiffScope(notWorker: boolean) {
     }
 
     class ObjectDiffTracker {
-        private idToPathsMap: Map<any, Set<string>> = new Map();
+        // private idToPathsMap: Map<any, Set<string>> = new Map();
 
-        constructor() { }
+        // constructor() { }
 
-        public GetPath(id: string) {
+        /* public GetPath(id: string) {
             var paths = this.idToPathsMap.get(id);
             if(paths)
                 return paths.values().next().value;
 
             return null;
+        } */
+
+        public DiffBatch(batch: Array<{ path: string, newValue: any, oldValue: any }>) {
+            var resp = {
+                changedPaths: [] as Array<string>,
+                deletedPaths: [] as Array<string>
+            };
+
+            for(var x=0; x<batch.length; x++) {
+                var diffResp = this.Diff(batch[x].path, batch[x].newValue, batch[x].oldValue);
+                resp.changedPaths.push(...diffResp.changedPaths);
+                resp.deletedPaths.push(...diffResp.deletedPaths);
+            }
+
+            return resp;
         }
 
         public Diff(path: string, newValue: any, oldValue: any) {

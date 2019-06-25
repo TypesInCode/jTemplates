@@ -18,6 +18,13 @@ export class DiffAsync implements Diff {
         });
     } */
 
+    public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
+        return this.workerQueue.Push(() => ({
+            method: "diffbatch",
+            arguments: [batch]
+        }));
+    }
+
     public Diff(path: string, newValue: any, resolveOldValue: { (): any }) { // oldValue: any): Promise<IDiffResponse> {
         return this.workerQueue.Push(() => ({
             method: "diff",

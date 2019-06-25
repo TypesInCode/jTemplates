@@ -65,7 +65,20 @@ export class StoreManager<T> {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var breakUpMap = new Map();
         var brokenValue = this.BreakUpValue(path, value, breakUpMap);
-        var diff = await this.Diff(path, brokenValue);
+        var batch = [{ path: path, newValue: brokenValue, oldValue: this.ResolvePropertyPath(path) }];
+        breakUpMap.forEach((value, key) => {
+            batch.push({
+                path: key,
+                newValue: value,
+                oldValue: this.ResolvePropertyPath(key)
+            });
+        });
+
+        var diff = await this.diff.DiffBatch(batch);
+        for(var x=0; x<batch.length; x++)
+            this.AssignPropertyPath(batch[x].newValue, batch[x].path);
+
+        /* var diff = await this.Diff(path, brokenValue);
         this.AssignPropertyPath(brokenValue, path);
 
         var promises = [] as Array<Promise<void>>;
@@ -80,7 +93,7 @@ export class StoreManager<T> {
             }));
         });
 
-        await Promise.all(promises);
+        await Promise.all(promises); */
         this.ProcessDiff(diff);
     }
 

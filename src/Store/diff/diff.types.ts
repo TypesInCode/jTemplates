@@ -10,5 +10,6 @@ export interface IDiffResponse {
 }
 
 export interface Diff {
+    DiffBatch(batch: Array<{ path: string, newValue: any, oldValue: any }>): Promise<IDiffResponse>;
     Diff(path: string, newValue: any, resolveOldValue: { (): any }): Promise<IDiffResponse>;
 }

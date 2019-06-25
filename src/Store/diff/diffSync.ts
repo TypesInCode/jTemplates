@@ -20,6 +20,13 @@ export class DiffSync implements Diff {
         });
     } */
 
+    public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
+        return Promise.resolve(this.diff({
+            method: "diffbatch",
+            arguments: [batch]
+        }));
+    }
+
     public Diff(path: string, newValue: any, resolveOldValue: {(): any}): Promise<IDiffResponse> {
         return Promise.resolve(this.diff({
             method: "diff",
