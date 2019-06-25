@@ -9,15 +9,27 @@ export function IsValue(value: any) {
 }
 
 export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //, manager: StoreManager<any>): any {
-    var value = node && node.Value;
+    // var value = node && node.Value;
     reader && reader.Register(node.Emitter);
-    if(node !== node.Self)
+    var self = node.Self;
+    if(node !== self)
         reader && reader.Register(node.Self.Emitter);
 
+    var value = self.Value;
     if(IsValue(value))
         return value;
-        
+
     return CreateProxyObject(node, reader, value);
+}
+
+function BuildJson(init: any, node: TreeNode) {
+    if(!init)
+        return;
+    
+    node.Children.forEach((value, key) => {
+        init[key] = value.Self.Value;
+        BuildJson(init[key], value.Self);
+    });
 }
 
 function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any): any { //, manager: StoreManager<any>): any {    
@@ -37,7 +49,10 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        return node.Self.Value;
+                        var init = [] as Array<any>;
+                        BuildJson(init, node.Self);
+                        return init;
+                        // return node.Self.Value;
                     };
                 
                 var isInt = typeof(prop) !== 'symbol' && !isNaN(parseInt(prop));
@@ -90,7 +105,10 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        return node.Self.Value;
+                        var init = {} as any;
+                        BuildJson(init, node.Self);
+                        return init;
+                        // return node.Self.Value;
                     };
 
                 if(typeof prop !== 'symbol') {
@@ -116,13 +134,10 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 }
 
 export function CreateProxyArray(node: TreeNode, reader: StoreReader<any>) { //, manager: StoreManager<any>) {
-    var localArray = node.Value;
-    if(node.NodeCache) {
-        var cache = node.NodeCache;
-        if(cache && Array.isArray(cache) && cache.length === localArray.length)
-            return cache;
-    }
+    if(node.NodeCache)
+        return node.NodeCache;
 
+    var localArray = node.Value;
     var proxyArray = new Array(localArray.length);
     for(var x=0; x<proxyArray.length; x++) {
         var childNode = node.EnsureChild(x.toString());

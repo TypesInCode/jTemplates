@@ -111,7 +111,7 @@ class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assig
                     assignee: null
                 });
             }
-            await writer.Write(reader.Root.todos, newTodos);
+            await writer.Update(reader.Root.todos, newTodos);
         });
     }
 
@@ -129,7 +129,7 @@ class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assig
         this.Action(async (reader, writer) => {
             var todo = reader.Get<ToDo>(todoId.toString());
             var assignee = reader.Get<Assignee>(assigneeId.toString());
-            await writer.Write(todo, (todo) => { todo.assignee = assignee });
+            await writer.Update(todo, (todo) => { todo.assignee = assignee });
         });
     }
 
@@ -173,7 +173,7 @@ class TodoView extends Template<ToDo, { remove: any }> {
     }
 
     onToggleCompleted(todo: ToDo) {
-        t.Write(todo, (todo) => { todo.completed = !todo.completed });
+        t.Update(todo, (todo) => { todo.completed = !todo.completed });
     }
 
     onRename(todo: ToDo) {
@@ -247,7 +247,7 @@ class TodoList extends Template<any, any> {
     }
 
     onAssigneeDblClick(assignee: Assignee) {
-        t.Write(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
+        t.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
         // assignee.name = prompt("New Name", assignee.name) || assignee.name;
     }
 }

@@ -19,7 +19,7 @@ export class StoreManager<T> {
         this.diff = diff;
     }
 
-    public Diff(path: string, newValue: any) {
+    public async Diff(path: string, newValue: any) {
         // var oldValue = this.ResolvePropertyPathInternal(path, true);
         /* if(oldValue && oldValue.___storeProxy)
             oldValue = oldValue.toJSON();
@@ -27,7 +27,7 @@ export class StoreManager<T> {
         if(newValue && newValue.___storeProxy)
             newValue = newValue.toJSON(); */
         
-        return this.diff.Diff(path, newValue, () => this.ResolvePropertyPathInternal(path, true));
+        return await this.diff.Diff(path, newValue, () => this.ResolvePropertyPath(path));
     }
 
     /* public GetPathById(id: string): string {
@@ -43,10 +43,25 @@ export class StoreManager<T> {
     }
 
     public ResolvePropertyPath(path: string) {
-        return this.ResolvePropertyPathInternal(path, false);
+        if(!path)
+            return this.data;
+        
+        var value = path.split(".").reduce((pre, curr) => {
+            return pre && (pre as any)[curr];
+        }, this.data);
+        return value;
     }
 
-    public async WritePath(path: string, updateCallback: {(): any} | any) {
+    public async Write(value: any) {
+        var id = this.idFunction(value);
+        if(!id)
+            throw "Written value must have an id";
+
+        var path = ["id", id].join(".");
+        await this.WritePath(path, value);
+    }
+
+    public async WritePath(path: string, updateCallback: {(val: any): void} | any) {
         var value = this.ResolveUpdateCallback(path, updateCallback);
         var breakUpMap = new Map();
         var brokenValue = this.BreakUpValue(path, value, breakUpMap);
@@ -63,10 +78,6 @@ export class StoreManager<T> {
                     resolve();
                 });
             }));
-            /* var breakDiff = this.Diff(breakPath, breakValue);
-            this.AssignPropertyPath(breakValue, breakPath);
-            diff.changedPaths.push(...breakDiff.changedPaths);
-            diff.deletedPaths.push(...breakDiff.deletedPaths); */
         });
 
         await Promise.all(promises);
@@ -92,11 +103,7 @@ export class StoreManager<T> {
         if(value && value.toJSON && typeof value.toJSON === 'function')
             value = value.toJSON();
 
-        if(IsValue(value)) {
-            // map.set(path, value);
-            /* if(value && value.toJSON && typeof value.toJSON === 'function')
-                return value.toJSON(); */
-            
+        if(IsValue(value)) {            
             return value;
         }
 
@@ -120,20 +127,9 @@ export class StoreManager<T> {
         var parts = path.split(".");
         var prop = parts[parts.length - 1];
         var parentParts = parts.slice(0, parts.length - 1);
-        var parentObj = this.ResolvePropertyPathInternal(parentParts.join("."), true);
+        var parentObj = this.ResolvePropertyPath(parentParts.join("."));
 
         (parentObj as any)[prop] = value;
-    }
-
-    private ResolvePropertyPathInternal(path: string, skipCopy: boolean) {
-        if(!path)
-            return this.data;
-        
-        var value = path.split(".").reduce((pre, curr) => {
-            return pre && (pre as any)[curr];
-        }, this.data);
-        return skipCopy ? value : CreateCopy(value);
-        // return value;
     }
 
     private ResolveUpdateCallback(path: string, updateCallback: {(): any} | any): any {
@@ -142,36 +138,44 @@ export class StoreManager<T> {
         
         if(typeof updateCallback === 'function') {
             var node = this.tree.GetNode(path);
-            var localValue = node.Value;
-            var ret = (updateCallback as any)(localValue);
+            // var localValue = node.Value;
+            var localValue = CreateCopy(this.ResolvePropertyPath(node.Self.Path))
+            updateCallback(localValue);
 
             // var localValue = this.ResolvePropertyPathInternal(path, false);
             // var ret = (updateCallback as any)(localValue);
-            return typeof ret === 'undefined' ? localValue : ret;
+            return localValue;
         }
         
         return updateCallback;
     }
 
     private ProcessDiff(data: IDiffResponse) {
+        var emit = new Set<string>();
         data.changedPaths.forEach(p => {
             // var node = this.GetNode(p);
             // node && this.ResolveNode(node);
             // this.EmitSet(node || p);
+            var parent = p.match(/(.+)\.[^.]+$/)[1];
+            if(parent && !emit.has(parent) && Array.isArray(this.ResolvePropertyPath(parent)))
+                emit.add(parent);
+
             this.EmitSet(p);
         });
+
+        emit.forEach(path => this.EmitSet(path));
 
         data.deletedPaths.forEach(p => {
             var node = this.GetNode(p);
             node && node.Destroy();
         });
 
-        data.pathDependencies.forEach(dep => {
-            var value = this.ResolvePropertyPathInternal(dep.path, false);
+        /* data.pathDependencies.forEach(dep => {
+            var value = this.ResolvePropertyPath(dep.path, false);
             dep.targets.forEach(target => {
                 this.WritePath(target, value);
             });
-        });
+        }); */
     }
 
 }

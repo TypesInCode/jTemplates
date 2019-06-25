@@ -9,7 +9,6 @@ export declare class TreeNode {
     private parentKey;
     private property;
     private resolvePath;
-    private self;
     private nodeCache;
     NodeCache: any;
     readonly Destroyed: boolean;

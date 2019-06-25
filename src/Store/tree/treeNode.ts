@@ -11,7 +11,7 @@ export class TreeNode {
     private parentKey: string;
     private property: string;
     private resolvePath: { (path: string): any };
-    private self: TreeNode;
+    // private self: TreeNode;
     private nodeCache: any;
 
     get NodeCache() {
@@ -38,11 +38,11 @@ export class TreeNode {
         return (this.parentNode ? this.parentNode.Path + "." : "") + this.property;
     }
 
-    get Value(): any {
+    /* get Value(): any {
         if(this.destroyed)
             return undefined;
 
-        var value = this.resolvePath(this.Path);
+        var value = this.resolvePath(this.Path, false);
         var refNode = null;
         
         var id = TreeNodeRefId.GetIdFrom(value);
@@ -50,20 +50,28 @@ export class TreeNode {
             refNode = this.tree.GetIdNode(id);
 
         return refNode ? refNode.Value : value;
+    } */
+
+    get Value(): any {
+        if(this.destroyed)
+            return undefined;
+
+        return this.resolvePath(this.Path);
     }
 
     get Self(): TreeNode {
         if(this.destroyed)
             return this;
 
-        if(this.self)
-            return this.self;
+        // if(this.self)
+        //    return this.self;
 
-        var value = this.resolvePath(this.Path);
+        var value = this.Value;
         var id = TreeNodeRefId.GetIdFrom(value);
         if(id !== undefined) {
-            this.self = this.tree.GetIdNode(id);
-            return this.self;
+            /* this.self = this.tree.GetIdNode(id);
+            return this.self; */
+            return this.tree.GetIdNode(id);
         }
 
         return this;
@@ -99,7 +107,7 @@ export class TreeNode {
         this.emitter = new Emitter();
         this.emitter.addListener("set", () => {
             this.nodeCache = null;
-            this.self = null;
+            // this.self = null;
         });
         this.UpdateParentKey();
     }

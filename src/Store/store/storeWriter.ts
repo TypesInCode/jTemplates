@@ -6,7 +6,11 @@ export class StoreWriter<T> {
     
     constructor(private store: StoreManager<T>) { }
 
-    public async Write<O>(readOnly: O | string, updateCallback: { (current: O): O } | { (current: O): void } | O) {
+    public async Write(value: any) {
+        await this.store.Write(value);
+    }
+
+    public async Update<O>(readOnly: O | string, updateCallback: { (current: O): void } | O) {
         var path = null;
         if(typeof readOnly === 'string') {
             var node = this.store.GetIdNode(readOnly);
@@ -46,7 +50,15 @@ export class StoreWriter<T> {
         this.store.EmitSet(node.Path);
     }
 
-    public async Unshift<O>(readOnly: Array<O>, newValue: O) {
+    public Pop<O>(readOnly: Array<O>): O {
+        var node = (readOnly as any).___node as TreeNode;
+        var localValue = this.store.ResolvePropertyPath(node.Path) as Array<O>;
+        var ret = localValue.pop();
+        this.store.EmitSet(node.Path);
+        return ret;
+    }
+
+    /* public async Unshift<O>(readOnly: Array<O>, newValue: O) {
         var path = (readOnly as any).___node.Path;
 
         var localValue = this.store.ResolvePropertyPath(path) as Array<O>;
@@ -55,25 +67,16 @@ export class StoreWriter<T> {
 
         await this.store.WritePath(childPath, newValue);
         this.store.EmitSet(path);
-    }
+    } */
 
     public Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
         var args = Array.from(arguments).slice(1);
         var node = (readOnly as any).___node as TreeNode;
-        var localValue = node.Value;
+        // var localValue = node.Value;
+        var localValue = this.store.ResolvePropertyPath(node.Path);
 
-        /* var children = Array.from(node.Children);
-        var removedChildren = children.splice.apply(children, args) as [string, TreeNode][];
-        for(var x=0; x<removedChildren.length; x++)
-            removedChildren[x][1].Destroy();
-
-        for(var x=0; x<children.length; x++)
-            children[x][1].ParentKey = children[x][1].Property = children[x][0] = x.toString();
-
-        node.OverwriteChildren(children); */
-
-        var proxyArray = CreateProxyArray(node, null); //, this.store);
-        var removedProxies = proxyArray.splice.apply(proxyArray, args); //(start, deleteCount, ...items);
+        var proxyArray = CreateProxyArray(node, null);
+        var removedProxies = proxyArray.splice.apply(proxyArray, args);
         for(var x=0; x<removedProxies.length; x++)
             ((removedProxies[x] as any).___node as TreeNode).Destroy();
 
@@ -82,9 +85,8 @@ export class StoreWriter<T> {
             ((proxyArray[x] as any).___node as TreeNode).UpdateParentKey();
         }
 
-        var ret = localValue.splice.apply(localValue, args); //(start, deleteCount, ...items);
-        // this.store.WritePath(node.Path, localValue);
-        this.store.AssignPropertyPath(localValue, node.Path);
+        var ret = localValue.splice.apply(localValue, args);
+        // this.store.AssignPropertyPath(localValue, node.Path);
 
         this.store.EmitSet(node);
         return ret;

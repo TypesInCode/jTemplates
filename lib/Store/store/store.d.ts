@@ -11,9 +11,10 @@ export declare class Store<T> {
     readonly Root: StoreQuery<T, T>;
     constructor(idFunction: (val: any) => any, init: any, diff: Diff);
     Action(action: AsyncActionCallback<T>): Promise<any>;
-    Write<O>(readOnly: O, updateCallback: {
+    Update<O>(readOnly: O, updateCallback: {
         (val: O): void;
-    }): Promise<any>;
+    } | O): Promise<void>;
+    Write(value: any): Promise<any>;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<T, O>): StoreQuery<T, O>;
     Destroy(): void;
 }

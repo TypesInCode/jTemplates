@@ -37,9 +37,15 @@ export class Store<T> {
         });
     }
 
-    public Write<O>(readOnly: O, updateCallback: { (val: O): void }) {
+    public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O) {
+        await this.Action(async (reader, writer) => {
+            await writer.Update(readOnly, updateCallback);
+        });
+    }
+
+    public Write(value: any) {
         return this.Action(async (reader, writer) => {
-            await writer.Write(readOnly, updateCallback);
+            await writer.Write(value);
         });
     }
 
