@@ -125,7 +125,7 @@ export function ObjectDiffScope(notWorker: boolean) {
 
             var newKeys = new Set(); // newIsObject ? new Set(Object.keys(newValue)) : new Set();
             var oldKeys = oldIsObject ? Object.keys(oldValue) : [];
-            if(oldKeys.length > 0 && newIsObject)
+            if(newIsObject)
                 newKeys = new Set(Object.keys(newValue));
 
             var pathChanged = false;
