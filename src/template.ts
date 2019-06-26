@@ -38,7 +38,7 @@ function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor
     return ComponentFunction.bind(null, type, classType) as BoundComponentFunction<P, T>;
 }
 
-function DefaultDataCallback() { return true; }
+// function DefaultDataCallback() { return true; }
 function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>): Array<Binding<any>> {
     var ret: Array<Binding<any>> = [];
     var def1 = bindingDef as BindingDefinition<any, any>;
@@ -97,6 +97,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         definition.children = definition.children || this.Template.bind(this);
         this.definition = definition;
         this.destroyed = false;
+        this.bindings = [];
     }
 
     public SetTemplates(templates: Templates<T>) {
