@@ -169,7 +169,8 @@ export class StoreManager<T> {
             // var node = this.GetNode(p);
             // node && this.ResolveNode(node);
             // this.EmitSet(node || p);
-            var parent = p.match(/(.+)\.[^.]+$/)[1];
+            var match = p.match(/(.+)\.[^.]+$/);
+            var parent = match && match[1];
             if(parent && !emit.has(parent) && Array.isArray(this.ResolvePropertyPath(parent)))
                 emit.add(parent);
 
