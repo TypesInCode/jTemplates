@@ -1,6 +1,6 @@
 import { Scope } from '../Store/scope/scope';
 import { BindingConfig } from './bindingConfig';
-import { PromiseOr } from '../template.types';
+import { FunctionOr } from '../template.types';
 
 enum BindingStatus {
     Init,
@@ -31,7 +31,7 @@ export abstract class Binding<T> {
         return this.isStatic;
     }
 
-    constructor(boundTo: any, binding: PromiseOr<any>, config: T) {
+    constructor(boundTo: any, binding: FunctionOr<any>, config: T) {
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);
@@ -76,7 +76,7 @@ export abstract class Binding<T> {
         this.status = BindingStatus.Destroyed;
     }
 
-    protected OverrideBinding(binding: PromiseOr<any>, config: T) {
+    protected OverrideBinding(binding: FunctionOr<any>, config: T) {
         return binding;
     }
 

@@ -4,13 +4,13 @@ import PropertyBinding from "./Binding/propertyBinding";
 import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
-import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, PromiseOr } from './template.types';
+import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, ChildrenOr } from './template.types';
 import { Scope } from "./Store/scope/scope";
 
-export type BindingDefinitions<P, T> = BindingDefinitions<P, T>;
-export type BindingDefinition<P, T> = BindingDefinition<P, T>;
+export type BindingDefinitions<P, T extends Templates> = BindingDefinitions<P, T>;
+export type BindingDefinition<P, T extends Templates> = BindingDefinition<P, T>;
 
-export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: (c: any, i: number) => BindingDefinitions<any, any>): BindingDefinition<any, any> {
+export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
         type: type,
         props: templateDefinition && templateDefinition.props,
@@ -22,7 +22,7 @@ export function TemplateFunction(type: string, templateDefinition?: TemplateDefi
     }
 }
 
-function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: Templates<T>): BindingDefinition<P, T> {
+function ComponentFunction<P, T extends Templates>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: T): BindingDefinition<P, T> {
     return {
         type: type,
         class: classType,
@@ -34,7 +34,7 @@ function ComponentFunction<P, T>(type: string, classType: TemplateConstructor<P,
     }
 }
 
-function CreateComponentFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
+function CreateComponentFunction<P, T extends Templates>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
     return ComponentFunction.bind(null, type, classType) as BoundComponentFunction<P, T>;
 }
 
@@ -58,18 +58,18 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
     return ret;
 }
 
-export class Template<P, T> implements ITemplate<P, T> {
+export class Template<P, T extends Templates> implements ITemplate<P, T> {
     private definition: BindingDefinition<P, T>;
     private bindings: Array<Binding<any>>;
     private bindingRoot: any;
-    private templates: Templates<T>;
+    private templates: T;
     private destroyed: boolean;
 
-    protected get DefaultTemplates(): Templates<T> {
-        return {} as Templates<T>;
+    protected get DefaultTemplates(): T {
+        return {} as T;
     }
 
-    protected get Templates(): Templates<T> {
+    protected get Templates(): T {
         return this.templates;
     }
 
@@ -100,7 +100,7 @@ export class Template<P, T> implements ITemplate<P, T> {
         this.bindings = [];
     }
 
-    public SetTemplates(templates: Templates<T>) {
+    public SetTemplates(templates: T) {
         if(!templates)
             return;
         
@@ -148,7 +148,7 @@ export class Template<P, T> implements ITemplate<P, T> {
     }
 }
 
-export class Component<P, T> extends Template<Scope<P | P[]>, T> {
+export class Component<P, T extends Templates> extends Template<Scope<P | P[]>, T> {
     constructor(definition: BindingDefinition<P, T> | string, deferBinding = false) {
         if(typeof definition === 'string')
             super(definition, deferBinding);
@@ -167,7 +167,7 @@ export class Component<P, T> extends Template<Scope<P | P[]>, T> {
 }
 
 export namespace Template {
-    export function ToFunction<P, T>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
+    export function ToFunction<P, T extends Templates>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T> {
         return CreateComponentFunction(type, classType);
     }
 

@@ -1,11 +1,11 @@
 import { Binding } from "./binding";
 import { BindingConfig } from "./bindingConfig";
-import { PromiseOr } from "../template.types";
+import { FunctionOr } from "../template.types";
 
 class EventBinding extends Binding<any> {
     boundEvents: { [name: string]: any };
 
-    constructor(boundTo: Node, bindingFunction: PromiseOr<any>) {
+    constructor(boundTo: Node, bindingFunction: FunctionOr<any>) {
         super(boundTo, bindingFunction, {});
     }
 

@@ -1,10 +1,10 @@
 import { Binding } from "./binding";
 import { BindingConfig } from "./bindingConfig";
-import { PromiseOr } from "../template.types";
+import { FunctionOr } from "../template.types";
 
 class TextBinding extends Binding<any> {
 
-    constructor(boundTo: Node, bindingFunction: PromiseOr<string>) {
+    constructor(boundTo: Node, bindingFunction: FunctionOr<string>) {
         super(boundTo, bindingFunction, "");
     }
 

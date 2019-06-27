@@ -1,18 +1,18 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
-import { PromiseOr } from "../template.types";
+import { FunctionOr, ChildrenOr } from "../template.types";
 declare class DataBinding extends Binding<{
-    children: {
-        (c: any, i: number): BindingDefinitions<any, any>;
+    children: ChildrenOr<any>;
+    key: {
+        (val: any): any;
     };
-    key: (val: any) => any;
 }> {
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     keyFunction: (val: any) => any;
-    constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any);
+    constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any);
     Destroy(parentDestroyed?: boolean): void;
-    protected OverrideBinding(bindingFunction: PromiseOr<any>, config: {
+    protected OverrideBinding(bindingFunction: FunctionOr<any>, config: {
         key: (val: any) => any;
     }): (() => {
         value: any;
@@ -22,9 +22,7 @@ declare class DataBinding extends Binding<{
         key: any;
     }[];
     protected Init(config: {
-        children: {
-            (c: any, i: number): BindingDefinitions<any, any>;
-        };
+        children: ChildrenOr<any>;
         key: (val: any) => any;
     }): void;
     protected Apply(): void;

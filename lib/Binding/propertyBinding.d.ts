@@ -1,8 +1,8 @@
 import { Binding } from "./binding";
-import { PromiseOr } from "../template.types";
+import { FunctionOr } from "../template.types";
 declare class PropertyBinding extends Binding<any> {
     private lastValue;
-    constructor(boundTo: Node, bindingFunction: PromiseOr<any>);
+    constructor(boundTo: Node, bindingFunction: FunctionOr<any>);
     protected Apply(): void;
     private ApplyRecursive;
 }

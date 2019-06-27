@@ -1,7 +1,7 @@
 import { Binding } from "./binding";
 import { BindingDefinitions, Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
-import { PromiseOr } from "../template.types";
+import { FunctionOr, ChildrenOr } from "../template.types";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -13,13 +13,13 @@ function ConvertToArray(val: any): Array<any> {
     return val;
 }
 
-class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }> {
+class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any): any} }> {
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     // activeKeys: Array<any>;
     keyFunction: (val: any) => any;
 
-    constructor(boundTo: Node, bindingFunction: PromiseOr<any>, childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>, keyFunction: (val: any) => any) {
+    constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any) {
         super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
     }
 
@@ -29,7 +29,7 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         this.activeTemplateMap = null;
     }
 
-    protected OverrideBinding(bindingFunction: PromiseOr<any>, config: { key: (val: any) => any }) {
+    protected OverrideBinding(bindingFunction: FunctionOr<any>, config: { key: (val: any) => any }) {
         var binding = null;
         if(typeof bindingFunction === 'function') {
             binding = () => {
@@ -76,11 +76,15 @@ class DataBinding extends Binding<{ children: {(c: any, i: number): BindingDefin
         return binding;
     }
 
-    protected Init(config: { children: {(c: any, i: number): BindingDefinitions<any, any>}, key: (val: any) => any }) {
+    protected Init(config: { children: ChildrenOr<any>, key: (val: any) => any }) {
         this.activeTemplateMap = new Map();
-        // this.activeKeys = [];
         this.keyFunction = config.key;
-        this.childrenFunction = config.children;
+
+        var children = config.children;
+        if(typeof children !== 'function')
+            children = () => config.children as BindingDefinitions<any, any>;
+
+        this.childrenFunction = children;
     }
 
     protected Apply() {

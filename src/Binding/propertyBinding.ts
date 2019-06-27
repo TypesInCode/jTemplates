@@ -1,10 +1,10 @@
 import { Binding } from "./binding";
-import { PromiseOr } from "../template.types";
+import { FunctionOr } from "../template.types";
 
 class PropertyBinding extends Binding<any> {
     private lastValue: any;
 
-    constructor(boundTo: Node, bindingFunction: PromiseOr<any>) {
+    constructor(boundTo: Node, bindingFunction: FunctionOr<any>) {
         super(boundTo, bindingFunction, {});
     }
 

@@ -192,7 +192,8 @@ var jTemplate =
 	class TodoView extends template_1.Template {
 	    get DefaultTemplates() {
 	        return {
-	            remove: (data, index) => elements_1.span({ text: "" })
+	            remove: (data, index) => elements_1.span({ text: "" }),
+	            append: []
 	        };
 	    }
 	    Template(todo, index) {
@@ -207,11 +208,12 @@ var jTemplate =
 	                    style: { color: "red" }
 	                }
 	            }),
-	            elements_1.span({}, () => this.Templates.remove(todo, index)),
+	            elements_1.span({}, this.Templates.remove(todo, index)),
 	            elements_1.input({
 	                props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
 	                on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
-	            })
+	            }),
+	            elements_1.span({}, this.Templates.append)
 	        ]);
 	    }
 	    onToggleCompleted(todo) {
@@ -233,14 +235,18 @@ var jTemplate =
 	        super("todo-list");
 	    }
 	    Template() {
-	        return elements_1.div({ props: { style: { color: "red" } } }, () => [
+	        return elements_1.div({ props: { style: { color: "red" } } }, [
 	            elements_1.div({ text: () => t.Report }),
 	            elements_1.div({ text: () => t.SmallReport }),
-	            todoView({ key: val => val.id, data: () => t.ToDos }, {
+	            todoView({ key: (val) => val.id, data: () => t.ToDos }, {
 	                remove: (data) => elements_1.input({
 	                    props: { type: "button", value: "delete" },
 	                    on: { click: this.onRemoveTodo.bind(this, data) }
-	                })
+	                }),
+	                append: [
+	                    elements_1.span({ text: "appended" }),
+	                    elements_1.span({ text: "next" })
+	                ]
 	            }),
 	            elements_1.div({ text: () => t.Loading ? 'Loading...' : '' }),
 	            elements_1.input({
@@ -319,7 +325,6 @@ var jTemplate =
 	function CreateComponentFunction(type, classType) {
 	    return ComponentFunction.bind(null, type, classType);
 	}
-	function DefaultDataCallback() { return true; }
 	function BindTarget(bindingTarget, bindingDef) {
 	    var ret = [];
 	    var def1 = bindingDef;
@@ -345,6 +350,7 @@ var jTemplate =
 	        definition.children = definition.children || this.Template.bind(this);
 	        this.definition = definition;
 	        this.destroyed = false;
+	        this.bindings = [];
 	    }
 	    get DefaultTemplates() {
 	        return {};
@@ -890,7 +896,10 @@ var jTemplate =
 	    Init(config) {
 	        this.activeTemplateMap = new Map();
 	        this.keyFunction = config.key;
-	        this.childrenFunction = config.children;
+	        var children = config.children;
+	        if (typeof children !== 'function')
+	            children = () => config.children;
+	        this.childrenFunction = children;
 	    }
 	    Apply() {
 	        var value = this.Value;
@@ -1287,7 +1296,8 @@ var jTemplate =
 	    ProcessDiff(data) {
 	        var emit = new Set();
 	        data.changedPaths.forEach(p => {
-	            var parent = p.match(/(.+)\.[^.]+$/)[1];
+	            var match = p.match(/(.+)\.[^.]+$/);
+	            var parent = match && match[1];
 	            if (parent && !emit.has(parent) && Array.isArray(this.ResolvePropertyPath(parent)))
 	                emit.add(parent);
 	            this.EmitSet(p);
@@ -1945,9 +1955,6 @@ var jTemplate =
 	        return new ObjectDiffTracker();
 	    }
 	    class ObjectDiffTracker {
-	        constructor() {
-	            this.idToPathsMap = new Map();
-	        }
 	        DiffBatch(batch) {
 	            var resp = {
 	                changedPaths: [],
@@ -1979,7 +1986,7 @@ var jTemplate =
 	            }
 	            var newKeys = new Set();
 	            var oldKeys = oldIsObject ? Object.keys(oldValue) : [];
-	            if (oldKeys.length > 0 && newIsObject)
+	            if (newIsObject)
 	                newKeys = new Set(Object.keys(newValue));
 	            var pathChanged = false;
 	            for (var x = 0; x < oldKeys.length; x++) {

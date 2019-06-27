@@ -4,11 +4,12 @@ import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
 import { Store } from "./Store/store/store";
+import { Templates } from "./template.types";
 //import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, /* StoreAsync, StoreAsyncQuery, */ Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
@@ -144,11 +145,17 @@ t.addTodo("val 2");
 t.addAssignee("Bart Simpson");
 t.addAssignee("Homer Simpson");
 
-class TodoView extends Template<ToDo, { remove: any }> {
+interface ITemplates extends Templates {
+    remove(data: ToDo, index: number): BindingDefinitions<any, any>;
+    append: BindingDefinitions<any, any>;
+}
+
+class TodoView extends Template<ToDo, ITemplates> {
 
     get DefaultTemplates() {
         return {
-            remove: (data: any, index: number) => span({ text: "" })
+            remove: (data: ToDo, index: number) => span({ text: "" }),
+            append: [] as BindingDefinitions<any, any>
         };
     }
 
@@ -164,11 +171,12 @@ class TodoView extends Template<ToDo, { remove: any }> {
                     style: { color: "red" } 
                 } 
             }),
-            span({}, () => this.Templates.remove(todo, index)),
+            span({}, this.Templates.remove(todo, index)),
             input({ 
                 props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
                 on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
-            })
+            }),
+            span({}, this.Templates.append)
         ]);
     }
 
@@ -198,15 +206,19 @@ class TodoList extends Template<any, any> {
     }
 
     Template() {
-        return div({ props: { style: { color: "red" } } }, () => [
+        return div({ props: { style: { color: "red" } } }, [
             div({ text: () => t.Report }),
             div({ text: () => t.SmallReport }),
-            todoView({ key: val => val.id, data: () => t.ToDos }, {
+            todoView({ key: (val: ToDo) => val.id, data: () => t.ToDos }, {
                 remove: (data) => 
                     input({ 
                         props: { type: "button", value: "delete" }, 
                         on: { click: this.onRemoveTodo.bind(this, data) } 
-                    })
+                    }),
+                append: [
+                    span({ text: "appended" }),
+                    span({ text: "next" })
+                ]
             }),
             div({ text: () => t.Loading ? 'Loading...' : '' }),
             input({ 
