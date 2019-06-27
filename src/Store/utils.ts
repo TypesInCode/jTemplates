@@ -22,16 +22,6 @@ export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //,
     return CreateProxyObject(node, reader, value);
 }
 
-function BuildJson(init: any, node: TreeNode) {
-    if(!init)
-        return;
-    
-    node.Children.forEach((value, key) => {
-        init[key] = value.Self.Value;
-        BuildJson(init[key], value.Self);
-    });
-}
-
 function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any): any { //, manager: StoreManager<any>): any {    
     var ret = null;
 
@@ -49,9 +39,7 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        var init = [] as Array<any>;
-                        BuildJson(init, node.Self);
-                        return init;
+                        CreateNodeCopy(node.Self);
                         // return node.Self.Value;
                     };
                 
@@ -105,9 +93,7 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        var init = {} as any;
-                        BuildJson(init, node.Self);
-                        return init;
+                        return CreateNodeCopy(node.Self);
                         // return node.Self.Value;
                     };
 
@@ -146,6 +132,25 @@ export function CreateProxyArray(node: TreeNode, reader: StoreReader<any>) { //,
 
     node.NodeCache = proxyArray;
     return proxyArray;
+}
+
+function CreateNodeCopy(node: TreeNode) {
+    var value = node.Value;
+    if(IsValue(value))
+        return value;
+    
+    var ret: any = null;
+    if(Array.isArray(value))
+        ret = [];
+    else
+        ret = {};
+    
+    for(var key in value) {
+        var child = node.Self.EnsureChild(key);
+        ret[key] = CreateNodeCopy(child);
+    }
+
+    return ret;
 }
 
 export function CreateCopy<O>(source: O): O {

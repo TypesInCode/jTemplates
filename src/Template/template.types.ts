@@ -17,7 +17,7 @@ export interface BindingDefinition<P, T extends Templates> {
     text?: FunctionOr<string>; //{(): string} | string;
     children?: ChildrenOr<P> // (c?: P, i?: number) => BindingDefinitions<P, T> | BindingDefinitions<P, T>;
     class?: { new(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): ITemplate<P, T> };
-    templates?: T;
+    templates?: T; 
 }
 
 export type BindingDefinitions<P, T extends Templates> = BindingDefinition<P, T> | Array<BindingDefinition<P, T>>;
