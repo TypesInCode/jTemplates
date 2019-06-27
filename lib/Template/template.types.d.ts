@@ -18,7 +18,8 @@ export interface BindingDefinition<P, T extends Templates> {
             (event?: any): void;
         };
     }>;
-    data?: FunctionOr<P | Array<P>>;
+    static?: P | Array<P>;
+    data?: any;
     key?: (val: P) => any;
     text?: FunctionOr<string>;
     children?: ChildrenOr<P>;
@@ -37,7 +38,10 @@ export interface TemplateDefinition<P> {
             (event?: any): void;
         };
     }>;
-    data?: FunctionOr<P | Array<P>>;
+    static?: P | Array<P>;
+    data?: {
+        (): P | Array<P>;
+    };
     key?: (val: P) => any;
     text?: FunctionOr<string>;
 }
@@ -50,7 +54,10 @@ export interface ComponentDefinition<P, T> {
             (event?: any): void;
         };
     }>;
-    data?: FunctionOr<P | Array<P>>;
+    static?: P | Array<P>;
+    data?: {
+        (): P | Array<P>;
+    };
     key?: (val: P) => any;
 }
 export declare type BoundComponentFunction<P, T extends Templates> = {

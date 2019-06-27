@@ -49,7 +49,7 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
     if(def1.text)
         ret.push(new TextBinding(bindingTarget, def1.text));
     else if(def1.children) {
-        def1.data = def1.data || true; //DefaultDataCallback;
+        def1.data = def1.data || def1.static || true; //DefaultDataCallback;
         ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.key));
     }
 

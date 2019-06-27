@@ -11,7 +11,8 @@ export interface BindingDefinition<P, T extends Templates> {
     type: any;
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
-    data?: FunctionOr<P | Array<P>>; //{(): P | Array<P>} | P | Array<P>;
+    static?: P | Array<P>;
+    data?: any; // {(): P | Array<P>}; //{(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
     text?: FunctionOr<string>; //{(): string} | string;
     children?: ChildrenOr<P> // (c?: P, i?: number) => BindingDefinitions<P, T> | BindingDefinitions<P, T>;
@@ -24,7 +25,8 @@ export type BindingDefinitions<P, T extends Templates> = BindingDefinition<P, T>
 export interface TemplateDefinition<P> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
-    data?: FunctionOr<P | Array<P>>; // {(): P | Array<P>} | P | Array<P>;
+    static?: P | Array<P>;
+    data?: {(): P | Array<P>}; // {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
     text?: FunctionOr<string>; // {(): string} | string;
 }
@@ -32,7 +34,8 @@ export interface TemplateDefinition<P> {
 export interface ComponentDefinition<P, T> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
-    data?: FunctionOr<P | Array<P>>; // {(): P | Array<P>} | P | Array<P>;
+    static?: P | Array<P>;
+    data?: {(): P | Array<P>}; // {(): P | Array<P>} | P | Array<P>;
     key?: (val: P) => any;
 }
 

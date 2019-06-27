@@ -9,7 +9,7 @@ import { Templates, BindingDefinitions } from "./Template/template.types";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ IStore as AbstractStore, Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ IStore, Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
