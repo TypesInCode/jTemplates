@@ -1,15 +1,15 @@
-import { Template, Component } from "./template";
+import { Template, Component } from "./Template/template";
 import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
 import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
-import { Store } from "./Store/store/store";
-import { Templates } from "./template.types";
+import { Store, IStore } from "./Store/store/store";
+import { Templates, BindingDefinitions } from "./Template/template.types";
 //import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ IStore as AbstractStore, Store, StoreSync, StoreAsync, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
@@ -181,18 +181,23 @@ class TodoView extends Template<ToDo, ITemplates> {
     }
 
     onToggleCompleted(todo: ToDo) {
-        t.Update(todo, (todo) => { todo.completed = !todo.completed });
+        var store = this.Injector.Get(IStore);
+        store.Update(todo, (todo) => { todo.completed = !todo.completed });
     }
 
     onRename(todo: ToDo) {
-        todo.task = prompt('Task name', todo.task) || todo.task;
+        var store = this.Injector.Get(IStore);
+        store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
+        // todo.task = prompt('Task name', todo.task) || todo.task;
     }
 
     onAssigneeIdChange(todo: ToDo, event: Event) {
         var value = (event.target as HTMLInputElement).value;
         var id = parseInt(value);
-        if(!isNaN(id))
-            t.setAssignee(todo.id, id);
+        if(!isNaN(id)) {
+            var store = this.Injector.Get(TodoStore);
+            store.setAssignee(todo.id, id);
+        }
     }
 
 }
@@ -203,6 +208,7 @@ class TodoList extends Template<any, any> {
 
     constructor() {
         super("todo-list");
+        this.Injector.Set(IStore, t);
     }
 
     Template() {
@@ -259,11 +265,11 @@ class TodoList extends Template<any, any> {
     }
 
     onAssigneeDblClick(assignee: Assignee) {
-        t.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
+        var store = this.Injector.Get(IStore);
+        store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
         // assignee.name = prompt("New Name", assignee.name) || assignee.name;
     }
 }
 
 var list = new TodoList();
-list.AttachTo(document.getElementById("container"));
-*/
+list.AttachTo(document.getElementById("container")); */

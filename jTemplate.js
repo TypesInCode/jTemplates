@@ -58,7 +58,7 @@ var jTemplate =
 	const template_1 = __webpack_require__(1);
 	exports.Template = template_1.Template;
 	exports.Component = template_1.Component;
-	const elements_1 = __webpack_require__(14);
+	const elements_1 = __webpack_require__(15);
 	exports.div = elements_1.div;
 	exports.span = elements_1.span;
 	exports.ul = elements_1.ul;
@@ -81,12 +81,13 @@ var jTemplate =
 	exports.td = elements_1.td;
 	const scope_1 = __webpack_require__(7);
 	exports.Scope = scope_1.Scope;
-	const storeAsync_1 = __webpack_require__(15);
+	const storeAsync_1 = __webpack_require__(16);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
-	const storeSync_1 = __webpack_require__(31);
+	const storeSync_1 = __webpack_require__(32);
 	exports.StoreSync = storeSync_1.StoreSync;
-	const store_1 = __webpack_require__(16);
+	const store_1 = __webpack_require__(17);
 	exports.Store = store_1.Store;
+	exports.AbstractStore = store_1.IStore;
 	class TodoStore extends storeAsync_1.StoreAsync {
 	    constructor() {
 	        super((val) => val.id, { loading: false, todos: [], assignees: [] });
@@ -217,22 +218,27 @@ var jTemplate =
 	        ]);
 	    }
 	    onToggleCompleted(todo) {
-	        t.Update(todo, (todo) => { todo.completed = !todo.completed; });
+	        var store = this.Injector.Get(store_1.IStore);
+	        store.Update(todo, (todo) => { todo.completed = !todo.completed; });
 	    }
 	    onRename(todo) {
-	        todo.task = prompt('Task name', todo.task) || todo.task;
+	        var store = this.Injector.Get(store_1.IStore);
+	        store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
 	    }
 	    onAssigneeIdChange(todo, event) {
 	        var value = event.target.value;
 	        var id = parseInt(value);
-	        if (!isNaN(id))
-	            t.setAssignee(todo.id, id);
+	        if (!isNaN(id)) {
+	            var store = this.Injector.Get(TodoStore);
+	            store.setAssignee(todo.id, id);
+	        }
 	    }
 	}
 	var todoView = template_1.Template.ToFunction("ul", TodoView);
 	class TodoList extends template_1.Template {
 	    constructor() {
 	        super("todo-list");
+	        this.Injector.Set(store_1.IStore, t);
 	    }
 	    Template() {
 	        return elements_1.div({ props: { style: { color: "red" } } }, [
@@ -280,7 +286,8 @@ var jTemplate =
 	        t.resetIds();
 	    }
 	    onAssigneeDblClick(assignee) {
-	        t.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name; });
+	        var store = this.Injector.Get(store_1.IStore);
+	        store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name; });
 	    }
 	}
 	var list = new TodoList();
@@ -299,6 +306,7 @@ var jTemplate =
 	const textBinding_1 = __webpack_require__(12);
 	const eventBinding_1 = __webpack_require__(13);
 	const scope_1 = __webpack_require__(7);
+	const injector_1 = __webpack_require__(14);
 	function TemplateFunction(type, templateDefinition, children) {
 	    return {
 	        type: type,
@@ -351,6 +359,7 @@ var jTemplate =
 	        this.definition = definition;
 	        this.destroyed = false;
 	        this.bindings = [];
+	        this.injector = new injector_1.Injector();
 	    }
 	    get DefaultTemplates() {
 	        return {};
@@ -358,15 +367,18 @@ var jTemplate =
 	    get Templates() {
 	        return this.templates;
 	    }
+	    get Injector() {
+	        return this.injector;
+	    }
 	    get Root() {
 	        if (!this.bindingRoot && !this.destroyed) {
 	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type);
 	            if (!this.deferBinding)
-	                this.bindings = BindTarget(this.bindingRoot, this.definition);
+	                injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
 	            else
 	                bindingConfig_1.BindingConfig.scheduleUpdate(() => {
 	                    if (!this.destroyed)
-	                        this.bindings = BindTarget(this.bindingRoot, this.definition);
+	                        injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
 	                });
 	        }
 	        return this.bindingRoot;
@@ -993,6 +1005,49 @@ var jTemplate =
 
 /***/ }),
 /* 14 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class Injector {
+	    constructor() {
+	        this.parent = Injector.Current();
+	        this.typeMap = new Map();
+	    }
+	    Get(type) {
+	        var ret = this.typeMap.get(type);
+	        if (!ret) {
+	            this.typeMap.forEach((value, key) => {
+	                if (value instanceof type)
+	                    ret = value;
+	            });
+	        }
+	        if (!ret && this.parent)
+	            ret = this.parent.Get(type);
+	        return ret;
+	    }
+	    Set(type, instance) {
+	        this.typeMap.set(type, instance);
+	    }
+	}
+	exports.Injector = Injector;
+	(function (Injector) {
+	    var currentScopes = new Array();
+	    function Current() {
+	        return currentScopes[currentScopes.length - 1];
+	    }
+	    Injector.Current = Current;
+	    function Scope(injector, action) {
+	        currentScopes.push(injector);
+	        action();
+	        currentScopes.pop();
+	    }
+	    Injector.Scope = Scope;
+	})(Injector = exports.Injector || (exports.Injector = {}));
+
+
+/***/ }),
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1081,13 +1136,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(16);
-	const diffAsync_1 = __webpack_require__(27);
+	const store_1 = __webpack_require__(17);
+	const diffAsync_1 = __webpack_require__(28);
 	class StoreAsync extends store_1.Store {
 	    constructor(idFunction, init) {
 	        super(idFunction, init, new diffAsync_1.DiffAsync());
@@ -1097,7 +1152,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1110,13 +1165,20 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeManager_1 = __webpack_require__(17);
-	const storeReader_1 = __webpack_require__(22);
-	const storeWriter_1 = __webpack_require__(23);
-	const promiseQueue_1 = __webpack_require__(24);
-	const storeQuery_1 = __webpack_require__(26);
-	class Store {
+	const storeManager_1 = __webpack_require__(18);
+	const storeReader_1 = __webpack_require__(23);
+	const storeWriter_1 = __webpack_require__(24);
+	const promiseQueue_1 = __webpack_require__(25);
+	const storeQuery_1 = __webpack_require__(27);
+	class IStore {
+	    Update(readOnly, updateCallback) {
+	        return __awaiter(this, void 0, void 0, function* () { });
+	    }
+	}
+	exports.IStore = IStore;
+	class Store extends IStore {
 	    constructor(idFunction, init, diff) {
+	        super();
 	        this.manager = new storeManager_1.StoreManager(idFunction, diff);
 	        this.reader = new storeReader_1.StoreReader(this.manager);
 	        this.writer = new storeWriter_1.StoreWriter(this.manager);
@@ -1173,7 +1235,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1186,10 +1248,10 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const tree_1 = __webpack_require__(18);
-	const treeNode_1 = __webpack_require__(19);
-	const utils_1 = __webpack_require__(21);
-	const treeNodeRefId_1 = __webpack_require__(20);
+	const tree_1 = __webpack_require__(19);
+	const treeNode_1 = __webpack_require__(20);
+	const utils_1 = __webpack_require__(22);
+	const treeNodeRefId_1 = __webpack_require__(21);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
@@ -1313,12 +1375,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const treeNode_1 = __webpack_require__(19);
+	const treeNode_1 = __webpack_require__(20);
 	class Tree {
 	    constructor(resolvePath) {
 	        this.root = new treeNode_1.TreeNode(this, null, "root", resolvePath);
@@ -1345,13 +1407,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(9);
-	const treeNodeRefId_1 = __webpack_require__(20);
+	const treeNodeRefId_1 = __webpack_require__(21);
 	class TreeNode {
 	    get NodeCache() {
 	        return this.nodeCache;
@@ -1450,7 +1512,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1474,7 +1536,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1597,12 +1659,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(21);
+	const utils_1 = __webpack_require__(22);
 	const scopeCollector_1 = __webpack_require__(10);
 	class StoreReader {
 	    constructor(store) {
@@ -1643,7 +1705,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1656,7 +1718,7 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(21);
+	const utils_1 = __webpack_require__(22);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -1717,12 +1779,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(25);
+	const deferredPromise_1 = __webpack_require__(26);
 	class PromiseQueue {
 	    constructor() {
 	        this.running = false;
@@ -1769,7 +1831,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1795,14 +1857,14 @@ var jTemplate =
 
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scopeBase_1 = __webpack_require__(8);
-	const storeReader_1 = __webpack_require__(22);
-	const storeWriter_1 = __webpack_require__(23);
+	const storeReader_1 = __webpack_require__(23);
+	const storeWriter_1 = __webpack_require__(24);
 	const scope_1 = __webpack_require__(7);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, defaultValue, getFunction) {
@@ -1829,13 +1891,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const workerQueue_1 = __webpack_require__(28);
-	const storeWorker_1 = __webpack_require__(29);
+	const workerQueue_1 = __webpack_require__(29);
+	const storeWorker_1 = __webpack_require__(30);
 	class DiffAsync {
 	    constructor() {
 	        this.workerQueue = new workerQueue_1.WorkerQueue(storeWorker_1.StoreWorker.Create());
@@ -1858,12 +1920,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const promiseQueue_1 = __webpack_require__(24);
+	const promiseQueue_1 = __webpack_require__(25);
 	class WorkerQueue {
 	    constructor(worker) {
 	        this.worker = worker;
@@ -1890,12 +1952,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(30);
+	const objectDiff_1 = __webpack_require__(31);
 	var StoreWorker;
 	(function (StoreWorker) {
 	    var workerConstructor = null;
@@ -1915,7 +1977,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -2012,13 +2074,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(16);
-	const diffSync_1 = __webpack_require__(32);
+	const store_1 = __webpack_require__(17);
+	const diffSync_1 = __webpack_require__(33);
 	class StoreSync extends store_1.Store {
 	    constructor(idFunction, init) {
 	        super(idFunction, init, new diffSync_1.DiffSync());
@@ -2028,12 +2090,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(30);
+	const objectDiff_1 = __webpack_require__(31);
 	class DiffSync {
 	    constructor() {
 	        this.diff = objectDiff_1.ObjectDiff();

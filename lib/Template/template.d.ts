@@ -1,7 +1,6 @@
 import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, ChildrenOr } from './template.types';
-import { Scope } from "./Store/scope/scope";
-export declare type BindingDefinitions<P, T extends Templates> = BindingDefinitions<P, T>;
-export declare type BindingDefinition<P, T extends Templates> = BindingDefinition<P, T>;
+import { Scope } from "../Store/scope/scope";
+import { Injector } from "../injector";
 export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any>;
 export declare class Template<P, T extends Templates> implements ITemplate<P, T> {
     private deferBinding;
@@ -10,8 +9,10 @@ export declare class Template<P, T extends Templates> implements ITemplate<P, T>
     private bindingRoot;
     private templates;
     private destroyed;
+    private injector;
     protected readonly DefaultTemplates: T;
     protected readonly Templates: T;
+    protected readonly Injector: Injector;
     protected readonly Root: any;
     constructor(definition: BindingDefinition<P, T> | string, deferBinding?: boolean);
     SetTemplates(templates: T): void;

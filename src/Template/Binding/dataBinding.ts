@@ -1,7 +1,7 @@
 import { Binding } from "./binding";
-import { BindingDefinitions, Template } from "../template";
+import { Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
-import { FunctionOr, ChildrenOr } from "../template.types";
+import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)

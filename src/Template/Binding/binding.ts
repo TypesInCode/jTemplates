@@ -1,4 +1,4 @@
-import { Scope } from '../Store/scope/scope';
+import { Scope } from '../../Store/scope/scope';
 import { BindingConfig } from './bindingConfig';
 import { FunctionOr } from '../template.types';
 

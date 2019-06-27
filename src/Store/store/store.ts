@@ -6,7 +6,13 @@ import { PromiseQueue } from "../../Promise/promiseQueue";
 import { StoreQuery } from "./storeQuery";
 import { Diff } from "../diff/diff.types";
 
-export class Store<T> {
+export class IStore {
+    public async Action(action: AsyncActionCallback<any>): Promise<void> { }
+
+    public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O): Promise<void> { }
+}
+
+export class Store<T> extends IStore {
 
     private manager: StoreManager<T>;
     private reader: StoreReader<T>;
@@ -20,6 +26,7 @@ export class Store<T> {
     }
 
     constructor(idFunction: (val: any) => any, init: any, diff: Diff) {
+        super();
         this.manager = new StoreManager(idFunction, diff);
         this.reader = new StoreReader<T>(this.manager);
         this.writer = new StoreWriter<T>(this.manager);
@@ -31,8 +38,8 @@ export class Store<T> {
         });
     }
 
-    public Action(action: AsyncActionCallback<T>) {
-        return this.promiseQueue.Push((resolve) => {
+    public async Action(action: AsyncActionCallback<T>) {
+        await this.promiseQueue.Push((resolve) => {
             resolve(action(this.reader, this.writer));
         });
     }
@@ -43,8 +50,8 @@ export class Store<T> {
         });
     }
 
-    public Write(value: any) {
-        return this.Action(async (reader, writer) => {
+    public async Write(value: any) {
+        await this.Action(async (reader, writer) => {
             await writer.Write(value);
         });
     }

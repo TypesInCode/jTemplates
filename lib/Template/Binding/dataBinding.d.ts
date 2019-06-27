@@ -1,6 +1,6 @@
 import { Binding } from "./binding";
-import { BindingDefinitions, Template } from "../template";
-import { FunctionOr, ChildrenOr } from "../template.types";
+import { Template } from "../template";
+import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
 declare class DataBinding extends Binding<{
     children: ChildrenOr<any>;
     key: {

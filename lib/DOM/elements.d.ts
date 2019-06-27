@@ -1,4 +1,4 @@
-import { TemplateDefinition, BindingDefinition, ChildrenOr } from "../template.types";
+import { TemplateDefinition, BindingDefinition, ChildrenOr } from "../Template/template.types";
 export declare function a<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;
 export declare function ul<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;
 export declare function li<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;

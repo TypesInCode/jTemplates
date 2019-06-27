@@ -1,4 +1,4 @@
-import { IBindingConfig } from '../Binding/bindingConfig.types';
+import { IBindingConfig } from '../Template/Binding/bindingConfig.types';
 import { wndw } from './window';
 
 var pendingUpdates: Array<() => void> = [];

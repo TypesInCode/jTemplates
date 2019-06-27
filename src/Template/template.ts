@@ -5,10 +5,8 @@ import DataBinding from "./Binding/dataBinding";
 import TextBinding from "./Binding/textBinding";
 import EventBinding from "./Binding/eventBinding";
 import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, ChildrenOr } from './template.types';
-import { Scope } from "./Store/scope/scope";
-
-export type BindingDefinitions<P, T extends Templates> = BindingDefinitions<P, T>;
-export type BindingDefinition<P, T extends Templates> = BindingDefinition<P, T>;
+import { Scope } from "../Store/scope/scope";
+import { Injector } from "../injector";
 
 export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
@@ -64,6 +62,7 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
     private bindingRoot: any;
     private templates: T;
     private destroyed: boolean;
+    private injector: Injector;
 
     protected get DefaultTemplates(): T {
         return {} as T;
@@ -73,15 +72,19 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         return this.templates;
     }
 
+    protected get Injector(): Injector {
+        return this.injector;
+    }
+
     protected get Root(): any {
         if(!this.bindingRoot && !this.destroyed) {
             this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
             if(!this.deferBinding)
-                this.bindings = BindTarget(this.bindingRoot, this.definition);
+                Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
             else
                 BindingConfig.scheduleUpdate(() => {
                     if(!this.destroyed)
-                        this.bindings = BindTarget(this.bindingRoot, this.definition);
+                        Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
                 });
         }
         
@@ -98,6 +101,7 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         this.definition = definition;
         this.destroyed = false;
         this.bindings = [];
+        this.injector = new Injector();
     }
 
     public SetTemplates(templates: T) {

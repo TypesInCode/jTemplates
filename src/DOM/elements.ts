@@ -1,5 +1,5 @@
-import { TemplateFunction } from "../template";
-import { TemplateDefinition, BindingDefinition, ChildrenOr } from "../template.types";
+import { TemplateFunction } from "../Template/template";
+import { TemplateDefinition, BindingDefinition, ChildrenOr } from "../Template/template.types";
 
 export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
     return TemplateFunction("a", templateDefinition, children);
