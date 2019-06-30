@@ -1,7 +1,6 @@
 import { Binding } from "./binding";
 import { Template } from "../template";
 import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
-import { Injector } from "../../injector";
 declare class DataBinding extends Binding<{
     children: ChildrenOr<any>;
     key: {
@@ -11,7 +10,6 @@ declare class DataBinding extends Binding<{
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     keyFunction: (val: any) => any;
-    injector: Injector;
     constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any);
     Destroy(parentDestroyed?: boolean): void;
     protected OverrideBinding(bindingFunction: FunctionOr<any>, config: {

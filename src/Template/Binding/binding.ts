@@ -1,6 +1,7 @@
 import { Scope } from '../../Store/scope/scope';
 import { BindingConfig } from './bindingConfig';
 import { FunctionOr } from '../template.types';
+import { Injector } from '../../injector';
 
 enum BindingStatus {
     Init,
@@ -10,6 +11,7 @@ enum BindingStatus {
 }
 
 export abstract class Binding<T> {
+    private injector: Injector;
     private boundTo: any;
     private isStatic: boolean;
     private staticValue: any;
@@ -23,6 +25,10 @@ export abstract class Binding<T> {
             this.observableScope.Value;
     }
 
+    protected get Injector() {
+        return this.injector;
+    }
+
     protected get BoundTo(): any {
         return this.boundTo;
     }
@@ -32,6 +38,7 @@ export abstract class Binding<T> {
     }
 
     constructor(boundTo: any, binding: FunctionOr<any>, config: T) {
+        this.injector = Injector.Current();
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
         this.setCallback = this.Update.bind(this);

@@ -19,11 +19,9 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     // activeKeys: Array<any>;
     keyFunction: (val: any) => any;
-    injector: Injector;
 
     constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any) {
         super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
-        this.injector = Injector.Current();
     }
 
     public Destroy(parentDestroyed = false) {
@@ -101,7 +99,7 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                 if(!Array.isArray(newDefs))
                     newDefs = [newDefs];
                 
-                Injector.Scope(this.injector, () => {
+                Injector.Scope(this.Injector, () => {
                     templates = newDefs.map(d => Template.Create(d, !this.IsStatic));
                 });
                 newTemplateMap.set(key, templates);
