@@ -10,4 +10,5 @@ export declare class DiffAsync implements Diff {
     Diff(path: string, newValue: any, resolveOldValue: {
         (): any;
     }): Promise<any>;
+    Destroy(): void;
 }

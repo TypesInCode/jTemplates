@@ -7,6 +7,7 @@ import EventBinding from "./Binding/eventBinding";
 import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundComponentFunction, Templates, ITemplate, TemplateDefinition, TemplateConstructor, ChildrenOr } from './template.types';
 import { Scope } from "../Store/scope/scope";
 import { Injector } from "../injector";
+import { AbstractStore } from "../Store/store/store";
 
 export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
@@ -74,6 +75,10 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
 
     protected get Injector(): Injector {
         return this.injector;
+    }
+
+    protected get Store(): AbstractStore {
+        return this.Injector.Get(AbstractStore);
     }
 
     protected get Root(): any {

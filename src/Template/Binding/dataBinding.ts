@@ -2,6 +2,7 @@ import { Binding } from "./binding";
 import { Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
 import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
+import { Injector } from "../../injector";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -18,9 +19,11 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     // activeKeys: Array<any>;
     keyFunction: (val: any) => any;
+    injector: Injector;
 
     constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any) {
         super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
+        this.injector = Injector.Current();
     }
 
     public Destroy(parentDestroyed = false) {
@@ -39,11 +42,7 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                     value: val, 
                     key: config.key && config.key(val)
                 }));
-                /* var ret = new Array(array.length);
-                for(var x=0; x<ret.length; x++)
-                    ret[x] = { value: array[x], key: config.key && config.key(array[x]) }; */
                 
-
                 return ret;
             };
         }
@@ -63,15 +62,6 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                 }
             });
         }
-            /* localBinding = () => {
-                var array = ConvertToArray(bindingFunction);
-                return array.map((curr, index) => {
-                    return {
-                        value: curr,
-                        key: config.key && config.key(curr)
-                    };
-                });
-            }; */
 
         return binding;
     }
@@ -111,7 +101,9 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                 if(!Array.isArray(newDefs))
                     newDefs = [newDefs];
                 
-                templates = newDefs.map(d => Template.Create(d, !this.IsStatic));
+                Injector.Scope(this.injector, () => {
+                    templates = newDefs.map(d => Template.Create(d, !this.IsStatic));
+                });
                 newTemplateMap.set(key, templates);
             }
 

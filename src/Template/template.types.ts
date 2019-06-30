@@ -1,9 +1,9 @@
 export type Templates = {
-    [name: string]: ChildrenOr<any>
+    [name: string]: FunctionOr<BindingDefinitions<any, any>>
 }
 
 // export type PromiseOr<T> = {(): Promise<T> | T} | T;
-export type FunctionOr<T> = {(): T } | T;
+export type FunctionOr<T> = {(...args: Array<any>): T } | T;
 export type ChildrenFunction<P> = {(c: P, i: number): BindingDefinitions<any, any>};
 export type ChildrenOr<P> = ChildrenFunction<P> | BindingDefinitions<any, any>;
 

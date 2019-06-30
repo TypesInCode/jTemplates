@@ -28,4 +28,8 @@ export class WorkerQueue<S, R> {
         this.promiseQueue.Stop();
     }
 
+    public Destroy() {
+        this.worker.terminate();
+    }
+
 }

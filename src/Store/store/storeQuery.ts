@@ -1,20 +1,16 @@
 import { ScopeBase } from "../scope/scopeBase";
 import { Emitter } from "../../emitter";
-import { StoreManager } from "./storeManager";
-import { StoreReader } from "./storeReader";
-import { StoreWriter } from "./storeWriter";
 import { Scope } from "../scope/scope";
 import { AsyncFuncCallback } from "./store.types";
+import { Store } from "./store";
 
 export class StoreQuery<T, O> extends ScopeBase<O> {
 
-    private reader: StoreReader<T>;
-    private writer: StoreWriter<T>;
+    private store: Store<any>;
 
-    constructor(store: StoreManager<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>) {
+    constructor(store: Store<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>) {
         super(getFunction, defaultValue);
-        this.reader = new StoreReader(store);
-        this.writer = new StoreWriter(store);
+        this.store = store;
     }
 
     public Scope<R>(callback: {(parent: O): R}): Scope<R> {
@@ -23,15 +19,24 @@ export class StoreQuery<T, O> extends ScopeBase<O> {
 
     public Destroy() {
         super.Destroy();
-        this.reader.Destroy();
+        // this.reader.Destroy();
     }
     
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: O) => void): void {
-        this.reader.Watching = true;
+        var value: any = null;
+        var emitters: any = null;
+        this.store.Action(async (reader, writer) => {
+            reader.Watching = true;
+            value = await (this.GetFunction  as AsyncFuncCallback<T, O>)(reader, writer);
+            reader.Watching = false;
+            emitters = reader.Emitters;
+        }).then(() => callback(emitters, value as O));
+        
+        /* this.reader.Watching = true;
         (this.GetFunction  as AsyncFuncCallback<T, O>)(this.reader, this.writer).then(value => {
             this.reader.Watching = false;
             callback(this.reader.Emitters, value as O);
-        });
+        }); */
     }
     
 }

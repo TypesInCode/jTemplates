@@ -3,10 +3,10 @@ export declare class Injector {
     private typeMap;
     constructor();
     Get<T>(type: {
-        new (): T;
+        new (...args: Array<any>): T;
     }): T;
     Set<T>(type: {
-        new (): T;
+        new (...args: Array<any>): T;
     }, instance: T): void;
 }
 export declare namespace Injector {

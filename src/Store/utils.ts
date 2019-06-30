@@ -165,10 +165,11 @@ export function CreateCopy<O>(source: O): O {
 
         return ret as any as O;
     }
-
-    ret = {} as { [key: string]: any };
-    for(var key in source)
-        ret[key] = this.CreateCopy(source[key]);
+    else {
+        ret = {} as { [key: string]: any };
+        for(var key in source)
+            ret[key] = this.CreateCopy(source[key]);
+    }
 
     return ret as any as O;
 }

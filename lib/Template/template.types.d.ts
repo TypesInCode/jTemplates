@@ -1,8 +1,8 @@
 export declare type Templates = {
-    [name: string]: ChildrenOr<any>;
+    [name: string]: FunctionOr<BindingDefinitions<any, any>>;
 };
 export declare type FunctionOr<T> = {
-    (): T;
+    (...args: Array<any>): T;
 } | T;
 export declare type ChildrenFunction<P> = {
     (c: P, i: number): BindingDefinitions<any, any>;

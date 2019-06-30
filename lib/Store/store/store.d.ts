@@ -1,13 +1,15 @@
 import { AsyncActionCallback, AsyncFuncCallback } from "./store.types";
 import { StoreQuery } from "./storeQuery";
 import { Diff } from "../diff/diff.types";
-export declare class IStore {
+export declare class AbstractStore {
     Action(action: AsyncActionCallback<any>): Promise<void>;
     Update<O>(readOnly: O, updateCallback: {
         (val: O): void;
     } | O): Promise<void>;
+    ToJSON<O>(readOnly: O): O;
+    Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O>;
 }
-export declare class Store<T> extends IStore {
+export declare class Store<T> extends AbstractStore {
     private manager;
     private reader;
     private writer;
@@ -20,6 +22,7 @@ export declare class Store<T> extends IStore {
     Update<O>(readOnly: O, updateCallback: {
         (val: O): void;
     } | O): Promise<void>;
+    ToJSON<O>(readOnly: O): any;
     Write(value: any): Promise<void>;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<T, O>): StoreQuery<T, O>;
     Destroy(): void;

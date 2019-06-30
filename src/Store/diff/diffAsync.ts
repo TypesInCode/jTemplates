@@ -35,5 +35,9 @@ export class DiffAsync implements Diff {
             arguments: [path, newValue, oldValue, skipDependents]
         }); */
     }
+
+    public Destroy() {
+        this.workerQueue.Destroy();
+    }
     
 }

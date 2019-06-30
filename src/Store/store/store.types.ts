@@ -1,5 +1,6 @@
 import { StoreReader } from "./storeReader";
 import { StoreWriter } from "./storeWriter";
+import { TreeNode } from "../tree/treeNode";
 // import { StoreQuery } from "./storeQuery";
 
 export interface AsyncActionCallback<T> {
@@ -8,6 +9,14 @@ export interface AsyncActionCallback<T> {
 
 export interface AsyncFuncCallback<T, O> {
     (reader: StoreReader<T>, writer: StoreWriter<T>): Promise<O>;
+}
+
+export interface IStoreObject {
+    ___storeProxy: boolean;
+
+    ___node: TreeNode;
+
+    toJSON(): any;
 }
 
 /* export interface QueryCallback<T> {

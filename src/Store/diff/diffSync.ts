@@ -33,5 +33,7 @@ export class DiffSync implements Diff {
             arguments: [path, newValue, resolveOldValue()]
         }));
     }
+
+    public Destroy() { }
     
 }

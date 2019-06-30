@@ -10,4 +10,5 @@ export declare class DiffSync implements Diff {
     Diff(path: string, newValue: any, resolveOldValue: {
         (): any;
     }): Promise<IDiffResponse>;
+    Destroy(): void;
 }

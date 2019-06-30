@@ -110,6 +110,7 @@ export class StoreManager<T> {
     public Destroy() {
         this.data.root = null;
         this.tree.Destroy();
+        this.diff.Destroy();
     }
 
     private BreakUpValue(path: string, value: any, map: Map<string, any>): any {

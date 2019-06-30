@@ -1,4 +1,4 @@
-import { AsyncActionCallback, AsyncFuncCallback } from "./store.types";
+import { AsyncActionCallback, AsyncFuncCallback, IStoreObject } from "./store.types";
 import { StoreManager } from "./storeManager";
 import { StoreReader } from "./storeReader";
 import { StoreWriter } from "./storeWriter";
@@ -6,13 +6,19 @@ import { PromiseQueue } from "../../Promise/promiseQueue";
 import { StoreQuery } from "./storeQuery";
 import { Diff } from "../diff/diff.types";
 
-export class IStore {
+export class AbstractStore {
     public async Action(action: AsyncActionCallback<any>): Promise<void> { }
 
     public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O): Promise<void> { }
+
+    public ToJSON<O>(readOnly: O): O { return null; }
+
+    public Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O> {
+        return null;
+    }
 }
 
-export class Store<T> extends IStore {
+export class Store<T> extends AbstractStore {
 
     private manager: StoreManager<T>;
     private reader: StoreReader<T>;
@@ -22,7 +28,7 @@ export class Store<T> extends IStore {
     private init: any;
 
     public get Root(): StoreQuery<T, T> {
-        return this.Query("root", this.init, (reader) => Promise.resolve(reader.Root));
+        return this.Query("root", this.init, async (reader) => reader.Root);
     }
 
     constructor(idFunction: (val: any) => any, init: any, diff: Diff) {
@@ -50,6 +56,14 @@ export class Store<T> extends IStore {
         });
     }
 
+    public ToJSON<O>(readOnly: O) {        
+        var rOnly = readOnly as any as IStoreObject;
+        if(rOnly && rOnly.___storeProxy)
+            return rOnly.toJSON();
+
+        throw "parameter readOnly is not a store object";
+    }
+
     public async Write(value: any) {
         await this.Action(async (reader, writer) => {
             await writer.Write(value);
@@ -64,12 +78,12 @@ export class Store<T> extends IStore {
         if(this.queryCache.has(id))
             return this.queryCache.get(id);
 
-        // var query = new StoreAsyncQuery<T, O>(this.manager, defaultValue, queryFunc);
-        var query = new StoreQuery<T, O>(this.manager, defaultValue, async (reader, writer) => {
+        var query = new StoreQuery<T, O>(this, defaultValue, queryFunc);
+        /* var query = new StoreQuery<T, O>(this, defaultValue, async (reader, writer) => {
             return await this.promiseQueue.Push(resolve => {
                 resolve(queryFunc(reader, writer));
             });
-        });
+        }); */
 
         var destroy = () => {
             this.queryCache.delete(id);

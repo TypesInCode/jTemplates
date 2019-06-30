@@ -6,4 +6,5 @@ export declare class WorkerQueue<S, R> {
         (): S;
     }): Promise<R>;
     Stop(): void;
+    Destroy(): void;
 }
