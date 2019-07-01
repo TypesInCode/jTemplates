@@ -25,6 +25,7 @@ export function CreateProxy(node: TreeNode, reader: StoreReader<any>): any { //,
 function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any): any { //, manager: StoreManager<any>): any {    
     var ret = null;
 
+    var clearTimeout: any = null;
     if(Array.isArray(value)) {
         ret = new Proxy([], {
             get: (obj: any, prop: any) => {
@@ -119,6 +120,12 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
                 // var childPath = [node.Self.Path, prop].join(".");
                 // manager.WritePath(childPath, value);
                 obj[prop] = value;
+                clearTimeout = clearTimeout || setTimeout(() => {
+                    for(var key in obj)
+                        delete obj[key];
+
+                    clearTimeout = null;
+                }, 0);
                 return true;
             }
         });

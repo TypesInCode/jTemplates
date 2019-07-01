@@ -162,12 +162,12 @@ export class Component<P, T extends Templates> extends Template<Scope<P | P[]>, 
         if(typeof definition === 'string')
             super(definition, deferBinding);
         else {
-            if(typeof definition.data === 'function') {
+            if(definition.data) {
                 (definition as any as BindingDefinition<Scope<P>, T>).data = new Scope(definition.data as {(): P});
                 super(definition as any as BindingDefinition<Scope<P>, T>, deferBinding);
             }
             else {
-                var data = definition.data;
+                var data = definition.static;
                 (definition as any as BindingDefinition<Scope<P | P[]>, T>).data = new Scope(() => data);
                 super(definition as any as BindingDefinition<Scope<P | P[]> ,T>, deferBinding);
             }
