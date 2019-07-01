@@ -7,4 +7,4 @@ import { Store, AbstractStore } from "./Store/store/store";
 import { Templates } from "./Template/template.types";
 import { StoreReader } from "./Store/store/storeReader";
 import { StoreWriter } from "./Store/store/storeWriter";
-export { Template, Component, Templates, AbstractStore as IStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };

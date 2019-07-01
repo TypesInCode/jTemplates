@@ -39,7 +39,7 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        CreateNodeCopy(node.Self);
+                        return CreateNodeCopy(node.Self);
                         // return node.Self.Value;
                     };
                 
@@ -93,11 +93,18 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
 
                 if(prop === 'toJSON')
                     return () => {
-                        return CreateNodeCopy(node.Self);
+                        var copy = CreateNodeCopy(node.Self);
+                        for(var key in obj)
+                            copy[key] = obj[key];
+
+                        return copy;
                         // return node.Self.Value;
                     };
 
                 if(typeof prop !== 'symbol') {
+                    if(typeof obj[prop] !== 'undefined')
+                        return obj[prop];
+                    
                     var childNode = node.Self.EnsureChild(prop);
                     if(!childNode) 
                         return null;
@@ -107,12 +114,13 @@ function CreateProxyObject(node: TreeNode, reader: StoreReader<any>, value: any)
                 }
 
                 return obj[prop];
-            } /* ,
+            },
             set: (obj: any, prop: any, value: any) => {
-                var childPath = [node.Self.Path, prop].join(".");
-                manager.WritePath(childPath, value);
+                // var childPath = [node.Self.Path, prop].join(".");
+                // manager.WritePath(childPath, value);
+                obj[prop] = value;
                 return true;
-            } */
+            }
         });
     }
 

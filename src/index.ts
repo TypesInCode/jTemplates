@@ -11,7 +11,7 @@ import { StoreWriter } from "./Store/store/storeWriter";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ AbstractStore as IStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
