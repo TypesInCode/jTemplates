@@ -37,6 +37,10 @@ export abstract class Binding<T> {
         return this.isStatic;
     }
 
+    protected get ScheduleUpdate() {
+        return true;
+    }
+
     constructor(boundTo: any, binding: FunctionOr<any>, config: T) {
         this.injector = Injector.Current();
         this.boundTo = boundTo;
@@ -61,7 +65,7 @@ export abstract class Binding<T> {
         if(this.status === BindingStatus.Destroyed)
             return;
         
-        if(this.status === BindingStatus.Init) {
+        if(this.status === BindingStatus.Init || !this.ScheduleUpdate) {
             this.status = BindingStatus.Updating;
             this.Apply();
             this.status = BindingStatus.Updated;

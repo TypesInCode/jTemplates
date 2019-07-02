@@ -12,6 +12,7 @@ export declare abstract class Binding<T> {
     protected readonly Injector: Injector;
     protected readonly BoundTo: any;
     protected readonly IsStatic: boolean;
+    protected readonly ScheduleUpdate: boolean;
     constructor(boundTo: any, binding: FunctionOr<any>, config: T);
     Update(): void;
     Destroy(parentDestroyed?: boolean): void;

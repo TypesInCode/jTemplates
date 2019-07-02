@@ -3,6 +3,11 @@ import { FunctionOr } from "../template.types";
 
 class PropertyBinding extends Binding<any> {
     private lastValue: any;
+    private scheduleUpdate = true;
+
+    protected get ScheduleUpdate() {
+        return this.scheduleUpdate;
+    }
 
     constructor(boundTo: Node, bindingFunction: FunctionOr<any>) {
         super(boundTo, bindingFunction, {});
@@ -11,6 +16,10 @@ class PropertyBinding extends Binding<any> {
     protected Apply() {
         this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
         this.lastValue = this.Value;
+        if(Object.keys(this.lastValue).indexOf("value") >= 0)
+            this.scheduleUpdate = false;
+        else
+            this.scheduleUpdate = true;
     }
 
     private ApplyRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}) {
