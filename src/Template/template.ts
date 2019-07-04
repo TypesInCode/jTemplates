@@ -98,14 +98,20 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         return this.bindingRoot;
     }
 
-    constructor(definition: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
-        if(typeof definition === 'string')
-            definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
+    constructor(def: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
+        var localDef: BindingDefinition<P, T> = null;
+        if(typeof def === 'string')
+            localDef = ComponentFunction(def, this.constructor as TemplateConstructor<P, T>);
+        else {
+            localDef = {} as BindingDefinition<P, T>;
+            for(var key in def)
+                (localDef as any)[key] = (def as any)[key];
+        }
         
         this.templates = this.DefaultTemplates;
-        this.SetTemplates(definition.templates);
-        definition.children = definition.children || this.Template.bind(this);
-        this.definition = definition;
+        this.SetTemplates(localDef.templates);
+        localDef.children = localDef.children || this.Template.bind(this);
+        this.definition = localDef;
         this.destroyed = false;
         this.bindings = [];
         this.injector = new Injector();
