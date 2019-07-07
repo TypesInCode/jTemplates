@@ -25,6 +25,7 @@ export declare class Template<P, T extends Templates> implements ITemplate<P, T>
     Detach(): void;
     Destroy(parentDestroyed?: boolean): void;
     protected Template(c: P, i: number): BindingDefinitions<any, any>;
+    protected Init(): void;
 }
 export declare class Component<P, T extends Templates> extends Template<Scope<P | P[]>, T> {
     constructor(definition: BindingDefinition<P, T> | string, deferBinding?: boolean);

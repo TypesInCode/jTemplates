@@ -115,6 +115,7 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         this.destroyed = false;
         this.bindings = [];
         this.injector = new Injector();
+        this.Init();
     }
 
     public SetTemplates(templates: T) {
@@ -162,6 +163,10 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
 
     protected Template(c: P, i: number): BindingDefinitions<any, any> {
         return [];
+    }
+
+    protected Init() {
+
     }
 }
 
