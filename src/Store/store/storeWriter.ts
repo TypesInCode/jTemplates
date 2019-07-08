@@ -77,12 +77,19 @@ export class StoreWriter<T> {
 
         var proxyArray = CreateProxyArray(node, null);
         var removedProxies = proxyArray.splice.apply(proxyArray, args);
-        for(var x=0; x<removedProxies.length; x++)
-            ((removedProxies[x] as any).___node as TreeNode).Destroy();
+        for(var x=0; x<removedProxies.length; x++) {
+            var node = removedProxies[x] && (removedProxies[x] as any).___node as TreeNode;
+            if(node)
+                node.Destroy();
+        }
 
         for(var x=start + items.length; x<proxyArray.length; x++) {
-            ((proxyArray[x] as any).___node as TreeNode).Property = x.toString();
-            ((proxyArray[x] as any).___node as TreeNode).UpdateParentKey();
+            var node = removedProxies[x] && (removedProxies[x] as any).___node as TreeNode;
+
+            if(node) {
+                node.Property = x.toString();
+                node.UpdateParentKey();
+            }
         }
 
         var ret = localValue.splice.apply(localValue, args);
