@@ -64,3 +64,6 @@ export function td<P>(templateDefinition?: TemplateDefinition<P>, children?: Chi
 export function p<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
     return TemplateFunction("p", templateDefinition, children);
 }
+export function style<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
+    return TemplateFunction("style", templateDefinition, children);
+}

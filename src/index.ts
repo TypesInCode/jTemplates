@@ -4,14 +4,14 @@ import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
 import { Store, AbstractStore } from "./Store/store/store";
-import { Templates, BindingDefinitions } from "./Template/template.types";
+import { Templates, BindingDefinitions, BindingDefinition } from "./Template/template.types";
 import { StoreReader } from "./Store/store/storeReader";
 import { StoreWriter } from "./Store/store/storeWriter";
 //import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
 // import { StoreQuery } from "./Store/sync/storeQuery";
 // import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, Templates, /* StoreAsync, StoreAsyncQuery, */ AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, /* StoreQuery, */ Scope, div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td };
+export { Template, Component, Templates, BindingDefinitions, BindingDefinition, /* StoreAsync, StoreAsyncQuery, */ AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, /* StoreQuery, */ Scope };
 
 /* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 

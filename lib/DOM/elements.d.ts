@@ -20,3 +20,4 @@ export declare function th<P>(templateDefinition?: TemplateDefinition<P>, childr
 export declare function tr<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;
 export declare function td<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;
 export declare function p<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;
+export declare function style<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any>;

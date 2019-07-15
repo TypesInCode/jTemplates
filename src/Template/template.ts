@@ -86,12 +86,16 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
     protected get Root(): any {
         if(!this.bindingRoot && !this.destroyed) {
             this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
-            if(!this.deferBinding)
+            if(!this.deferBinding) {
                 Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+                this.Bound();
+            }
             else
                 BindingConfig.scheduleUpdate(() => {
-                    if(!this.destroyed)
+                    if(!this.destroyed) {
                         Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+                        this.Bound();
+                    }
                 });
         }
         
@@ -166,6 +170,10 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
     }
 
     protected Init() {
+
+    }
+
+    protected Bound() {
 
     }
 }
