@@ -18,4 +18,6 @@ export interface IBindingConfig {
     createContainer(): any;
     addContainerChild(container: any, child: any): void;
     addChildContainer(root: any, container: any): void;
+    getAttribute(target: any, attribute: string): string;
+    setAttribute(target: any, attribute: string, value: string): void;
 }

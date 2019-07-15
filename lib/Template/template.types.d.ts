@@ -13,6 +13,9 @@ export interface BindingDefinition<P, T extends Templates> {
     props?: FunctionOr<{
         [name: string]: any;
     }>;
+    attrs?: FunctionOr<{
+        [name: string]: string;
+    }>;
     on?: FunctionOr<{
         [name: string]: {
             (event?: any): void;
@@ -33,6 +36,9 @@ export interface TemplateDefinition<P> {
     props?: FunctionOr<{
         [name: string]: any;
     }>;
+    attrs?: FunctionOr<{
+        [name: string]: string;
+    }>;
     on?: FunctionOr<{
         [name: string]: {
             (event?: any): void;
@@ -48,6 +54,9 @@ export interface TemplateDefinition<P> {
 export interface ComponentDefinition<P, T> {
     props?: FunctionOr<{
         [name: string]: any;
+    }>;
+    attrs?: FunctionOr<{
+        [name: string]: string;
     }>;
     on?: FunctionOr<{
         [name: string]: {

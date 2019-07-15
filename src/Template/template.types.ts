@@ -10,6 +10,7 @@ export type ChildrenOr<P> = ChildrenFunction<P> | BindingDefinitions<any, any>;
 export interface BindingDefinition<P, T extends Templates> {
     type: any;
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
     static?: P | Array<P>;
     data?: any; // {(): P | Array<P>}; //{(): P | Array<P>} | P | Array<P>;
@@ -24,6 +25,7 @@ export type BindingDefinitions<P, T extends Templates> = BindingDefinition<P, T>
 
 export interface TemplateDefinition<P> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
     static?: P | Array<P>;
     data?: {(): P | Array<P>}; // {(): P | Array<P>} | P | Array<P>;
@@ -33,6 +35,7 @@ export interface TemplateDefinition<P> {
 
 export interface ComponentDefinition<P, T> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
     static?: P | Array<P>;
     data?: {(): P | Array<P>}; // {(): P | Array<P>} | P | Array<P>;

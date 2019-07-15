@@ -98,5 +98,11 @@ export var DOMBindingConfig: IBindingConfig = {
     },
     addChildContainer(root: Node, container: DocumentFragment) {
         root.appendChild(container);
+    },
+    getAttribute(target: HTMLElement, attribute: string) {
+        return target.getAttribute(attribute);
+    },
+    setAttribute(target: HTMLElement, attribute: string, value: string) {
+        target.setAttribute(attribute, value);
     }
 }

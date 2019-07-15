@@ -8,11 +8,13 @@ import { BindingDefinitions, BindingDefinition, ComponentDefinition, BoundCompon
 import { Scope } from "../Store/scope/scope";
 import { Injector } from "../injector";
 import { AbstractStore } from "../Store/store/store";
+import AttributeBinding from "./Binding/attributeBinding";
 
 export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
         type: type,
         props: templateDefinition && templateDefinition.props,
+        attrs: templateDefinition && templateDefinition.attrs,
         on: templateDefinition && templateDefinition.on,
         static: templateDefinition && templateDefinition.static,
         data: templateDefinition && templateDefinition.data,
@@ -27,6 +29,7 @@ function ComponentFunction<P, T extends Templates>(type: string, classType: Temp
         type: type,
         class: classType,
         props: componentDefinition && componentDefinition.props,
+        attrs: componentDefinition && componentDefinition.attrs,
         on: componentDefinition && componentDefinition.on,
         static: componentDefinition && componentDefinition.static,
         data: componentDefinition && componentDefinition.data,
@@ -45,6 +48,9 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
     var def1 = bindingDef as BindingDefinition<any, any>;
     if(def1.props)
         ret.push(new PropertyBinding(bindingTarget, def1.props));
+    
+    if(def1.attrs)
+        ret.push(new AttributeBinding(bindingTarget, def1.attrs));
 
     if(def1.on)
         ret.push(new EventBinding(bindingTarget, def1.on));
