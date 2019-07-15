@@ -10,9 +10,10 @@ import { Injector } from "../injector";
 import { AbstractStore } from "../Store/store/store";
 import AttributeBinding from "./Binding/attributeBinding";
 
-export function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
+export function TemplateFunction(type: string, namespace: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
         type: type,
+        namespace: namespace,
         props: templateDefinition && templateDefinition.props,
         attrs: templateDefinition && templateDefinition.attrs,
         on: templateDefinition && templateDefinition.on,
@@ -27,6 +28,7 @@ export function TemplateFunction(type: string, templateDefinition?: TemplateDefi
 function ComponentFunction<P, T extends Templates>(type: string, classType: TemplateConstructor<P, T>, componentDefinition?: ComponentDefinition<P, T>, templates?: T): BindingDefinition<P, T> {
     return {
         type: type,
+        namespace: null,
         class: classType,
         props: componentDefinition && componentDefinition.props,
         attrs: componentDefinition && componentDefinition.attrs,
@@ -91,7 +93,7 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
 
     protected get Root(): any {
         if(!this.bindingRoot && !this.destroyed) {
-            this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type);
+            this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type, this.definition.namespace);
             if(!this.deferBinding) {
                 Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
                 this.Bound();

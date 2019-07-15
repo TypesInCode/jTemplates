@@ -55,7 +55,10 @@ export var DOMBindingConfig: IBindingConfig = {
     removeListener: function(target: Node, type: string, callback: {():void}) {
         target.removeEventListener(type, callback);
     },
-    createBindingTarget: function(type: string): Node {
+    createBindingTarget: function(type: string, namespace: string): Node {
+        if(namespace)
+            return wndw.document.createElementNS(namespace, type);
+
         return wndw.document.createElement(type);
     },
     addChild: function(root: Node, child: Node) {

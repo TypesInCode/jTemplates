@@ -2,7 +2,7 @@ import { BindingDefinitions, BindingDefinition, BoundComponentFunction, Template
 import { Scope } from "../Store/scope/scope";
 import { Injector } from "../injector";
 import { AbstractStore } from "../Store/store/store";
-export declare function TemplateFunction(type: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any>;
+export declare function TemplateFunction(type: string, namespace: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any>;
 export declare class Template<P, T extends Templates> implements ITemplate<P, T> {
     private deferBinding;
     private definition;

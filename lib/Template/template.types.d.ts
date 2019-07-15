@@ -10,6 +10,7 @@ export declare type ChildrenFunction<P> = {
 export declare type ChildrenOr<P> = ChildrenFunction<P> | BindingDefinitions<any, any>;
 export interface BindingDefinition<P, T extends Templates> {
     type: any;
+    namespace: string;
     props?: FunctionOr<{
         [name: string]: any;
     }>;

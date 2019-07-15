@@ -9,6 +9,7 @@ export type ChildrenOr<P> = ChildrenFunction<P> | BindingDefinitions<any, any>;
 
 export interface BindingDefinition<P, T extends Templates> {
     type: any;
+    namespace: string;
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
