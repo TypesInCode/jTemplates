@@ -16,4 +16,6 @@ export interface IBindingConfig {
     addChildContainer(root: any, container: any): void;
     getAttribute(target: any, attribute: string): string;
     setAttribute(target: any, attribute: string, value: string): void;
+
+    setPropertyOverrides: {[prop: string]: (target: any, value: any) => void};
 }

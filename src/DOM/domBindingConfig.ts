@@ -107,5 +107,18 @@ export var DOMBindingConfig: IBindingConfig = {
     },
     setAttribute(target: HTMLElement, attribute: string, value: string) {
         target.setAttribute(attribute, value);
+    },
+
+    setPropertyOverrides: {
+        value: (target: HTMLInputElement, value: string) => {
+            if(target.type !== "input")
+                target.value = value;
+            else {
+                var start = target.selectionStart;
+                var end = target.selectionEnd;
+                target.value = value;
+                target.setSelectionRange(start, end);
+            }
+        }
     }
 }

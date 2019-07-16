@@ -1,5 +1,6 @@
 import { Binding } from "./binding";
 import { FunctionOr } from "../template.types";
+import { BindingConfig } from "./bindingConfig";
 
 class PropertyBinding extends Binding<any> {
     private lastValue: any;
@@ -31,8 +32,12 @@ class PropertyBinding extends Binding<any> {
             if(typeof val === 'object') {
                 this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
             }
-            else if(!lastValue || lastValue[key] !== val)
-                target[key] = val;
+            else if(!lastValue || lastValue[key] !== val) {
+                if(BindingConfig.setPropertyOverrides[key])
+                    BindingConfig.setPropertyOverrides[key](target, val);
+                else
+                    target[key] = val;
+            }
         }
     }
 }
