@@ -110,20 +110,14 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         return this.bindingRoot;
     }
 
-    constructor(def: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
-        var localDef: BindingDefinition<P, T> = null;
-        if(typeof def === 'string')
-            localDef = ComponentFunction(def, this.constructor as TemplateConstructor<P, T>);
-        else {
-            localDef = {} as BindingDefinition<P, T>;
-            for(var key in def)
-                (localDef as any)[key] = (def as any)[key];
-        }
+    constructor(definition: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
+        if(typeof definition === 'string')
+            definition = ComponentFunction(definition, this.constructor as TemplateConstructor<P, T>);
         
         this.templates = this.DefaultTemplates;
-        this.SetTemplates(localDef.templates);
-        localDef.children = localDef.children || this.Template.bind(this);
-        this.definition = localDef;
+        this.SetTemplates(definition.templates);
+        definition.children = definition.children || this.Template.bind(this);
+        this.definition = definition;
         this.destroyed = false;
         this.bindings = [];
         this.injector = new Injector();
@@ -209,9 +203,13 @@ export namespace Template {
         return CreateComponentFunction(type, classType);
     }
 
-    export function Create(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> {
-        var constructor = (bindingDef.class || Template) as { new(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> };
-        var template = new constructor(bindingDef, deferBinding);
+    export function Create(def: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> {
+        var localDef = {} as BindingDefinition<any, any>;
+        for(var key in def)
+            (localDef as any)[key] = (def as any)[key];
+
+        var constructor = (localDef.class || Template) as { new(def: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any> };
+        var template = new constructor(localDef, deferBinding);
         return template;
     }
 }

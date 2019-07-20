@@ -16,7 +16,7 @@ export declare class Template<P, T extends Templates> implements ITemplate<P, T>
     protected readonly Injector: Injector;
     protected readonly Store: AbstractStore;
     protected readonly Root: any;
-    constructor(def: BindingDefinition<P, T> | string, deferBinding?: boolean);
+    constructor(definition: BindingDefinition<P, T> | string, deferBinding?: boolean);
     SetTemplates(templates: T): void;
     AttachTo(bindingParent: any): void;
     AttachToContainer(container: any): void;
@@ -33,5 +33,5 @@ export declare class Component<P, T extends Templates> extends Template<Scope<P 
 }
 export declare namespace Template {
     function ToFunction<P, T extends Templates>(type: any, classType: TemplateConstructor<P, T>): BoundComponentFunction<P, T>;
-    function Create(bindingDef: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any>;
+    function Create(def: BindingDefinition<any, any>, deferBinding: boolean): Template<any, any>;
 }
