@@ -1,6 +1,6 @@
 /// <reference path="../node_modules/@types/mocha/index.d.ts" />
 
-import { Store } from "../src/Store/sync/store";
+/* import { Store } from "../src/Store/sync/store";
 import * as chai from "chai";
 const expect = chai.expect;
 
@@ -76,4 +76,4 @@ describe("Store (Sync)", () => {
     expect(scope.Value.length).to.equal(2);
     store.Destroy();
   });
-});
+}); */
