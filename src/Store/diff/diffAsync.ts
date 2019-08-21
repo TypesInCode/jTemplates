@@ -25,16 +25,12 @@ export class DiffAsync implements Diff {
         }));
     }
 
-    public Diff(path: string, newValue: any, resolveOldValue: { (): any }) { // oldValue: any): Promise<IDiffResponse> {
+    /* public Diff(path: string, newValue: any, resolveOldValue: { (): any }) {
         return this.workerQueue.Push(() => ({
             method: "diff",
             arguments: [path, newValue, resolveOldValue()]
         }));
-        /* return this.diff({
-            method: "diff",
-            arguments: [path, newValue, oldValue, skipDependents]
-        }); */
-    }
+    } */
 
     public Destroy() {
         this.workerQueue.Destroy();

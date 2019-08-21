@@ -13,13 +13,6 @@ export class DiffSync implements Diff {
         });
     }
 
-    /* public GetPath(id: string): string {
-        return this.diff({
-            method: "getpath",
-            arguments: [id]
-        });
-    } */
-
     public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
         return Promise.resolve(this.diff({
             method: "diffbatch",
@@ -27,12 +20,12 @@ export class DiffSync implements Diff {
         }));
     }
 
-    public Diff(path: string, newValue: any, resolveOldValue: {(): any}): Promise<IDiffResponse> {
+    /* public Diff(path: string, newValue: any, resolveOldValue: {(): any}): Promise<IDiffResponse> {
         return Promise.resolve(this.diff({
             method: "diff",
             arguments: [path, newValue, resolveOldValue()]
         }));
-    }
+    } */
 
     public Destroy() { }
     
