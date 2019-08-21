@@ -86,6 +86,14 @@ export class TreeNode {
     }
 
     set Property(val: string) {
+        if(this.property === val)
+            return;
+        
+        if(this.parentNode) {
+            this.parentNode.Children.delete(this.property);
+            this.parentNode.Children.set(val, this);
+        }
+
         this.property = val;
     }
 
@@ -100,7 +108,7 @@ export class TreeNode {
     constructor(tree: Tree, parentNode: TreeNode, property: string, resolvePath: { (path: string): any }) {
         this.tree = tree;
         this.parentNode = parentNode;
-        this.property = property;
+        this.Property = property;
         this.resolvePath = resolvePath;
         this.destroyed = false;
         this.children = new Map();
@@ -109,21 +117,21 @@ export class TreeNode {
             this.nodeCache = null;
             // this.self = null;
         });
-        this.UpdateParentKey();
+        // this.UpdateParentKey();
     }
 
     public OverwriteChildren(children: [string, TreeNode][]) {
         this.children = new Map(children);
     }
 
-    public UpdateParentKey() {
+    /* public UpdateParentKey() {
         if(this.parentKey === this.property || !this.parentNode)
             return;
 
         this.parentKey && this.parentNode.Children.delete(this.parentKey);
         this.parentNode.Children.set(this.property, this);;
         this.parentKey = this.property;
-    }
+    } */
 
     public EnsureChild(prop: string) {
         if(this.destroyed)
