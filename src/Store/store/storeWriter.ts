@@ -71,31 +71,31 @@ export class StoreWriter<T> {
 
     public Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>) {
         var args = Array.from(arguments).slice(1);
-        var node = (readOnly as any).___node as TreeNode;
+        var arrayNode = (readOnly as any).___node as TreeNode;
         // var localValue = node.Value;
-        var localValue = this.store.ResolvePropertyPath(node.Path);
+        var localValue = this.store.ResolvePropertyPath(arrayNode.Path);
 
-        var proxyArray = CreateProxyArray(node, null);
+        var proxyArray = CreateProxyArray(arrayNode, null);
         var removedProxies = proxyArray.splice.apply(proxyArray, args);
         for(var x=0; x<removedProxies.length; x++) {
-            var node = removedProxies[x] && (removedProxies[x] as any).___node as TreeNode;
+            let node = removedProxies[x] && (removedProxies[x] as any).___node as TreeNode;
             if(node)
                 node.Destroy();
         }
 
         for(var x=start + items.length; x<proxyArray.length; x++) {
-            var node = removedProxies[x] && (removedProxies[x] as any).___node as TreeNode;
+            let node = proxyArray[x] && (proxyArray[x] as any).___node as TreeNode;
 
             if(node) {
                 node.Property = x.toString();
-                node.UpdateParentKey();
+                // node.UpdateParentKey();
             }
         }
 
         var ret = localValue.splice.apply(localValue, args);
         // this.store.AssignPropertyPath(localValue, node.Path);
 
-        this.store.EmitSet(node);
+        this.store.EmitSet(arrayNode);
         return ret;
     }
 
