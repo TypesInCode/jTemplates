@@ -19,16 +19,9 @@ export class StoreManager<T> {
         this.diff = diff;
     }
 
-    public async Diff(path: string, newValue: any) {
-        // var oldValue = this.ResolvePropertyPathInternal(path, true);
-        /* if(oldValue && oldValue.___storeProxy)
-            oldValue = oldValue.toJSON();
-        
-        if(newValue && newValue.___storeProxy)
-            newValue = newValue.toJSON(); */
-        
+    /* public async Diff(path: string, newValue: any) {        
         return await this.diff.Diff(path, newValue, () => this.ResolvePropertyPath(path));
-    }
+    } */
 
     /* public GetPathById(id: string): string {
         return this.diff.GetPath(id);
@@ -130,7 +123,7 @@ export class StoreManager<T> {
         }
 
         for(var key in value) {
-            var childPath = [path, key].join(".")
+            var childPath = [path, key].join(".");
             value[key] = this.BreakUpValue(childPath, value[key], map);
         }
 
