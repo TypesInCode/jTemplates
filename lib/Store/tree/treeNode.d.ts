@@ -24,7 +24,6 @@ export declare class TreeNode {
         (path: string): any;
     });
     OverwriteChildren(children: [string, TreeNode][]): void;
-    UpdateParentKey(): void;
     EnsureChild(prop: string): TreeNode;
     Destroy(): void;
 }

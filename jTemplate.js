@@ -58,39 +58,23 @@ var jTemplate =
 	const template_1 = __webpack_require__(1);
 	exports.Template = template_1.Template;
 	exports.Component = template_1.Component;
-	const elements_1 = __webpack_require__(15);
-	exports.div = elements_1.div;
-	exports.span = elements_1.span;
-	exports.ul = elements_1.ul;
-	exports.li = elements_1.li;
-	exports.input = elements_1.input;
-	exports.b = elements_1.b;
-	exports.a = elements_1.a;
-	exports.br = elements_1.br;
-	exports.img = elements_1.img;
-	exports.video = elements_1.video;
-	exports.source = elements_1.source;
-	exports.option = elements_1.option;
-	exports.select = elements_1.select;
-	exports.h1 = elements_1.h1;
-	exports.h2 = elements_1.h2;
-	exports.h3 = elements_1.h3;
-	exports.table = elements_1.table;
-	exports.th = elements_1.th;
-	exports.tr = elements_1.tr;
-	exports.td = elements_1.td;
+	const elements_1 = __webpack_require__(27);
 	const scope_1 = __webpack_require__(7);
 	exports.Scope = scope_1.Scope;
-	const storeAsync_1 = __webpack_require__(16);
+	const storeAsync_1 = __webpack_require__(28);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
-	const storeSync_1 = __webpack_require__(32);
+	const storeSync_1 = __webpack_require__(33);
 	exports.StoreSync = storeSync_1.StoreSync;
-	const store_1 = __webpack_require__(17);
+	const store_1 = __webpack_require__(15);
 	exports.Store = store_1.Store;
-	exports.AbstractStore = store_1.IStore;
+	exports.AbstractStore = store_1.AbstractStore;
+	const storeReader_1 = __webpack_require__(21);
+	exports.StoreReader = storeReader_1.StoreReader;
+	const storeWriter_1 = __webpack_require__(22);
+	exports.StoreWriter = storeWriter_1.StoreWriter;
 	class TodoStore extends storeAsync_1.StoreAsync {
 	    constructor() {
-	        super((val) => val.id, { loading: false, todos: [], assignees: [] });
+	        super({ loading: false, todos: [], assignees: [] }, (val) => val.id);
 	        this.nextId = 100;
 	        this.todoQuery = this.Query("todos", [], (reader, writer) => __awaiter(this, void 0, void 0, function* () {
 	            return reader.Root.todos;
@@ -218,11 +202,11 @@ var jTemplate =
 	        ]);
 	    }
 	    onToggleCompleted(todo) {
-	        var store = this.Injector.Get(store_1.IStore);
+	        var store = this.Injector.Get(store_1.AbstractStore);
 	        store.Update(todo, (todo) => { todo.completed = !todo.completed; });
 	    }
 	    onRename(todo) {
-	        var store = this.Injector.Get(store_1.IStore);
+	        var store = this.Injector.Get(store_1.AbstractStore);
 	        store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
 	    }
 	    onAssigneeIdChange(todo, event) {
@@ -238,7 +222,7 @@ var jTemplate =
 	class TodoList extends template_1.Template {
 	    constructor() {
 	        super("todo-list");
-	        this.Injector.Set(store_1.IStore, t);
+	        this.Injector.Set(store_1.AbstractStore, t);
 	    }
 	    Template() {
 	        return elements_1.div({ props: { style: { color: "red" } } }, [
@@ -286,7 +270,7 @@ var jTemplate =
 	        t.resetIds();
 	    }
 	    onAssigneeDblClick(assignee) {
-	        var store = this.Injector.Get(store_1.IStore);
+	        var store = this.Injector.Get(store_1.AbstractStore);
 	        store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name; });
 	    }
 	}
@@ -302,16 +286,21 @@ var jTemplate =
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const bindingConfig_1 = __webpack_require__(2);
 	const propertyBinding_1 = __webpack_require__(5);
-	const dataBinding_1 = __webpack_require__(11);
-	const textBinding_1 = __webpack_require__(12);
-	const eventBinding_1 = __webpack_require__(13);
+	const dataBinding_1 = __webpack_require__(12);
+	const textBinding_1 = __webpack_require__(13);
+	const eventBinding_1 = __webpack_require__(14);
 	const scope_1 = __webpack_require__(7);
-	const injector_1 = __webpack_require__(14);
-	function TemplateFunction(type, templateDefinition, children) {
+	const injector_1 = __webpack_require__(11);
+	const store_1 = __webpack_require__(15);
+	const attributeBinding_1 = __webpack_require__(26);
+	function TemplateFunction(type, namespace, templateDefinition, children) {
 	    return {
 	        type: type,
+	        namespace: namespace,
 	        props: templateDefinition && templateDefinition.props,
+	        attrs: templateDefinition && templateDefinition.attrs,
 	        on: templateDefinition && templateDefinition.on,
+	        static: templateDefinition && templateDefinition.static,
 	        data: templateDefinition && templateDefinition.data,
 	        key: templateDefinition && templateDefinition.key,
 	        text: templateDefinition && templateDefinition.text,
@@ -322,9 +311,12 @@ var jTemplate =
 	function ComponentFunction(type, classType, componentDefinition, templates) {
 	    return {
 	        type: type,
+	        namespace: null,
 	        class: classType,
 	        props: componentDefinition && componentDefinition.props,
+	        attrs: componentDefinition && componentDefinition.attrs,
 	        on: componentDefinition && componentDefinition.on,
+	        static: componentDefinition && componentDefinition.static,
 	        data: componentDefinition && componentDefinition.data,
 	        key: componentDefinition && componentDefinition.key,
 	        templates: templates,
@@ -338,12 +330,14 @@ var jTemplate =
 	    var def1 = bindingDef;
 	    if (def1.props)
 	        ret.push(new propertyBinding_1.default(bindingTarget, def1.props));
+	    if (def1.attrs)
+	        ret.push(new attributeBinding_1.default(bindingTarget, def1.attrs));
 	    if (def1.on)
 	        ret.push(new eventBinding_1.default(bindingTarget, def1.on));
 	    if (def1.text)
 	        ret.push(new textBinding_1.default(bindingTarget, def1.text));
 	    else if (def1.children) {
-	        def1.data = def1.data || true;
+	        def1.data = def1.data || def1.static || true;
 	        ret.push(new dataBinding_1.default(bindingTarget, def1.data, def1.children, def1.key));
 	    }
 	    return ret;
@@ -360,6 +354,7 @@ var jTemplate =
 	        this.destroyed = false;
 	        this.bindings = [];
 	        this.injector = new injector_1.Injector();
+	        this.Init();
 	    }
 	    get DefaultTemplates() {
 	        return {};
@@ -370,15 +365,22 @@ var jTemplate =
 	    get Injector() {
 	        return this.injector;
 	    }
+	    get Store() {
+	        return this.Injector.Get(store_1.AbstractStore);
+	    }
 	    get Root() {
 	        if (!this.bindingRoot && !this.destroyed) {
-	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type);
-	            if (!this.deferBinding)
+	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type, this.definition.namespace);
+	            if (!this.deferBinding) {
 	                injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+	                this.Bound();
+	            }
 	            else
 	                bindingConfig_1.BindingConfig.scheduleUpdate(() => {
-	                    if (!this.destroyed)
+	                    if (!this.destroyed) {
 	                        injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+	                        this.Bound();
+	                    }
 	                });
 	        }
 	        return this.bindingRoot;
@@ -416,6 +418,10 @@ var jTemplate =
 	    Template(c, i) {
 	        return [];
 	    }
+	    Init() {
+	    }
+	    Bound() {
+	    }
 	}
 	exports.Template = Template;
 	class Component extends Template {
@@ -423,12 +429,12 @@ var jTemplate =
 	        if (typeof definition === 'string')
 	            super(definition, deferBinding);
 	        else {
-	            if (typeof definition.data === 'function') {
+	            if (definition.data) {
 	                definition.data = new scope_1.Scope(definition.data);
 	                super(definition, deferBinding);
 	            }
 	            else {
-	                var data = definition.data;
+	                var data = definition.static;
 	                definition.data = new scope_1.Scope(() => data);
 	                super(definition, deferBinding);
 	            }
@@ -441,9 +447,12 @@ var jTemplate =
 	        return CreateComponentFunction(type, classType);
 	    }
 	    Template.ToFunction = ToFunction;
-	    function Create(bindingDef, deferBinding) {
-	        var constructor = (bindingDef.class || Template);
-	        var template = new constructor(bindingDef, deferBinding);
+	    function Create(def, deferBinding) {
+	        var localDef = {};
+	        for (var key in def)
+	            localDef[key] = def[key];
+	        var constructor = (localDef.class || Template);
+	        var template = new constructor(localDef, deferBinding);
 	        return template;
 	    }
 	    Template.Create = Create;
@@ -504,7 +513,9 @@ var jTemplate =
 	    removeListener: function (target, type, callback) {
 	        target.removeEventListener(type, callback);
 	    },
-	    createBindingTarget: function (type) {
+	    createBindingTarget: function (type, namespace) {
+	        if (namespace)
+	            return window_1.wndw.document.createElementNS(namespace, type);
 	        return window_1.wndw.document.createElement(type);
 	    },
 	    addChild: function (root, child) {
@@ -545,6 +556,24 @@ var jTemplate =
 	    },
 	    addChildContainer(root, container) {
 	        root.appendChild(container);
+	    },
+	    getAttribute(target, attribute) {
+	        return target.getAttribute(attribute);
+	    },
+	    setAttribute(target, attribute, value) {
+	        target.setAttribute(attribute, value);
+	    },
+	    setPropertyOverrides: {
+	        value: (target, value) => {
+	            if (target.type !== "input")
+	                target.value = value;
+	            else {
+	                var start = target.selectionStart;
+	                var end = target.selectionEnd;
+	                target.value = value;
+	                target.setSelectionRange(start, end);
+	            }
+	        }
 	    }
 	};
 
@@ -571,13 +600,22 @@ var jTemplate =
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const binding_1 = __webpack_require__(6);
+	const bindingConfig_1 = __webpack_require__(2);
 	class PropertyBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
 	        super(boundTo, bindingFunction, {});
+	        this.scheduleUpdate = true;
+	    }
+	    get ScheduleUpdate() {
+	        return this.scheduleUpdate;
 	    }
 	    Apply() {
 	        this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
 	        this.lastValue = this.Value;
+	        if (Object.keys(this.lastValue).indexOf("value") >= 0)
+	            this.scheduleUpdate = false;
+	        else
+	            this.scheduleUpdate = true;
 	    }
 	    ApplyRecursive(target, lastValue, source) {
 	        if (typeof source !== "object")
@@ -587,8 +625,12 @@ var jTemplate =
 	            if (typeof val === 'object') {
 	                this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
 	            }
-	            else if (!lastValue || lastValue[key] !== val)
-	                target[key] = val;
+	            else if (!lastValue || lastValue[key] !== val) {
+	                if (bindingConfig_1.BindingConfig.setPropertyOverrides[key])
+	                    bindingConfig_1.BindingConfig.setPropertyOverrides[key](target, val);
+	                else
+	                    target[key] = val;
+	            }
 	        }
 	    }
 	}
@@ -603,6 +645,7 @@ var jTemplate =
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scope_1 = __webpack_require__(7);
 	const bindingConfig_1 = __webpack_require__(2);
+	const injector_1 = __webpack_require__(11);
 	var BindingStatus;
 	(function (BindingStatus) {
 	    BindingStatus[BindingStatus["Init"] = 0] = "Init";
@@ -612,6 +655,7 @@ var jTemplate =
 	})(BindingStatus || (BindingStatus = {}));
 	class Binding {
 	    constructor(boundTo, binding, config) {
+	        this.injector = injector_1.Injector.Current();
 	        this.boundTo = boundTo;
 	        this.status = BindingStatus.Init;
 	        this.setCallback = this.Update.bind(this);
@@ -632,16 +676,22 @@ var jTemplate =
 	            this.staticValue :
 	            this.observableScope.Value;
 	    }
+	    get Injector() {
+	        return this.injector;
+	    }
 	    get BoundTo() {
 	        return this.boundTo;
 	    }
 	    get IsStatic() {
 	        return this.isStatic;
 	    }
+	    get ScheduleUpdate() {
+	        return true;
+	    }
 	    Update() {
 	        if (this.status === BindingStatus.Destroyed)
 	            return;
-	        if (this.status === BindingStatus.Init) {
+	        if (this.status === BindingStatus.Init || !this.ScheduleUpdate) {
 	            this.status = BindingStatus.Updating;
 	            this.Apply();
 	            this.status = BindingStatus.Updated;
@@ -851,6 +901,51 @@ var jTemplate =
 
 /***/ }),
 /* 11 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class Injector {
+	    constructor() {
+	        this.parent = Injector.Current();
+	        this.typeMap = new Map();
+	    }
+	    Get(type) {
+	        if (this.typeMap.size === 0)
+	            return this.parent && this.parent.Get(type);
+	        var ret = this.typeMap.get(type);
+	        if (!ret) {
+	            this.typeMap.forEach((value, key) => {
+	                if (value instanceof type)
+	                    ret = value;
+	            });
+	        }
+	        if (!ret)
+	            ret = this.parent && this.parent.Get(type);
+	        return ret;
+	    }
+	    Set(type, instance) {
+	        this.typeMap.set(type, instance);
+	    }
+	}
+	exports.Injector = Injector;
+	(function (Injector) {
+	    var currentScopes = new Array();
+	    function Current() {
+	        return currentScopes[currentScopes.length - 1];
+	    }
+	    Injector.Current = Current;
+	    function Scope(injector, action) {
+	        currentScopes.push(injector);
+	        action();
+	        currentScopes.pop();
+	    }
+	    Injector.Scope = Scope;
+	})(Injector = exports.Injector || (exports.Injector = {}));
+
+
+/***/ }),
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -858,6 +953,7 @@ var jTemplate =
 	const binding_1 = __webpack_require__(6);
 	const template_1 = __webpack_require__(1);
 	const bindingConfig_1 = __webpack_require__(2);
+	const injector_1 = __webpack_require__(11);
 	function ConvertToArray(val) {
 	    if (!val)
 	        return [];
@@ -931,7 +1027,9 @@ var jTemplate =
 	                var newDefs = this.childrenFunction(value[index].value, index);
 	                if (!Array.isArray(newDefs))
 	                    newDefs = [newDefs];
-	                templates = newDefs.map(d => template_1.Template.Create(d, !this.IsStatic));
+	                injector_1.Injector.Scope(this.Injector, () => {
+	                    templates = newDefs.map(d => template_1.Template.Create(d, !this.IsStatic));
+	                });
 	                newTemplateMap.set(key, templates);
 	            }
 	            if (index >= currentRowCount) {
@@ -959,7 +1057,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -978,7 +1076,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1004,155 +1102,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 14 */
-/***/ (function(module, exports) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	class Injector {
-	    constructor() {
-	        this.parent = Injector.Current();
-	        this.typeMap = new Map();
-	    }
-	    Get(type) {
-	        var ret = this.typeMap.get(type);
-	        if (!ret) {
-	            this.typeMap.forEach((value, key) => {
-	                if (value instanceof type)
-	                    ret = value;
-	            });
-	        }
-	        if (!ret && this.parent)
-	            ret = this.parent.Get(type);
-	        return ret;
-	    }
-	    Set(type, instance) {
-	        this.typeMap.set(type, instance);
-	    }
-	}
-	exports.Injector = Injector;
-	(function (Injector) {
-	    var currentScopes = new Array();
-	    function Current() {
-	        return currentScopes[currentScopes.length - 1];
-	    }
-	    Injector.Current = Current;
-	    function Scope(injector, action) {
-	        currentScopes.push(injector);
-	        action();
-	        currentScopes.pop();
-	    }
-	    Injector.Scope = Scope;
-	})(Injector = exports.Injector || (exports.Injector = {}));
-
-
-/***/ }),
 /* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const template_1 = __webpack_require__(1);
-	function a(templateDefinition, children) {
-	    return template_1.TemplateFunction("a", templateDefinition, children);
-	}
-	exports.a = a;
-	function ul(templateDefinition, children) {
-	    return template_1.TemplateFunction("ul", templateDefinition, children);
-	}
-	exports.ul = ul;
-	function li(templateDefinition, children) {
-	    return template_1.TemplateFunction("li", templateDefinition, children);
-	}
-	exports.li = li;
-	function br(templateDefinition, children) {
-	    return template_1.TemplateFunction("br", templateDefinition, children);
-	}
-	exports.br = br;
-	function b(templateDefinition, children) {
-	    return template_1.TemplateFunction("b", templateDefinition, children);
-	}
-	exports.b = b;
-	function div(templateDefinition, children) {
-	    return template_1.TemplateFunction("div", templateDefinition, children);
-	}
-	exports.div = div;
-	function span(templateDefinition, children) {
-	    return template_1.TemplateFunction("span", templateDefinition, children);
-	}
-	exports.span = span;
-	function img(templateDefinition, children) {
-	    return template_1.TemplateFunction("img", templateDefinition, children);
-	}
-	exports.img = img;
-	function video(templateDefinition, children) {
-	    return template_1.TemplateFunction("video", templateDefinition, children);
-	}
-	exports.video = video;
-	function source(templateDefinition, children) {
-	    return template_1.TemplateFunction("source", templateDefinition, children);
-	}
-	exports.source = source;
-	function input(templateDefinition, children) {
-	    return template_1.TemplateFunction("input", templateDefinition, children);
-	}
-	exports.input = input;
-	function option(templateDefinition, children) {
-	    return template_1.TemplateFunction("option", templateDefinition, children);
-	}
-	exports.option = option;
-	function select(templateDefinition, children) {
-	    return template_1.TemplateFunction("select", templateDefinition, children);
-	}
-	exports.select = select;
-	function h1(templateDefinition, children) {
-	    return template_1.TemplateFunction("h1", templateDefinition, children);
-	}
-	exports.h1 = h1;
-	function h2(templateDefinition, children) {
-	    return template_1.TemplateFunction("h2", templateDefinition, children);
-	}
-	exports.h2 = h2;
-	function h3(templateDefinition, children) {
-	    return template_1.TemplateFunction("h3", templateDefinition, children);
-	}
-	exports.h3 = h3;
-	function table(templateDefinition, children) {
-	    return template_1.TemplateFunction("table", templateDefinition, children);
-	}
-	exports.table = table;
-	function th(templateDefinition, children) {
-	    return template_1.TemplateFunction("th", templateDefinition, children);
-	}
-	exports.th = th;
-	function tr(templateDefinition, children) {
-	    return template_1.TemplateFunction("tr", templateDefinition, children);
-	}
-	exports.tr = tr;
-	function td(templateDefinition, children) {
-	    return template_1.TemplateFunction("td", templateDefinition, children);
-	}
-	exports.td = td;
-
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(17);
-	const diffAsync_1 = __webpack_require__(28);
-	class StoreAsync extends store_1.Store {
-	    constructor(idFunction, init) {
-	        super(idFunction, init, new diffAsync_1.DiffAsync());
-	    }
-	}
-	exports.StoreAsync = StoreAsync;
-
-
-/***/ }),
-/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1165,18 +1115,25 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeManager_1 = __webpack_require__(18);
-	const storeReader_1 = __webpack_require__(23);
-	const storeWriter_1 = __webpack_require__(24);
-	const promiseQueue_1 = __webpack_require__(25);
-	const storeQuery_1 = __webpack_require__(27);
-	class IStore {
+	const storeManager_1 = __webpack_require__(16);
+	const storeReader_1 = __webpack_require__(21);
+	const storeWriter_1 = __webpack_require__(22);
+	const promiseQueue_1 = __webpack_require__(23);
+	const storeQuery_1 = __webpack_require__(25);
+	class AbstractStore {
+	    Action(action) {
+	        return __awaiter(this, void 0, void 0, function* () { });
+	    }
 	    Update(readOnly, updateCallback) {
 	        return __awaiter(this, void 0, void 0, function* () { });
 	    }
+	    ToJSON(readOnly) { return null; }
+	    Query(id, defaultValue, queryFunc) {
+	        return null;
+	    }
 	}
-	exports.IStore = IStore;
-	class Store extends IStore {
+	exports.AbstractStore = AbstractStore;
+	class Store extends AbstractStore {
 	    constructor(idFunction, init, diff) {
 	        super();
 	        this.manager = new storeManager_1.StoreManager(idFunction, diff);
@@ -1190,11 +1147,13 @@ var jTemplate =
 	        }));
 	    }
 	    get Root() {
-	        return this.Query("root", this.init, (reader) => Promise.resolve(reader.Root));
+	        return this.Query("root", this.init, (reader) => __awaiter(this, void 0, void 0, function* () { return reader.Root; }));
 	    }
 	    Action(action) {
-	        return this.promiseQueue.Push((resolve) => {
-	            resolve(action(this.reader, this.writer));
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.promiseQueue.Push((resolve) => {
+	                resolve(action(this.reader, this.writer));
+	            });
 	        });
 	    }
 	    Update(readOnly, updateCallback) {
@@ -1204,19 +1163,23 @@ var jTemplate =
 	            }));
 	        });
 	    }
+	    ToJSON(readOnly) {
+	        var rOnly = readOnly;
+	        if (rOnly && rOnly.___storeProxy)
+	            return rOnly.toJSON();
+	        throw "parameter readOnly is not a store object";
+	    }
 	    Write(value) {
-	        return this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
-	            yield writer.Write(value);
-	        }));
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	                yield writer.Write(value);
+	            }));
+	        });
 	    }
 	    Query(id, defaultValue, queryFunc) {
 	        if (this.queryCache.has(id))
 	            return this.queryCache.get(id);
-	        var query = new storeQuery_1.StoreQuery(this.manager, defaultValue, (reader, writer) => __awaiter(this, void 0, void 0, function* () {
-	            return yield this.promiseQueue.Push(resolve => {
-	                resolve(queryFunc(reader, writer));
-	            });
-	        }));
+	        var query = new storeQuery_1.StoreQuery(this, defaultValue, queryFunc);
 	        var destroy = () => {
 	            this.queryCache.delete(id);
 	            query.removeListener("destroy", destroy);
@@ -1235,7 +1198,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 18 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1248,21 +1211,16 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const tree_1 = __webpack_require__(19);
-	const treeNode_1 = __webpack_require__(20);
-	const utils_1 = __webpack_require__(22);
-	const treeNodeRefId_1 = __webpack_require__(21);
+	const tree_1 = __webpack_require__(17);
+	const treeNode_1 = __webpack_require__(18);
+	const utils_1 = __webpack_require__(20);
+	const treeNodeRefId_1 = __webpack_require__(19);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
 	        this.data = { root: null, id: {} };
 	        this.tree = new tree_1.Tree((path) => this.ResolvePropertyPath(path));
 	        this.diff = diff;
-	    }
-	    Diff(path, newValue) {
-	        return __awaiter(this, void 0, void 0, function* () {
-	            return yield this.diff.Diff(path, newValue, () => this.ResolvePropertyPath(path));
-	        });
 	    }
 	    GetNode(path) {
 	        return this.tree.GetNode(path);
@@ -1317,6 +1275,7 @@ var jTemplate =
 	    Destroy() {
 	        this.data.root = null;
 	        this.tree.Destroy();
+	        this.diff.Destroy();
 	    }
 	    BreakUpValue(path, value, map) {
 	        if (value && value.toJSON && typeof value.toJSON === 'function')
@@ -1375,12 +1334,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 19 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const treeNode_1 = __webpack_require__(20);
+	const treeNode_1 = __webpack_require__(18);
 	class Tree {
 	    constructor(resolvePath) {
 	        this.root = new treeNode_1.TreeNode(this, null, "root", resolvePath);
@@ -1407,13 +1366,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 20 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(9);
-	const treeNodeRefId_1 = __webpack_require__(21);
+	const treeNodeRefId_1 = __webpack_require__(19);
 	class TreeNode {
 	    get NodeCache() {
 	        return this.nodeCache;
@@ -1455,6 +1414,12 @@ var jTemplate =
 	        return this.property;
 	    }
 	    set Property(val) {
+	        if (this.property === val)
+	            return;
+	        if (this.parentNode) {
+	            this.parentNode.Children.delete(this.property);
+	            this.parentNode.Children.set(val, this);
+	        }
 	        this.property = val;
 	    }
 	    get ParentKey() {
@@ -1466,7 +1431,7 @@ var jTemplate =
 	    constructor(tree, parentNode, property, resolvePath) {
 	        this.tree = tree;
 	        this.parentNode = parentNode;
-	        this.property = property;
+	        this.Property = property;
 	        this.resolvePath = resolvePath;
 	        this.destroyed = false;
 	        this.children = new Map();
@@ -1474,18 +1439,9 @@ var jTemplate =
 	        this.emitter.addListener("set", () => {
 	            this.nodeCache = null;
 	        });
-	        this.UpdateParentKey();
 	    }
 	    OverwriteChildren(children) {
 	        this.children = new Map(children);
-	    }
-	    UpdateParentKey() {
-	        if (this.parentKey === this.property || !this.parentNode)
-	            return;
-	        this.parentKey && this.parentNode.Children.delete(this.parentKey);
-	        this.parentNode.Children.set(this.property, this);
-	        ;
-	        this.parentKey = this.property;
 	    }
 	    EnsureChild(prop) {
 	        if (this.destroyed)
@@ -1512,7 +1468,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 21 */
+/* 19 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1536,7 +1492,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 20 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1558,16 +1514,9 @@ var jTemplate =
 	    return CreateProxyObject(node, reader, value);
 	}
 	exports.CreateProxy = CreateProxy;
-	function BuildJson(init, node) {
-	    if (!init)
-	        return;
-	    node.Children.forEach((value, key) => {
-	        init[key] = value.Self.Value;
-	        BuildJson(init[key], value.Self);
-	    });
-	}
 	function CreateProxyObject(node, reader, value) {
 	    var ret = null;
+	    var clearTimeout = null;
 	    if (Array.isArray(value)) {
 	        ret = new Proxy([], {
 	            get: (obj, prop) => {
@@ -1579,9 +1528,7 @@ var jTemplate =
 	                    return node;
 	                if (prop === 'toJSON')
 	                    return () => {
-	                        var init = [];
-	                        BuildJson(init, node.Self);
-	                        return init;
+	                        return CreateNodeCopy(node.Self);
 	                    };
 	                var isInt = typeof (prop) !== 'symbol' && !isNaN(parseInt(prop));
 	                if (isInt || prop === 'length') {
@@ -1611,17 +1558,29 @@ var jTemplate =
 	                    return node;
 	                if (prop === 'toJSON')
 	                    return () => {
-	                        var init = {};
-	                        BuildJson(init, node.Self);
-	                        return init;
+	                        var copy = CreateNodeCopy(node.Self);
+	                        for (var key in obj)
+	                            copy[key] = obj[key];
+	                        return copy;
 	                    };
 	                if (typeof prop !== 'symbol') {
+	                    if (typeof obj[prop] !== 'undefined')
+	                        return obj[prop];
 	                    var childNode = node.Self.EnsureChild(prop);
 	                    if (!childNode)
 	                        return null;
 	                    return CreateProxy(childNode, reader);
 	                }
 	                return obj[prop];
+	            },
+	            set: (obj, prop, value) => {
+	                obj[prop] = value;
+	                clearTimeout = clearTimeout || setTimeout(() => {
+	                    for (var key in obj)
+	                        delete obj[key];
+	                    clearTimeout = null;
+	                }, 0);
+	                return true;
 	            }
 	        });
 	    }
@@ -1640,6 +1599,21 @@ var jTemplate =
 	    return proxyArray;
 	}
 	exports.CreateProxyArray = CreateProxyArray;
+	function CreateNodeCopy(node) {
+	    var value = node.Value;
+	    if (IsValue(value))
+	        return value;
+	    var ret = null;
+	    if (Array.isArray(value))
+	        ret = [];
+	    else
+	        ret = {};
+	    for (var key in value) {
+	        var child = node.Self.EnsureChild(key);
+	        ret[key] = CreateNodeCopy(child);
+	    }
+	    return ret;
+	}
 	function CreateCopy(source) {
 	    if (IsValue(source))
 	        return source;
@@ -1650,21 +1624,23 @@ var jTemplate =
 	            ret[x] = this.CreateCopy(source[x]);
 	        return ret;
 	    }
-	    ret = {};
-	    for (var key in source)
-	        ret[key] = this.CreateCopy(source[key]);
+	    else {
+	        ret = {};
+	        for (var key in source)
+	            ret[key] = this.CreateCopy(source[key]);
+	    }
 	    return ret;
 	}
 	exports.CreateCopy = CreateCopy;
 
 
 /***/ }),
-/* 23 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(22);
+	const utils_1 = __webpack_require__(20);
 	const scopeCollector_1 = __webpack_require__(10);
 	class StoreReader {
 	    constructor(store) {
@@ -1705,7 +1681,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 24 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1718,7 +1694,7 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(22);
+	const utils_1 = __webpack_require__(20);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -1760,18 +1736,23 @@ var jTemplate =
 	    }
 	    Splice(readOnly, start, deleteCount, ...items) {
 	        var args = Array.from(arguments).slice(1);
-	        var node = readOnly.___node;
-	        var localValue = this.store.ResolvePropertyPath(node.Path);
-	        var proxyArray = utils_1.CreateProxyArray(node, null);
+	        var arrayNode = readOnly.___node;
+	        var localValue = this.store.ResolvePropertyPath(arrayNode.Path);
+	        var proxyArray = utils_1.CreateProxyArray(arrayNode, null);
 	        var removedProxies = proxyArray.splice.apply(proxyArray, args);
-	        for (var x = 0; x < removedProxies.length; x++)
-	            removedProxies[x].___node.Destroy();
+	        for (var x = 0; x < removedProxies.length; x++) {
+	            let node = removedProxies[x] && removedProxies[x].___node;
+	            if (node)
+	                node.Destroy();
+	        }
 	        for (var x = start + items.length; x < proxyArray.length; x++) {
-	            proxyArray[x].___node.Property = x.toString();
-	            proxyArray[x].___node.UpdateParentKey();
+	            let node = proxyArray[x] && proxyArray[x].___node;
+	            if (node) {
+	                node.Property = x.toString();
+	            }
 	        }
 	        var ret = localValue.splice.apply(localValue, args);
-	        this.store.EmitSet(node);
+	        this.store.EmitSet(arrayNode);
 	        return ret;
 	    }
 	}
@@ -1779,12 +1760,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 25 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(26);
+	const deferredPromise_1 = __webpack_require__(24);
 	class PromiseQueue {
 	    constructor() {
 	        this.running = false;
@@ -1831,7 +1812,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 26 */
+/* 24 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1857,37 +1838,165 @@ var jTemplate =
 
 
 /***/ }),
-/* 27 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scopeBase_1 = __webpack_require__(8);
-	const storeReader_1 = __webpack_require__(23);
-	const storeWriter_1 = __webpack_require__(24);
 	const scope_1 = __webpack_require__(7);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, defaultValue, getFunction) {
 	        super(getFunction, defaultValue);
-	        this.reader = new storeReader_1.StoreReader(store);
-	        this.writer = new storeWriter_1.StoreWriter(store);
+	        this.store = store;
 	    }
 	    Scope(callback) {
 	        return new scope_1.Scope(() => callback(this.Value));
 	    }
 	    Destroy() {
 	        super.Destroy();
-	        this.reader.Destroy();
 	    }
 	    UpdateValue(callback) {
-	        this.reader.Watching = true;
-	        this.GetFunction(this.reader, this.writer).then(value => {
-	            this.reader.Watching = false;
-	            callback(this.reader.Emitters, value);
-	        });
+	        var value = null;
+	        var emitters = null;
+	        this.store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            reader.Watching = true;
+	            value = yield this.GetFunction(reader, writer);
+	            reader.Watching = false;
+	            emitters = reader.Emitters;
+	        })).then(() => callback(emitters, value));
 	    }
 	}
 	exports.StoreQuery = StoreQuery;
+
+
+/***/ }),
+/* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(6);
+	const bindingConfig_1 = __webpack_require__(2);
+	class AttributeBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, {});
+	    }
+	    Apply() {
+	        var value = this.Value;
+	        for (var key in value) {
+	            var val = bindingConfig_1.BindingConfig.getAttribute(this.BoundTo, key);
+	            if (val !== value[key])
+	                bindingConfig_1.BindingConfig.setAttribute(this.BoundTo, key, value[key]);
+	        }
+	    }
+	}
+	exports.default = AttributeBinding;
+
+
+/***/ }),
+/* 27 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const template_1 = __webpack_require__(1);
+	function a(templateDefinition, children) {
+	    return template_1.TemplateFunction("a", null, templateDefinition, children);
+	}
+	exports.a = a;
+	function ul(templateDefinition, children) {
+	    return template_1.TemplateFunction("ul", null, templateDefinition, children);
+	}
+	exports.ul = ul;
+	function li(templateDefinition, children) {
+	    return template_1.TemplateFunction("li", null, templateDefinition, children);
+	}
+	exports.li = li;
+	function br(templateDefinition, children) {
+	    return template_1.TemplateFunction("br", null, templateDefinition, children);
+	}
+	exports.br = br;
+	function b(templateDefinition, children) {
+	    return template_1.TemplateFunction("b", null, templateDefinition, children);
+	}
+	exports.b = b;
+	function div(templateDefinition, children) {
+	    return template_1.TemplateFunction("div", null, templateDefinition, children);
+	}
+	exports.div = div;
+	function span(templateDefinition, children) {
+	    return template_1.TemplateFunction("span", null, templateDefinition, children);
+	}
+	exports.span = span;
+	function img(templateDefinition, children) {
+	    return template_1.TemplateFunction("img", null, templateDefinition, children);
+	}
+	exports.img = img;
+	function video(templateDefinition, children) {
+	    return template_1.TemplateFunction("video", null, templateDefinition, children);
+	}
+	exports.video = video;
+	function source(templateDefinition, children) {
+	    return template_1.TemplateFunction("source", null, templateDefinition, children);
+	}
+	exports.source = source;
+	function input(templateDefinition, children) {
+	    return template_1.TemplateFunction("input", null, templateDefinition, children);
+	}
+	exports.input = input;
+	function option(templateDefinition, children) {
+	    return template_1.TemplateFunction("option", null, templateDefinition, children);
+	}
+	exports.option = option;
+	function select(templateDefinition, children) {
+	    return template_1.TemplateFunction("select", null, templateDefinition, children);
+	}
+	exports.select = select;
+	function h1(templateDefinition, children) {
+	    return template_1.TemplateFunction("h1", null, templateDefinition, children);
+	}
+	exports.h1 = h1;
+	function h2(templateDefinition, children) {
+	    return template_1.TemplateFunction("h2", null, templateDefinition, children);
+	}
+	exports.h2 = h2;
+	function h3(templateDefinition, children) {
+	    return template_1.TemplateFunction("h3", null, templateDefinition, children);
+	}
+	exports.h3 = h3;
+	function table(templateDefinition, children) {
+	    return template_1.TemplateFunction("table", null, templateDefinition, children);
+	}
+	exports.table = table;
+	function th(templateDefinition, children) {
+	    return template_1.TemplateFunction("th", null, templateDefinition, children);
+	}
+	exports.th = th;
+	function tr(templateDefinition, children) {
+	    return template_1.TemplateFunction("tr", null, templateDefinition, children);
+	}
+	exports.tr = tr;
+	function td(templateDefinition, children) {
+	    return template_1.TemplateFunction("td", null, templateDefinition, children);
+	}
+	exports.td = td;
+	function p(templateDefinition, children) {
+	    return template_1.TemplateFunction("p", null, templateDefinition, children);
+	}
+	exports.p = p;
+	function style(templateDefinition, children) {
+	    return template_1.TemplateFunction("style", null, templateDefinition, children);
+	}
+	exports.style = style;
 
 
 /***/ }),
@@ -1896,8 +2005,24 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const workerQueue_1 = __webpack_require__(29);
-	const storeWorker_1 = __webpack_require__(30);
+	const store_1 = __webpack_require__(15);
+	const diffAsync_1 = __webpack_require__(29);
+	class StoreAsync extends store_1.Store {
+	    constructor(init, idFunction) {
+	        super(idFunction, init, new diffAsync_1.DiffAsync());
+	    }
+	}
+	exports.StoreAsync = StoreAsync;
+
+
+/***/ }),
+/* 29 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const workerQueue_1 = __webpack_require__(30);
+	const storeWorker_1 = __webpack_require__(31);
 	class DiffAsync {
 	    constructor() {
 	        this.workerQueue = new workerQueue_1.WorkerQueue(storeWorker_1.StoreWorker.Create());
@@ -1909,23 +2034,20 @@ var jTemplate =
 	            arguments: [batch]
 	        }));
 	    }
-	    Diff(path, newValue, resolveOldValue) {
-	        return this.workerQueue.Push(() => ({
-	            method: "diff",
-	            arguments: [path, newValue, resolveOldValue()]
-	        }));
+	    Destroy() {
+	        this.workerQueue.Destroy();
 	    }
 	}
 	exports.DiffAsync = DiffAsync;
 
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const promiseQueue_1 = __webpack_require__(25);
+	const promiseQueue_1 = __webpack_require__(23);
 	class WorkerQueue {
 	    constructor(worker) {
 	        this.worker = worker;
@@ -1947,17 +2069,20 @@ var jTemplate =
 	    Stop() {
 	        this.promiseQueue.Stop();
 	    }
+	    Destroy() {
+	        this.worker.terminate();
+	    }
 	}
 	exports.WorkerQueue = WorkerQueue;
 
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(31);
+	const objectDiff_1 = __webpack_require__(32);
 	var StoreWorker;
 	(function (StoreWorker) {
 	    var workerConstructor = null;
@@ -1977,7 +2102,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -2074,15 +2199,15 @@ var jTemplate =
 
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(17);
-	const diffSync_1 = __webpack_require__(33);
+	const store_1 = __webpack_require__(15);
+	const diffSync_1 = __webpack_require__(34);
 	class StoreSync extends store_1.Store {
-	    constructor(idFunction, init) {
+	    constructor(init, idFunction) {
 	        super(idFunction, init, new diffSync_1.DiffSync());
 	    }
 	}
@@ -2090,12 +2215,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 33 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(31);
+	const objectDiff_1 = __webpack_require__(32);
 	class DiffSync {
 	    constructor() {
 	        this.diff = objectDiff_1.ObjectDiff();
@@ -2110,12 +2235,7 @@ var jTemplate =
 	            arguments: [batch]
 	        }));
 	    }
-	    Diff(path, newValue, resolveOldValue) {
-	        return Promise.resolve(this.diff({
-	            method: "diff",
-	            arguments: [path, newValue, resolveOldValue()]
-	        }));
-	    }
+	    Destroy() { }
 	}
 	exports.DiffSync = DiffSync;
 

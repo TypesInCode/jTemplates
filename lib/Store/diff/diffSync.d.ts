@@ -1,4 +1,4 @@
-import { IDiffResponse, Diff } from "./diff.types";
+import { Diff } from "./diff.types";
 export declare class DiffSync implements Diff {
     private diff;
     constructor();
@@ -7,8 +7,5 @@ export declare class DiffSync implements Diff {
         newValue: any;
         oldValue: any;
     }>): Promise<any>;
-    Diff(path: string, newValue: any, resolveOldValue: {
-        (): any;
-    }): Promise<IDiffResponse>;
     Destroy(): void;
 }

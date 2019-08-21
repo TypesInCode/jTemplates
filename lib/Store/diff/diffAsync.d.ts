@@ -7,8 +7,5 @@ export declare class DiffAsync implements Diff {
         newValue: any;
         oldValue: any;
     }>): Promise<any>;
-    Diff(path: string, newValue: any, resolveOldValue: {
-        (): any;
-    }): Promise<any>;
     Destroy(): void;
 }

@@ -12,8 +12,5 @@ export interface Diff {
         newValue: any;
         oldValue: any;
     }>): Promise<IDiffResponse>;
-    Diff(path: string, newValue: any, resolveOldValue: {
-        (): any;
-    }): Promise<IDiffResponse>;
     Destroy(): void;
 }

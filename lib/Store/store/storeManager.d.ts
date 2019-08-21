@@ -1,5 +1,5 @@
 import { TreeNode } from "../tree/treeNode";
-import { IDiffResponse, Diff } from "../diff/diff.types";
+import { Diff } from "../diff/diff.types";
 export declare class StoreManager<T> {
     private data;
     private idFunction;
@@ -8,7 +8,6 @@ export declare class StoreManager<T> {
     constructor(idFunction: {
         (val: any): any;
     }, diff: Diff);
-    Diff(path: string, newValue: any): Promise<IDiffResponse>;
     GetNode(path: string): TreeNode;
     GetIdNode(id: string): TreeNode;
     ResolvePropertyPath(path: string): any;

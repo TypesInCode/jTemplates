@@ -79,7 +79,7 @@ class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assig
     }
 
     constructor() {
-        super((val: any) => val.id, { loading: false, todos: [] as Array<ToDo>, assignees: [] as Array<Assignee> });
+        super({ loading: false, todos: [] as Array<ToDo>, assignees: [] as Array<Assignee> }, (val: any) => val.id);
     }
 
     addTodo(val: string) {
@@ -183,12 +183,12 @@ class TodoView extends Template<ToDo, ITemplates> {
     }
 
     onToggleCompleted(todo: ToDo) {
-        var store = this.Injector.Get(IStore);
+        var store = this.Injector.Get(AbstractStore);
         store.Update(todo, (todo) => { todo.completed = !todo.completed });
     }
 
     onRename(todo: ToDo) {
-        var store = this.Injector.Get(IStore);
+        var store = this.Injector.Get(AbstractStore);
         store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
         // todo.task = prompt('Task name', todo.task) || todo.task;
     }
@@ -210,7 +210,7 @@ class TodoList extends Template<any, any> {
 
     constructor() {
         super("todo-list");
-        this.Injector.Set(IStore, t);
+        this.Injector.Set(AbstractStore, t);
     }
 
     Template() {
@@ -267,7 +267,7 @@ class TodoList extends Template<any, any> {
     }
 
     onAssigneeDblClick(assignee: Assignee) {
-        var store = this.Injector.Get(IStore);
+        var store = this.Injector.Get(AbstractStore);
         store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
         // assignee.name = prompt("New Name", assignee.name) || assignee.name;
     }
