@@ -1,5 +1,4 @@
 import { Template, Component } from "./Template/template";
-import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
 import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
@@ -7,13 +6,13 @@ import { Store, AbstractStore } from "./Store/store/store";
 import { Templates, BindingDefinitions, BindingDefinition } from "./Template/template.types";
 import { StoreReader } from "./Store/store/storeReader";
 import { StoreWriter } from "./Store/store/storeWriter";
-//import { StoreAsyncQuery } from "./Store/async/storeAsyncQuery";
-// import { StoreQuery } from "./Store/sync/storeQuery";
-// import { ObjectStoreScope } from "./ObjectStore/objectStoreScope";
 
-export { Template, Component, Templates, BindingDefinitions, BindingDefinition, /* StoreAsync, StoreAsyncQuery, */ AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, /* StoreQuery, */ Scope };
+export { Template, Component, Templates, BindingDefinitions, BindingDefinition, AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, Scope };
 
-/* // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
+
+/* import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
+
+// var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
 interface ToDo { id: number, task: string, completed: boolean, assignee: Assignee, deleted: boolean }
 interface Assignee { id: number, name: string }

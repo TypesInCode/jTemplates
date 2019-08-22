@@ -19,6 +19,7 @@ export declare class Store<T> extends AbstractStore {
     readonly Root: StoreQuery<T, T>;
     constructor(idFunction: (val: any) => any, init: any, diff: Diff);
     Action(action: AsyncActionCallback<T>): Promise<void>;
+    Next(action?: () => void): Promise<void>;
     Update<O>(readOnly: O, updateCallback: {
         (val: O): void;
     } | O): Promise<void>;

@@ -50,6 +50,11 @@ export class Store<T> extends AbstractStore {
         });
     }
 
+    public async Next(action?: () => void) {
+        await this.Action(async () => {});
+        action && action();
+    }
+
     public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O) {
         await this.Action(async (reader, writer) => {
             await writer.Update(readOnly, updateCallback);
