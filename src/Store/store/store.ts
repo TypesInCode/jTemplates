@@ -9,7 +9,7 @@ import { Diff } from "../diff/diff.types";
 export class AbstractStore {
     public async Action(action: AsyncActionCallback<any>): Promise<void> { }
 
-    public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O): Promise<void> { }
+    public async Update(updateCallback: { (val: any): void } | any): Promise<void> { }
 
     public ToJSON<O>(readOnly: O): O { return null; }
 
@@ -55,9 +55,9 @@ export class Store<T> extends AbstractStore {
         action && action();
     }
 
-    public async Update<O>(readOnly: O, updateCallback: { (val: O): void } | O) {
+    public async Update(updateOrCallback: { (val: T): void } | T) {
         await this.Action(async (reader, writer) => {
-            await writer.Update(readOnly, updateCallback);
+            await writer.Update(reader.Root, updateOrCallback);
         });
     }
 
