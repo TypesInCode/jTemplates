@@ -5,6 +5,7 @@ import { AsyncFuncCallback } from "./store.types";
 import { Store } from "./store";
 export declare class StoreQuery<T, O> extends ScopeBase<O> {
     private store;
+    readonly Promise: Promise<O>;
     constructor(store: Store<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>);
     Scope<R>(callback: {
         (parent: O): R;

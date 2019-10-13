@@ -10,13 +10,14 @@ export declare abstract class ScopeBase<T> extends Emitter {
     private dirty;
     private isAsync;
     readonly Value: T;
+    readonly HasValue: boolean;
     protected readonly GetFunction: ScopeValueCallback<T>;
     constructor(getFunction: ScopeValueCallback<T>, defaultValue?: T);
     Destroy(): void;
     protected abstract UpdateValue(callback: {
         (emitters: Set<Emitter>, value: T): void;
     }): void;
-    private UpdateValueBase;
+    protected UpdateValueBase(): void;
     private UpdateEmitters;
     private SetCallback;
     private DestroyCallback;

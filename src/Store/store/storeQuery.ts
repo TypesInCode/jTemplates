@@ -8,6 +8,21 @@ export class StoreQuery<T, O> extends ScopeBase<O> {
 
     private store: Store<any>;
 
+    public get Promise(): Promise<O> {
+        return new Promise((resolve, reject) => {
+            if(this.HasValue)
+                resolve(this.Value);
+            else {
+                var listener = () => {
+                    resolve(this.Value);
+                    this.removeListener("set", listener);
+                }
+                this.addListener("set", listener);
+                this.UpdateValueBase();
+            }
+        });
+    }
+
     constructor(store: Store<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>) {
         super(getFunction, defaultValue);
         this.store = store;

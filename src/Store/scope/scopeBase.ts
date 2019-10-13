@@ -17,7 +17,11 @@ export abstract class ScopeBase<T> extends Emitter {
         if(this.dirty)
             this.UpdateValueBase();
 
-        return typeof this.value === 'undefined' ? this.defaultValue : this.value;
+        return !this.HasValue ? this.defaultValue : this.value;
+    }
+    
+    public get HasValue() {
+        return typeof this.value !== 'undefined';
     }
 
     protected get GetFunction(): ScopeValueCallback<T> {
@@ -64,7 +68,7 @@ export abstract class ScopeBase<T> extends Emitter {
 
     protected abstract UpdateValue(callback: {(emitters: Set<Emitter>, value: T): void}): void;
 
-    private UpdateValueBase() {
+    protected UpdateValueBase() {
         this.dirty = false;
         var callbackFired = false;
         this.UpdateValue((emitters, value) => {
