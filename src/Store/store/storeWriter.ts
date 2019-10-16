@@ -25,6 +25,24 @@ export class StoreWriter<T> {
         await this.store.WritePath(path, updateCallback);
     }
 
+    public async Merge<O>(readOnly: O | string, value: Partial<O>) {
+        var path = null;
+        if(typeof readOnly === 'string') {
+            var node = this.store.GetIdNode(readOnly);
+            path = node && node.Path;
+            // path = this.store.GetPathById(readOnly);
+        }
+        
+        var path = path || readOnly && (readOnly as any).___node.Path;
+        if(!path)
+            return;
+
+        await this.store.WritePath(path, (oldValue: O) => {
+            for(var key in value)
+                oldValue[key] = value[key];
+        });
+    }
+
     /* public WritePath(path: string, value: any) {
         this.store.WritePath(path, value);
     } */

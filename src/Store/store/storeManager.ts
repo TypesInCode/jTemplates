@@ -140,8 +140,8 @@ export class StoreManager<T> {
     }
 
     private ResolveUpdateCallback(path: string, updateCallback: {(): any} | any): any {
-        if(updateCallback && updateCallback.___storeProxy)
-            return updateCallback.toJSON();
+        /* if(updateCallback && updateCallback.___storeProxy)
+            return updateCallback.toJSON(); */
         
         if(typeof updateCallback === 'function') {
             var node = this.tree.GetNode(path);

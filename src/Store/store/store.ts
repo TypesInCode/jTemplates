@@ -11,6 +11,10 @@ export class AbstractStore {
 
     public async Update(updateCallback: { (val: any): void } | any): Promise<void> { }
 
+    public async Merge(value: Partial<any>): Promise<void> { }
+
+    public async Write(value: any): Promise<void> { }
+
     public ToJSON<O>(readOnly: O): O { return null; }
 
     public Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O> {
@@ -58,6 +62,12 @@ export class Store<T> extends AbstractStore {
     public async Update(updateOrCallback: { (val: T): void } | T) {
         await this.Action(async (reader, writer) => {
             await writer.Update(reader.Root, updateOrCallback);
+        });
+    }
+
+    public async Merge(value: Partial<T>) {
+        await this.Action(async (reader, writer) => {
+            await writer.Merge(reader.Root, value);
         });
     }
 

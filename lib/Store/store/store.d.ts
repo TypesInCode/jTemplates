@@ -6,6 +6,8 @@ export declare class AbstractStore {
     Update(updateCallback: {
         (val: any): void;
     } | any): Promise<void>;
+    Merge(value: Partial<any>): Promise<void>;
+    Write(value: any): Promise<void>;
     ToJSON<O>(readOnly: O): O;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O>;
 }
@@ -23,6 +25,7 @@ export declare class Store<T> extends AbstractStore {
     Update(updateOrCallback: {
         (val: T): void;
     } | T): Promise<void>;
+    Merge(value: Partial<T>): Promise<void>;
     ToJSON<O>(readOnly: O): any;
     Write(value: any): Promise<void>;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<T, O>): StoreQuery<T, O>;
