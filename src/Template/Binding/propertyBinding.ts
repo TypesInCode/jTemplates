@@ -30,7 +30,10 @@ class PropertyBinding extends Binding<any> {
         for(var key in source) {
             var val = source[key];
             if(typeof val === 'object') {
-                this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
+                if(!target[key])
+                    target[key] = {};
+                
+                this.ApplyRecursive(target[key], lastValue && lastValue[key], val);
             }
             else if(!lastValue || lastValue[key] !== val) {
                 if(BindingConfig.setPropertyOverrides[key])

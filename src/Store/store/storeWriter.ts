@@ -37,10 +37,15 @@ export class StoreWriter<T> {
         if(!path)
             return;
 
-        await this.store.WritePath(path, (oldValue: O) => {
+        for(var key in value) {
+            var childPath = [path, key].join(".");
+            await this.store.WritePath(childPath, value[key]);
+        }
+
+        /* await this.store.WritePath(path, (oldValue: O) => {
             for(var key in value)
                 oldValue[key] = value[key];
-        });
+        }); */
     }
 
     /* public WritePath(path: string, value: any) {
