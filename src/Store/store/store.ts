@@ -11,6 +11,12 @@ export class AbstractStore {
 
     public async Update(updateCallback: { (val: any): void } | any): Promise<void> { }
 
+    public async Merge(value: Partial<any>): Promise<void> { }
+
+    public async Write(value: any): Promise<void> { }
+
+    public async Get(id?: string): Promise<any> { }
+
     public ToJSON<O>(readOnly: O): O { return null; }
 
     public Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O> {
@@ -31,7 +37,7 @@ export class Store<T> extends AbstractStore {
         return this.Query("root", this.init, async (reader) => reader.Root);
     }
 
-    constructor(idFunction: (val: any) => any, init: any, diff: Diff) {
+    constructor(idFunction: (val: any) => any, init: T, diff: Diff) {
         super();
         this.manager = new StoreManager(idFunction, diff);
         this.reader = new StoreReader<T>(this.manager);
@@ -61,13 +67,31 @@ export class Store<T> extends AbstractStore {
         });
     }
 
-    public ToJSON<O>(readOnly: O) {        
+    public async Merge(value: Partial<T>) {
+        await this.Action(async (reader, writer) => {
+            await writer.Merge(reader.Root, value);
+        });
+    }
+
+    public async Get<O = T>(id?: string): Promise<O> {
+        var ret = null;
+        await this.Action(async (reader) => {
+            if(id)
+                ret = reader.Get<O>(id);
+            else
+                ret = reader.Root;
+        });
+
+        return ret;
+    }
+
+    /* public ToJSON<O>(readOnly: O) {        
         var rOnly = readOnly as any as IStoreObject;
         if(rOnly && rOnly.___storeProxy)
             return rOnly.toJSON();
 
         throw "parameter readOnly is not a store object";
-    }
+    } */
 
     public async Write(value: any) {
         await this.Action(async (reader, writer) => {

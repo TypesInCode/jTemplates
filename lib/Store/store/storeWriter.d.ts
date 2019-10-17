@@ -6,6 +6,7 @@ export declare class StoreWriter<T> {
     Update<O>(readOnly: O | string, updateCallback: {
         (current: O): void;
     } | O): Promise<void>;
+    Merge<O>(readOnly: O | string, value: Partial<O>): Promise<void>;
     Push<O>(readOnly: Array<O>, newValue: O): Promise<void>;
     Pop<O>(readOnly: Array<O>): O;
     Splice<O>(readOnly: Array<O>, start: number, deleteCount?: number, ...items: Array<O>): any;
