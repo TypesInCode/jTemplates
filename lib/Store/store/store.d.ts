@@ -9,7 +9,6 @@ export declare class AbstractStore {
     Merge(value: Partial<any>): Promise<void>;
     Write(value: any): Promise<void>;
     Get(id?: string): Promise<any>;
-    ToJSON<O>(readOnly: O): O;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O>;
 }
 export declare class Store<T> extends AbstractStore {

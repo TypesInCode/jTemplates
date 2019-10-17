@@ -17,7 +17,7 @@ export class AbstractStore {
 
     public async Get(id?: string): Promise<any> { }
 
-    public ToJSON<O>(readOnly: O): O { return null; }
+    // public ToJSON<O>(readOnly: O): O { return null; }
 
     public Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O> {
         return null;
