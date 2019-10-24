@@ -7,8 +7,8 @@ var updateIndex = 0;
 var batchSize = 1000;
 
 function processUpdates() {
-    var start = new Date();
-    while(updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 66) {
+    var start = Date.now();
+    while(updateIndex < pendingUpdates.length && (Date.now() - start) < 66) {
         pendingUpdates[updateIndex]();
         updateIndex++;
     }
