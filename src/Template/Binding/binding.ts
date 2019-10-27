@@ -2,6 +2,7 @@ import { Scope } from '../../Store/scope/scope';
 import { BindingConfig } from './bindingConfig';
 import { FunctionOr } from '../template.types';
 import { Injector } from '../../injector';
+import { NodeRef } from '../nodeRef';
 
 enum BindingStatus {
     Init,
@@ -12,7 +13,7 @@ enum BindingStatus {
 
 export abstract class Binding<T> {
     private injector: Injector;
-    private boundTo: any;
+    private boundTo: NodeRef;
     private isStatic: boolean;
     private staticValue: any;
     private observableScope: Scope<any>;
@@ -29,7 +30,7 @@ export abstract class Binding<T> {
         return this.injector;
     }
 
-    protected get BoundTo(): any {
+    protected get BoundTo(): NodeRef {
         return this.boundTo;
     }
 
@@ -37,11 +38,11 @@ export abstract class Binding<T> {
         return this.isStatic;
     }
 
-    protected get ScheduleUpdate() {
-        return true;
+    protected get SynchInit() {
+        return false;
     }
 
-    constructor(boundTo: any, binding: FunctionOr<any>, config: T) {
+    constructor(boundTo: NodeRef, binding: FunctionOr<any>, config: T) {
         this.injector = Injector.Current();
         this.boundTo = boundTo;
         this.status = BindingStatus.Init;
@@ -65,7 +66,7 @@ export abstract class Binding<T> {
         if(this.status === BindingStatus.Destroyed)
             return;
         
-        if(this.status === BindingStatus.Init || !this.ScheduleUpdate) {
+        if(this.SynchInit && this.status === BindingStatus.Init) {
             this.status = BindingStatus.Updating;
             this.Apply();
             this.status = BindingStatus.Updated;
@@ -82,7 +83,7 @@ export abstract class Binding<T> {
         }
     }
 
-    public Destroy(parentDestroyed = false): void {
+    public Destroy(): void {
         this.observableScope && this.observableScope.Destroy();
         this.status = BindingStatus.Destroyed;
     }

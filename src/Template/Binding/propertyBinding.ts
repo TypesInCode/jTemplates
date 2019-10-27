@@ -1,20 +1,19 @@
 import { Binding } from "./binding";
 import { FunctionOr } from "../template.types";
 import { BindingConfig } from "./bindingConfig";
+import { NodeRef } from "../nodeRef";
 
 class PropertyBinding extends Binding<any> {
-    private lastValue: any;
-    private scheduleUpdate = true;
-
-    protected get ScheduleUpdate() {
-        return this.scheduleUpdate;
-    }
-
-    constructor(boundTo: Node, bindingFunction: FunctionOr<any>) {
+    
+    constructor(boundTo: NodeRef, bindingFunction: FunctionOr<any>) {
         super(boundTo, bindingFunction, {});
     }
 
     protected Apply() {
+        this.BoundTo.SetProperties(this.Value);
+    }
+
+    /* protected Apply() {
         this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
         this.lastValue = this.Value;
         if(Object.keys(this.lastValue).indexOf("value") >= 0)
@@ -42,7 +41,7 @@ class PropertyBinding extends Binding<any> {
                     target[key] = val;
             }
         }
-    }
+    } */
 }
 
 export default PropertyBinding;

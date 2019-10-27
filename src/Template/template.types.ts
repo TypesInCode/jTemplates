@@ -1,3 +1,5 @@
+import { NodeRef } from "./nodeRef";
+
 export type Templates = {
     [name: string]: FunctionOr<BindingDefinitions<any, any>>
 }
@@ -49,7 +51,8 @@ export type TemplateConstructor<P, T extends Templates> = { new(bindingDef: Bind
 
 export interface ITemplate<P, T> {
     SetTemplates(templates: Templates): void;
-    AttachTo(bindingParent: any): void;
+    // AttachTo(bindingParent: any): void;
+    AttachAfter(rootParent: NodeRef, template: ITemplate<any, any>): void;
     Detach(): void;
     Destroy(): void;
 }

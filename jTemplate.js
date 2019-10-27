@@ -58,20 +58,20 @@ var jTemplate =
 	const template_1 = __webpack_require__(1);
 	exports.Template = template_1.Template;
 	exports.Component = template_1.Component;
-	const elements_1 = __webpack_require__(27);
-	const scope_1 = __webpack_require__(7);
+	const scope_1 = __webpack_require__(4);
 	exports.Scope = scope_1.Scope;
-	const storeAsync_1 = __webpack_require__(28);
+	const storeAsync_1 = __webpack_require__(17);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
 	const storeSync_1 = __webpack_require__(33);
 	exports.StoreSync = storeSync_1.StoreSync;
-	const store_1 = __webpack_require__(15);
+	const store_1 = __webpack_require__(18);
 	exports.Store = store_1.Store;
 	exports.AbstractStore = store_1.AbstractStore;
-	const storeReader_1 = __webpack_require__(21);
+	const storeReader_1 = __webpack_require__(24);
 	exports.StoreReader = storeReader_1.StoreReader;
-	const storeWriter_1 = __webpack_require__(22);
+	const storeWriter_1 = __webpack_require__(25);
 	exports.StoreWriter = storeWriter_1.StoreWriter;
+	const elements_1 = __webpack_require__(35);
 	class TodoStore extends storeAsync_1.StoreAsync {
 	    constructor() {
 	        super({ loading: false, todos: [], assignees: [] }, (val) => val.id);
@@ -137,7 +137,7 @@ var jTemplate =
 	    replaceTodos() {
 	        this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
 	            var newTodos = [];
-	            for (var x = 0; x < 10000; x++) {
+	            for (var x = 0; x < 500; x++) {
 	                newTodos.push({
 	                    id: this.nextId++,
 	                    task: `New todo ${this.nextId}`,
@@ -203,11 +203,15 @@ var jTemplate =
 	    }
 	    onToggleCompleted(todo) {
 	        var store = this.Injector.Get(store_1.AbstractStore);
-	        store.Update(todo, (todo) => { todo.completed = !todo.completed; });
+	        store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            yield writer.Update(todo, (todo) => { todo.completed = !todo.completed; });
+	        }));
 	    }
 	    onRename(todo) {
 	        var store = this.Injector.Get(store_1.AbstractStore);
-	        store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
+	        store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            writer.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
+	        }));
 	    }
 	    onAssigneeIdChange(todo, event) {
 	        var value = event.target.value;
@@ -271,7 +275,9 @@ var jTemplate =
 	    }
 	    onAssigneeDblClick(assignee) {
 	        var store = this.Injector.Get(store_1.AbstractStore);
-	        store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name; });
+	        store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	            yield writer.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name; });
+	        }));
 	    }
 	}
 	var list = new TodoList();
@@ -284,15 +290,14 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const bindingConfig_1 = __webpack_require__(2);
-	const propertyBinding_1 = __webpack_require__(5);
+	const propertyBinding_1 = __webpack_require__(2);
 	const dataBinding_1 = __webpack_require__(12);
 	const textBinding_1 = __webpack_require__(13);
 	const eventBinding_1 = __webpack_require__(14);
-	const scope_1 = __webpack_require__(7);
+	const scope_1 = __webpack_require__(4);
 	const injector_1 = __webpack_require__(11);
-	const store_1 = __webpack_require__(15);
-	const attributeBinding_1 = __webpack_require__(26);
+	const attributeBinding_1 = __webpack_require__(15);
+	const nodeRef_1 = __webpack_require__(16);
 	function TemplateFunction(type, namespace, templateDefinition, children) {
 	    return {
 	        type: type,
@@ -336,11 +341,12 @@ var jTemplate =
 	        ret.push(new eventBinding_1.default(bindingTarget, def1.on));
 	    if (def1.text)
 	        ret.push(new textBinding_1.default(bindingTarget, def1.text));
-	    else if (def1.children) {
-	        def1.data = def1.data || def1.static || true;
-	        ret.push(new dataBinding_1.default(bindingTarget, def1.data, def1.children, def1.key));
-	    }
 	    return ret;
+	}
+	function DataBindTarget(bindingTarget, bindingDef) {
+	    if (bindingDef.children)
+	        return new dataBinding_1.default(bindingTarget, bindingDef.data || bindingDef.static || true, bindingDef.children, bindingDef.key);
+	    return null;
 	}
 	class Template {
 	    constructor(definition, deferBinding = false) {
@@ -351,10 +357,17 @@ var jTemplate =
 	        this.SetTemplates(definition.templates);
 	        definition.children = definition.children || this.Template.bind(this);
 	        this.definition = definition;
-	        this.destroyed = false;
-	        this.bindings = [];
+	        this.bindingRoot = new nodeRef_1.NodeRef(this.definition.type, this.definition.namespace);
+	        this.dataBound = false;
 	        this.injector = new injector_1.Injector();
 	        this.Init();
+	    }
+	    get Root() {
+	        if (!this.dataBound) {
+	            injector_1.Injector.Scope(this.injector, () => this.dataBinding = DataBindTarget(this.bindingRoot, this.definition));
+	            this.dataBound = true;
+	        }
+	        return this.bindingRoot;
 	    }
 	    get DefaultTemplates() {
 	        return {};
@@ -365,26 +378,6 @@ var jTemplate =
 	    get Injector() {
 	        return this.injector;
 	    }
-	    get Store() {
-	        return this.Injector.Get(store_1.AbstractStore);
-	    }
-	    get Root() {
-	        if (!this.bindingRoot && !this.destroyed) {
-	            this.bindingRoot = bindingConfig_1.BindingConfig.createBindingTarget(this.definition.type, this.definition.namespace);
-	            if (!this.deferBinding) {
-	                injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
-	                this.Bound();
-	            }
-	            else
-	                bindingConfig_1.BindingConfig.scheduleUpdate(() => {
-	                    if (!this.destroyed) {
-	                        injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
-	                        this.Bound();
-	                    }
-	                });
-	        }
-	        return this.bindingRoot;
-	    }
 	    SetTemplates(templates) {
 	        if (!templates)
 	            return;
@@ -392,28 +385,27 @@ var jTemplate =
 	            this.templates[key] = templates[key];
 	        }
 	    }
-	    AttachTo(bindingParent) {
-	        bindingConfig_1.BindingConfig.addChild(bindingParent, this.Root);
+	    BindTemplate() {
+	        injector_1.Injector.Scope(this.injector, () => this.bindings = BindTarget(this.Root, this.definition));
 	    }
-	    AttachToContainer(container) {
-	        bindingConfig_1.BindingConfig.addContainerChild(container, this.Root);
+	    AttachTo(parent) {
+	        if (!(parent instanceof nodeRef_1.NodeRef))
+	            parent = new nodeRef_1.NodeRef(parent);
+	        parent.AddChild(this.Root);
 	    }
-	    AttachBefore(bindingParent, template) {
-	        bindingConfig_1.BindingConfig.addChildBefore(bindingParent, template && template.Root, this.Root);
-	    }
-	    AttachAfter(bindingParent, template) {
-	        bindingConfig_1.BindingConfig.addChildAfter(bindingParent, template && template.Root, this.Root);
+	    AttachAfter(rootParent, template) {
+	        rootParent.AddChildAfter(template && template.Root, this.Root);
 	    }
 	    Detach() {
-	        bindingConfig_1.BindingConfig.remove(this.Root);
+	        this.Root.Detach();
 	    }
-	    Destroy(parentDestroyed = false) {
-	        if (!parentDestroyed)
-	            this.Detach();
+	    Destroy() {
+	        this.Detach();
 	        this.bindingRoot = null;
-	        this.bindings.forEach(b => b.Destroy(true));
-	        this.bindings = [];
-	        this.destroyed = true;
+	        this.dataBinding && this.dataBinding.Destroy();
+	        this.dataBinding = null;
+	        this.bindings && this.bindings.forEach(b => b.Destroy());
+	        this.bindings = null;
 	    }
 	    Template(c, i) {
 	        return [];
@@ -465,8 +457,16 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const domBindingConfig_1 = __webpack_require__(3);
-	exports.BindingConfig = domBindingConfig_1.DOMBindingConfig;
+	const binding_1 = __webpack_require__(3);
+	class PropertyBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, {});
+	    }
+	    Apply() {
+	        this.BoundTo.SetProperties(this.Value);
+	    }
+	}
+	exports.default = PropertyBinding;
 
 
 /***/ }),
@@ -475,176 +475,8 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const window_1 = __webpack_require__(4);
-	var pendingUpdates = [];
-	var updateScheduled = false;
-	var updateIndex = 0;
-	var batchSize = 1000;
-	function processUpdates() {
-	    var start = new Date();
-	    while (updateIndex < pendingUpdates.length && ((new Date()).getTime() - start.getTime()) < 66) {
-	        pendingUpdates[updateIndex]();
-	        updateIndex++;
-	    }
-	    if (updateIndex === pendingUpdates.length) {
-	        updateIndex = 0;
-	        pendingUpdates = [];
-	        updateScheduled = false;
-	    }
-	    else
-	        window_1.wndw.requestAnimationFrame(processUpdates);
-	}
-	exports.DOMBindingConfig = {
-	    scheduleUpdate: function (callback) {
-	        pendingUpdates.push(callback);
-	        if (!updateScheduled) {
-	            updateScheduled = true;
-	            window_1.wndw.requestAnimationFrame(processUpdates);
-	        }
-	    },
-	    updateComplete: function (callback) {
-	        this.scheduleUpdate(() => {
-	            setTimeout(callback, 0);
-	        });
-	    },
-	    addListener: function (target, type, callback) {
-	        target.addEventListener(type, callback);
-	    },
-	    removeListener: function (target, type, callback) {
-	        target.removeEventListener(type, callback);
-	    },
-	    createBindingTarget: function (type, namespace) {
-	        if (namespace)
-	            return window_1.wndw.document.createElementNS(namespace, type);
-	        return window_1.wndw.document.createElement(type);
-	    },
-	    addChild: function (root, child) {
-	        root.appendChild(child);
-	    },
-	    addChildFirst: function (root, child) {
-	        exports.DOMBindingConfig.addChildBefore(root, root.firstChild, child);
-	    },
-	    addChildBefore: function (root, sibling, child) {
-	        if (!sibling) {
-	            exports.DOMBindingConfig.addChild(root, child);
-	            return;
-	        }
-	        if (child !== sibling)
-	            root.insertBefore(child, sibling);
-	    },
-	    addChildAfter: function (root, sibling, child) {
-	        if (!sibling) {
-	            exports.DOMBindingConfig.addChildFirst(root, child);
-	            return;
-	        }
-	        exports.DOMBindingConfig.addChildBefore(root, sibling.nextSibling, child);
-	    },
-	    removeChild: function (root, child) {
-	        root.removeChild(child);
-	    },
-	    remove: function (target) {
-	        target && target.parentNode && target.parentNode.removeChild(target);
-	    },
-	    setText: function (target, text) {
-	        target.textContent = text;
-	    },
-	    createContainer() {
-	        return window_1.wndw.document.createDocumentFragment();
-	    },
-	    addContainerChild(container, child) {
-	        container.appendChild(child);
-	    },
-	    addChildContainer(root, container) {
-	        root.appendChild(container);
-	    },
-	    getAttribute(target, attribute) {
-	        return target.getAttribute(attribute);
-	    },
-	    setAttribute(target, attribute, value) {
-	        target.setAttribute(attribute, value);
-	    },
-	    setPropertyOverrides: {
-	        value: (target, value) => {
-	            if (target.type !== "input")
-	                target.value = value;
-	            else {
-	                var start = target.selectionStart;
-	                var end = target.selectionEnd;
-	                target.value = value;
-	                target.setSelectionRange(start, end);
-	            }
-	        }
-	    }
-	};
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var glbl = null;
-	if (typeof window != "undefined")
-	    glbl = window;
-	else {
-	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
-	}
-	exports.wndw = glbl;
-
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const binding_1 = __webpack_require__(6);
-	const bindingConfig_1 = __webpack_require__(2);
-	class PropertyBinding extends binding_1.Binding {
-	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, {});
-	        this.scheduleUpdate = true;
-	    }
-	    get ScheduleUpdate() {
-	        return this.scheduleUpdate;
-	    }
-	    Apply() {
-	        this.ApplyRecursive(this.BoundTo, this.lastValue, this.Value);
-	        this.lastValue = this.Value;
-	        if (Object.keys(this.lastValue).indexOf("value") >= 0)
-	            this.scheduleUpdate = false;
-	        else
-	            this.scheduleUpdate = true;
-	    }
-	    ApplyRecursive(target, lastValue, source) {
-	        if (typeof source !== "object")
-	            throw "Property binding must resolve to an object";
-	        for (var key in source) {
-	            var val = source[key];
-	            if (typeof val === 'object') {
-	                this.ApplyRecursive(target[key] || {}, lastValue && lastValue[key], val);
-	            }
-	            else if (!lastValue || lastValue[key] !== val) {
-	                if (bindingConfig_1.BindingConfig.setPropertyOverrides[key])
-	                    bindingConfig_1.BindingConfig.setPropertyOverrides[key](target, val);
-	                else
-	                    target[key] = val;
-	            }
-	        }
-	    }
-	}
-	exports.default = PropertyBinding;
-
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const scope_1 = __webpack_require__(7);
-	const bindingConfig_1 = __webpack_require__(2);
+	const scope_1 = __webpack_require__(4);
+	const bindingConfig_1 = __webpack_require__(8);
 	const injector_1 = __webpack_require__(11);
 	var BindingStatus;
 	(function (BindingStatus) {
@@ -685,13 +517,13 @@ var jTemplate =
 	    get IsStatic() {
 	        return this.isStatic;
 	    }
-	    get ScheduleUpdate() {
-	        return true;
+	    get SynchInit() {
+	        return false;
 	    }
 	    Update() {
 	        if (this.status === BindingStatus.Destroyed)
 	            return;
-	        if (this.status === BindingStatus.Init || !this.ScheduleUpdate) {
+	        if (this.SynchInit && this.status === BindingStatus.Init) {
 	            this.status = BindingStatus.Updating;
 	            this.Apply();
 	            this.status = BindingStatus.Updated;
@@ -706,7 +538,7 @@ var jTemplate =
 	            });
 	        }
 	    }
-	    Destroy(parentDestroyed = false) {
+	    Destroy() {
 	        this.observableScope && this.observableScope.Destroy();
 	        this.status = BindingStatus.Destroyed;
 	    }
@@ -720,13 +552,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 7 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(8);
-	const scopeCollector_1 = __webpack_require__(10);
+	const scopeBase_1 = __webpack_require__(5);
+	const scopeCollector_1 = __webpack_require__(7);
 	class Scope extends scopeBase_1.ScopeBase {
 	    constructor(getFunction) {
 	        super(getFunction, null);
@@ -746,13 +578,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 8 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(9);
-	const scopeCollector_1 = __webpack_require__(10);
+	const emitter_1 = __webpack_require__(6);
+	const scopeCollector_1 = __webpack_require__(7);
 	class ScopeBase extends emitter_1.default {
 	    constructor(getFunction, defaultValue) {
 	        super();
@@ -768,7 +600,10 @@ var jTemplate =
 	        scopeCollector_1.scopeCollector.Register(this);
 	        if (this.dirty)
 	            this.UpdateValueBase();
-	        return typeof this.value === 'undefined' ? this.defaultValue : this.value;
+	        return !this.HasValue ? this.defaultValue : this.value;
+	    }
+	    get HasValue() {
+	        return typeof this.value !== 'undefined';
 	    }
 	    get GetFunction() {
 	        return this.getFunction;
@@ -832,7 +667,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 9 */
+/* 6 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -874,7 +709,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 10 */
+/* 7 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -897,6 +732,153 @@ var jTemplate =
 	    }
 	}
 	exports.scopeCollector = new ScopeCollector();
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const domBindingConfig_1 = __webpack_require__(9);
+	exports.BindingConfig = domBindingConfig_1.DOMBindingConfig;
+
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const window_1 = __webpack_require__(10);
+	var pendingUpdates = [];
+	var updateScheduled = false;
+	var updateIndex = 0;
+	var batchSize = 1000;
+	function processUpdates() {
+	    var start = Date.now();
+	    while (updateIndex < pendingUpdates.length && (Date.now() - start) < 66) {
+	        pendingUpdates[updateIndex]();
+	        updateIndex++;
+	    }
+	    if (updateIndex === pendingUpdates.length) {
+	        updateIndex = 0;
+	        pendingUpdates = [];
+	        updateScheduled = false;
+	    }
+	    else
+	        window_1.wndw.requestAnimationFrame(processUpdates);
+	}
+	exports.DOMBindingConfig = {
+	    scheduleUpdate: function (callback) {
+	        pendingUpdates.push(callback);
+	        if (!updateScheduled) {
+	            updateScheduled = true;
+	            window_1.wndw.requestAnimationFrame(processUpdates);
+	        }
+	    },
+	    updateComplete: function (callback) {
+	        this.scheduleUpdate(() => {
+	            setTimeout(callback, 0);
+	        });
+	    },
+	    getNodeById: function (id) {
+	        return window_1.wndw.document.getElementById(id);
+	    },
+	    addListener: function (target, type, callback) {
+	        target.addEventListener(type, callback);
+	    },
+	    removeListener: function (target, type, callback) {
+	        target.removeEventListener(type, callback);
+	    },
+	    createBindingTarget: function (type, namespace) {
+	        if (namespace)
+	            return window_1.wndw.document.createElementNS(namespace, type);
+	        return window_1.wndw.document.createElement(type);
+	    },
+	    addChild: function (root, child) {
+	        root.appendChild(child);
+	    },
+	    appendXml: function (root, xml) {
+	        var template = window_1.wndw.document.createElement("template");
+	        template.innerHTML = xml;
+	        root.appendChild(template.content);
+	    },
+	    appendXmlAfter: function (root, sibling, xml) {
+	        var template = window_1.wndw.document.createElement("template");
+	        template.innerHTML = xml;
+	        this.addChildAfter(root, sibling, template.content);
+	    },
+	    addChildFirst: function (root, child) {
+	        exports.DOMBindingConfig.addChildBefore(root, root.firstChild, child);
+	    },
+	    addChildBefore: function (root, sibling, child) {
+	        if (!sibling) {
+	            exports.DOMBindingConfig.addChild(root, child);
+	            return;
+	        }
+	        if (child !== sibling)
+	            root.insertBefore(child, sibling);
+	    },
+	    addChildAfter: function (root, sibling, child) {
+	        if (!sibling) {
+	            exports.DOMBindingConfig.addChildFirst(root, child);
+	            return;
+	        }
+	        exports.DOMBindingConfig.addChildBefore(root, sibling.nextSibling, child);
+	    },
+	    removeChild: function (root, child) {
+	        root.removeChild(child);
+	    },
+	    remove: function (target) {
+	        target && target.parentNode && target.parentNode.removeChild(target);
+	    },
+	    setText: function (target, text) {
+	        target.textContent = text;
+	    },
+	    createContainer() {
+	        return window_1.wndw.document.createDocumentFragment();
+	    },
+	    addContainerChild(container, child) {
+	        container.appendChild(child);
+	    },
+	    addChildContainer(root, container) {
+	        root.appendChild(container);
+	    },
+	    getAttribute(target, attribute) {
+	        return target.getAttribute(attribute);
+	    },
+	    setAttribute(target, attribute, value) {
+	        target.setAttribute(attribute, value);
+	    },
+	    setPropertyOverrides: {
+	        value: (target, value) => {
+	            if (target.type !== "input")
+	                target.value = value;
+	            else {
+	                var start = target.selectionStart;
+	                var end = target.selectionEnd;
+	                target.value = value;
+	                target.setSelectionRange(start, end);
+	            }
+	        }
+	    }
+	};
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var glbl = null;
+	if (typeof window != "undefined")
+	    glbl = window;
+	else {
+	    glbl = (new (__webpack_require__(!(function webpackMissingModule() { var e = new Error("Cannot find module \"jsdom\""); e.code = 'MODULE_NOT_FOUND'; throw e; }())).JSDOM)("")).window;
+	}
+	exports.wndw = glbl;
 
 
 /***/ }),
@@ -950,9 +932,8 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const binding_1 = __webpack_require__(6);
+	const binding_1 = __webpack_require__(3);
 	const template_1 = __webpack_require__(1);
-	const bindingConfig_1 = __webpack_require__(2);
 	const injector_1 = __webpack_require__(11);
 	function ConvertToArray(val) {
 	    if (!val)
@@ -962,12 +943,15 @@ var jTemplate =
 	    return val;
 	}
 	class DataBinding extends binding_1.Binding {
+	    get SynchInit() {
+	        return true;
+	    }
 	    constructor(boundTo, bindingFunction, childrenFunction, keyFunction) {
 	        super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
 	    }
-	    Destroy(parentDestroyed = false) {
-	        super.Destroy(parentDestroyed);
-	        this.DestroyTemplates(this.activeTemplateMap, parentDestroyed);
+	    Destroy() {
+	        super.Destroy();
+	        this.DestroyTemplates(this.activeTemplateMap);
 	        this.activeTemplateMap = null;
 	    }
 	    OverrideBinding(bindingFunction, config) {
@@ -1013,7 +997,6 @@ var jTemplate =
 	        var value = this.Value;
 	        var newTemplateMap = new Map();
 	        var currentRowCount = this.activeTemplateMap.size;
-	        var container = bindingConfig_1.BindingConfig.createContainer();
 	        for (var x = 0; x < value.length; x++) {
 	            var newKey = value[x].key || x;
 	            newTemplateMap.set(newKey, this.activeTemplateMap.get(newKey));
@@ -1022,6 +1005,8 @@ var jTemplate =
 	        this.DestroyTemplates(this.activeTemplateMap);
 	        var previousTemplate = null;
 	        var index = 0;
+	        var newNodeRefs = [];
+	        var newTemplates = [];
 	        newTemplateMap.forEach((templates, key) => {
 	            if (!templates) {
 	                var newDefs = this.childrenFunction(value[index].value, index);
@@ -1032,25 +1017,26 @@ var jTemplate =
 	                });
 	                newTemplateMap.set(key, templates);
 	            }
-	            if (index >= currentRowCount) {
-	                templates.forEach(t => {
-	                    t.AttachToContainer(container);
-	                    previousTemplate = t;
-	                });
-	            }
-	            else {
+	            if (index < (currentRowCount - this.activeTemplateMap.size)) {
 	                templates.forEach(t => {
 	                    t.AttachAfter(this.BoundTo, previousTemplate);
 	                    previousTemplate = t;
 	                });
 	            }
+	            else
+	                templates.forEach(t => {
+	                    newTemplates.push(t);
+	                    newNodeRefs.push(t.Root);
+	                });
 	            index++;
 	        });
 	        this.activeTemplateMap = newTemplateMap;
-	        bindingConfig_1.BindingConfig.addChildContainer(this.BoundTo, container);
+	        this.BoundTo.AddChildren(newNodeRefs);
+	        for (var x = 0; x < newTemplates.length; x++)
+	            newTemplates[x].BindTemplate();
 	    }
-	    DestroyTemplates(templateMap, parentDestroyed = false) {
-	        templateMap.forEach(templates => templates.forEach(t => t.Destroy(parentDestroyed)));
+	    DestroyTemplates(templateMap) {
+	        templateMap.forEach(templates => templates.forEach(t => t.Destroy()));
 	    }
 	}
 	exports.default = DataBinding;
@@ -1062,14 +1048,13 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const binding_1 = __webpack_require__(6);
-	const bindingConfig_1 = __webpack_require__(2);
+	const binding_1 = __webpack_require__(3);
 	class TextBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
 	        super(boundTo, bindingFunction, "");
 	    }
 	    Apply() {
-	        bindingConfig_1.BindingConfig.setText(this.BoundTo, this.Value);
+	        this.BoundTo.SetText(this.Value);
 	    }
 	}
 	exports.default = TextBinding;
@@ -1081,21 +1066,13 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const binding_1 = __webpack_require__(6);
-	const bindingConfig_1 = __webpack_require__(2);
+	const binding_1 = __webpack_require__(3);
 	class EventBinding extends binding_1.Binding {
 	    constructor(boundTo, bindingFunction) {
 	        super(boundTo, bindingFunction, {});
 	    }
 	    Apply() {
-	        for (var key in this.boundEvents)
-	            bindingConfig_1.BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
-	        this.boundEvents = {};
-	        var value = this.Value;
-	        for (var key in value) {
-	            this.boundEvents[key] = value[key];
-	            bindingConfig_1.BindingConfig.addListener(this.BoundTo, key, value[key]);
-	        }
+	        this.BoundTo.SetEvents(this.Value);
 	    }
 	}
 	exports.default = EventBinding;
@@ -1103,6 +1080,206 @@ var jTemplate =
 
 /***/ }),
 /* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const binding_1 = __webpack_require__(3);
+	class AttributeBinding extends binding_1.Binding {
+	    constructor(boundTo, bindingFunction) {
+	        super(boundTo, bindingFunction, {});
+	    }
+	    Apply() {
+	        this.BoundTo.SetAttributes(this.Value);
+	    }
+	}
+	exports.default = AttributeBinding;
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const bindingConfig_1 = __webpack_require__(8);
+	var nodeRefId = 1;
+	class NodeRef {
+	    constructor(type, namespace) {
+	        this.namespace = namespace;
+	        this.childNodeRefs = new Map();
+	        this.attached = false;
+	        this.attachedCallbacks = [];
+	        this.nodeRefId = `NodeRef.${nodeRefId++}`;
+	        if (typeof type === 'string')
+	            this.type = type;
+	        else {
+	            this.node = type;
+	            this.attached = true;
+	        }
+	    }
+	    get Node() {
+	        if (!this.attached)
+	            return null;
+	        if (!this.node)
+	            this.node = bindingConfig_1.BindingConfig.getNodeById(this.nodeRefId);
+	        return this.node;
+	    }
+	    get Id() {
+	        return this.nodeRefId;
+	    }
+	    set Parent(val) {
+	        if (this.parent && this.parent !== val)
+	            this.Detach();
+	        this.parent = val;
+	    }
+	    AddChild(nodeRef) {
+	        nodeRef.Parent = this;
+	        this.childNodeRefs.set(nodeRef.Id, nodeRef);
+	        if (this.Node) {
+	            if (nodeRef.Node)
+	                bindingConfig_1.BindingConfig.addChild(this.Node, nodeRef.Node);
+	            else
+	                bindingConfig_1.BindingConfig.appendXml(this.Node, nodeRef.ToXml());
+	            nodeRef.Attached();
+	        }
+	    }
+	    AddChildAfter(currentChild, newChild) {
+	        if (currentChild && !this.childNodeRefs.has(currentChild.Id))
+	            throw "currentChild is not valid";
+	        newChild.Parent = this;
+	        this.childNodeRefs.set(newChild.Id, newChild);
+	        if (this.Node) {
+	            if (newChild.Node)
+	                bindingConfig_1.BindingConfig.addChildAfter(this.Node, currentChild && currentChild.Node, newChild.Node);
+	            else
+	                bindingConfig_1.BindingConfig.appendXmlAfter(this.Node, currentChild && currentChild.Node, newChild.ToXml());
+	            newChild.Attached();
+	        }
+	    }
+	    AddChildren(nodeRefs) {
+	        if (nodeRefs.length === 0)
+	            return;
+	        var xml = "";
+	        for (var x = 0; x < nodeRefs.length; x++) {
+	            var ref = nodeRefs[x];
+	            ref.Parent = this;
+	            this.childNodeRefs.set(ref.Id, ref);
+	            if (this.Node) {
+	                if (ref.Node)
+	                    bindingConfig_1.BindingConfig.addChild(this.Node, ref.Node);
+	                else
+	                    xml += ref.ToXml();
+	            }
+	        }
+	        if (this.Node) {
+	            bindingConfig_1.BindingConfig.appendXml(this.Node, xml);
+	            for (var x = 0; x < nodeRefs.length; x++)
+	                nodeRefs[x].Attached();
+	        }
+	    }
+	    SetText(text) {
+	        this.OnAttached(() => bindingConfig_1.BindingConfig.setText(this.Node, text));
+	    }
+	    SetProperties(properties) {
+	        this.OnAttached(() => {
+	            this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
+	            this.lastProperties = properties;
+	        });
+	    }
+	    SetAttributes(attributes) {
+	        this.OnAttached(() => {
+	            for (var key in attributes) {
+	                var val = bindingConfig_1.BindingConfig.getAttribute(this.Node, key);
+	                if (val !== attributes[key])
+	                    bindingConfig_1.BindingConfig.setAttribute(this.Node, key, attributes[key]);
+	            }
+	        });
+	    }
+	    SetEvents(events) {
+	        this.OnAttached(() => {
+	            for (var key in this.lastEvents)
+	                bindingConfig_1.BindingConfig.removeListener(this.Node, key, this.lastEvents[key]);
+	            for (var key in events)
+	                bindingConfig_1.BindingConfig.addListener(this.Node, key, events[key]);
+	            this.lastEvents = events;
+	        });
+	    }
+	    DetachChild(nodeRef) {
+	        this.childNodeRefs.delete(nodeRef.Id);
+	        if (this.Node && nodeRef.Node)
+	            bindingConfig_1.BindingConfig.removeChild(this.Node, nodeRef.Node);
+	    }
+	    Detach() {
+	        if (this.parent)
+	            this.parent.DetachChild(this);
+	        if (this.Node)
+	            bindingConfig_1.BindingConfig.remove(this.Node);
+	    }
+	    ToXml() {
+	        var xml = `<${this.type} id='${this.Id}'${this.namespace ? ` xmlns='${this.namespace}'` : ''}>`;
+	        this.childNodeRefs.forEach((value) => {
+	            xml += value.ToXml();
+	        });
+	        xml += `</${this.type}>`;
+	        return xml;
+	    }
+	    Attached() {
+	        if (this.attached)
+	            return;
+	        this.attached = true;
+	        this.attachedCallbacks.forEach((cb) => cb());
+	        this.attachedCallbacks = [];
+	        this.childNodeRefs.forEach((nodeRef) => nodeRef.Attached());
+	        this.attached = true;
+	    }
+	    OnAttached(callback) {
+	        if (this.attached) {
+	            callback();
+	            return;
+	        }
+	        this.attachedCallbacks.push(callback);
+	    }
+	    SetPropertiesRecursive(target, lastValue, source) {
+	        if (typeof source !== "object")
+	            throw "Property binding must resolve to an object";
+	        for (var key in source) {
+	            var val = source[key];
+	            if (typeof val === 'object') {
+	                if (!target[key])
+	                    target[key] = {};
+	                this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val);
+	            }
+	            else if (!lastValue || lastValue[key] !== val) {
+	                if (bindingConfig_1.BindingConfig.setPropertyOverrides[key])
+	                    bindingConfig_1.BindingConfig.setPropertyOverrides[key](target, val);
+	                else
+	                    target[key] = val;
+	            }
+	        }
+	    }
+	}
+	exports.NodeRef = NodeRef;
+
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const store_1 = __webpack_require__(18);
+	const diffAsync_1 = __webpack_require__(29);
+	class StoreAsync extends store_1.Store {
+	    constructor(init, idFunction) {
+	        super(idFunction, init, new diffAsync_1.DiffAsync());
+	    }
+	}
+	exports.StoreAsync = StoreAsync;
+
+
+/***/ }),
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1115,19 +1292,27 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeManager_1 = __webpack_require__(16);
-	const storeReader_1 = __webpack_require__(21);
-	const storeWriter_1 = __webpack_require__(22);
-	const promiseQueue_1 = __webpack_require__(23);
-	const storeQuery_1 = __webpack_require__(25);
+	const storeManager_1 = __webpack_require__(19);
+	const storeReader_1 = __webpack_require__(24);
+	const storeWriter_1 = __webpack_require__(25);
+	const promiseQueue_1 = __webpack_require__(26);
+	const storeQuery_1 = __webpack_require__(28);
 	class AbstractStore {
 	    Action(action) {
 	        return __awaiter(this, void 0, void 0, function* () { });
 	    }
-	    Update(readOnly, updateCallback) {
+	    Update(updateCallback) {
 	        return __awaiter(this, void 0, void 0, function* () { });
 	    }
-	    ToJSON(readOnly) { return null; }
+	    Merge(value) {
+	        return __awaiter(this, void 0, void 0, function* () { });
+	    }
+	    Write(value) {
+	        return __awaiter(this, void 0, void 0, function* () { });
+	    }
+	    Get(id) {
+	        return __awaiter(this, void 0, void 0, function* () { });
+	    }
 	    Query(id, defaultValue, queryFunc) {
 	        return null;
 	    }
@@ -1156,18 +1341,37 @@ var jTemplate =
 	            });
 	        });
 	    }
-	    Update(readOnly, updateCallback) {
+	    Next(action) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.Action(() => __awaiter(this, void 0, void 0, function* () { }));
+	            action && action();
+	        });
+	    }
+	    Update(updateOrCallback) {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            yield this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
-	                yield writer.Update(readOnly, updateCallback);
+	                yield writer.Update(reader.Root, updateOrCallback);
 	            }));
 	        });
 	    }
-	    ToJSON(readOnly) {
-	        var rOnly = readOnly;
-	        if (rOnly && rOnly.___storeProxy)
-	            return rOnly.toJSON();
-	        throw "parameter readOnly is not a store object";
+	    Merge(value) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	                yield writer.Merge(reader.Root, value);
+	            }));
+	        });
+	    }
+	    Get(id) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var ret = null;
+	            yield this.Action((reader) => __awaiter(this, void 0, void 0, function* () {
+	                if (id)
+	                    ret = reader.Get(id);
+	                else
+	                    ret = reader.Root;
+	            }));
+	            return ret;
+	        });
 	    }
 	    Write(value) {
 	        return __awaiter(this, void 0, void 0, function* () {
@@ -1198,7 +1402,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 16 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1211,10 +1415,10 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const tree_1 = __webpack_require__(17);
-	const treeNode_1 = __webpack_require__(18);
-	const utils_1 = __webpack_require__(20);
-	const treeNodeRefId_1 = __webpack_require__(19);
+	const tree_1 = __webpack_require__(20);
+	const treeNode_1 = __webpack_require__(21);
+	const utils_1 = __webpack_require__(23);
+	const treeNodeRefId_1 = __webpack_require__(22);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
@@ -1304,8 +1508,6 @@ var jTemplate =
 	        parentObj[prop] = value;
 	    }
 	    ResolveUpdateCallback(path, updateCallback) {
-	        if (updateCallback && updateCallback.___storeProxy)
-	            return updateCallback.toJSON();
 	        if (typeof updateCallback === 'function') {
 	            var node = this.tree.GetNode(path);
 	            var localValue = utils_1.CreateCopy(this.ResolvePropertyPath(node.Self.Path));
@@ -1334,12 +1536,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 17 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const treeNode_1 = __webpack_require__(18);
+	const treeNode_1 = __webpack_require__(21);
 	class Tree {
 	    constructor(resolvePath) {
 	        this.root = new treeNode_1.TreeNode(this, null, "root", resolvePath);
@@ -1366,13 +1568,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 18 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(9);
-	const treeNodeRefId_1 = __webpack_require__(19);
+	const emitter_1 = __webpack_require__(6);
+	const treeNodeRefId_1 = __webpack_require__(22);
 	class TreeNode {
 	    get NodeCache() {
 	        return this.nodeCache;
@@ -1468,7 +1670,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 19 */
+/* 22 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1492,7 +1694,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 20 */
+/* 23 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1635,13 +1837,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 21 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(20);
-	const scopeCollector_1 = __webpack_require__(10);
+	const utils_1 = __webpack_require__(23);
+	const scopeCollector_1 = __webpack_require__(7);
 	class StoreReader {
 	    constructor(store) {
 	        this.store = store;
@@ -1681,7 +1883,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1694,7 +1896,7 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(20);
+	const utils_1 = __webpack_require__(23);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -1715,6 +1917,22 @@ var jTemplate =
 	            if (!path)
 	                return;
 	            yield this.store.WritePath(path, updateCallback);
+	        });
+	    }
+	    Merge(readOnly, value) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var path = null;
+	            if (typeof readOnly === 'string') {
+	                var node = this.store.GetIdNode(readOnly);
+	                path = node && node.Path;
+	            }
+	            var path = path || readOnly && readOnly.___node.Path;
+	            if (!path)
+	                return;
+	            for (var key in value) {
+	                var childPath = [path, key].join(".");
+	                yield this.store.WritePath(childPath, value[key]);
+	            }
 	        });
 	    }
 	    Push(readOnly, newValue) {
@@ -1760,12 +1978,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 23 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(24);
+	const deferredPromise_1 = __webpack_require__(27);
 	class PromiseQueue {
 	    constructor() {
 	        this.running = false;
@@ -1812,7 +2030,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 24 */
+/* 27 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1838,7 +2056,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 25 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1851,12 +2069,26 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(8);
-	const scope_1 = __webpack_require__(7);
+	const scopeBase_1 = __webpack_require__(5);
+	const scope_1 = __webpack_require__(4);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, defaultValue, getFunction) {
 	        super(getFunction, defaultValue);
 	        this.store = store;
+	    }
+	    get Promise() {
+	        return new Promise((resolve, reject) => {
+	            if (this.HasValue)
+	                resolve(this.Value);
+	            else {
+	                var listener = () => {
+	                    resolve(this.Value);
+	                    this.removeListener("set", listener);
+	                };
+	                this.addListener("set", listener);
+	                this.UpdateValueBase();
+	            }
+	        });
 	    }
 	    Scope(callback) {
 	        return new scope_1.Scope(() => callback(this.Value));
@@ -1876,143 +2108,6 @@ var jTemplate =
 	    }
 	}
 	exports.StoreQuery = StoreQuery;
-
-
-/***/ }),
-/* 26 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const binding_1 = __webpack_require__(6);
-	const bindingConfig_1 = __webpack_require__(2);
-	class AttributeBinding extends binding_1.Binding {
-	    constructor(boundTo, bindingFunction) {
-	        super(boundTo, bindingFunction, {});
-	    }
-	    Apply() {
-	        var value = this.Value;
-	        for (var key in value) {
-	            var val = bindingConfig_1.BindingConfig.getAttribute(this.BoundTo, key);
-	            if (val !== value[key])
-	                bindingConfig_1.BindingConfig.setAttribute(this.BoundTo, key, value[key]);
-	        }
-	    }
-	}
-	exports.default = AttributeBinding;
-
-
-/***/ }),
-/* 27 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const template_1 = __webpack_require__(1);
-	function a(templateDefinition, children) {
-	    return template_1.TemplateFunction("a", null, templateDefinition, children);
-	}
-	exports.a = a;
-	function ul(templateDefinition, children) {
-	    return template_1.TemplateFunction("ul", null, templateDefinition, children);
-	}
-	exports.ul = ul;
-	function li(templateDefinition, children) {
-	    return template_1.TemplateFunction("li", null, templateDefinition, children);
-	}
-	exports.li = li;
-	function br(templateDefinition, children) {
-	    return template_1.TemplateFunction("br", null, templateDefinition, children);
-	}
-	exports.br = br;
-	function b(templateDefinition, children) {
-	    return template_1.TemplateFunction("b", null, templateDefinition, children);
-	}
-	exports.b = b;
-	function div(templateDefinition, children) {
-	    return template_1.TemplateFunction("div", null, templateDefinition, children);
-	}
-	exports.div = div;
-	function span(templateDefinition, children) {
-	    return template_1.TemplateFunction("span", null, templateDefinition, children);
-	}
-	exports.span = span;
-	function img(templateDefinition, children) {
-	    return template_1.TemplateFunction("img", null, templateDefinition, children);
-	}
-	exports.img = img;
-	function video(templateDefinition, children) {
-	    return template_1.TemplateFunction("video", null, templateDefinition, children);
-	}
-	exports.video = video;
-	function source(templateDefinition, children) {
-	    return template_1.TemplateFunction("source", null, templateDefinition, children);
-	}
-	exports.source = source;
-	function input(templateDefinition, children) {
-	    return template_1.TemplateFunction("input", null, templateDefinition, children);
-	}
-	exports.input = input;
-	function option(templateDefinition, children) {
-	    return template_1.TemplateFunction("option", null, templateDefinition, children);
-	}
-	exports.option = option;
-	function select(templateDefinition, children) {
-	    return template_1.TemplateFunction("select", null, templateDefinition, children);
-	}
-	exports.select = select;
-	function h1(templateDefinition, children) {
-	    return template_1.TemplateFunction("h1", null, templateDefinition, children);
-	}
-	exports.h1 = h1;
-	function h2(templateDefinition, children) {
-	    return template_1.TemplateFunction("h2", null, templateDefinition, children);
-	}
-	exports.h2 = h2;
-	function h3(templateDefinition, children) {
-	    return template_1.TemplateFunction("h3", null, templateDefinition, children);
-	}
-	exports.h3 = h3;
-	function table(templateDefinition, children) {
-	    return template_1.TemplateFunction("table", null, templateDefinition, children);
-	}
-	exports.table = table;
-	function th(templateDefinition, children) {
-	    return template_1.TemplateFunction("th", null, templateDefinition, children);
-	}
-	exports.th = th;
-	function tr(templateDefinition, children) {
-	    return template_1.TemplateFunction("tr", null, templateDefinition, children);
-	}
-	exports.tr = tr;
-	function td(templateDefinition, children) {
-	    return template_1.TemplateFunction("td", null, templateDefinition, children);
-	}
-	exports.td = td;
-	function p(templateDefinition, children) {
-	    return template_1.TemplateFunction("p", null, templateDefinition, children);
-	}
-	exports.p = p;
-	function style(templateDefinition, children) {
-	    return template_1.TemplateFunction("style", null, templateDefinition, children);
-	}
-	exports.style = style;
-
-
-/***/ }),
-/* 28 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(15);
-	const diffAsync_1 = __webpack_require__(29);
-	class StoreAsync extends store_1.Store {
-	    constructor(init, idFunction) {
-	        super(idFunction, init, new diffAsync_1.DiffAsync());
-	    }
-	}
-	exports.StoreAsync = StoreAsync;
 
 
 /***/ }),
@@ -2047,7 +2142,7 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const promiseQueue_1 = __webpack_require__(23);
+	const promiseQueue_1 = __webpack_require__(26);
 	class WorkerQueue {
 	    constructor(worker) {
 	        this.worker = worker;
@@ -2204,7 +2299,7 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(15);
+	const store_1 = __webpack_require__(18);
 	const diffSync_1 = __webpack_require__(34);
 	class StoreSync extends store_1.Store {
 	    constructor(init, idFunction) {
@@ -2238,6 +2333,103 @@ var jTemplate =
 	    Destroy() { }
 	}
 	exports.DiffSync = DiffSync;
+
+
+/***/ }),
+/* 35 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const template_1 = __webpack_require__(1);
+	function a(templateDefinition, children) {
+	    return template_1.TemplateFunction("a", null, templateDefinition, children);
+	}
+	exports.a = a;
+	function ul(templateDefinition, children) {
+	    return template_1.TemplateFunction("ul", null, templateDefinition, children);
+	}
+	exports.ul = ul;
+	function li(templateDefinition, children) {
+	    return template_1.TemplateFunction("li", null, templateDefinition, children);
+	}
+	exports.li = li;
+	function br(templateDefinition, children) {
+	    return template_1.TemplateFunction("br", null, templateDefinition, children);
+	}
+	exports.br = br;
+	function b(templateDefinition, children) {
+	    return template_1.TemplateFunction("b", null, templateDefinition, children);
+	}
+	exports.b = b;
+	function div(templateDefinition, children) {
+	    return template_1.TemplateFunction("div", null, templateDefinition, children);
+	}
+	exports.div = div;
+	function span(templateDefinition, children) {
+	    return template_1.TemplateFunction("span", null, templateDefinition, children);
+	}
+	exports.span = span;
+	function img(templateDefinition, children) {
+	    return template_1.TemplateFunction("img", null, templateDefinition, children);
+	}
+	exports.img = img;
+	function video(templateDefinition, children) {
+	    return template_1.TemplateFunction("video", null, templateDefinition, children);
+	}
+	exports.video = video;
+	function source(templateDefinition, children) {
+	    return template_1.TemplateFunction("source", null, templateDefinition, children);
+	}
+	exports.source = source;
+	function input(templateDefinition, children) {
+	    return template_1.TemplateFunction("input", null, templateDefinition, children);
+	}
+	exports.input = input;
+	function option(templateDefinition, children) {
+	    return template_1.TemplateFunction("option", null, templateDefinition, children);
+	}
+	exports.option = option;
+	function select(templateDefinition, children) {
+	    return template_1.TemplateFunction("select", null, templateDefinition, children);
+	}
+	exports.select = select;
+	function h1(templateDefinition, children) {
+	    return template_1.TemplateFunction("h1", null, templateDefinition, children);
+	}
+	exports.h1 = h1;
+	function h2(templateDefinition, children) {
+	    return template_1.TemplateFunction("h2", null, templateDefinition, children);
+	}
+	exports.h2 = h2;
+	function h3(templateDefinition, children) {
+	    return template_1.TemplateFunction("h3", null, templateDefinition, children);
+	}
+	exports.h3 = h3;
+	function table(templateDefinition, children) {
+	    return template_1.TemplateFunction("table", null, templateDefinition, children);
+	}
+	exports.table = table;
+	function th(templateDefinition, children) {
+	    return template_1.TemplateFunction("th", null, templateDefinition, children);
+	}
+	exports.th = th;
+	function tr(templateDefinition, children) {
+	    return template_1.TemplateFunction("tr", null, templateDefinition, children);
+	}
+	exports.tr = tr;
+	function td(templateDefinition, children) {
+	    return template_1.TemplateFunction("td", null, templateDefinition, children);
+	}
+	exports.td = td;
+	function p(templateDefinition, children) {
+	    return template_1.TemplateFunction("p", null, templateDefinition, children);
+	}
+	exports.p = p;
+	function style(templateDefinition, children) {
+	    return template_1.TemplateFunction("style", null, templateDefinition, children);
+	}
+	exports.style = style;
 
 
 /***/ })

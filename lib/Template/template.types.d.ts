@@ -1,3 +1,4 @@
+import { NodeRef } from "./nodeRef";
 export declare type Templates = {
     [name: string]: FunctionOr<BindingDefinitions<any, any>>;
 };
@@ -78,7 +79,7 @@ export declare type TemplateConstructor<P, T extends Templates> = {
 };
 export interface ITemplate<P, T> {
     SetTemplates(templates: Templates): void;
-    AttachTo(bindingParent: any): void;
+    AttachAfter(rootParent: NodeRef, template: ITemplate<any, any>): void;
     Detach(): void;
     Destroy(): void;
 }

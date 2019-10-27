@@ -1,5 +1,6 @@
 import { FunctionOr } from '../template.types';
 import { Injector } from '../../injector';
+import { NodeRef } from '../nodeRef';
 export declare abstract class Binding<T> {
     private injector;
     private boundTo;
@@ -10,12 +11,12 @@ export declare abstract class Binding<T> {
     private status;
     protected readonly Value: any;
     protected readonly Injector: Injector;
-    protected readonly BoundTo: any;
+    protected readonly BoundTo: NodeRef;
     protected readonly IsStatic: boolean;
-    protected readonly ScheduleUpdate: boolean;
-    constructor(boundTo: any, binding: FunctionOr<any>, config: T);
+    protected readonly SynchInit: boolean;
+    constructor(boundTo: NodeRef, binding: FunctionOr<any>, config: T);
     Update(): void;
-    Destroy(parentDestroyed?: boolean): void;
+    Destroy(): void;
     protected OverrideBinding(binding: FunctionOr<any>, config: T): any;
     protected Init(config: T): void;
     protected abstract Apply(): void;

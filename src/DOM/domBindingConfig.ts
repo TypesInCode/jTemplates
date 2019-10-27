@@ -49,6 +49,9 @@ export var DOMBindingConfig: IBindingConfig = {
             setTimeout(callback, 0);
         });
     },
+    getNodeById: function(id: string) {
+        return wndw.document.getElementById(id);
+    },
     addListener: function(target: Node, type: string, callback: {():void}) {
         target.addEventListener(type, callback);
     },
@@ -63,6 +66,16 @@ export var DOMBindingConfig: IBindingConfig = {
     },
     addChild: function(root: Node, child: Node) {
         root.appendChild(child);
+    },
+    appendXml: function(root: Node, xml: string) {
+        var template = wndw.document.createElement("template");
+        template.innerHTML = xml;
+        root.appendChild(template.content);
+    },
+    appendXmlAfter: function(root: Node, sibling: Node, xml: string) {
+        var template = wndw.document.createElement("template");
+        template.innerHTML = xml;
+        this.addChildAfter(root, sibling, template.content);
     },
     addChildFirst: function(root: Node, child: Node) {
         DOMBindingConfig.addChildBefore(root, root.firstChild, child);

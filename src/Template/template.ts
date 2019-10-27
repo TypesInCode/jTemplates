@@ -9,6 +9,7 @@ import { Scope } from "../Store/scope/scope";
 import { Injector } from "../injector";
 import { AbstractStore } from "../Store/store/store";
 import AttributeBinding from "./Binding/attributeBinding";
+import { NodeRef } from "./nodeRef";
 
 export function TemplateFunction(type: string, namespace: string, templateDefinition?: TemplateDefinition<any>, children?: ChildrenOr<any>): BindingDefinition<any, any> {
     return {
@@ -45,7 +46,7 @@ function CreateComponentFunction<P, T extends Templates>(type: any, classType: T
 }
 
 // function DefaultDataCallback() { return true; }
-function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>): Array<Binding<any>> {
+function BindTarget(bindingTarget: NodeRef, bindingDef: BindingDefinition<any, any>): Array<Binding<any>> {
     var ret: Array<Binding<any>> = [];
     var def1 = bindingDef as BindingDefinition<any, any>;
     if(def1.props)
@@ -59,21 +60,53 @@ function BindTarget(bindingTarget: any, bindingDef: BindingDefinition<any, any>)
 
     if(def1.text)
         ret.push(new TextBinding(bindingTarget, def1.text));
-    else if(def1.children) {
+    /* else if(def1.children) {
         def1.data = def1.data || def1.static || true; //DefaultDataCallback;
         ret.push(new DataBinding(bindingTarget, def1.data, def1.children, def1.key));
-    }
+    } */
 
     return ret;
+}
+
+function DataBindTarget(bindingTarget: NodeRef, bindingDef: BindingDefinition<any, any>): DataBinding {
+    if(bindingDef.children)
+        return new DataBinding(bindingTarget, bindingDef.data || bindingDef.static || true, bindingDef.children, bindingDef.key);
+
+    return null;
 }
 
 export class Template<P, T extends Templates> implements ITemplate<P, T> {
     private definition: BindingDefinition<P, T>;
     private bindings: Array<Binding<any>>;
-    private bindingRoot: any;
+    private bindingRoot: NodeRef;
+    private dataBound: boolean;
+    private dataBinding: DataBinding;
     private templates: T;
-    private destroyed: boolean;
+    // private destroyed: boolean;
     private injector: Injector;
+
+    public get Root(): NodeRef {
+        if(!this.dataBound) {
+            Injector.Scope(this.injector, () => this.dataBinding = DataBindTarget(this.bindingRoot, this.definition));
+            this.dataBound = true;
+        }
+        /* if(!this.bindingRoot && !this.destroyed) {
+            this.bindingRoot = new NodeRef(this.definition.type, this.definition.namespace); //BindingConfig.createBindingTarget(this.definition.type, this.definition.namespace);
+            if(!this.deferBinding) {
+                Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+                this.Bound();
+            }
+            else
+                BindingConfig.scheduleUpdate(() => {
+                    if(!this.destroyed) {
+                        Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
+                        this.Bound();
+                    }
+                });
+        } */
+        
+        return this.bindingRoot;
+    }
 
     protected get DefaultTemplates(): T {
         return {} as T;
@@ -87,28 +120,9 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         return this.injector;
     }
 
-    protected get Store(): AbstractStore {
+    /* protected get Store(): AbstractStore {
         return this.Injector.Get(AbstractStore);
-    }
-
-    protected get Root(): any {
-        if(!this.bindingRoot && !this.destroyed) {
-            this.bindingRoot = BindingConfig.createBindingTarget(this.definition.type, this.definition.namespace);
-            if(!this.deferBinding) {
-                Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
-                this.Bound();
-            }
-            else
-                BindingConfig.scheduleUpdate(() => {
-                    if(!this.destroyed) {
-                        Injector.Scope(this.injector, () => this.bindings = BindTarget(this.bindingRoot, this.definition));
-                        this.Bound();
-                    }
-                });
-        }
-        
-        return this.bindingRoot;
-    }
+    } */
 
     constructor(definition: BindingDefinition<P, T> | string, private deferBinding = false) { // , dataOverride?: any) {
         if(typeof definition === 'string')
@@ -118,8 +132,9 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         this.SetTemplates(definition.templates);
         definition.children = definition.children || this.Template.bind(this);
         this.definition = definition;
-        this.destroyed = false;
-        this.bindings = [];
+        this.bindingRoot = new NodeRef(this.definition.type, this.definition.namespace);
+        this.dataBound = false;
+        // this.destroyed = false;
         this.injector = new Injector();
         this.Init();
     }
@@ -133,38 +148,57 @@ export class Template<P, T extends Templates> implements ITemplate<P, T> {
         }
     }
 
-    /* public UpdateComplete(callback: () => void) {
-        BindingConfig.updateComplete(callback);
-    } */
-
-    public AttachTo(bindingParent: any) {
-        BindingConfig.addChild(bindingParent, this.Root);
+    public BindTemplate() {
+        if(!this.deferBinding) {
+            Injector.Scope(this.injector, () => this.bindings = BindTarget(this.Root, this.definition));
+            this.Bound();
+        }
+        else {
+            BindingConfig.scheduleUpdate(() => {
+                Injector.Scope(this.injector, () => this.bindings = BindTarget(this.Root, this.definition))
+                this.Bound();
+            });
+        }
     }
 
-    public AttachToContainer(container: any) {
+    public AttachTo(parent: NodeRef | Node) {
+        if(!(parent instanceof NodeRef))
+            parent = new NodeRef(parent);
+
+        // BindingConfig.addChild(parent, this.Root);
+        parent.AddChild(this.Root);
+        // this.Root.Attached();
+    }
+
+    /* public AttachToContainer(container: any) {
         BindingConfig.addContainerChild(container, this.Root);
     }
 
     public AttachBefore(bindingParent: any, template: Template<any, any>) {
         BindingConfig.addChildBefore(bindingParent, template && template.Root, this.Root);
-    }
+    } */
 
-    public AttachAfter(bindingParent: any, template: Template<any, any>) {
-        BindingConfig.addChildAfter(bindingParent, template && template.Root, this.Root);
+    public AttachAfter(rootParent: NodeRef, template: Template<any, any>) {
+        // BindingConfig.addChildAfter(bindingParent, template && template.Root, this.Root);
+        rootParent.AddChildAfter(template && template.Root, this.Root);
+        // this.Root.Attached();
     }
 
     public Detach() {
-        BindingConfig.remove(this.Root);
+        // BindingConfig.remove(this.Root);
+        this.Root.Detach();
     }
 
-    public Destroy(parentDestroyed = false) {
-        if(!parentDestroyed)
+    public Destroy() {
+        // if(!parentDestroyed)
             this.Detach();
         
         this.bindingRoot = null;
-        this.bindings.forEach(b => b.Destroy(true));
-        this.bindings = [];
-        this.destroyed = true;
+        this.dataBinding && this.dataBinding.Destroy();
+        this.dataBinding = null;
+        this.bindings && this.bindings.forEach(b => b.Destroy());
+        this.bindings = null;
+        // this.destroyed = true;
     }
 
     protected Template(c: P, i: number): BindingDefinitions<any, any> {

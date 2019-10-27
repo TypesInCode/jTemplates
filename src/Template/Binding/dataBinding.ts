@@ -3,6 +3,7 @@ import { Template } from "../template";
 import { BindingConfig } from "./bindingConfig";
 import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
 import { Injector } from "../../injector";
+import { NodeRef } from "../nodeRef";
 
 function ConvertToArray(val: any): Array<any> {
     if(!val)
@@ -20,13 +21,17 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
     // activeKeys: Array<any>;
     keyFunction: (val: any) => any;
 
-    constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any) {
+    protected get SynchInit() {
+        return true;
+    }
+
+    constructor(boundTo: NodeRef, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any) {
         super(boundTo, bindingFunction, { children: childrenFunction, key: keyFunction });
     }
 
-    public Destroy(parentDestroyed = false) {
-        super.Destroy(parentDestroyed);
-        this.DestroyTemplates(this.activeTemplateMap, parentDestroyed);
+    public Destroy() {
+        super.Destroy();
+        this.DestroyTemplates(this.activeTemplateMap);
         this.activeTemplateMap = null;
     }
 
@@ -80,7 +85,7 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
         var newTemplateMap = new Map() as Map<any, Array<Template<any, any>>>;
         // var newKeys = [];
         var currentRowCount = this.activeTemplateMap.size;
-        var container = BindingConfig.createContainer();
+        // var container = BindingConfig.createContainer();
         // var previousTemplate = null as Template<any, any>;
 
         for(var x=0; x<value.length; x++) {
@@ -93,6 +98,8 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
         this.DestroyTemplates(this.activeTemplateMap);
         var previousTemplate = null as Template<any, any>;
         var index = 0;
+        var newNodeRefs: Array<NodeRef> = [];
+        var newTemplates: Array<Template<any, any>> = [];
         newTemplateMap.forEach((templates, key) => {
             if(!templates) {
                 var newDefs = this.childrenFunction(value[index].value, index) as Array<any>;
@@ -105,9 +112,25 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                 newTemplateMap.set(key, templates);
             }
 
-            if(index >= currentRowCount) {
+            if(index < (currentRowCount - this.activeTemplateMap.size)) {
                 templates.forEach(t => {
-                    t.AttachToContainer(container);
+                    t.AttachAfter(this.BoundTo, previousTemplate);
+                    previousTemplate = t;
+                });
+            }
+            else
+                templates.forEach(t => {
+                    // t.AttachToContainer(container);
+                    newTemplates.push(t);
+                    newNodeRefs.push(t.Root);
+                    // previousTemplate = t;
+                });
+
+            /* if(index >= currentRowCount) {
+                templates.forEach(t => {
+                    // t.AttachToContainer(container);
+                    // newNodeRefs.push(t.Root);
+                    newTemplates.push(t);
                     previousTemplate = t;
                 });
             }
@@ -116,16 +139,20 @@ class DataBinding extends Binding<{ children: ChildrenOr<any>, key: {(val: any):
                     t.AttachAfter(this.BoundTo, previousTemplate);
                     previousTemplate = t;
                 });
-            }
+            } */
             index++;
         });
 
         this.activeTemplateMap = newTemplateMap;
-        BindingConfig.addChildContainer(this.BoundTo, container);
+        this.BoundTo.AddChildren(newNodeRefs);
+
+        for(var x=0; x<newTemplates.length; x++)
+            newTemplates[x].BindTemplate();
+        // BindingConfig.addChildContainer(this.BoundTo, container);
     }
 
-    private DestroyTemplates(templateMap: Map<any, Array<Template<any, any>>>, parentDestroyed = false) {
-        templateMap.forEach(templates => templates.forEach(t => t.Destroy(parentDestroyed)));
+    private DestroyTemplates(templateMap: Map<any, Array<Template<any, any>>>) {
+        templateMap.forEach(templates => templates.forEach(t => t.Destroy()));
     }
 }
 

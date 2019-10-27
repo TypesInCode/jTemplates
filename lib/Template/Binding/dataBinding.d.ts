@@ -1,6 +1,7 @@
 import { Binding } from "./binding";
 import { Template } from "../template";
 import { FunctionOr, ChildrenOr, BindingDefinitions } from "../template.types";
+import { NodeRef } from "../nodeRef";
 declare class DataBinding extends Binding<{
     children: ChildrenOr<any>;
     key: {
@@ -10,8 +11,9 @@ declare class DataBinding extends Binding<{
     childrenFunction: (c: any, i: number) => BindingDefinitions<any, any>;
     activeTemplateMap: Map<any, Array<Template<any, any>>>;
     keyFunction: (val: any) => any;
-    constructor(boundTo: Node, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any);
-    Destroy(parentDestroyed?: boolean): void;
+    protected readonly SynchInit: boolean;
+    constructor(boundTo: NodeRef, bindingFunction: FunctionOr<any>, childrenFunction: ChildrenOr<any>, keyFunction: (val: any) => any);
+    Destroy(): void;
     protected OverrideBinding(bindingFunction: FunctionOr<any>, config: {
         key: (val: any) => any;
     }): (() => {

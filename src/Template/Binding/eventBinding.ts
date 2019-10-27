@@ -1,11 +1,12 @@
 import { Binding } from "./binding";
 import { BindingConfig } from "./bindingConfig";
 import { FunctionOr } from "../template.types";
+import { NodeRef } from "../nodeRef";
 
 class EventBinding extends Binding<any> {
     boundEvents: { [name: string]: any };
 
-    constructor(boundTo: Node, bindingFunction: FunctionOr<any>) {
+    constructor(boundTo: NodeRef, bindingFunction: FunctionOr<any>) {
         super(boundTo, bindingFunction, {});
     }
 
@@ -16,6 +17,10 @@ class EventBinding extends Binding<any> {
     } */
 
     protected Apply() {
+        this.BoundTo.SetEvents(this.Value);
+    }
+
+    /* protected Apply() {
         for(var key in this.boundEvents)
             BindingConfig.removeListener(this.BoundTo, key, this.boundEvents[key]);
 
@@ -25,7 +30,7 @@ class EventBinding extends Binding<any> {
             this.boundEvents[key] = value[key];
             BindingConfig.addListener(this.BoundTo, key, value[key]);
         }
-    }
+    } */
 }
 
 export default EventBinding;

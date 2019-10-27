@@ -1,9 +1,12 @@
 export interface IBindingConfig {
     scheduleUpdate(callback: () => void): void;
     updateComplete(callback: () => void): void;
+    getNodeById(id: string): Node;
     addListener(target: any, type: string, callback: {(): void}): void;
     removeListener(target: any, type: string, callback: {(): void}): void;
     createBindingTarget(type: any, namespace: string): any;
+    appendXml(root: Node, xml: string): void;
+    appendXmlAfter(root: Node, sibling: Node, xml: string): void;
     addChild(root: any, child: any): void;
     addChildFirst(root: any, child: any): void;
     addChildBefore(root: any, sibling: any, child: any): void;
