@@ -35,6 +35,10 @@ export class Component<D = any, T = any> {
         return [];
     }
 
+    public Bound() {
+
+    }
+
     public Destroy() {
         this.scope.Destroy();
     }

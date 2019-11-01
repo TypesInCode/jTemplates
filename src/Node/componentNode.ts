@@ -66,6 +66,7 @@ export class ComponentNode<D, T = any> extends BoundNode {
             nodes = [nodes];
 
         nodes.forEach(node => this.AddChild(node));
+        setTimeout(() => this.component.Bound(), 0);
     }
 
     public Destroy() {

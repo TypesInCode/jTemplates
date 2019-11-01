@@ -16,6 +16,7 @@ export declare class Component<D = any, T = any> {
         (): D;
     } | D, templates: T, nodeRef: NodeRef, injector: Injector);
     Template(): NodeRef | NodeRef[];
+    Bound(): void;
     Destroy(): void;
     protected Init(): void;
 }
