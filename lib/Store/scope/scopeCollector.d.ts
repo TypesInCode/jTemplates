@@ -1,4 +1,4 @@
-import Emitter from "../../emitter";
+import Emitter from "../../Utils/emitter";
 declare class ScopeCollector {
     private emitterStack;
     Watch(callback: {

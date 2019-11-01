@@ -1,7 +1,79 @@
-import { TemplateFunction } from "../Template/template";
-import { TemplateDefinition, BindingDefinition, ChildrenOr } from "../Template/template.types";
+import { ElementNode, ElementNodeFunctionParam } from "../Node/elementNode";
+import { NodeRef } from "../Node/nodeRef";
 
-export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
+export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("div", null, nodeDef, children);
+}
+
+export function a<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("a", null, nodeDef, children);
+}
+
+export function ul<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("ul", null, nodeDef, children);
+}
+
+export function li<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("li", null, nodeDef, children);
+}
+
+export function br<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("br", null, nodeDef, null);
+}
+
+export function b<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("b", null, nodeDef);
+}
+
+export function span<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("span", null, nodeDef, children);
+}
+
+export function img<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("img", null, nodeDef, null);
+}
+
+export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("video", null, nodeDef, children);
+}
+
+export function source<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("source", null, nodeDef, null);
+}
+
+export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("input", null, nodeDef, null);
+}
+
+export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("select", null, nodeDef, children);
+}
+
+export function option<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("div", null, nodeDef, null);
+}
+
+export function h1<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("h1", null, nodeDef, null);
+}
+
+export function h2<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("h2", null, nodeDef, null);
+}
+
+export function h3<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("h3", null, nodeDef, null);
+}
+
+export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("p", null, nodeDef, children);
+}
+
+export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("style", null, nodeDef, children);
+}
+
+/* export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
     return TemplateFunction("a", null, templateDefinition, children);
 }
 export function ul<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
@@ -66,4 +138,4 @@ export function p<P>(templateDefinition?: TemplateDefinition<P>, children?: Chil
 }
 export function style<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
     return TemplateFunction("style", null, templateDefinition, children);
-}
+} */

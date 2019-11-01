@@ -1,1 +1,0 @@
-{"version":3,"file":"textBinding.js","sourceRoot":"","sources":["../../../src/Template/Binding/textBinding.ts"],"names":[],"mappings":";;AAAA,uCAAoC;AAKpC,iBAAkB,SAAQ,iBAAY;IAElC,YAAY,OAAgB,EAAE,eAAmC;QAC7D,KAAK,CAAC,OAAO,EAAE,eAAe,EAAE,EAAE,CAAC,CAAC;IACxC,CAAC;IAES,KAAK;QAEX,IAAI,CAAC,OAAO,CAAC,OAAO,CAAC,IAAI,CAAC,KAAK,CAAC,CAAC;IACrC,CAAC;CACJ;AAED,kBAAe,WAAW,CAAC"}

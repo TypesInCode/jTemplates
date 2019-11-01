@@ -1,18 +1,16 @@
-import Emitter from "../../emitter";
-import { ScopeValueCallback } from "./scopeBase.types";
+import Emitter from "../../Utils/emitter";
 export declare abstract class ScopeBase<T> extends Emitter {
-    private getFunction;
     private emitters;
     private setCallback;
     private destroyCallback;
+    private isStatic;
     private defaultValue;
     private value;
     private dirty;
     private isAsync;
     readonly Value: T;
     readonly HasValue: boolean;
-    protected readonly GetFunction: ScopeValueCallback<T>;
-    constructor(getFunction: ScopeValueCallback<T>, defaultValue?: T);
+    constructor(defaultValue?: T);
     Destroy(): void;
     protected abstract UpdateValue(callback: {
         (emitters: Set<Emitter>, value: T): void;

@@ -1,1 +1,0 @@
-{"version":3,"file":"propertyBinding.js","sourceRoot":"","sources":["../../../src/Template/Binding/propertyBinding.ts"],"names":[],"mappings":";;AAAA,uCAAoC;AAKpC,qBAAsB,SAAQ,iBAAY;IAEtC,YAAY,OAAgB,EAAE,eAAgC;QAC1D,KAAK,CAAC,OAAO,EAAE,eAAe,EAAE,EAAE,CAAC,CAAC;IACxC,CAAC;IAES,KAAK;QACX,IAAI,CAAC,OAAO,CAAC,aAAa,CAAC,IAAI,CAAC,KAAK,CAAC,CAAC;IAC3C,CAAC;CA+BJ;AAED,kBAAe,eAAe,CAAC"}

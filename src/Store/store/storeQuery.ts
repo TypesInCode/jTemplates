@@ -1,11 +1,11 @@
 import { ScopeBase } from "../scope/scopeBase";
-import { Emitter } from "../../emitter";
+import { Emitter } from "../../Utils/emitter";
 import { Scope } from "../scope/scope";
 import { AsyncFuncCallback } from "./store.types";
 import { Store } from "./store";
 
 export class StoreQuery<T, O> extends ScopeBase<O> {
-
+    private getFunction: AsyncFuncCallback<T, O>;
     private store: Store<any>;
 
     public get Promise(): Promise<O> {
@@ -24,8 +24,9 @@ export class StoreQuery<T, O> extends ScopeBase<O> {
     }
 
     constructor(store: Store<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>) {
-        super(getFunction, defaultValue);
+        super(defaultValue);
         this.store = store;
+        this.getFunction = getFunction;
     }
 
     public Scope<R>(callback: {(parent: O): R}): Scope<R> {
@@ -42,7 +43,7 @@ export class StoreQuery<T, O> extends ScopeBase<O> {
         var emitters: any = null;
         this.store.Action(async (reader, writer) => {
             reader.Watching = true;
-            value = await (this.GetFunction  as AsyncFuncCallback<T, O>)(reader, writer);
+            value = await this.getFunction(reader, writer);
             reader.Watching = false;
             emitters = reader.Emitters;
         }).then(() => callback(emitters, value as O));

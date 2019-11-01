@@ -1,4 +1,4 @@
-import Emitter from "../../emitter";
+import Emitter from "../../Utils/emitter";
 
 class ScopeCollector {
     private emitterStack: Array<Set<Emitter>> = [];

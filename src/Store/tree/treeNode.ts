@@ -1,4 +1,4 @@
-import Emitter from "../../emitter";
+import Emitter from "../../Utils/emitter";
 import { Tree } from "./tree";
 import { TreeNodeRefId } from "./treeNodeRefId";
 
