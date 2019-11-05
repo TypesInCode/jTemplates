@@ -1,18 +1,21 @@
-import Emitter from "../../emitter";
+import Emitter from "../../Utils/emitter";
 import { scopeCollector } from "./scopeCollector";
-import { ScopeValueCallback } from "./scopeBase.types";
 
 export abstract class ScopeBase<T> extends Emitter {
-    private getFunction: ScopeValueCallback<T>;
+    // private getFunction: {(): T};
     private emitters: Set<Emitter>;
     private setCallback: () => void;
     private destroyCallback: (emitter: Emitter) => void;
+    private isStatic: boolean;
     private defaultValue: T;
     private value: T;
     private dirty: boolean;
     private isAsync: boolean;
 
     public get Value(): T {
+        /* if(this.isStatic)
+            return this.defaultValue; */
+        
         scopeCollector.Register(this);
         if(this.dirty)
             this.UpdateValueBase();
@@ -24,17 +27,26 @@ export abstract class ScopeBase<T> extends Emitter {
         return typeof this.value !== 'undefined';
     }
 
-    protected get GetFunction(): ScopeValueCallback<T> {
+    /* protected get GetFunction(): {(): T} {
         return this.getFunction;
-    }
+    } */
 
-    constructor(getFunction: ScopeValueCallback<T>, defaultValue?: T) {
+    constructor(defaultValue: T = null) {
         super();
-        this.getFunction = getFunction;
+        /* if(typeof getFunction === 'function') {
+            this.getFunction = getFunction as {(): T};
+            this.defaultValue = defaultValue;
+            this.isStatic = false;
+        }
+        else {
+            this.defaultValue = getFunction;
+            this.isStatic = true;
+        } */
+
+        this.defaultValue = defaultValue;
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
         this.destroyCallback = this.DestroyCallback.bind(this);
-        this.defaultValue = defaultValue;
         this.dirty = true;
         this.isAsync = false;
     }

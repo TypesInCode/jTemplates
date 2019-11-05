@@ -1,8 +1,10 @@
 import { ScopeBase } from "./scopeBase";
-import { Emitter } from "../../emitter";
-import { ScopeValueCallback } from "./scopeBase.types";
+import { Emitter } from "../../Utils/emitter";
 export declare class Scope<T> extends ScopeBase<T> {
-    constructor(getFunction: ScopeValueCallback<T>);
+    private getFunction;
+    constructor(getFunction: {
+        (): T;
+    } | T);
     Scope<O>(callback: {
         (parent: T): O;
     }): Scope<O>;

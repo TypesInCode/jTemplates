@@ -1,5 +1,5 @@
 import { StoreManager } from './storeManager';
-import { Emitter } from '../../emitter';
+import { Emitter } from '../../Utils/emitter';
 export declare class StoreReader<T> {
     private store;
     private emitterSet;

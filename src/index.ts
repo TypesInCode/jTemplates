@@ -1,20 +1,68 @@
-import { Template, Component } from "./Template/template";
 import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
-import { Store, AbstractStore } from "./Store/store/store";
-import { Templates, BindingDefinitions, BindingDefinition } from "./Template/template.types";
-import { StoreReader } from "./Store/store/storeReader";
-import { StoreWriter } from "./Store/store/storeWriter";
+import { AbstractStore } from "./Store/store/store";
+import { NodeRef } from "./Node/nodeRef";
+// import { div, input, li, span, ul } from "./DOM/elements";
+import { Component } from "./Node/component";
 
-export { Template, Component, Templates, BindingDefinitions, BindingDefinition, AbstractStore, Store, StoreSync, StoreAsync, StoreReader, StoreWriter, Scope };
+export { Component, NodeRef, AbstractStore, StoreSync, StoreAsync, Scope };
+
+/* var arr = [];
+for(var x=0; x<1000; x++)
+    arr[x] = "value " + x;
 
 
-/* import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
+class TestComp extends Component<{ val: string}, { body: NodeRef }> {
+
+    public Template() {
+        return div({}, () => [
+            div({ text: "testComp " + this.Scope.Value.val }),
+            this.Templates.body
+        ]);
+    }
+
+}
+
+var testComp = Component.ToFunction("test-comp", null, TestComp);
+
+var rootNode = div({ props: { id: "test" }, static: arr }, (value, i) => [
+    div({ text: "child node " + value }),
+    input({ props: { type: "checkbox" } }),
+    testComp({ static: { val: "child " + value } }, {
+        body: div({ text: " " + i })
+    })
+]);
+
+var node = new NodeRef(document.getElementById("container"));
+node.AddChild(rootNode); */
+
+
+// import { div, span, ul, li, input, b, a, br, img, video, source, option, select, h1, h2, h3, table, th, tr, td } from "./DOM/elements";
+
+/* class TestTemplate extends Template<any, any> {
+    private store = new StoreSync({ name: "TemplateName", data: [{ val: "first val" }, { val: "second value" }] });
+
+    constructor() {
+        super("test-template");
+    }
+
+    protected Template() {
+        return [
+            div({ text: () => this.store.Root.Value.name }),
+            div({ data: () => this.store.Root.Value.data }, (data) => 
+                div({ text: () => data.val })
+            )
+        ]
+    }
+}
+
+var list = new TestTemplate();
+list.AttachTo(document.getElementById("container")); */
 
 // var todoServerArray = [] as Array<{ id: number, task: string, completed: boolean, assignee: string, deleted: boolean }>;
 
-interface ToDo { id: number, task: string, completed: boolean, assignee: Assignee, deleted: boolean }
+/* interface ToDo { id: number, task: string, completed: boolean, assignee: Assignee, deleted: boolean }
 interface Assignee { id: number, name: string }
 
 class TodoStore extends StoreAsync<{ loading: boolean, todos: Array<ToDo>, assignees: Array<Assignee> }> {
@@ -146,49 +194,50 @@ t.addTodo("val 2");
 t.addAssignee("Bart Simpson");
 t.addAssignee("Homer Simpson");
 
-interface ITemplates extends Templates {
-    remove(data: ToDo, index: number): BindingDefinitions<any, any>;
-    append: BindingDefinitions<any, any>;
+interface ITemplates {
+    remove(data: ToDo): NodeRef[];
+    append(): NodeRef[];
 }
 
-class TodoView extends Template<ToDo, ITemplates> {
+class TodoView extends Component<ToDo[], ITemplates> {
 
-    get DefaultTemplates() {
-        return {
-            remove: (data: ToDo, index: number) => span({ text: "" }),
-            append: [] as BindingDefinitions<any, any>
-        };
-    }
-
-    Template(todo: ToDo, index: number) {
-        return li({ on: () => ({ dblclick: this.onRename.bind(this, todo) }) }, () => [
-            input({ 
-                props: () => ({ type: 'checkbox', checked: todo.completed }), 
-                on: { change: this.onToggleCompleted.bind(this, todo) }
-            }),
-            span({ 
-                text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}`, 
-                props: { 
-                    style: { color: "red" } 
-                } 
-            }),
-            span({}, this.Templates.remove(todo, index)),
-            input({ 
-                props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
-                on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
-            }),
-            span({}, this.Templates.append)
-        ]);
+    Template() {
+        return ul({ key: (todo) => todo.id, data: () => this.Data }, (todo) => 
+            li({ on: () => ({ dblclick: () => this.onRename(todo) }) }, () => [
+                input({ 
+                    props: () => ({ type: 'checkbox', checked: todo.completed }), 
+                    on: { change: () => this.onToggleCompleted(todo) }
+                }),
+                span({ 
+                    text: () => `${todo.task} ${(todo.assignee && todo.assignee.name) || ''}`, 
+                    props: { 
+                        style: { color: "red" } 
+                    } 
+                }),
+                span({}, () => this.Templates.remove(todo)),
+                input({ 
+                    props: () => ({ type: "input", value: todo.assignee && todo.assignee.id || '' }),
+                    on: { keyup: this.onAssigneeIdChange.bind(this, todo) }
+                }),
+                span({}, () => this.Templates.append())
+            ])
+        )
     }
 
     onToggleCompleted(todo: ToDo) {
         var store = this.Injector.Get(AbstractStore);
-        store.Update(todo, (todo) => { todo.completed = !todo.completed });
+        store.Action(async (reader, writer) => {
+            await writer.Update(todo, (todo) => { todo.completed = !todo.completed });
+        })
+        // store.Update(todo, (todo) => { todo.completed = !todo.completed });
     }
 
     onRename(todo: ToDo) {
         var store = this.Injector.Get(AbstractStore);
-        store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
+        store.Action(async (reader, writer) => {
+            writer.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
+        });
+        // store.Update(todo, (todo) => todo.task = prompt('Task name', todo.task) || todo.task);
         // todo.task = prompt('Task name', todo.task) || todo.task;
     }
 
@@ -203,26 +252,26 @@ class TodoView extends Template<ToDo, ITemplates> {
 
 }
 
-var todoView = Template.ToFunction("ul", TodoView);
+var todoView = Component.ToFunction("todo-view", null, TodoView); // Template.ToFunction("ul", TodoView);
 
-class TodoList extends Template<any, any> {
+class TodoList extends Component {
 
-    constructor() {
-        super("todo-list");
+    public Init() {
         this.Injector.Set(AbstractStore, t);
     }
 
     Template() {
-        return div({ props: { style: { color: "red" } } }, [
+        return div({ props: { style: { color: "red" } } }, () => [
             div({ text: () => t.Report }),
             div({ text: () => t.SmallReport }),
-            todoView({ key: (val: ToDo) => val.id, data: () => t.ToDos }, {
-                remove: (data) => 
+            todoView({ data: () => t.ToDos }, {
+                remove: (data) => [
                     input({ 
                         props: { type: "button", value: "delete" }, 
                         on: { click: this.onRemoveTodo.bind(this, data) } 
-                    }),
-                append: [
+                    })
+                ],
+                append: () => [
                     span({ text: "appended" }),
                     span({ text: "next" })
                 ]
@@ -267,10 +316,14 @@ class TodoList extends Template<any, any> {
 
     onAssigneeDblClick(assignee: Assignee) {
         var store = this.Injector.Get(AbstractStore);
-        store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
+        store.Action(async (reader, writer) => {
+            await writer.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
+        });
+        // store.Update(assignee, (ass) => { ass.name = prompt("New Name", assignee.name) || assignee.name });
         // assignee.name = prompt("New Name", assignee.name) || assignee.name;
     }
 }
 
-var list = new TodoList();
+Component.Render(document.getElementById("container"), "todo-list", null, TodoList);
+/* var list = new TodoList();
 list.AttachTo(document.getElementById("container")); */

@@ -1,4 +1,4 @@
-import Emitter from "../../emitter";
+import Emitter from "../../Utils/emitter";
 import { Tree } from "./tree";
 export declare class TreeNode {
     private destroyed;

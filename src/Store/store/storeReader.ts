@@ -1,5 +1,5 @@
 import { StoreManager } from './storeManager';
-import { Emitter } from '../../emitter';
+import { Emitter } from '../../Utils/emitter';
 import { CreateProxy } from '../utils';
 import { scopeCollector } from '../scope/scopeCollector';
 // import { StoreWriter } from './storeWriter';

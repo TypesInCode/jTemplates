@@ -1,12 +1,18 @@
 import { ScopeBase } from "./scopeBase";
-import { Emitter } from "../../emitter";
+import { Emitter } from "../../Utils/emitter";
 import { scopeCollector } from "./scopeCollector";
-import { ScopeValueCallback } from "./scopeBase.types";
 
 export class Scope<T> extends ScopeBase<T> {
+    private getFunction: {(): T};
 
-    constructor(getFunction: ScopeValueCallback<T>) {
-        super(getFunction, null);
+    constructor(getFunction: {(): T} | T) {
+        if(typeof getFunction !== 'function')
+            super(getFunction);
+        else {
+            super(null);
+            this.getFunction = getFunction as {(): T};
+        }
+
     }
 
     public Scope<O>(callback: {(parent: T): O}): Scope<O> {
@@ -14,9 +20,10 @@ export class Scope<T> extends ScopeBase<T> {
     }
     
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
-        var value = null;
+        var value = undefined;
         var emitters = scopeCollector.Watch(() => {
-            value = this.GetFunction();
+            if(this.getFunction)
+                value = this.getFunction();
         });
         callback(emitters, value as T);
     }
