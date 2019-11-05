@@ -21,11 +21,10 @@ export interface ComponentNodeFunctionParam<D, T> {
     templates?: T;
 }
 
-export interface ComponentNodeDefinition<D, T> extends NodeDefinition<D> {
-    /* children?: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]}; */
+/* export interface ComponentNodeDefinition<D, T> extends NodeDefinition<D> {
     templates?: T;
     component: ComponentConstructor<D, T>;
-}
+} */
 
 export class ComponentNode<D, T = any> extends BoundNode {
     /* private childrenFunc: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]};
@@ -33,13 +32,14 @@ export class ComponentNode<D, T = any> extends BoundNode {
     private dataScope: Scope<D>; */
     private component: Component<D, T>;
 
-    constructor(nodeDef: ComponentNodeDefinition<D, T>) {
+    constructor(nodeDef: NodeDefinition<D>, constructor: ComponentConstructor<D, T>, templates: T) {
         super(nodeDef);
 
         /* this.childrenFunc = nodeDef.children || defaultChildren;
         this.dataScope = new Scope(nodeDef.data || nodeDef.static || true);
         this.templates = nodeDef.templates; */
-        this.component = new nodeDef.component(nodeDef.data || nodeDef.static, nodeDef.templates, this, this.Injector);
+        // this.component = new nodeDef.component(nodeDef.data || nodeDef.static, nodeDef.templates, this, this.Injector);
+        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
         this.SetChildren();
     }
 
@@ -91,11 +91,11 @@ export namespace ComponentNode {
                 static: nodeDef.static,
                 data: nodeDef.data,
                 // key: nodeDef.key,
-                templates: templates,
-                component: constructor
+                /* templates: templates,
+                component: constructor */
             }
 
-            return new ComponentNode<D, T>(def);
+            return new ComponentNode<D, T>(def, constructor, templates);
         }
     }
 

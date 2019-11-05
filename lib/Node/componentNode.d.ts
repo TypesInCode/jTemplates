@@ -23,13 +23,9 @@ export interface ComponentNodeFunctionParam<D, T> {
     };
     templates?: T;
 }
-export interface ComponentNodeDefinition<D, T> extends NodeDefinition<D> {
-    templates?: T;
-    component: ComponentConstructor<D, T>;
-}
 export declare class ComponentNode<D, T = any> extends BoundNode {
     private component;
-    constructor(nodeDef: ComponentNodeDefinition<D, T>);
+    constructor(nodeDef: NodeDefinition<D>, constructor: ComponentConstructor<D, T>, templates: T);
     private setChildren;
     ScheduleSetChildren(): void;
     SetChildren(): void;
