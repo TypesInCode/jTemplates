@@ -1,12 +1,12 @@
 import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
-import { AbstractStore } from "./Store/store/store";
+import { AbstractStore, Store } from "./Store/store/store";
 import { NodeRef } from "./Node/nodeRef";
 // import { div, input, li, span, ul } from "./DOM/elements";
 import { Component } from "./Node/component";
 
-export { Component, NodeRef, AbstractStore, StoreSync, StoreAsync, Scope };
+export { Component, NodeRef, AbstractStore, Store, StoreSync, StoreAsync, Scope };
 
 /* var arr = [];
 for(var x=0; x<1000; x++)
