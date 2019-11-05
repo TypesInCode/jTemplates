@@ -54,10 +54,15 @@ export namespace Component {
         return ComponentNode.ToFunction(type, namespace, constructor);
     }
 
-    export function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>) {
+    /* export function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>) {
         var rootRef = new NodeRef(node);
         var component = ComponentNode.ToFunction(type, namespace, constructor)({});
         rootRef.AddChild(component);
+    } */
+
+    export function Attach(node: Node, nodeRef: NodeRef) {
+        var rootRef = new NodeRef(node);
+        rootRef.AddChild(nodeRef);
     }
 
 }

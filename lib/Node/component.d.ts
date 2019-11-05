@@ -22,7 +22,7 @@ export declare class Component<D = any, T = any> {
 }
 export declare namespace Component {
     function ToFunction<D, T>(type: any, namespace: any, constructor: ComponentConstructor<D, T>): (nodeDef: import("../../../../Development/jTemplates_git/src/Node/componentNode").ComponentNodeFunctionParam<D, T>, templates?: T) => ComponentNode<D, T>;
-    function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>): void;
+    function Attach(node: Node, nodeRef: NodeRef): void;
 }
 export declare type ComponentConstructor<D, T> = {
     new (data: {
