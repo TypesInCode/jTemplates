@@ -25,6 +25,7 @@ export class ElementNode<T> extends BoundNode {
     private keyFunc: {(data: T): string};
     private nodeRefMap: Map<string, BoundNode[]>;
     private dataScope: Scope<any>;
+    private keyDataScope: Scope<Map<string, T>>;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
@@ -33,7 +34,16 @@ export class ElementNode<T> extends BoundNode {
         this.childrenFunc = nodeDef.children || defaultChildren;
         this.keyFunc = nodeDef.key;
         this.dataScope = new Scope(nodeDef.data || nodeDef.static || true);
-        this.dataScope.addListener("set", () => this.ScheduleSetData());
+        this.keyDataScope = this.dataScope.Scope(data => {
+            var value = data as Array<T>;
+            if(!value)
+                value = [];
+            else if(!Array.isArray(value))
+                value = [value];
+
+            return new Map<string, T>(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any));
+        });
+        this.keyDataScope.addListener("set", () => this.ScheduleSetData());
         this.ScheduleSetData();
     }
 
@@ -50,16 +60,17 @@ export class ElementNode<T> extends BoundNode {
     }
 
     public SetData() {
-        var value = this.dataScope.Value as Array<T>;
+        /* var value = this.dataScope.Value as Array<T>;
         if(!Array.isArray(value))
             value = [value];
 
-        // var keys = new Set(value.map((v, i) => this.keyFunc && this.keyFunc(v) || i.toString()));
-        var keyValues = new Map<string, T>(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any));
+        var keyValues = new Map<string, T>(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any)); */
         var newNodeRefMap = new Map();
         var previousNode: BoundNode = null;
         var index = 0;
-        keyValues.forEach((value: T, key: string) => {
+        
+        // keyValues.forEach((value: T, key: string) => {
+        this.keyDataScope.Value.forEach((value: T, key: string) => {
             var nodes = this.nodeRefMap.get(key);
             if(!nodes) {
                 Injector.Scope(this.Injector, () => 
@@ -88,6 +99,7 @@ export class ElementNode<T> extends BoundNode {
 
     public Destroy() {
         super.Destroy();
+        this.keyDataScope.Destroy();
         this.dataScope.Destroy();
     }
 

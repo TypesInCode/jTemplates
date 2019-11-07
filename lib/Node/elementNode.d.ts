@@ -34,6 +34,7 @@ export declare class ElementNode<T> extends BoundNode {
     private keyFunc;
     private nodeRefMap;
     private dataScope;
+    private keyDataScope;
     constructor(nodeDef: ElementNodeDefinition<T>);
     private setData;
     ScheduleSetData(): void;

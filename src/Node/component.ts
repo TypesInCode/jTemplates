@@ -51,7 +51,7 @@ export class Component<D = any, T = any> {
 export namespace Component {
 
     export function ToFunction<D, T>(type: any, namespace: any, constructor: ComponentConstructor<D, T>) {
-        return ComponentNode.ToFunction(type, namespace, constructor);
+        return ComponentNode.ToFunction<D, T>(type, namespace, constructor);
     }
 
     /* export function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>) {
