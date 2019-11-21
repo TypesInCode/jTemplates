@@ -1,7 +1,7 @@
-import { Scope } from "./Store/scope/scope";
 import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
-import { AbstractStore, Store } from "./Store/store/store";
+import { AbstractStore } from "./Store/store/store";
 import { NodeRef } from "./Node/nodeRef";
 import { Component } from "./Node/component";
-export { Component, NodeRef, AbstractStore, Store, StoreSync, StoreAsync, Scope };
+import { Store, Scope, Inject } from "./Utils/decorators";
+export { Component, NodeRef, AbstractStore, StoreSync, StoreAsync, Store, Scope, Inject };

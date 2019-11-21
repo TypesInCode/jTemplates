@@ -5,21 +5,26 @@ import { Injector } from "../Utils/injector";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
+    private destroyables: Array<{ Destroy: {(): void}}>
 
-    protected get Scope() {
-        return this.scope;
+    public get Injector() {
+        return this.injector;
     }
 
+    public get Destroyables() {
+        return this.destroyables;
+    }
+
+    /* protected get Scope() {
+        return this.scope;
+    } */
+
     protected get Data() {
-        return this.Scope.Value;
+        return this.scope.Value;
     }
 
     protected get NodeRef() {
         return this.nodeRef;
-    }
-
-    protected get Injector() {
-        return this.injector;
     }
 
     protected get Templates() {
@@ -28,6 +33,7 @@ export class Component<D = void, T = void, E = void> {
 
     constructor(data: {(): D} | D, private templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new Scope(data);
+        this.destroyables = [this.scope];
         this.Init();
     }
 
@@ -44,7 +50,7 @@ export class Component<D = void, T = void, E = void> {
     }
 
     public Destroy() {
-        this.scope.Destroy();
+        this.Destroyables.forEach(d => d.Destroy());
     }
 
     protected Init() {

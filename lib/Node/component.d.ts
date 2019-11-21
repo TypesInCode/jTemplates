@@ -1,4 +1,3 @@
-import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
@@ -7,10 +6,13 @@ export declare class Component<D = void, T = void, E = void> {
     private nodeRef;
     private injector;
     private scope;
-    protected readonly Scope: Scope<D>;
+    private destroyables;
+    readonly Injector: Injector;
+    readonly Destroyables: {
+        Destroy: () => void;
+    }[];
     protected readonly Data: D;
     protected readonly NodeRef: ComponentNode<D, T, E>;
-    protected readonly Injector: Injector;
     protected readonly Templates: T;
     constructor(data: {
         (): D;

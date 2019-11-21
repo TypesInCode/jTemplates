@@ -46,6 +46,15 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
+	var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+	    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+	    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+	    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+	    return c > 3 && r && Object.defineProperty(target, key, r), r;
+	};
+	var __metadata = (this && this.__metadata) || function (k, v) {
+	    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const scope_1 = __webpack_require__(1);
 	exports.Scope = scope_1.Scope;
@@ -61,27 +70,58 @@ var jTemplate =
 	const component_1 = __webpack_require__(28);
 	exports.Component = component_1.Component;
 	const elements_1 = __webpack_require__(31);
-	var arr = [];
-	for (var x = 0; x < 1000; x++)
-	    arr[x] = "value " + x;
+	const decorators_1 = __webpack_require__(33);
+	class Temp {
+	    getVal() {
+	        return "temp function val";
+	    }
+	}
+	class ChildComp extends component_1.Component {
+	    Template() {
+	        return elements_1.div({ text: () => this.temp.getVal() });
+	    }
+	}
+	__decorate([
+	    decorators_1.Inject(Temp),
+	    __metadata("design:type", Temp)
+	], ChildComp.prototype, "temp", void 0);
+	var childComp = component_1.Component.ToFunction("child-comp", null, ChildComp);
 	class TestComp extends component_1.Component {
+	    constructor() {
+	        super(...arguments);
+	        this.state = { test: "start" };
+	        this.state2 = { temp: "end" };
+	        this.temp = new Temp();
+	    }
+	    get Test() {
+	        return `${this.state.test} ${this.state2.temp}`;
+	    }
 	    Template() {
 	        return elements_1.div({}, () => [
-	            elements_1.div({ text: "testComp " + this.Scope.Value.val, on: { click: () => this.Fire("click", `clicked on ${this.Scope.Value.val}`) } }),
-	            this.Templates.body
+	            elements_1.div({ text: () => this.Test, on: { click: () => this.state = { test: "changed to this" } } }),
+	            childComp({})
 	        ]);
 	    }
 	}
+	__decorate([
+	    decorators_1.Store(),
+	    __metadata("design:type", Object)
+	], TestComp.prototype, "state", void 0);
+	__decorate([
+	    decorators_1.Store(),
+	    __metadata("design:type", Object)
+	], TestComp.prototype, "state2", void 0);
+	__decorate([
+	    decorators_1.Inject(Temp),
+	    __metadata("design:type", Object)
+	], TestComp.prototype, "temp", void 0);
+	__decorate([
+	    decorators_1.Scope(),
+	    __metadata("design:type", Object),
+	    __metadata("design:paramtypes", [])
+	], TestComp.prototype, "Test", null);
 	var testComp = component_1.Component.ToFunction("test-comp", null, TestComp);
-	var rootNode = elements_1.div({ props: { id: "test" }, static: arr }, (value, i) => [
-	    elements_1.div({ text: "child node " + value }),
-	    elements_1.input({ props: { type: "checkbox" } }),
-	    testComp({ static: { val: "child " + value }, on: { click: (event) => console.debug(event.detail) } }, {
-	        body: elements_1.div({ text: " " + i })
-	    })
-	]);
-	var node = new nodeRef_1.NodeRef(document.getElementById("container"));
-	node.AddChild(rootNode);
+	component_1.Component.Attach(document.getElementById("container"), testComp({}));
 
 
 /***/ }),
@@ -1387,9 +1427,6 @@ var jTemplate =
 	            this.parent.DetachChild(this);
 	        nodeConfig_1.NodeConfig.remove(this.Node);
 	    }
-	    Fire(event, data) {
-	        nodeConfig_1.NodeConfig.fireEvent(this.Node, event, { detail: data });
-	    }
 	    Destroy() {
 	        this.Detach();
 	        this.ClearChildren();
@@ -1585,19 +1622,20 @@ var jTemplate =
 	        this.nodeRef = nodeRef;
 	        this.injector = injector;
 	        this.scope = new scope_1.Scope(data);
+	        this.destroyables = [this.scope];
 	        this.Init();
-	    }
-	    get Scope() {
-	        return this.scope;
-	    }
-	    get Data() {
-	        return this.Scope.Value;
-	    }
-	    get NodeRef() {
-	        return this.nodeRef;
 	    }
 	    get Injector() {
 	        return this.injector;
+	    }
+	    get Destroyables() {
+	        return this.destroyables;
+	    }
+	    get Data() {
+	        return this.scope.Value;
+	    }
+	    get NodeRef() {
+	        return this.nodeRef;
 	    }
 	    get Templates() {
 	        return this.templates;
@@ -1611,7 +1649,7 @@ var jTemplate =
 	        this.NodeRef.Fire(event, data);
 	    }
 	    Destroy() {
-	        this.scope.Destroy();
+	        this.Destroyables.forEach(d => d.Destroy());
 	    }
 	    Init() {
 	    }
@@ -1645,6 +1683,13 @@ var jTemplate =
 	        this.setChildren = false;
 	        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
 	        this.SetChildren();
+	    }
+	    SetEvents() {
+	        this.componentEvents = this.eventsScope.Value;
+	    }
+	    Fire(event, data) {
+	        var eventCallback = this.componentEvents && this.componentEvents[event];
+	        eventCallback && eventCallback(data);
 	    }
 	    ScheduleSetChildren() {
 	        if (this.setChildren)
@@ -1781,14 +1826,6 @@ var jTemplate =
 	            this.setEvents = false;
 	        });
 	    }
-	    SetEvents() {
-	        for (var key in this.lastEvents)
-	            nodeConfig_1.NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
-	        var events = this.eventsScope.Value;
-	        for (var key in events)
-	            nodeConfig_1.NodeConfig.addListener(this.Node, key, events[key]);
-	        this.lastEvents = events;
-	    }
 	    Destroy() {
 	        super.Destroy();
 	        this.attributesScope && this.attributesScope.Destroy();
@@ -1897,6 +1934,10 @@ var jTemplate =
 	    return elementNode_1.ElementNode.Create("style", null, nodeDef, children);
 	}
 	exports.style = style;
+	function button(nodeDef, children) {
+	    return elementNode_1.ElementNode.Create("button", null, nodeDef, children);
+	}
+	exports.button = button;
 
 
 /***/ }),
@@ -1961,6 +2002,14 @@ var jTemplate =
 	        });
 	        this.nodeRefMap = newNodeRefMap;
 	    }
+	    SetEvents() {
+	        for (var key in this.lastEvents)
+	            nodeConfig_1.NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
+	        var events = this.eventsScope.Value;
+	        for (var key in events)
+	            nodeConfig_1.NodeConfig.addListener(this.Node, key, events[key]);
+	        this.lastEvents = events;
+	    }
 	    Destroy() {
 	        super.Destroy();
 	        this.keyDataScope.Destroy();
@@ -1986,6 +2035,72 @@ var jTemplate =
 	    }
 	    ElementNode.Create = Create;
 	})(ElementNode = exports.ElementNode || (exports.ElementNode = {}));
+
+
+/***/ }),
+/* 33 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const storeSync_1 = __webpack_require__(21);
+	const scope_1 = __webpack_require__(1);
+	function Store() {
+	    return function (target, propertyKey, descriptor) {
+	        return {
+	            configurable: false,
+	            enumerable: true,
+	            get: function () {
+	                var store = this[`_${propertyKey}`];
+	                if (store)
+	                    return store.Root.Value;
+	                return null;
+	            },
+	            set: function (val) {
+	                var store = this[`_${propertyKey}`];
+	                if (!store) {
+	                    store = this[`_${propertyKey}`] = new storeSync_1.StoreSync(val);
+	                    this.Destroyables.push(store);
+	                }
+	                else
+	                    store.Merge(val);
+	            }
+	        };
+	    };
+	}
+	exports.Store = Store;
+	function Scope() {
+	    return function (target, propertyKey, descriptor) {
+	        return {
+	            configurable: false,
+	            enumerable: false,
+	            get: function () {
+	                var scope = this[`_${propertyKey}`];
+	                if (!scope) {
+	                    scope = this[`_${propertyKey}`] = new scope_1.Scope(descriptor.get.bind(this));
+	                    this.Destroyables.push(scope);
+	                }
+	                return scope.Value;
+	            }
+	        };
+	    };
+	}
+	exports.Scope = Scope;
+	function Inject(type) {
+	    return function (target, propertyKey) {
+	        return {
+	            configurable: false,
+	            enumerable: true,
+	            get: function () {
+	                return this.Injector.Get(type);
+	            },
+	            set: function (val) {
+	                this.Injector.Set(type, val);
+	            }
+	        };
+	    };
+	}
+	exports.Inject = Inject;
 
 
 /***/ })
