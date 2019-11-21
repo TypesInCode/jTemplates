@@ -3,33 +3,34 @@ import { StoreAsync } from "./Store/storeAsync";
 import { StoreSync } from "./Store/storeSync";
 import { AbstractStore, Store } from "./Store/store/store";
 import { NodeRef } from "./Node/nodeRef";
-// import { div, input, li, span, ul } from "./DOM/elements";
 import { Component } from "./Node/component";
 
 export { Component, NodeRef, AbstractStore, Store, StoreSync, StoreAsync, Scope };
 
-/* var arr = [];
+/* import { div, input, li, span, ul } from "./DOM/elements";
+
+var arr = [];
 for(var x=0; x<1000; x++)
     arr[x] = "value " + x;
 
 
-class TestComp extends Component<{ val: string}, { body: NodeRef }> {
+class TestComp extends Component<{ val: string}, { body: NodeRef }, { click: string }> {
 
     public Template() {
         return div({}, () => [
-            div({ text: "testComp " + this.Scope.Value.val }),
+            div({ text: "testComp " + this.Scope.Value.val, on: { click: () => this.Fire("click", `clicked on ${this.Scope.Value.val}`)} }),
             this.Templates.body
         ]);
     }
 
 }
 
-var testComp = Component.ToFunction("test-comp", null, TestComp);
+var testComp = Component.ToFunction<{val: string}, {body: NodeRef}, { click: string}>("test-comp", null, TestComp);
 
 var rootNode = div({ props: { id: "test" }, static: arr }, (value, i) => [
     div({ text: "child node " + value }),
     input({ props: { type: "checkbox" } }),
-    testComp({ static: { val: "child " + value } }, {
+    testComp({ static: { val: "child " + value }, on: { click: (event) => console.debug(event.detail) } }, {
         body: div({ text: " " + i })
     })
 ]);

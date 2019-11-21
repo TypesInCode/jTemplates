@@ -3,7 +3,7 @@ import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
 
-export class Component<D = any, T = any> {
+export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
 
     protected get Scope() {
@@ -26,7 +26,7 @@ export class Component<D = any, T = any> {
         return this.templates;
     }
 
-    constructor(data: {(): D} | D, private templates: T, private nodeRef: NodeRef, private injector: Injector) {
+    constructor(data: {(): D} | D, private templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new Scope(data);
         this.Init();
     }
@@ -37,6 +37,10 @@ export class Component<D = any, T = any> {
 
     public Bound() {
 
+    }
+
+    public Fire<P extends keyof E>(event: P, data?: E[P]) {
+        this.NodeRef.Fire(event as any, data);
     }
 
     public Destroy() {
@@ -50,8 +54,8 @@ export class Component<D = any, T = any> {
 
 export namespace Component {
 
-    export function ToFunction<D, T>(type: any, namespace: any, constructor: ComponentConstructor<D, T>) {
-        return ComponentNode.ToFunction<D, T>(type, namespace, constructor);
+    export function ToFunction<D = void, T = void, E = void>(type: any, namespace: any, constructor: ComponentConstructor<D, T, E>) {
+        return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
     }
 
     /* export function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>) {
@@ -67,4 +71,4 @@ export namespace Component {
 
 }
 
-export type ComponentConstructor<D, T> = { new (data: {(): D} | D, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T> };
+export type ComponentConstructor<D, T, E> = { new (data: {(): D} | D, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T, E> };

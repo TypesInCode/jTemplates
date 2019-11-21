@@ -80,6 +80,10 @@ export var DOMNodeConfig: INodeConfig = {
     setAttribute(target: HTMLElement, attribute: string, value: string) {
         target.setAttribute(attribute, value);
     },
+    fireEvent(target: HTMLElement, event: string, data: any) {
+        var cEvent = new CustomEvent(event, data);
+        target.dispatchEvent(cEvent);
+    },
     setPropertyOverrides: {
         value: (target: HTMLInputElement, value: string) => {
             if(target.type !== "input")

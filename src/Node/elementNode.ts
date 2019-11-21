@@ -4,10 +4,14 @@ import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 
+export type ElementNodeEvents = {
+    [name: string]: {(event: Event): void}
+}
+
 export interface ElementNodeFunctionParam<T> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    on?: FunctionOr<ElementNodeEvents>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
     static?: T | Array<T>;
     data?: {(): T | Array<T>}; // {(): P | Array<P>} | P | Array<P>;
     key?: (val: T) => any;
@@ -26,6 +30,7 @@ export class ElementNode<T> extends BoundNode {
     private nodeRefMap: Map<string, BoundNode[]>;
     private dataScope: Scope<any>;
     private keyDataScope: Scope<Map<string, T>>;
+    private lastEvents: {[name: string]: any};
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
@@ -95,6 +100,17 @@ export class ElementNode<T> extends BoundNode {
         });
 
         this.nodeRefMap = newNodeRefMap;
+    }
+
+    public SetEvents() {
+        for(var key in this.lastEvents)
+            NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
+
+        var events = this.eventsScope.Value;
+        for(var key in events)
+            NodeConfig.addListener(this.Node, key, events[key]);
+
+        this.lastEvents = events;
     }
 
     public Destroy() {

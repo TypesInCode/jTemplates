@@ -4,12 +4,16 @@ import { NodeRef } from "./nodeRef";
 
 export type FunctionOr<T> = {(...args: Array<any>): T } | T;
 
-export interface NodeDefinition<T> {
+export type BoundNodeEvents = {
+    [name: string]: {(...args: Array<any>): void}
+}
+
+export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<{[name: string]: {(event?: any): void}}>;
+    on?: FunctionOr<BoundNodeEvents>;
     static?: T | Array<T>;
     data?: any;
     key?: (val: T) => any;
@@ -20,21 +24,20 @@ export function defaultChildren(): Array<NodeRef> {
     return [];
 }
 
-export class BoundNode extends NodeRef {
+export abstract class BoundNode extends NodeRef {
     private lastProperties: any;
-    private lastEvents: {[name: string]: any};
-
-    private textScope: Scope<string>;
-    private propertiesScope: Scope<{[name: string]: any}>;
-    private attributesScope: Scope<{[name: string]: string}>;
-    private eventsScope: Scope<{[name: string]: (...args: Array<any>) => void}>;
 
     private setText = false;
     private setProperties = false;
     private setAttributes = false;
     private setEvents = false;
 
-    constructor(nodeDef: NodeDefinition<any>) {
+    protected textScope: Scope<string>;
+    protected propertiesScope: Scope<{[name: string]: any}>;
+    protected attributesScope: Scope<{[name: string]: string}>;
+    protected eventsScope: Scope<{[name: string]: (...args: Array<any>) => void}>;
+
+    constructor(nodeDef: NodeDefinition) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace));
 
         if(nodeDef.text) {
@@ -61,30 +64,6 @@ export class BoundNode extends NodeRef {
             this.SetEvents();
         }
     }
-
-    /* public AddChildren(nodeRefs: Array<NodeRef>) {
-        if(nodeRefs.length === 0)
-            return;
-        
-        var xml = "";
-        for(var x=0; x<nodeRefs.length; x++) {
-            var ref = nodeRefs[x];
-            ref.Parent = this;
-            this.childNodeRefs.set(ref.Id, ref);
-            if(this.Node) {
-                if(ref.Node)
-                    NodeConfig.addChild(this.Node, ref.Node);
-                else
-                    xml += ref.ToXml();
-            }
-        }
-
-        if(this.Node) {
-            NodeConfig.appendXml(this.Node, xml);
-            for(var x=0; x<nodeRefs.length; x++)
-                nodeRefs[x].Attached();
-        }
-    } */
 
     public ScheduleSetText() {
         if(this.setText)
@@ -149,16 +128,7 @@ export class BoundNode extends NodeRef {
         });
     }
 
-    public SetEvents() {
-        for(var key in this.lastEvents)
-            NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
-
-        var events = this.eventsScope.Value;
-        for(var key in events)
-            NodeConfig.addListener(this.Node, key, events[key]);
-
-        this.lastEvents = events;
-    }
+    public abstract SetEvents(): void;
 
     public Destroy() {
         super.Destroy();
@@ -167,35 +137,6 @@ export class BoundNode extends NodeRef {
         this.textScope && this.textScope.Destroy();
         this.eventsScope && this.eventsScope.Destroy();
     }
-
-    /* public ToXml() {
-        var xml = `<${this.type} id='${this.Id}'${this.namespace ? ` xmlns='${this.namespace}'` : ''}>`;
-        this.childNodeRefs.forEach((value) => {
-            xml += value.ToXml();
-        });
-        xml += `</${this.type}>`;
-        return xml;
-    } */
-
-    /* protected Attached() {        
-        if(this.attached)
-            return;
-
-        this.attached = true;
-        this.attachedCallbacks.forEach((cb) => cb());
-        this.attachedCallbacks = [];
-        this.childNodeRefs.forEach((nodeRef) => nodeRef.Attached());
-        this.attached = true;
-    } */
-
-    /* private OnAttached(callback: {(): void}) {
-        if(this.attached) {
-            callback();
-            return;
-        }
-
-        this.attachedCallbacks.push(callback);
-    } */
 
     private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}) {
         if(typeof source !== "object")

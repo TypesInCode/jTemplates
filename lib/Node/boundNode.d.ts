@@ -1,8 +1,14 @@
+import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 export declare type FunctionOr<T> = {
     (...args: Array<any>): T;
 } | T;
-export interface NodeDefinition<T> {
+export declare type BoundNodeEvents = {
+    [name: string]: {
+        (...args: Array<any>): void;
+    };
+};
+export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
     props?: FunctionOr<{
@@ -11,29 +17,30 @@ export interface NodeDefinition<T> {
     attrs?: FunctionOr<{
         [name: string]: string;
     }>;
-    on?: FunctionOr<{
-        [name: string]: {
-            (event?: any): void;
-        };
-    }>;
+    on?: FunctionOr<BoundNodeEvents>;
     static?: T | Array<T>;
     data?: any;
     key?: (val: T) => any;
     text?: FunctionOr<string>;
 }
 export declare function defaultChildren(): Array<NodeRef>;
-export declare class BoundNode extends NodeRef {
+export declare abstract class BoundNode extends NodeRef {
     private lastProperties;
-    private lastEvents;
-    private textScope;
-    private propertiesScope;
-    private attributesScope;
-    private eventsScope;
     private setText;
     private setProperties;
     private setAttributes;
     private setEvents;
-    constructor(nodeDef: NodeDefinition<any>);
+    protected textScope: Scope<string>;
+    protected propertiesScope: Scope<{
+        [name: string]: any;
+    }>;
+    protected attributesScope: Scope<{
+        [name: string]: string;
+    }>;
+    protected eventsScope: Scope<{
+        [name: string]: (...args: Array<any>) => void;
+    }>;
+    constructor(nodeDef: NodeDefinition);
     ScheduleSetText(): void;
     SetText(): void;
     ScheduleSetProperties(): void;
@@ -41,7 +48,7 @@ export declare class BoundNode extends NodeRef {
     ScheduleSetAttributes(): void;
     SetAttributes(): void;
     ScheduleSetEvents(): void;
-    SetEvents(): void;
+    abstract SetEvents(): void;
     Destroy(): void;
     private SetPropertiesRecursive;
 }

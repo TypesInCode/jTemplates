@@ -73,6 +73,10 @@ export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data
     return ElementNode.Create("style", null, nodeDef, children);
 }
 
+export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+    return ElementNode.Create("button", null, nodeDef, children);
+}
+
 /* export function a<P>(templateDefinition?: TemplateDefinition<P>, children?: ChildrenOr<P>): BindingDefinition<any, any> {
     return TemplateFunction("a", null, templateDefinition, children);
 }

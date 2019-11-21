@@ -1,5 +1,10 @@
 import { BoundNode, FunctionOr, NodeDefinition } from "./boundNode";
 import { NodeRef } from "./nodeRef";
+export declare type ElementNodeEvents = {
+    [name: string]: {
+        (event: Event): void;
+    };
+};
 export interface ElementNodeFunctionParam<T> {
     props?: FunctionOr<{
         [name: string]: any;
@@ -7,11 +12,7 @@ export interface ElementNodeFunctionParam<T> {
     attrs?: FunctionOr<{
         [name: string]: string;
     }>;
-    on?: FunctionOr<{
-        [name: string]: {
-            (event?: any): void;
-        };
-    }>;
+    on?: FunctionOr<ElementNodeEvents>;
     static?: T | Array<T>;
     data?: {
         (): T | Array<T>;
@@ -35,10 +36,12 @@ export declare class ElementNode<T> extends BoundNode {
     private nodeRefMap;
     private dataScope;
     private keyDataScope;
+    private lastEvents;
     constructor(nodeDef: ElementNodeDefinition<T>);
     private setData;
     ScheduleSetData(): void;
     SetData(): void;
+    SetEvents(): void;
     Destroy(): void;
 }
 export declare namespace ElementNode {

@@ -1,19 +1,22 @@
-import { BoundNode, NodeDefinition, FunctionOr, defaultChildren } from "./boundNode";
-import { Scope } from "../Store/scope/scope";
+import { BoundNode, NodeDefinition, FunctionOr } from "./boundNode";
 import { NodeRef } from "./nodeRef";
 import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 
-export interface IComponentContext<D, T> {
-    scope: Scope<D>;
-    templates: T;
+export type ComponentNodeEvents<E> = {
+    [P in keyof E]: {(data?: E[P]): void};
 }
 
-export interface ComponentNodeFunctionParam<D, T> {
+/* export interface IComponentContext<D, T> {
+    scope: Scope<D>;
+    templates: T;
+} */
+
+export interface ComponentNodeFunctionParam<D, T, E> {
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<{[name: string]: {(event?: any): void}}>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    on?: FunctionOr<ComponentNodeEvents<E>>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
     static?: D | Array<D>;
     data?: {(): D | Array<D>}; // {(): P | Array<P>} | P | Array<P>;
     // key?: (val: D) => any;
@@ -26,13 +29,14 @@ export interface ComponentNodeFunctionParam<D, T> {
     component: ComponentConstructor<D, T>;
 } */
 
-export class ComponentNode<D, T = any> extends BoundNode {
+export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     /* private childrenFunc: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]};
     private templates: T;
     private dataScope: Scope<D>; */
-    private component: Component<D, T>;
+    private component: Component<D, T, E>;
+    private componentEvents: {[name: string]: {(...args: Array<any>): void}};
 
-    constructor(nodeDef: NodeDefinition<D>, constructor: ComponentConstructor<D, T>, templates: T) {
+    constructor(nodeDef: NodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef);
 
         /* this.childrenFunc = nodeDef.children || defaultChildren;
@@ -41,6 +45,15 @@ export class ComponentNode<D, T = any> extends BoundNode {
         // this.component = new nodeDef.component(nodeDef.data || nodeDef.static, nodeDef.templates, this, this.Injector);
         this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
         this.SetChildren();
+    }
+
+    public SetEvents() {
+        this.componentEvents = this.eventsScope.Value;        
+    }
+
+    public Fire<P extends keyof E>(event: P, data?: E[P]) {
+        var eventCallback = this.componentEvents && this.componentEvents[event as string];
+        eventCallback && eventCallback(data);
     }
 
     private setChildren = false;
@@ -79,8 +92,8 @@ export class ComponentNode<D, T = any> extends BoundNode {
 export namespace ComponentNode {
 
     // export function CreateFunction<D, T = any>(type: any, namespace: string, childrenFunc: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]}) {
-    export function ToFunction<D, T>(type: any, namespace: string, constructor: ComponentConstructor<D, T>) {
-        return (nodeDef: ComponentNodeFunctionParam<D, T>, templates?: T) => {
+    export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>) {
+        return (nodeDef: ComponentNodeFunctionParam<D, T, E>, templates?: T) => {
             var def = {
                 type: type,
                 namespace: namespace,
@@ -95,7 +108,7 @@ export namespace ComponentNode {
                 component: constructor */
             }
 
-            return new ComponentNode<D, T>(def, constructor, templates);
+            return new ComponentNode<D, T, E>(def, constructor, templates);
         }
     }
 

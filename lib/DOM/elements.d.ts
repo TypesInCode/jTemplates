@@ -36,3 +36,6 @@ export declare function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {
 export declare function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {
     (data?: T, i?: number): NodeRef | NodeRef[];
 }): ElementNode<any>;
+export declare function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {
+    (data?: T, i?: number): NodeRef | NodeRef[];
+}): ElementNode<any>;

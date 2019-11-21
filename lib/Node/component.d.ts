@@ -2,30 +2,31 @@ import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
-export declare class Component<D = any, T = any> {
+export declare class Component<D = void, T = void, E = void> {
     private templates;
     private nodeRef;
     private injector;
     private scope;
     protected readonly Scope: Scope<D>;
     protected readonly Data: D;
-    protected readonly NodeRef: NodeRef;
+    protected readonly NodeRef: ComponentNode<D, T, E>;
     protected readonly Injector: Injector;
     protected readonly Templates: T;
     constructor(data: {
         (): D;
-    } | D, templates: T, nodeRef: NodeRef, injector: Injector);
+    } | D, templates: T, nodeRef: ComponentNode<D, T, E>, injector: Injector);
     Template(): NodeRef | NodeRef[];
     Bound(): void;
+    Fire<P extends keyof E>(event: P, data?: E[P]): void;
     Destroy(): void;
     protected Init(): void;
 }
 export declare namespace Component {
-    function ToFunction<D, T>(type: any, namespace: any, constructor: ComponentConstructor<D, T>): (nodeDef: import("../../../../Development/jTemplates_git/src/Node/componentNode").ComponentNodeFunctionParam<D, T>, templates?: T) => ComponentNode<D, T>;
+    function ToFunction<D = void, T = void, E = void>(type: any, namespace: any, constructor: ComponentConstructor<D, T, E>): (nodeDef: import("../../../../Development/jTemplates_git/src/Node/componentNode").ComponentNodeFunctionParam<D, T, E>, templates?: T) => ComponentNode<D, T, E>;
     function Attach(node: Node, nodeRef: NodeRef): void;
 }
-export declare type ComponentConstructor<D, T> = {
+export declare type ComponentConstructor<D, T, E> = {
     new (data: {
         (): D;
-    } | D, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T>;
+    } | D, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T, E>;
 };
