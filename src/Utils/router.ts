@@ -33,7 +33,8 @@ export abstract class Router<T extends {}> {
     }
 
     public JSON() {
-        return (this.State as any).toJSON();
+        var state = this.State;
+        return (state as any).toJSON ? (state as any).toJSON() : state;
     }
 
     public async SetState(state: Partial<T>) {
