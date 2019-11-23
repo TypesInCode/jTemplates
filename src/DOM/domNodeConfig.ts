@@ -86,7 +86,7 @@ export var DOMNodeConfig: INodeConfig = {
     },
     setPropertyOverrides: {
         value: (target: HTMLInputElement, value: string) => {
-            if(target.type !== "input")
+            if(target.nodeName !== "INPUT")
                 target.value = value;
             else {
                 var start = target.selectionStart;

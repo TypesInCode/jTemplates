@@ -144,7 +144,7 @@ export abstract class BoundNode extends NodeRef {
 
         for(var key in source) {
             var val = source[key];
-            if(typeof val === 'object') {
+            if(val && typeof val === 'object') {
                 if(!target[key])
                     target[key] = {};
                 

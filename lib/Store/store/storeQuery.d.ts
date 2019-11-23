@@ -2,12 +2,12 @@ import { ScopeBase } from "../scope/scopeBase";
 import { Emitter } from "../../Utils/emitter";
 import { Scope } from "../scope/scope";
 import { AsyncFuncCallback } from "./store.types";
-import { Store } from "./store";
+import { StoreBase } from "./storeBase";
 export declare class StoreQuery<T, O> extends ScopeBase<O> {
     private getFunction;
     private store;
     readonly Promise: Promise<O>;
-    constructor(store: Store<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>);
+    constructor(store: StoreBase<any>, defaultValue: O, getFunction: AsyncFuncCallback<T, O>);
     Scope<R>(callback: {
         (parent: O): R;
     }): Scope<R>;

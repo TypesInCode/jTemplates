@@ -11,7 +11,7 @@ export declare class AbstractStore {
     Get(id?: string): Promise<any>;
     Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<any, O>): StoreQuery<any, O>;
 }
-export declare class Store<T> extends AbstractStore {
+export declare class StoreBase<T> extends AbstractStore {
     private manager;
     private reader;
     private writer;

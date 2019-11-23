@@ -24,7 +24,7 @@ export class AbstractStore {
     }
 }
 
-export class Store<T> extends AbstractStore {
+export class StoreBase<T> extends AbstractStore {
 
     private manager: StoreManager<T>;
     private reader: StoreReader<T>;

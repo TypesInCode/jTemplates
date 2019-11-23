@@ -1,5 +1,5 @@
 import { StoreSync } from "../Store/storeSync";
-import { Store as StoreClass } from "../Store/store/store";
+import { StoreBase as StoreClass } from "../Store/store/storeBase";
 import { Scope as ScopeClass } from "../Store/scope/scope";
 import { Component } from "../Node/component";
 import { Injector as InjectorClass } from "./injector";

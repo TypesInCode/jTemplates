@@ -13,12 +13,12 @@ export class Injector {
             return this.parent && this.parent.Get(type);
         
         var ret = this.typeMap.get(type);
-        if(!ret) {
+        /* if(!ret) {
             this.typeMap.forEach((value, key) => {
                 if(value instanceof type)
                     ret = value;
             });
-        }
+        } */
 
         if(!ret)
             ret = this.parent && this.parent.Get(type);
