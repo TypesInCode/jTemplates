@@ -69,10 +69,7 @@ export abstract class ScopeBase<T> extends Emitter {
     } */
 
     public Destroy() {
-        this.emitters.forEach(e => {
-            e.removeListener("set", this.setCallback);
-            e.removeListener("destroy", this.destroyCallback);
-        });
+        this.emitters.forEach(e => this.RemoveListenersFrom(e));
         this.emitters.clear();
         this.emit("destroy", this);
         this.removeAllListeners();

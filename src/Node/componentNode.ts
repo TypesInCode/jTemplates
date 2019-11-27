@@ -69,7 +69,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     }
 
     public SetChildren() {
-        this.ClearChildren();
+        // this.DestroyChildren();
         // var nodes = this.childrenFunc({ scope: this.dataScope, templates: this.templates }) as NodeRef[];
         var nodes = null as Array<NodeRef>;
         Injector.Scope(this.Injector, () => 

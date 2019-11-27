@@ -5,7 +5,7 @@ import { Injector } from "../Utils/injector";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
-    private destroyables: Array<{ Destroy: {(): void}}>
+    private destroyables: Set<{ Destroy: {(): void}}>
 
     public get Injector() {
         return this.injector;
@@ -15,9 +15,9 @@ export class Component<D = void, T = void, E = void> {
         return this.destroyables;
     }
 
-    /* protected get Scope() {
+    protected get Scope() {
         return this.scope;
-    } */
+    }
 
     protected get Data() {
         return this.scope.Value;
@@ -33,7 +33,7 @@ export class Component<D = void, T = void, E = void> {
 
     constructor(data: {(): D} | D, private templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new Scope(data);
-        this.destroyables = [this.scope];
+        this.destroyables = new Set([this.scope]);
         this.Init();
     }
 

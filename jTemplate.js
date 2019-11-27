@@ -56,21 +56,23 @@ var jTemplate =
 	    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scope_1 = __webpack_require__(1);
-	exports.Scope = scope_1.Scope;
-	const storeAsync_1 = __webpack_require__(5);
+	const storeAsync_1 = __webpack_require__(1);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
 	const storeSync_1 = __webpack_require__(21);
 	exports.StoreSync = storeSync_1.StoreSync;
-	const store_1 = __webpack_require__(6);
-	exports.AbstractStore = store_1.AbstractStore;
-	exports.Store = store_1.Store;
+	const storeBase_1 = __webpack_require__(2);
+	exports.AbstractStore = storeBase_1.AbstractStore;
+	exports.StoreBase = storeBase_1.StoreBase;
 	const nodeRef_1 = __webpack_require__(23);
 	exports.NodeRef = nodeRef_1.NodeRef;
 	const component_1 = __webpack_require__(28);
 	exports.Component = component_1.Component;
-	const elements_1 = __webpack_require__(31);
-	const decorators_1 = __webpack_require__(33);
+	const decorators_1 = __webpack_require__(31);
+	exports.Store = decorators_1.Store;
+	exports.Scope = decorators_1.Scope;
+	exports.Inject = decorators_1.Inject;
+	exports.Destroy = decorators_1.Destroy;
+	const elements_1 = __webpack_require__(32);
 	class Temp {
 	    getVal() {
 	        return "temp function val";
@@ -113,6 +115,7 @@ var jTemplate =
 	], TestComp.prototype, "state2", void 0);
 	__decorate([
 	    decorators_1.Inject(Temp),
+	    decorators_1.Destroy(),
 	    __metadata("design:type", Object)
 	], TestComp.prototype, "temp", void 0);
 	__decorate([
@@ -121,7 +124,8 @@ var jTemplate =
 	    __metadata("design:paramtypes", [])
 	], TestComp.prototype, "Test", null);
 	var testComp = component_1.Component.ToFunction("test-comp", null, TestComp);
-	component_1.Component.Attach(document.getElementById("container"), testComp({}));
+	var node = testComp({});
+	component_1.Component.Attach(document.getElementById("container"), node);
 
 
 /***/ }),
@@ -130,189 +134,9 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(2);
-	const scopeCollector_1 = __webpack_require__(4);
-	class Scope extends scopeBase_1.ScopeBase {
-	    constructor(getFunction) {
-	        if (typeof getFunction !== 'function')
-	            super(getFunction);
-	        else {
-	            super(null);
-	            this.getFunction = getFunction;
-	        }
-	    }
-	    Scope(callback) {
-	        return new Scope(() => callback(this.Value));
-	    }
-	    UpdateValue(callback) {
-	        var value = undefined;
-	        var emitters = scopeCollector_1.scopeCollector.Watch(() => {
-	            if (this.getFunction)
-	                value = this.getFunction();
-	        });
-	        callback(emitters, value);
-	    }
-	}
-	exports.Scope = Scope;
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(3);
-	const scopeCollector_1 = __webpack_require__(4);
-	class ScopeBase extends emitter_1.default {
-	    constructor(defaultValue = null) {
-	        super();
-	        this.defaultValue = defaultValue;
-	        this.emitters = new Set();
-	        this.setCallback = this.SetCallback.bind(this);
-	        this.destroyCallback = this.DestroyCallback.bind(this);
-	        this.dirty = true;
-	        this.isAsync = false;
-	    }
-	    get Value() {
-	        scopeCollector_1.scopeCollector.Register(this);
-	        if (this.dirty)
-	            this.UpdateValueBase();
-	        return !this.HasValue ? this.defaultValue : this.value;
-	    }
-	    get HasValue() {
-	        return typeof this.value !== 'undefined';
-	    }
-	    Destroy() {
-	        this.emitters.forEach(e => {
-	            e.removeListener("set", this.setCallback);
-	            e.removeListener("destroy", this.destroyCallback);
-	        });
-	        this.emitters.clear();
-	        this.emit("destroy", this);
-	        this.removeAllListeners();
-	    }
-	    UpdateValueBase() {
-	        this.dirty = false;
-	        var callbackFired = false;
-	        this.UpdateValue((emitters, value) => {
-	            callbackFired = true;
-	            this.UpdateEmitters(emitters);
-	            this.value = value;
-	            if (this.isAsync)
-	                this.emit("set");
-	        });
-	        this.isAsync = !callbackFired;
-	    }
-	    UpdateEmitters(newEmitters) {
-	        this.emitters.forEach(e => {
-	            if (!newEmitters.has(e)) {
-	                this.RemoveListenersFrom(e);
-	            }
-	        });
-	        newEmitters.forEach(e => {
-	            this.AddListenersTo(e);
-	        });
-	        this.emitters = newEmitters;
-	    }
-	    SetCallback() {
-	        if (!this.isAsync) {
-	            this.dirty = true;
-	            this.emit("set");
-	        }
-	        else
-	            this.UpdateValueBase();
-	    }
-	    DestroyCallback(emitter) {
-	        this.RemoveListenersFrom(emitter);
-	        this.emitters.delete(emitter);
-	        if (this.emitters.size === 0)
-	            this.Destroy();
-	    }
-	    AddListenersTo(emitter) {
-	        emitter.addListener("set", this.setCallback);
-	        emitter.addListener("destroy", this.destroyCallback);
-	    }
-	    RemoveListenersFrom(emitter) {
-	        emitter.removeListener("set", this.setCallback);
-	        emitter.removeListener("destroy", this.destroyCallback);
-	    }
-	}
-	exports.ScopeBase = ScopeBase;
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	class Emitter {
-	    constructor() {
-	        this.callbackMap = {};
-	    }
-	    addListener(name, callback) {
-	        var events = this.callbackMap[name] || new Set();
-	        if (!events.has(callback))
-	            events.add(callback);
-	        this.callbackMap[name] = events;
-	    }
-	    removeListener(name, callback) {
-	        var events = this.callbackMap[name];
-	        events && events.delete(callback);
-	    }
-	    emit(name, ...args) {
-	        var events = this.callbackMap[name];
-	        events && events.forEach(c => c(...args));
-	    }
-	    clear(name) {
-	        var events = this.callbackMap[name];
-	        events && events.clear();
-	    }
-	    removeAllListeners() {
-	        for (var key in this.callbackMap)
-	            this.clear(key);
-	    }
-	}
-	exports.Emitter = Emitter;
-	exports.default = Emitter;
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	class ScopeCollector {
-	    constructor() {
-	        this.emitterStack = [];
-	    }
-	    Watch(callback) {
-	        this.emitterStack.push(new Set());
-	        callback();
-	        return this.emitterStack.pop();
-	    }
-	    Register(emitter) {
-	        if (this.emitterStack.length === 0)
-	            return;
-	        var set = this.emitterStack[this.emitterStack.length - 1];
-	        if (!set.has(emitter))
-	            set.add(emitter);
-	    }
-	}
-	exports.scopeCollector = new ScopeCollector();
-
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(6);
+	const storeBase_1 = __webpack_require__(2);
 	const diffAsync_1 = __webpack_require__(17);
-	class StoreAsync extends store_1.Store {
+	class StoreAsync extends storeBase_1.StoreBase {
 	    constructor(init, idFunction) {
 	        super(idFunction, init, new diffAsync_1.DiffAsync());
 	    }
@@ -321,7 +145,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 6 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -334,11 +158,11 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeManager_1 = __webpack_require__(7);
-	const storeReader_1 = __webpack_require__(12);
-	const storeWriter_1 = __webpack_require__(13);
-	const promiseQueue_1 = __webpack_require__(14);
-	const storeQuery_1 = __webpack_require__(16);
+	const storeManager_1 = __webpack_require__(3);
+	const storeReader_1 = __webpack_require__(9);
+	const storeWriter_1 = __webpack_require__(11);
+	const promiseQueue_1 = __webpack_require__(12);
+	const storeQuery_1 = __webpack_require__(14);
 	class AbstractStore {
 	    Action(action) {
 	        return __awaiter(this, void 0, void 0, function* () { });
@@ -360,7 +184,7 @@ var jTemplate =
 	    }
 	}
 	exports.AbstractStore = AbstractStore;
-	class Store extends AbstractStore {
+	class StoreBase extends AbstractStore {
 	    constructor(idFunction, init, diff) {
 	        super();
 	        this.manager = new storeManager_1.StoreManager(idFunction, diff);
@@ -440,11 +264,11 @@ var jTemplate =
 	        this.manager.Destroy();
 	    }
 	}
-	exports.Store = Store;
+	exports.StoreBase = StoreBase;
 
 
 /***/ }),
-/* 7 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -457,10 +281,10 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const tree_1 = __webpack_require__(8);
-	const treeNode_1 = __webpack_require__(9);
-	const utils_1 = __webpack_require__(11);
-	const treeNodeRefId_1 = __webpack_require__(10);
+	const tree_1 = __webpack_require__(4);
+	const treeNode_1 = __webpack_require__(5);
+	const utils_1 = __webpack_require__(8);
+	const treeNodeRefId_1 = __webpack_require__(7);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
@@ -578,12 +402,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 8 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const treeNode_1 = __webpack_require__(9);
+	const treeNode_1 = __webpack_require__(5);
 	class Tree {
 	    constructor(resolvePath) {
 	        this.root = new treeNode_1.TreeNode(this, null, "root", resolvePath);
@@ -610,13 +434,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 9 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(3);
-	const treeNodeRefId_1 = __webpack_require__(10);
+	const emitter_1 = __webpack_require__(6);
+	const treeNodeRefId_1 = __webpack_require__(7);
 	class TreeNode {
 	    get NodeCache() {
 	        return this.nodeCache;
@@ -712,7 +536,44 @@ var jTemplate =
 
 
 /***/ }),
-/* 10 */
+/* 6 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class Emitter {
+	    constructor() {
+	        this.callbackMap = {};
+	    }
+	    addListener(name, callback) {
+	        var events = this.callbackMap[name] || new Set();
+	        if (!events.has(callback))
+	            events.add(callback);
+	        this.callbackMap[name] = events;
+	    }
+	    removeListener(name, callback) {
+	        var events = this.callbackMap[name];
+	        events && events.delete(callback);
+	    }
+	    emit(name, ...args) {
+	        var events = this.callbackMap[name];
+	        events && events.forEach(c => c(...args));
+	    }
+	    clear(name) {
+	        var events = this.callbackMap[name];
+	        events && events.clear();
+	    }
+	    removeAllListeners() {
+	        for (var key in this.callbackMap)
+	            this.clear(key);
+	    }
+	}
+	exports.Emitter = Emitter;
+	exports.default = Emitter;
+
+
+/***/ }),
+/* 7 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -736,7 +597,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 11 */
+/* 8 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -879,13 +740,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 12 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(11);
-	const scopeCollector_1 = __webpack_require__(4);
+	const utils_1 = __webpack_require__(8);
+	const scopeCollector_1 = __webpack_require__(10);
 	class StoreReader {
 	    constructor(store) {
 	        this.store = store;
@@ -925,7 +786,33 @@ var jTemplate =
 
 
 /***/ }),
-/* 13 */
+/* 10 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	class ScopeCollector {
+	    constructor() {
+	        this.emitterStack = [];
+	    }
+	    Watch(callback) {
+	        this.emitterStack.push(new Set());
+	        callback();
+	        return this.emitterStack.pop();
+	    }
+	    Register(emitter) {
+	        if (this.emitterStack.length === 0)
+	            return;
+	        var set = this.emitterStack[this.emitterStack.length - 1];
+	        if (!set.has(emitter))
+	            set.add(emitter);
+	    }
+	}
+	exports.scopeCollector = new ScopeCollector();
+
+
+/***/ }),
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -938,7 +825,7 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(11);
+	const utils_1 = __webpack_require__(8);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -1020,12 +907,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 14 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const deferredPromise_1 = __webpack_require__(15);
+	const deferredPromise_1 = __webpack_require__(13);
 	class PromiseQueue {
 	    constructor() {
 	        this.running = false;
@@ -1072,7 +959,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 15 */
+/* 13 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1098,7 +985,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 16 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1111,8 +998,8 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(2);
-	const scope_1 = __webpack_require__(1);
+	const scopeBase_1 = __webpack_require__(15);
+	const scope_1 = __webpack_require__(16);
 	class StoreQuery extends scopeBase_1.ScopeBase {
 	    constructor(store, defaultValue, getFunction) {
 	        super(defaultValue);
@@ -1154,6 +1041,123 @@ var jTemplate =
 
 
 /***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const emitter_1 = __webpack_require__(6);
+	const scopeCollector_1 = __webpack_require__(10);
+	class ScopeBase extends emitter_1.default {
+	    constructor(defaultValue = null) {
+	        super();
+	        this.defaultValue = defaultValue;
+	        this.emitters = new Set();
+	        this.setCallback = this.SetCallback.bind(this);
+	        this.destroyCallback = this.DestroyCallback.bind(this);
+	        this.dirty = true;
+	        this.isAsync = false;
+	    }
+	    get Value() {
+	        scopeCollector_1.scopeCollector.Register(this);
+	        if (this.dirty)
+	            this.UpdateValueBase();
+	        return !this.HasValue ? this.defaultValue : this.value;
+	    }
+	    get HasValue() {
+	        return typeof this.value !== 'undefined';
+	    }
+	    Destroy() {
+	        this.emitters.forEach(e => {
+	            e.removeListener("set", this.setCallback);
+	            e.removeListener("destroy", this.destroyCallback);
+	        });
+	        this.emitters.clear();
+	        this.emit("destroy", this);
+	        this.removeAllListeners();
+	    }
+	    UpdateValueBase() {
+	        this.dirty = false;
+	        var callbackFired = false;
+	        this.UpdateValue((emitters, value) => {
+	            callbackFired = true;
+	            this.UpdateEmitters(emitters);
+	            this.value = value;
+	            if (this.isAsync)
+	                this.emit("set");
+	        });
+	        this.isAsync = !callbackFired;
+	    }
+	    UpdateEmitters(newEmitters) {
+	        this.emitters.forEach(e => {
+	            if (!newEmitters.has(e)) {
+	                this.RemoveListenersFrom(e);
+	            }
+	        });
+	        newEmitters.forEach(e => {
+	            this.AddListenersTo(e);
+	        });
+	        this.emitters = newEmitters;
+	    }
+	    SetCallback() {
+	        if (!this.isAsync) {
+	            this.dirty = true;
+	            this.emit("set");
+	        }
+	        else
+	            this.UpdateValueBase();
+	    }
+	    DestroyCallback(emitter) {
+	        this.RemoveListenersFrom(emitter);
+	        this.emitters.delete(emitter);
+	        if (this.emitters.size === 0)
+	            this.Destroy();
+	    }
+	    AddListenersTo(emitter) {
+	        emitter.addListener("set", this.setCallback);
+	        emitter.addListener("destroy", this.destroyCallback);
+	    }
+	    RemoveListenersFrom(emitter) {
+	        emitter.removeListener("set", this.setCallback);
+	        emitter.removeListener("destroy", this.destroyCallback);
+	    }
+	}
+	exports.ScopeBase = ScopeBase;
+
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const scopeBase_1 = __webpack_require__(15);
+	const scopeCollector_1 = __webpack_require__(10);
+	class Scope extends scopeBase_1.ScopeBase {
+	    constructor(getFunction) {
+	        if (typeof getFunction !== 'function')
+	            super(getFunction);
+	        else {
+	            super(null);
+	            this.getFunction = getFunction;
+	        }
+	    }
+	    Scope(callback) {
+	        return new Scope(() => callback(this.Value));
+	    }
+	    UpdateValue(callback) {
+	        var value = undefined;
+	        var emitters = scopeCollector_1.scopeCollector.Watch(() => {
+	            if (this.getFunction)
+	                value = this.getFunction();
+	        });
+	        callback(emitters, value);
+	    }
+	}
+	exports.Scope = Scope;
+
+
+/***/ }),
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1185,7 +1189,7 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const promiseQueue_1 = __webpack_require__(14);
+	const promiseQueue_1 = __webpack_require__(12);
 	class WorkerQueue {
 	    constructor(worker) {
 	        this.worker = worker;
@@ -1342,9 +1346,9 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const store_1 = __webpack_require__(6);
+	const storeBase_1 = __webpack_require__(2);
 	const diffSync_1 = __webpack_require__(22);
-	class StoreSync extends store_1.Store {
+	class StoreSync extends storeBase_1.StoreBase {
 	    constructor(init, idFunction) {
 	        super(idFunction, init, new diffSync_1.DiffSync());
 	    }
@@ -1534,7 +1538,7 @@ var jTemplate =
 	    },
 	    setPropertyOverrides: {
 	        value: (target, value) => {
-	            if (target.type !== "input")
+	            if (target.nodeName !== "INPUT")
 	                target.value = value;
 	            else {
 	                var start = target.selectionStart;
@@ -1577,12 +1581,6 @@ var jTemplate =
 	        if (this.typeMap.size === 0)
 	            return this.parent && this.parent.Get(type);
 	        var ret = this.typeMap.get(type);
-	        if (!ret) {
-	            this.typeMap.forEach((value, key) => {
-	                if (value instanceof type)
-	                    ret = value;
-	            });
-	        }
 	        if (!ret)
 	            ret = this.parent && this.parent.Get(type);
 	        return ret;
@@ -1613,7 +1611,7 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scope_1 = __webpack_require__(1);
+	const scope_1 = __webpack_require__(16);
 	const nodeRef_1 = __webpack_require__(23);
 	const componentNode_1 = __webpack_require__(29);
 	class Component {
@@ -1622,7 +1620,7 @@ var jTemplate =
 	        this.nodeRef = nodeRef;
 	        this.injector = injector;
 	        this.scope = new scope_1.Scope(data);
-	        this.destroyables = [this.scope];
+	        this.destroyables = new Set([this.scope]);
 	        this.Init();
 	    }
 	    get Injector() {
@@ -1630,6 +1628,9 @@ var jTemplate =
 	    }
 	    get Destroyables() {
 	        return this.destroyables;
+	    }
+	    get Scope() {
+	        return this.scope;
 	    }
 	    get Data() {
 	        return this.scope.Value;
@@ -1740,7 +1741,7 @@ var jTemplate =
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const nodeConfig_1 = __webpack_require__(24);
-	const scope_1 = __webpack_require__(1);
+	const scope_1 = __webpack_require__(16);
 	const nodeRef_1 = __webpack_require__(23);
 	function defaultChildren() {
 	    return [];
@@ -1838,7 +1839,7 @@ var jTemplate =
 	            throw "Property binding must resolve to an object";
 	        for (var key in source) {
 	            var val = source[key];
-	            if (typeof val === 'object') {
+	            if (val && typeof val === 'object') {
 	                if (!target[key])
 	                    target[key] = {};
 	                this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val);
@@ -1861,7 +1862,111 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const elementNode_1 = __webpack_require__(32);
+	const storeSync_1 = __webpack_require__(21);
+	const scope_1 = __webpack_require__(16);
+	function Store() {
+	    return StoreDecorator;
+	}
+	exports.Store = Store;
+	function StoreDecorator(target, propertyKey) {
+	    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+	    return {
+	        configurable: false,
+	        enumerable: true,
+	        get: function () {
+	            var store = destroyDescriptor.get.apply(this);
+	            if (store)
+	                return store.Root.Value;
+	            return null;
+	        },
+	        set: function (val) {
+	            var store = destroyDescriptor.get.apply(this);
+	            if (!store)
+	                destroyDescriptor.set.apply(this, [new storeSync_1.StoreSync(val)]);
+	            else
+	                store.Merge(val);
+	        }
+	    };
+	}
+	function Scope() {
+	    return ScopeDecorator;
+	}
+	exports.Scope = Scope;
+	function ScopeDecorator(target, propertyKey, descriptor) {
+	    if (!(descriptor && descriptor.get))
+	        throw "Scope decorator requires a getter";
+	    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+	    return {
+	        configurable: false,
+	        enumerable: true,
+	        get: function () {
+	            var scope = destroyDescriptor.get.apply(this);
+	            if (!scope) {
+	                destroyDescriptor.set.apply(this, [new scope_1.Scope(descriptor.get.bind(this))]);
+	                scope = destroyDescriptor.get.apply(this);
+	            }
+	            return scope.Value;
+	        },
+	        set: function () {
+	            throw "Scope decorator: setter not supported";
+	        }
+	    };
+	}
+	function Inject(type) {
+	    return InjectorDecorator.bind(null, type);
+	}
+	exports.Inject = Inject;
+	function InjectorDecorator(type, target, propertyKey, descriptor) {
+	    var parentGet = descriptor && descriptor.get;
+	    var parentSet = descriptor && descriptor.set;
+	    return {
+	        configurable: false,
+	        enumerable: true,
+	        get: function () {
+	            parentGet && parentGet.apply(this);
+	            return this.Injector.Get(type);
+	        },
+	        set: function (val) {
+	            parentSet && parentSet.apply(this, [val]);
+	            this.Injector.Set(type, val);
+	        }
+	    };
+	}
+	function Destroy() {
+	    return DestroyDecorator;
+	}
+	exports.Destroy = Destroy;
+	function DestroyDecorator(target, propertyKey, descriptor) {
+	    var parentGet = descriptor && descriptor.get;
+	    var parentSet = descriptor && descriptor.set;
+	    return {
+	        configurable: false,
+	        enumerable: true,
+	        get: function () {
+	            return parentGet && parentGet.apply(this) || this[`DestroyDecorator_${propertyKey}`];
+	        },
+	        set: function (val) {
+	            var thisObj = this;
+	            parentSet && parentSet.apply(thisObj, [val]);
+	            var loc = this[`DestroyDecorator_${propertyKey}`];
+	            if (thisObj.Destroyables.has(loc))
+	                thisObj.Destroyables.delete(loc);
+	            if (loc && loc !== val)
+	                loc.Destroy();
+	            this[`DestroyDecorator_${propertyKey}`] = val;
+	            val && thisObj.Destroyables.add(val);
+	        }
+	    };
+	}
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
+	const elementNode_1 = __webpack_require__(33);
 	function div(nodeDef, children) {
 	    return elementNode_1.ElementNode.Create("div", null, nodeDef, children);
 	}
@@ -1941,13 +2046,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const boundNode_1 = __webpack_require__(30);
-	const scope_1 = __webpack_require__(1);
+	const scope_1 = __webpack_require__(16);
 	const nodeConfig_1 = __webpack_require__(24);
 	const injector_1 = __webpack_require__(27);
 	class ElementNode extends boundNode_1.BoundNode {
@@ -2035,72 +2140,6 @@ var jTemplate =
 	    }
 	    ElementNode.Create = Create;
 	})(ElementNode = exports.ElementNode || (exports.ElementNode = {}));
-
-
-/***/ }),
-/* 33 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeSync_1 = __webpack_require__(21);
-	const scope_1 = __webpack_require__(1);
-	function Store() {
-	    return function (target, propertyKey, descriptor) {
-	        return {
-	            configurable: false,
-	            enumerable: true,
-	            get: function () {
-	                var store = this[`_${propertyKey}`];
-	                if (store)
-	                    return store.Root.Value;
-	                return null;
-	            },
-	            set: function (val) {
-	                var store = this[`_${propertyKey}`];
-	                if (!store) {
-	                    store = this[`_${propertyKey}`] = new storeSync_1.StoreSync(val);
-	                    this.Destroyables.push(store);
-	                }
-	                else
-	                    store.Merge(val);
-	            }
-	        };
-	    };
-	}
-	exports.Store = Store;
-	function Scope() {
-	    return function (target, propertyKey, descriptor) {
-	        return {
-	            configurable: false,
-	            enumerable: false,
-	            get: function () {
-	                var scope = this[`_${propertyKey}`];
-	                if (!scope) {
-	                    scope = this[`_${propertyKey}`] = new scope_1.Scope(descriptor.get.bind(this));
-	                    this.Destroyables.push(scope);
-	                }
-	                return scope.Value;
-	            }
-	        };
-	    };
-	}
-	exports.Scope = Scope;
-	function Inject(type) {
-	    return function (target, propertyKey) {
-	        return {
-	            configurable: false,
-	            enumerable: true,
-	            get: function () {
-	                return this.Injector.Get(type);
-	            },
-	            set: function (val) {
-	                this.Injector.Set(type, val);
-	            }
-	        };
-	    };
-	}
-	exports.Inject = Inject;
 
 
 /***/ })

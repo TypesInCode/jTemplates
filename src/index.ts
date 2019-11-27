@@ -3,11 +3,14 @@ import { StoreSync } from "./Store/storeSync";
 import { AbstractStore, StoreBase } from "./Store/store/storeBase";
 import { NodeRef } from "./Node/nodeRef";
 import { Component } from "./Node/component";
-import { Store, Scope, Inject } from "./Utils/decorators";
+import { Store, Scope, Inject, Destroy } from "./Utils/decorators";
 
-export { Component, NodeRef, AbstractStore, StoreBase, StoreSync, StoreAsync, Store, Scope, Inject };
+export { Component, NodeRef, AbstractStore, StoreBase, StoreSync, StoreAsync, Store, Scope, Inject, Destroy };
 
-/* class Temp {
+
+/* import { div } from "./DOM/elements";
+
+class Temp {
     public getVal() {
         return "temp function val";
     }
@@ -35,6 +38,7 @@ class TestComp extends Component {
     private state2 = { temp: "end" };
 
     @Inject(Temp)
+    @Destroy()
     private temp = new Temp();
 
     @Scope()
@@ -52,4 +56,7 @@ class TestComp extends Component {
 }
 
 var testComp = Component.ToFunction("test-comp", null, TestComp);
-Component.Attach(document.getElementById("container"), testComp({})); */
+var node = testComp({});
+Component.Attach(document.getElementById("container"), node);
+
+// setTimeout(() => node.Destroy(), 500); */

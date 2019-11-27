@@ -96,7 +96,10 @@ export class ElementNode<T> extends BoundNode {
         });
 
         this.nodeRefMap.forEach(value => {
-            value.forEach(v => v.Destroy());
+            value.forEach(v => {
+                v.Detach();
+                v.Destroy();
+            });
         });
 
         this.nodeRefMap = newNodeRefMap;

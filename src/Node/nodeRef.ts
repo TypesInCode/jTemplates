@@ -15,13 +15,12 @@ export class NodeRef {
         return this.childNodes;
     }
 
-    protected set Parent(val: NodeRef) {
+    /* protected set Parent(val: NodeRef) {
         if(this.parent && this.parent !== val)
-            this.Detach();
+            this.parent.DetachChild(this);
         
         this.parent = val;
-        this.parent && this.parent.ChildNodes.add(this);
-    }
+    } */
 
     protected get Injector() {
         return this.injector;
@@ -34,7 +33,8 @@ export class NodeRef {
     }
 
     public AddChild(nodeRef: NodeRef) {
-        nodeRef.Parent = this;
+        // nodeRef.Parent = this;
+        nodeRef.parent = this;
         this.childNodes.add(nodeRef);
         NodeConfig.addChild(this.Node, nodeRef.Node);
     }
@@ -43,29 +43,32 @@ export class NodeRef {
         if(currentChild && !this.childNodes.has(currentChild))
             throw "currentChild is not valid";
         
-        newChild.Parent = this;
+        // newChild.Parent = this;
+        newChild.parent = this;
+        this.childNodes.add(newChild);
         NodeConfig.addChildAfter(this.Node, currentChild && currentChild.Node, newChild.Node);
     }
 
     public DetachChild(nodeRef: NodeRef) {
-        this.childNodes.delete(nodeRef);
-        NodeConfig.removeChild(this.Node, nodeRef.Node);
+        if(this.childNodes.has(nodeRef)) {
+            this.childNodes.delete(nodeRef);
+            NodeConfig.removeChild(this.Node, nodeRef.Node);
+            nodeRef.parent = null;
+        }
     }
 
     public Detach() {
         if(this.parent)
             this.parent.DetachChild(this);
-
-        NodeConfig.remove(this.Node);
     }
 
     public Destroy() {
-        this.Detach();
-        this.ClearChildren();
+        // this.Detach();
+        this.DestroyChildren();
     }
 
-    protected ClearChildren() {
+    protected DestroyChildren() {
         this.childNodes.forEach(node => node.Destroy());
-        this.childNodes.clear();
+        // this.childNodes.clear();
     }
 }
