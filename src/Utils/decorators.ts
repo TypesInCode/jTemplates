@@ -99,11 +99,13 @@ function DestroyDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> 
             var thisObj = this as { Destroyables: Set<{ Destroy: {(): void} }> };
             parentSet && parentSet.apply(thisObj, [val]);
             var loc = this[`DestroyDecorator_${propertyKey}`];
-            if(thisObj.Destroyables.has(loc))
+            if(loc === val)
+                return;
+            
+            if(loc && thisObj.Destroyables.has(loc)) {
                 thisObj.Destroyables.delete(loc);
-
-            if(loc && loc !== val)
                 loc.Destroy();
+            }
 
             this[`DestroyDecorator_${propertyKey}`] = val;
             val && thisObj.Destroyables.add(val);
