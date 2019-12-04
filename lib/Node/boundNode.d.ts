@@ -11,6 +11,7 @@ export declare type BoundNodeEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
+    immediate?: boolean;
     props?: FunctionOr<{
         [name: string]: any;
     }>;

@@ -6,6 +6,7 @@ export declare type ComponentNodeEvents<E> = {
     };
 };
 export interface ComponentNodeFunctionParam<D, T, E> {
+    immediate?: boolean;
     props?: FunctionOr<{
         [name: string]: any;
     }>;
@@ -25,8 +26,6 @@ export declare class ComponentNode<D = void, T = void, E = void> extends BoundNo
     constructor(nodeDef: NodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T);
     SetEvents(): void;
     Fire<P extends keyof E>(event: P, data?: E[P]): void;
-    private setChildren;
-    ScheduleSetChildren(): void;
     SetChildren(): void;
     Destroy(): void;
 }

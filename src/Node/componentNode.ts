@@ -3,6 +3,7 @@ import { NodeRef } from "./nodeRef";
 import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
+import { ElementNode } from "./elementNode";
 
 export type ComponentNodeEvents<E> = {
     [P in keyof E]: {(data?: E[P]): void};
@@ -14,6 +15,7 @@ export type ComponentNodeEvents<E> = {
 } */
 
 export interface ComponentNodeFunctionParam<D, T, E> {
+    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
     attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<ComponentNodeEvents<E>>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
@@ -44,7 +46,15 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
         this.templates = nodeDef.templates; */
         // this.component = new nodeDef.component(nodeDef.data || nodeDef.static, nodeDef.templates, this, this.Injector);
         this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
-        this.SetChildren();
+
+        if(ElementNode.BindImmediately || nodeDef.immediate) {
+            var staticBindingValue = ElementNode.BindImmediately;
+            ElementNode.BindImmediately = true;
+            this.SetChildren();
+            ElementNode.BindImmediately = staticBindingValue;
+        }
+        else
+            this.SetChildren();
     }
 
     public SetEvents() {
@@ -56,7 +66,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
         eventCallback && eventCallback(data);
     }
 
-    private setChildren = false;
+    /* private setChildren = false;
     public ScheduleSetChildren() {
         if(this.setChildren)
             return;
@@ -66,7 +76,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
             this.setChildren = false;
         });
 
-    }
+    } */
 
     public SetChildren() {
         // this.DestroyChildren();
@@ -98,6 +108,7 @@ export namespace ComponentNode {
                 type: type,
                 namespace: namespace,
                 // text: nodeDef.text,
+                immediate: !!nodeDef.immediate,
                 props: nodeDef.props,
                 attrs: nodeDef.attrs,
                 on: nodeDef.on,

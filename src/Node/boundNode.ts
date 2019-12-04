@@ -11,6 +11,7 @@ export type BoundNodeEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
+    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>,
     on?: FunctionOr<BoundNodeEvents>;
@@ -42,25 +43,25 @@ export abstract class BoundNode extends NodeRef {
 
         if(nodeDef.text) {
             this.textScope = new Scope(nodeDef.text);
-            this.textScope.addListener("set", this.ScheduleSetText.bind(this));
+            this.textScope.addListener("set", nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
             this.SetText();
         }
 
         if(nodeDef.props) {
             this.propertiesScope = new Scope(nodeDef.props);
-            this.propertiesScope.addListener("set", this.ScheduleSetProperties.bind(this));
+            this.propertiesScope.addListener("set", nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(nodeDef.attrs) {
             this.attributesScope = new Scope(nodeDef.attrs);
-            this.attributesScope.addListener("set", this.ScheduleSetAttributes.bind(this));
+            this.attributesScope.addListener("set", nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(nodeDef.on) {
             this.eventsScope = new Scope(nodeDef.on);
-            this.eventsScope.addListener("set", this.ScheduleSetEvents.bind(this));
+            this.eventsScope.addListener("set", nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }
     }

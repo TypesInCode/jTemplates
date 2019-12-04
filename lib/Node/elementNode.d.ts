@@ -6,6 +6,7 @@ export declare type ElementNodeEvents = {
     };
 };
 export interface ElementNodeFunctionParam<T> {
+    immediate?: boolean;
     props?: FunctionOr<{
         [name: string]: any;
     }>;
@@ -31,6 +32,7 @@ export declare type ElementNodeFunction<T> = {
     }): BoundNode;
 };
 export declare class ElementNode<T> extends BoundNode {
+    private bindImmediately;
     private childrenFunc;
     private keyFunc;
     private nodeRefMap;
@@ -45,6 +47,7 @@ export declare class ElementNode<T> extends BoundNode {
     Destroy(): void;
 }
 export declare namespace ElementNode {
+    var BindImmediately: boolean;
     function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children?: {
         (data?: T, i?: number): NodeRef | NodeRef[];
     }): ElementNode<any>;

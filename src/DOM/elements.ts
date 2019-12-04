@@ -42,6 +42,7 @@ export function source<T>(nodeDef: ElementNodeFunctionParam<T>) {
 }
 
 export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    nodeDef.immediate = true;
     return ElementNode.Create("input", null, nodeDef, null);
 }
 

@@ -5,7 +5,6 @@ export declare class NodeRef {
     private childNodes;
     private injector;
     protected readonly Node: any;
-    protected readonly ChildNodes: Set<NodeRef>;
     protected readonly Injector: Injector;
     constructor(node: any);
     AddChild(nodeRef: NodeRef): void;

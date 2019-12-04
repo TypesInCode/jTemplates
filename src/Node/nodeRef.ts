@@ -11,10 +11,6 @@ export class NodeRef {
         return this.node;
     }
 
-    protected get ChildNodes() { 
-        return this.childNodes;
-    }
-
     /* protected set Parent(val: NodeRef) {
         if(this.parent && this.parent !== val)
             this.parent.DetachChild(this);
