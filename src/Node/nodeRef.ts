@@ -7,16 +7,9 @@ export class NodeRef {
     private childNodes: Set<NodeRef>;
     private injector: Injector;
 
-    protected get Node() {
+    public get Node() {
         return this.node;
     }
-
-    /* protected set Parent(val: NodeRef) {
-        if(this.parent && this.parent !== val)
-            this.parent.DetachChild(this);
-        
-        this.parent = val;
-    } */
 
     protected get Injector() {
         return this.injector;
@@ -29,7 +22,6 @@ export class NodeRef {
     }
 
     public AddChild(nodeRef: NodeRef) {
-        // nodeRef.Parent = this;
         nodeRef.parent = this;
         this.childNodes.add(nodeRef);
         NodeConfig.addChild(this.Node, nodeRef.Node);
@@ -39,7 +31,6 @@ export class NodeRef {
         if(currentChild && !this.childNodes.has(currentChild))
             throw "currentChild is not valid";
         
-        // newChild.Parent = this;
         newChild.parent = this;
         this.childNodes.add(newChild);
         NodeConfig.addChildAfter(this.Node, currentChild && currentChild.Node, newChild.Node);
@@ -59,12 +50,10 @@ export class NodeRef {
     }
 
     public Destroy() {
-        // this.Detach();
         this.DestroyChildren();
     }
 
     protected DestroyChildren() {
         this.childNodes.forEach(node => node.Destroy());
-        // this.childNodes.clear();
     }
 }
