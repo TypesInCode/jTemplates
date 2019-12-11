@@ -3,9 +3,9 @@ import { StoreSync } from "./Store/storeSync";
 import { AbstractStore, StoreBase } from "./Store/store/storeBase";
 import { NodeRef } from "./Node/nodeRef";
 import { Component } from "./Node/component";
-import { Store, Scope, Inject, Destroy } from "./Utils/decorators";
+import { Store, Scope, Inject, Destroy, PreReq, PreReqTemplate } from "./Utils/decorators";
 
-export { Component, NodeRef, AbstractStore, StoreBase, StoreSync, StoreAsync, Store, Scope, Inject, Destroy };
+export { Component, NodeRef, AbstractStore, StoreBase, StoreSync, StoreAsync, Store, Scope, Inject, Destroy, PreReq, PreReqTemplate };
 
 
 /* import { div } from "./DOM/elements";
@@ -14,12 +14,24 @@ class Temp {
     public getVal() {
         return "temp function val";
     }
+
+    public Destroy() {
+
+    }
+}
+
+class Temp2 {
+    public notVal() {
+        return "temp";
+    }
+
+    public Destroy() { }
 }
 
 class ChildComp extends Component {
 
     @Inject(Temp)
-    private temp: Temp;
+    temp: Temp;
 
     public Template() {
         return div({ text: () => this.temp.getVal() })
@@ -29,7 +41,11 @@ class ChildComp extends Component {
 
 var childComp = Component.ToFunction("child-comp", null, ChildComp);
 
+@PreReqTemplate(() => [])
 class TestComp extends Component {
+
+    @PreReq()
+    prereq = { Init: Promise.resolve() };
 
     @Store()
     private state = { test: "start" };
@@ -37,9 +53,9 @@ class TestComp extends Component {
     @Store()
     private state2 = { temp: "end" };
 
-    @Inject(Temp)
+    @Inject(Temp2)
     @Destroy()
-    private temp = new Temp();
+    temp = new Temp2()
 
     @Scope()
     get Test() {

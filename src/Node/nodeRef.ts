@@ -44,6 +44,10 @@ export class NodeRef {
         }
     }
 
+    public Init() {
+
+    }
+
     public Detach() {
         if(this.parent)
             this.parent.DetachChild(this);

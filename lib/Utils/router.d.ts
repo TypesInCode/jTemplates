@@ -2,8 +2,10 @@ import { StoreBase } from "..";
 export declare abstract class Router<T extends {}> {
     private store;
     private routeScope;
+    private initPromise;
     protected readonly State: T;
     protected readonly ReplaceHistory: boolean;
+    readonly Init: Promise<void>;
     constructor(store: StoreBase<T>);
     protected abstract CreateRoutePart(): string;
     abstract GetRoutePart(route: string): string;

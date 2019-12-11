@@ -4,15 +4,11 @@ import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { ElementNode } from "./elementNode";
+import { PreReq, PreReqTemplate } from "../Utils/decorators";
 
 export type ComponentNodeEvents<E> = {
     [P in keyof E]: {(data?: E[P]): void};
 }
-
-/* export interface IComponentContext<D, T> {
-    scope: Scope<D>;
-    templates: T;
-} */
 
 export interface ComponentNodeFunctionParam<D, T, E> {
     immediate?: boolean;
@@ -26,35 +22,13 @@ export interface ComponentNodeFunctionParam<D, T, E> {
     templates?: T;
 }
 
-/* export interface ComponentNodeDefinition<D, T> extends NodeDefinition<D> {
-    templates?: T;
-    component: ComponentConstructor<D, T>;
-} */
-
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
-    /* private childrenFunc: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]};
-    private templates: T;
-    private dataScope: Scope<D>; */
     private component: Component<D, T, E>;
     private componentEvents: {[name: string]: {(...args: Array<any>): void}};
 
     constructor(nodeDef: NodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef);
-
-        /* this.childrenFunc = nodeDef.children || defaultChildren;
-        this.dataScope = new Scope(nodeDef.data || nodeDef.static || true);
-        this.templates = nodeDef.templates; */
-        // this.component = new nodeDef.component(nodeDef.data || nodeDef.static, nodeDef.templates, this, this.Injector);
         this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
-
-        if(ElementNode.BindImmediately || nodeDef.immediate) {
-            var staticBindingValue = ElementNode.BindImmediately;
-            ElementNode.BindImmediately = true;
-            this.SetChildren();
-            ElementNode.BindImmediately = staticBindingValue;
-        }
-        else
-            this.SetChildren();
     }
 
     public SetEvents() {
@@ -66,35 +40,57 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
         eventCallback && eventCallback(data);
     }
 
-    /* private setChildren = false;
-    public ScheduleSetChildren() {
-        if(this.setChildren)
-            return;
-
-        NodeConfig.scheduleUpdate(() => {
-            this.SetChildren();
-            this.setChildren = false;
-        });
-
-    } */
-
-    public SetChildren() {
-        // this.DestroyChildren();
-        // var nodes = this.childrenFunc({ scope: this.dataScope, templates: this.templates }) as NodeRef[];
-        var nodes = null as Array<NodeRef>;
-        Injector.Scope(this.Injector, () => 
-            nodes = this.component.Template() as Array<NodeRef>
-        );
-        if(!Array.isArray(nodes))
-            nodes = [nodes];
-
-        nodes.forEach(node => this.AddChild(node));
-        setTimeout(() => this.component.Bound(), 0);
+    public Init() {
+        super.Init();
+        this.SetChildren();
     }
 
     public Destroy() {
         super.Destroy();
         this.component.Destroy();
+    }
+
+    private SetChildren() {
+        if(PreReq.Has(this.component)) {
+            var preNodes = null as Array<NodeRef>;
+            Injector.Scope(this.Injector, () => 
+                preNodes = PreReqTemplate.Get(this.component)
+            );
+
+            preNodes.forEach(node => {
+                this.AddChild(node);
+            });
+
+            PreReq.All(this.component).then(() => {
+                NodeConfig.scheduleUpdate(() => {
+                    preNodes.forEach(node => {
+                        node.Detach();
+                        node.Destroy();
+                    });
+
+                    this.AddTemplate();
+                });
+            });
+        }
+        else
+            this.AddTemplate();
+    }
+
+    private AddTemplate() {
+        var nodes = null as Array<NodeRef>;
+        Injector.Scope(this.Injector, () => {
+            var parentVal = BoundNode.Immediate;
+            BoundNode.Immediate = this.Immediate;
+            nodes = this.component.Template() as Array<NodeRef>
+            BoundNode.Immediate = parentVal;
+        });
+        if(!Array.isArray(nodes))
+            nodes = [nodes];
+
+        nodes.forEach(node => {
+            this.AddChild(node);
+        });
+        setTimeout(() => this.component.Bound(), 0);
     }
 
 }
@@ -108,7 +104,7 @@ export namespace ComponentNode {
                 type: type,
                 namespace: namespace,
                 // text: nodeDef.text,
-                immediate: !!nodeDef.immediate,
+                immediate: nodeDef.immediate,
                 props: nodeDef.props,
                 attrs: nodeDef.attrs,
                 on: nodeDef.on,
@@ -119,7 +115,9 @@ export namespace ComponentNode {
                 component: constructor */
             }
 
-            return new ComponentNode<D, T, E>(def, constructor, templates);
+            var comp = new ComponentNode<D, T, E>(def, constructor, templates);
+            comp.Init();
+            return comp;
         }
     }
 

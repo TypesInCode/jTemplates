@@ -26,7 +26,9 @@ export interface NodeDefinition<T = any, E = any> {
 }
 export declare function defaultChildren(): Array<NodeRef>;
 export declare abstract class BoundNode extends NodeRef {
+    private nodeDef;
     private lastProperties;
+    private immediate;
     private setText;
     private setProperties;
     private setAttributes;
@@ -41,6 +43,7 @@ export declare abstract class BoundNode extends NodeRef {
     protected eventsScope: Scope<{
         [name: string]: (...args: Array<any>) => void;
     }>;
+    protected readonly Immediate: boolean;
     constructor(nodeDef: NodeDefinition);
     ScheduleSetText(): void;
     SetText(): void;
@@ -50,6 +53,10 @@ export declare abstract class BoundNode extends NodeRef {
     SetAttributes(): void;
     ScheduleSetEvents(): void;
     abstract SetEvents(): void;
+    Init(): void;
     Destroy(): void;
     private SetPropertiesRecursive;
+}
+export declare namespace BoundNode {
+    var Immediate: boolean;
 }

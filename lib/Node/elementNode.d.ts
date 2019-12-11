@@ -32,7 +32,6 @@ export declare type ElementNodeFunction<T> = {
     }): BoundNode;
 };
 export declare class ElementNode<T> extends BoundNode {
-    private bindImmediately;
     private childrenFunc;
     private keyFunc;
     private nodeRefMap;
@@ -44,10 +43,10 @@ export declare class ElementNode<T> extends BoundNode {
     ScheduleSetData(): void;
     SetData(): void;
     SetEvents(): void;
+    Init(): void;
     Destroy(): void;
 }
 export declare namespace ElementNode {
-    var BindImmediately: boolean;
     function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children?: {
         (data?: T, i?: number): NodeRef | NodeRef[];
     }): ElementNode<any>;

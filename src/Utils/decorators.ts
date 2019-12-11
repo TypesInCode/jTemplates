@@ -1,14 +1,15 @@
 import { StoreSync } from "../Store/storeSync";
-import { StoreBase as StoreClass } from "../Store/store/storeBase";
+import { StoreBase as StoreClass, StoreBase } from "../Store/store/storeBase";
 import { Scope as ScopeClass } from "../Store/scope/scope";
 import { Component } from "../Node/component";
-import { Injector as InjectorClass } from "./injector";
+import { ScopeBase } from "../Store/scope/scopeBase";
+import { NodeRef } from "..";
 
 export function Store(): any {
     return StoreDecorator;
 }
 
-function StoreDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> }, propertyKey: string) {
+function StoreDecorator<T extends Component<any, any, any> & Record<K, StoreBase<any>>, K extends string>(target: T, propertyKey: K) {
 
     var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
     return {
@@ -36,11 +37,11 @@ export function Scope() {
     return ScopeDecorator;
 }
 
-function ScopeDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> }, propertyKey: string, descriptor: PropertyDescriptor) {
+function ScopeDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     if(!(descriptor && descriptor.get))
         throw "Scope decorator requires a getter";
 
-    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+    var destroyDescriptor = DestroyDecorator(target as T & Record<K, ScopeBase<any>>, propertyKey, null);
     return {
         configurable: false,
         enumerable: true,
@@ -59,11 +60,11 @@ function ScopeDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> },
     } as PropertyDescriptor;
 }
 
-export function Inject<T>(type: { new (): T }) {
-    return InjectorDecorator.bind(null, type);
+export function Inject<I>(type: { new (): I }) {
+    return InjectorDecorator.bind(null, type) as <F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor) => any;
 }
 
-function InjectorDecorator<T>(type: { new (): T }, target: { Injector: InjectorClass }, propertyKey: string, descriptor?: PropertyDescriptor): any {
+function InjectorDecorator<I, F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(type: { new (): I }, target: T, propertyKey: K, descriptor?: PropertyDescriptor): any {
     var parentGet = descriptor && descriptor.get;
     var parentSet = descriptor && descriptor.set;
 
@@ -85,7 +86,7 @@ export function Destroy() {
     return DestroyDecorator;
 }
 
-function DestroyDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> }, propertyKey: string, descriptor?: PropertyDescriptor): any {
+function DestroyDecorator<T extends Component<any, any, any> & Record<K, { Destroy: {(): void} }>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor): any {
     var parentGet = descriptor && descriptor.get;
     var parentSet = descriptor && descriptor.set;
 
@@ -111,5 +112,50 @@ function DestroyDecorator (target: { Destroyables: Set<{ Destroy: {(): void} }> 
             val && thisObj.Destroyables.add(val);
         }
     } as PropertyDescriptor;
+}
+
+export function PreReqTemplate(template: {(): NodeRef | NodeRef[]}) {
+    return PreReqTemplateDecorator.bind(null, template) as <T extends Component<any, any, any>>(target: { new(...args: Array<any>): T }) => any;
+}
+
+export namespace PreReqTemplate {
+    export function Get(value: any): NodeRef[] {
+        var func = value && value.PreReqTemplateDecorator_Template;
+        var ret: NodeRef[] = func ? func() : [];
+        if(!Array.isArray(ret))
+            ret = [ret];
+
+        return ret;
+    }
+}
+
+function PreReqTemplateDecorator<T extends Component<any, any, any>>(template: {(): NodeRef | NodeRef[]}, target: { new(...args: Array<any>): T }) {
+    var proto = target.prototype as any;
+    proto.PreReqTemplateDecorator_Template = template;
+}
+
+export function PreReq() {
+    return PreReqDecorator;
+}
+
+export namespace PreReq {
+    function Get(value: any): Array<string> {
+        return value && value.PreReqDecorator_PreReqs || [];
+    }
+
+    export function All(value: any) {
+        var arr = Get(value).map((prop: string) => (value[prop] && value[prop].Init) as Promise<void> || Promise.resolve());
+        return Promise.all(arr);
+    }
+
+    export function Has(value: any) {
+        return Get(value).length > 0;
+    }
+}
+
+function PreReqDecorator<T extends Record<K, { Init: Promise<void> }>, K extends string>(target: T, propertyKey: K): any {
+    var proto = target as any;
+    proto.PreReqDecorator_PreReqs = proto.PreReqDecorator_PreReqs || [];
+    proto.PreReqDecorator_PreReqs.push(propertyKey);
 }
 

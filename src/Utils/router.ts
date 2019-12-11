@@ -5,6 +5,7 @@ import { StoreBase } from "..";
 export abstract class Router<T extends {}> {
 
     private routeScope: Scope<string>;
+    private initPromise: Promise<void>;
 
     protected get State() {
         return this.store.Root.Value;
@@ -14,12 +15,22 @@ export abstract class Router<T extends {}> {
         return false;
     }
 
+    public get Init() {
+        return this.initPromise;
+    }
+
     constructor(private store: StoreBase<T>) {
-        this.routeScope = new Scope(() => this.CreateRoutePart());
-        
-        Router.Register(this).then(() => {
-            this.routeScope.addListener("set", () => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
-        });
+        this.initPromise = new Promise(async (resolve, reject) => {
+            try{
+                this.routeScope = new Scope(() => this.CreateRoutePart());
+                await Router.Register(this);
+                this.routeScope.addListener("set", () => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
+                resolve();
+            }
+            catch(e) {
+                reject(e);
+            }
+        })
     }
 
     protected abstract CreateRoutePart(): string;
@@ -43,7 +54,7 @@ export abstract class Router<T extends {}> {
 
     public Destroy() {
         this.routeScope.Destroy();
-        this.store.Destroy();
+        // this.store.Destroy();
         Router.Destroy(this);
     }
 
@@ -98,7 +109,7 @@ export namespace Router {
         var index = routers.indexOf(router);
         if(index >= 0) {
             routers.splice(index, 1);
-            PushRoute();
+            ReplaceRoute();
         }
     }
 
@@ -121,7 +132,9 @@ export namespace Router {
             }
             
             var routePart = router.GetRoutePart(route);
-            router.Read(routePart);
+            if(routePart)
+                await router.Read(routePart);
+            
             routers.push(router);
             ReplaceRoute();
         }

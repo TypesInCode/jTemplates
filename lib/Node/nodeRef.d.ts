@@ -10,6 +10,7 @@ export declare class NodeRef {
     AddChild(nodeRef: NodeRef): void;
     AddChildAfter(currentChild: NodeRef, newChild: NodeRef): void;
     DetachChild(nodeRef: NodeRef): void;
+    Init(): void;
     Detach(): void;
     Destroy(): void;
     protected DestroyChildren(): void;

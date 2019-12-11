@@ -27,7 +27,6 @@ export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, chi
 
 // var bindImmediately = false;
 export class ElementNode<T> extends BoundNode {
-    private bindImmediately: boolean;
     private childrenFunc: {(data: T, index: number): NodeRef | NodeRef[]};
     private keyFunc: {(data: T): string};
     private nodeRefMap: Map<string, BoundNode[]>;
@@ -52,16 +51,6 @@ export class ElementNode<T> extends BoundNode {
             return new Map<string, T>(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any));
         });
         this.keyDataScope.addListener("set", () => this.ScheduleSetData());
-
-        if(nodeDef.immediate || ElementNode.BindImmediately) {
-            this.bindImmediately = true;
-            this.SetData();
-        }
-        else {
-            this.bindImmediately = false;
-            this.ScheduleSetData();
-        }
-
         /* if(nodeDef.immediate || BoundNode.Immediate)
             this.SetData();
         else
@@ -85,14 +74,15 @@ export class ElementNode<T> extends BoundNode {
         var previousNode: BoundNode = null;
         var index = 0;
         
-        var staticBindingValue = ElementNode.BindImmediately;
-        ElementNode.BindImmediately = this.bindImmediately;
         this.keyDataScope.Value.forEach((value: T, key: string) => {
             var nodes = this.nodeRefMap.get(key);
             if(!nodes) {
-                Injector.Scope(this.Injector, () => 
+                Injector.Scope(this.Injector, () => {
+                    var parentVal = BoundNode.Immediate;
+                    BoundNode.Immediate = this.Immediate;
                     nodes = this.childrenFunc(value, index) as BoundNode[]
-                );
+                    BoundNode.Immediate = parentVal;
+                });
                 if(!Array.isArray(nodes))
                     nodes = [nodes];
             }
@@ -106,7 +96,6 @@ export class ElementNode<T> extends BoundNode {
             this.nodeRefMap.delete(key);
             index++;
         });
-        ElementNode.BindImmediately = staticBindingValue;
 
         this.nodeRefMap.forEach(value => {
             value.forEach(v => {
@@ -129,6 +118,17 @@ export class ElementNode<T> extends BoundNode {
         this.lastEvents = events;
     }
 
+    public Init() {
+        super.Init();
+        
+        if(this.Immediate) {
+            this.SetData();
+        }
+        else {
+            this.ScheduleSetData();
+        }
+    }
+
     public Destroy() {
         super.Destroy();
         this.keyDataScope.Destroy();
@@ -138,14 +138,12 @@ export class ElementNode<T> extends BoundNode {
 }
 
 export namespace ElementNode {
-
-    export var BindImmediately = false;
     
     export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
         var def = {
             type: type,
             namespace: namespace,
-            immediate: !!nodeDef.immediate,
+            immediate: nodeDef.immediate,
             text: nodeDef.text,
             props: nodeDef.props,
             attrs: nodeDef.attrs,
@@ -156,7 +154,9 @@ export namespace ElementNode {
             children: children
         } as ElementNodeDefinition<any>;
 
-        return new ElementNode(def);
+        var elem = new ElementNode(def);
+        elem.Init();
+        return elem;
     }
 
     /* export function CreateFunction<T>(type: string, namespace: string): BoundElementNodeFunction<T> {

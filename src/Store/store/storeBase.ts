@@ -1,10 +1,12 @@
-import { AsyncActionCallback, AsyncFuncCallback, IStoreObject } from "./store.types";
+import { AsyncActionCallback, AsyncFuncCallback, ActionCallback, FuncCallback } from "./store.types";
 import { StoreManager } from "./storeManager";
 import { StoreReader } from "./storeReader";
 import { StoreWriter } from "./storeWriter";
 import { PromiseQueue } from "../../Promise/promiseQueue";
-import { StoreQuery } from "./storeQuery";
+import { StoreQueryAsync } from "./storeQueryAsync";
 import { Diff } from "../diff/diff.types";
+import { StoreQuery } from "./storeQuery";
+import { StoreQuerySync } from "./storeQuerySync";
 
 export class AbstractStore {
     public async Action(action: AsyncActionCallback<any>): Promise<void> { }
@@ -30,11 +32,11 @@ export class StoreBase<T> extends AbstractStore {
     private reader: StoreReader<T>;
     private writer: StoreWriter<T>;
     private queryCache: Map<string, StoreQuery<any, any>>;
+    private init: T;
     private promiseQueue: PromiseQueue<any>;
-    private init: any;
 
     public get Root(): StoreQuery<T, T> {
-        return this.Query("root", this.init, async (reader) => reader.Root);
+        return this.QuerySync("root", this.init, (reader) => reader.Root);
     }
 
     constructor(idFunction: (val: any) => any, init: T, diff: Diff) {
@@ -54,6 +56,10 @@ export class StoreBase<T> extends AbstractStore {
         await this.promiseQueue.Push((resolve) => {
             resolve(action(this.reader, this.writer));
         });
+    }
+
+    public ActionSync(action: ActionCallback<T>) {
+        action(this.reader);
     }
 
     public async Next(action?: () => void) {
@@ -103,11 +109,26 @@ export class StoreBase<T> extends AbstractStore {
         return new Scope<O>(() => callback(this.Root.Value));
     } */
 
+    public QuerySync<O>(id: string, defaultValue: O, queryFunc: FuncCallback<T, O>): StoreQuery<T, O> {
+        if(this.queryCache.has(id))
+            return this.queryCache.get(id);
+
+        var query = new StoreQuerySync<T, O>(this, defaultValue, queryFunc);
+
+        var destroy = () => {
+            this.queryCache.delete(id);
+            query.removeListener("destroy", destroy);
+        };
+        query.addListener("destroy", destroy);
+        this.queryCache.set(id, query);
+        return query;
+    }
+
     public Query<O>(id: string, defaultValue: any, queryFunc: AsyncFuncCallback<T, O>): StoreQuery<T, O> {
         if(this.queryCache.has(id))
             return this.queryCache.get(id);
 
-        var query = new StoreQuery<T, O>(this, defaultValue, queryFunc);
+        var query = new StoreQueryAsync<T, O>(this, defaultValue, queryFunc);
         /* var query = new StoreQuery<T, O>(this, defaultValue, async (reader, writer) => {
             return await this.promiseQueue.Push(resolve => {
                 resolve(queryFunc(reader, writer));

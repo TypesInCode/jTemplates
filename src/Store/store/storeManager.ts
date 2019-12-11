@@ -14,7 +14,7 @@ export class StoreManager<T> {
     constructor(idFunction: {(val: any): any}, diff: Diff) {
         this.idFunction = idFunction;
 
-        this.data = { root: null, id: {} };
+        this.data = { root: undefined, id: {} };
         this.tree = new Tree((path: string) => this.ResolvePropertyPath(path)); // this);
         this.diff = diff;
     }

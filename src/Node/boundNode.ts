@@ -26,7 +26,9 @@ export function defaultChildren(): Array<NodeRef> {
 }
 
 export abstract class BoundNode extends NodeRef {
+    private nodeDef: NodeDefinition;
     private lastProperties: any;
+    private immediate: boolean;
 
     private setText = false;
     private setProperties = false;
@@ -38,32 +40,14 @@ export abstract class BoundNode extends NodeRef {
     protected attributesScope: Scope<{[name: string]: string}>;
     protected eventsScope: Scope<{[name: string]: (...args: Array<any>) => void}>;
 
+    protected get Immediate() {
+        return this.immediate;
+    }
+
     constructor(nodeDef: NodeDefinition) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace));
-
-        if(nodeDef.text) {
-            this.textScope = new Scope(nodeDef.text);
-            this.textScope.addListener("set", nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
-            this.SetText();
-        }
-
-        if(nodeDef.props) {
-            this.propertiesScope = new Scope(nodeDef.props);
-            this.propertiesScope.addListener("set", nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
-            this.SetProperties();
-        }
-
-        if(nodeDef.attrs) {
-            this.attributesScope = new Scope(nodeDef.attrs);
-            this.attributesScope.addListener("set", nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
-            this.SetAttributes();
-        }
-
-        if(nodeDef.on) {
-            this.eventsScope = new Scope(nodeDef.on);
-            this.eventsScope.addListener("set", nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
-            this.SetEvents();
-        }
+        this.nodeDef = nodeDef;
+        this.immediate = nodeDef.immediate !== undefined ? nodeDef.immediate : BoundNode.Immediate;
     }
 
     public ScheduleSetText() {
@@ -131,6 +115,34 @@ export abstract class BoundNode extends NodeRef {
 
     public abstract SetEvents(): void;
 
+    public Init() {
+        super.Init();
+
+        if(this.nodeDef.text) {
+            this.textScope = new Scope(this.nodeDef.text);
+            this.textScope.addListener("set", this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
+            this.SetText();
+        }
+
+        if(this.nodeDef.props) {
+            this.propertiesScope = new Scope(this.nodeDef.props);
+            this.propertiesScope.addListener("set", this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
+            this.SetProperties();
+        }
+
+        if(this.nodeDef.attrs) {
+            this.attributesScope = new Scope(this.nodeDef.attrs);
+            this.attributesScope.addListener("set", this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
+            this.SetAttributes();
+        }
+
+        if(this.nodeDef.on) {
+            this.eventsScope = new Scope(this.nodeDef.on);
+            this.eventsScope.addListener("set", this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
+            this.SetEvents();
+        }
+    }
+
     public Destroy() {
         super.Destroy();
         this.attributesScope && this.attributesScope.Destroy();
@@ -160,4 +172,8 @@ export abstract class BoundNode extends NodeRef {
         }
     }
 
+}
+
+export namespace BoundNode {
+    export var Immediate = false;
 }

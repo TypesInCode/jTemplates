@@ -23,7 +23,6 @@ export declare class Component<D = void, T = void, E = void> {
     Bound(): void;
     Fire<P extends keyof E>(event: P, data?: E[P]): void;
     Destroy(): void;
-    protected Init(): void;
 }
 export declare namespace Component {
     function ToFunction<D = void, T = void, E = void>(type: any, namespace: any, constructor: ComponentConstructor<D, T, E>): (nodeDef: import("../../../../Development/jTemplates_git/src/Node/componentNode").ComponentNodeFunctionParam<D, T, E>, templates?: T) => ComponentNode<D, T, E>;
