@@ -7,11 +7,7 @@ export declare class Component<D = void, T = void, E = void> {
     private nodeRef;
     private injector;
     private scope;
-    private destroyables;
     readonly Injector: Injector;
-    readonly Destroyables: Set<{
-        Destroy: () => void;
-    }>;
     protected readonly Scope: Scope<D>;
     protected readonly Data: D;
     protected readonly NodeRef: ComponentNode<D, T, E>;

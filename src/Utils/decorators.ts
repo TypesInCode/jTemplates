@@ -11,22 +11,21 @@ export function Store(): any {
 
 function StoreDecorator<T extends Component<any, any, any> & Record<K, StoreBase<any>>, K extends string>(target: T, propertyKey: K) {
 
-    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+    DestroyDecorator(target, `StoreDecorator_${propertyKey}`);
     return {
         configurable: false,
         enumerable: true,
         get: function () {
-            var store = destroyDescriptor.get.apply(this) as StoreClass<any>;
-            if(store)
-                return store.Root.Value;
-
-            return null;
+            var store = this[`StoreDecorator_${propertyKey}`]; // destroyDescriptor.get.apply(this) as StoreClass<any>;
+            return store ? store.Root.Value : null;
         },
         set: function (val: any) {
             // var store = this[`StoreDecorator_${propertyKey}`] as StoreClass<any>;
-            var store = destroyDescriptor.get.apply(this) as StoreClass<any>;
+            // var store = destroyDescriptor.get.apply(this) as StoreClass<any>;
+            var store = this[`StoreDecorator_${propertyKey}`];
             if(!store)
-                destroyDescriptor.set.apply(this, [new StoreSync(val)]);
+                this[`StoreDecorator_${propertyKey}`] = new StoreSync(val);
+                //destroyDescriptor.set.apply(this, [new StoreSync(val)]);
             else
                 store.Merge(val);
         }
@@ -41,21 +40,19 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(ta
     if(!(descriptor && descriptor.get))
         throw "Scope decorator requires a getter";
 
-    var destroyDescriptor = DestroyDecorator(target as T & Record<K, ScopeBase<any>>, propertyKey, null);
+    if(descriptor && descriptor.set)
+        throw "Scope decorator does not support setters";
+
+    DestroyDecorator(target as T & Record<K, ScopeBase<any>>, `ScopeDecorator_${propertyKey}`);
     return {
         configurable: false,
         enumerable: true,
-        get: function() {            
-            var scope = destroyDescriptor.get.apply(this);
-            if(!scope) {
-                destroyDescriptor.set.apply(this, [new ScopeClass(descriptor.get.bind(this))]);
-                scope = destroyDescriptor.get.apply(this);
-            }
+        get: function() {
+            var scope = this[`ScopeDecorator_${propertyKey}`];
+            if(!scope)
+                scope = this[`ScopeDecorator_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
 
             return scope.Value;
-        },
-        set: function () {
-            throw "Scope decorator: setter not supported";
         }
     } as PropertyDescriptor;
 }
@@ -86,8 +83,24 @@ export function Destroy() {
     return DestroyDecorator;
 }
 
-function DestroyDecorator<T extends Component<any, any, any> & Record<K, { Destroy: {(): void} }>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor): any {
-    var parentGet = descriptor && descriptor.get;
+export namespace Destroy {
+    function Get(value: any): Array<string> {
+        return value && value.DestroyDecorator_Destroys || [];
+    }
+
+    export function All(value: any) {
+        var arr = Get(value);
+        arr.map(prop => value[prop] as { Destroy: {(): void} })
+            .filter(o => !!o)
+            .forEach(o => o.Destroy());
+    }
+}
+
+function DestroyDecorator<T extends Component<any, any, any> & Record<K, { Destroy: {(): void} }>, K extends string>(target: T, propertyKey: K): any { //, descriptor?: PropertyDescriptor): any {
+    var proto = target as any;
+    proto.DestroyDecorator_Destroys = proto.DestroyDecorator_Destroys || [];
+    proto.DestroyDecorator_Destroys.push(propertyKey);
+    /* var parentGet = descriptor && descriptor.get;
     var parentSet = descriptor && descriptor.set;
 
     return {
@@ -111,7 +124,7 @@ function DestroyDecorator<T extends Component<any, any, any> & Record<K, { Destr
             this[`DestroyDecorator_${propertyKey}`] = val;
             val && thisObj.Destroyables.add(val);
         }
-    } as PropertyDescriptor;
+    } as PropertyDescriptor; */
 }
 
 export function PreReqTemplate(template: {(): NodeRef | NodeRef[]}) {

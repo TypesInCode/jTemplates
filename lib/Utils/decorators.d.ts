@@ -7,11 +7,14 @@ export declare function Inject<I>(type: {
     new (): I;
 }): <F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor) => any;
 export declare function Destroy(): typeof DestroyDecorator;
-function DestroyDecorator<T extends Component<any, any, any> & Record<K, {
+export declare namespace Destroy {
+    function All(value: any): void;
+}
+declare function DestroyDecorator<T extends Component<any, any, any> & Record<K, {
     Destroy: {
         (): void;
     };
-}>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor): any;
+}>, K extends string>(target: T, propertyKey: K): any;
 export declare function PreReqTemplate(template: {
     (): NodeRef | NodeRef[];
 }): <T extends Component<any, any, any>>(target: new (...args: any[]) => T) => any;

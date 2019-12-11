@@ -2,17 +2,13 @@ import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
+import { Destroy } from "../Utils/decorators";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
-    private destroyables: Set<{ Destroy: {(): void}}>;
 
     public get Injector() {
         return this.injector;
-    }
-
-    public get Destroyables() {
-        return this.destroyables;
     }
 
     protected get Scope() {
@@ -33,7 +29,6 @@ export class Component<D = void, T = void, E = void> {
 
     constructor(data: {(): D} | D, private templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new Scope(data);
-        this.destroyables = new Set([this.scope]);
     }
 
     public Template(): NodeRef | NodeRef[] {
@@ -49,7 +44,8 @@ export class Component<D = void, T = void, E = void> {
     }
 
     public Destroy() {
-        this.Destroyables.forEach(d => d.Destroy());
+        // this.Destroyables.forEach(d => d.Destroy());
+        Destroy.All(this);
     }
 }
 
