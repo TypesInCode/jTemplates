@@ -1,10 +1,7 @@
 import Emitter from "../../Utils/emitter";
-declare class ScopeCollector {
-    private emitterStack;
-    Watch(callback: {
+export declare namespace ScopeCollector {
+    function Watch(action: {
         (): void;
     }): Set<Emitter>;
-    Register(emitter: Emitter): void;
+    function Register(emitter: Emitter): void;
 }
-export declare var scopeCollector: ScopeCollector;
-export {};

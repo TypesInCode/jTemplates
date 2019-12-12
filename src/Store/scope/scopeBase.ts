@@ -1,5 +1,5 @@
 import Emitter from "../../Utils/emitter";
-import { scopeCollector } from "./scopeCollector";
+import { ScopeCollector } from "./scopeCollector";
 
 export abstract class ScopeBase<T> extends Emitter {
     // private getFunction: {(): T};
@@ -16,7 +16,7 @@ export abstract class ScopeBase<T> extends Emitter {
         /* if(this.isStatic)
             return this.defaultValue; */
         
-        scopeCollector.Register(this);
+        ScopeCollector.Register(this);
         if(this.dirty)
             this.UpdateValueBase();
 

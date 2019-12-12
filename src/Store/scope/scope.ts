@@ -1,6 +1,6 @@
 import { ScopeBase } from "./scopeBase";
 import { Emitter } from "../../Utils/emitter";
-import { scopeCollector } from "./scopeCollector";
+import { ScopeCollector } from "./scopeCollector";
 
 export class Scope<T> extends ScopeBase<T> {
     private getFunction: {(): T};
@@ -21,7 +21,7 @@ export class Scope<T> extends ScopeBase<T> {
     
     protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
         var value = undefined;
-        var emitters = scopeCollector.Watch(() => {
+        var emitters = ScopeCollector.Watch(() => {
             if(this.getFunction)
                 value = this.getFunction();
         });

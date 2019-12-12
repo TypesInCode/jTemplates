@@ -1,6 +1,6 @@
 import Emitter from "../../Utils/emitter";
 
-class ScopeCollector {
+/* class ScopeCollector2 {
     private emitterStack: Array<Set<Emitter>> = [];
 
     public Watch(callback: {(): void}): Set<Emitter> {
@@ -19,4 +19,25 @@ class ScopeCollector {
     }
 }
 
-export var scopeCollector = new ScopeCollector();
+export var ScopeCollector = new ScopeCollector2(); */
+
+export namespace ScopeCollector {
+    var currentSet: Set<Emitter> = null;
+
+    export function Watch(action: {(): void}) {
+        var parentSet = currentSet;
+        currentSet = new Set();
+        action();
+        var lastSet = currentSet;
+        currentSet = parentSet;
+        return lastSet;
+    }
+
+    export function Register(emitter: Emitter) {
+        if(!currentSet)
+            return;
+
+        if(!currentSet.has(emitter))
+            currentSet.add(emitter);
+    }
+}

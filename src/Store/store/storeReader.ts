@@ -1,7 +1,7 @@
 import { StoreManager } from './storeManager';
 import { Emitter } from '../../Utils/emitter';
 import { CreateProxy } from '../utils';
-import { scopeCollector } from '../scope/scopeCollector';
+import { ScopeCollector } from '../scope/scopeCollector';
 // import { StoreWriter } from './storeWriter';
 
 
@@ -50,7 +50,7 @@ export class StoreReader<T> {
         if(this.watching && !this.emitterSet.has(emitter))
             this.emitterSet.add(emitter);
 
-        scopeCollector.Register(emitter);
+        ScopeCollector.Register(emitter);
     }
 
     public Destroy() {

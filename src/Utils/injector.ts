@@ -33,7 +33,7 @@ export class Injector {
 }
 
 export namespace Injector {
-    var currentScopes = new Array<Injector>();
+    /* var currentScopes = new Array<Injector>();
 
     export function Current() {
         return currentScopes[currentScopes.length - 1];
@@ -43,5 +43,17 @@ export namespace Injector {
         currentScopes.push(injector);
         action();
         currentScopes.pop();
+    } */
+
+    var scope: Injector = null;
+    export function Current() {
+        return scope;
+    }
+
+    export function Scope(injector: Injector, action: {(): void}) {
+        var parent = Current();
+        scope = injector;
+        action();
+        scope = parent;
     }
 }
