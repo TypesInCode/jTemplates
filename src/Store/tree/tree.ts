@@ -4,7 +4,7 @@ export class Tree {
     private root: TreeNode;
     private id: TreeNode;
 
-    constructor(resolvePath: { (path: string): any }) { // manager: StoreManager<any>) {
+    constructor(resolvePath: { (path: string): any }) {
         this.root = new TreeNode(this, null, "root", resolvePath);
         this.id = new TreeNode(this, null, "id", resolvePath);
     }

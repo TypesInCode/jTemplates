@@ -1,33 +1,41 @@
 import Emitter from "../../Utils/emitter";
 import { Tree } from "./tree";
 import { TreeNodeRefId } from "./treeNodeRefId";
+import { ScopeCollector } from "../scope/scopeCollector";
+import { IProxy, IProxyType } from "./proxy";
 
 export class TreeNode {
-    private destroyed: boolean;
     private tree: Tree;
     private parentNode: TreeNode;
     private children: Map<string, TreeNode>;
     private emitter: Emitter;
-    private parentKey: string;
     private property: string;
     private resolvePath: { (path: string): any };
-    // private self: TreeNode;
-    private nodeCache: any;
+    private proxy: IProxy;
+    private value: any;
+    private proxyArray: Array<any>;
 
-    get NodeCache() {
-        return this.nodeCache;
+    get Proxy(): IProxy {
+        ScopeCollector.Register(this.emitter);
+        if(this.Self !== this)
+            return this.Self.Proxy;
+
+        if(this.proxy !== undefined)
+            return this.proxy;
+
+        var value = this.Value;
+        var proxyType = IProxy.ValueType(value);
+        if(proxyType === IProxyType.Value)
+            this.proxy = value;
+        else
+            this.proxy = IProxy.Create(this, proxyType);
+        
+        return this.proxy;
     }
 
-    set NodeCache(val: any) {
-        this.nodeCache = val;
-    }
-
-    get Destroyed() {
-        return this.destroyed;
-    }
-
-    get Parent() {
-        return this.parentNode;
+    get ProxyArray(): Array<any> {
+        this.UpdateProxyArray(this.Value);
+        return this.proxyArray;
     }
 
     get Children() {
@@ -38,41 +46,22 @@ export class TreeNode {
         return (this.parentNode ? this.parentNode.Path + "." : "") + this.property;
     }
 
-    /* get Value(): any {
-        if(this.destroyed)
-            return undefined;
-
-        var value = this.resolvePath(this.Path, false);
-        var refNode = null;
-        
-        var id = TreeNodeRefId.GetIdFrom(value);
-        if(id !== undefined)
-            refNode = this.tree.GetIdNode(id);
-
-        return refNode ? refNode.Value : value;
-    } */
-
-    get Value(): any {
-        if(this.destroyed)
-            return undefined;
-
+    get StoreValue(): any {
         return this.resolvePath(this.Path);
     }
 
+    get Value(): any {
+        if(this.value === undefined)
+            this.value = this.StoreValue;
+
+        return this.value;
+    }
+
     get Self(): TreeNode {
-        if(this.destroyed)
-            return this;
-
-        // if(this.self)
-        //    return this.self;
-
         var value = this.Value;
-        var id = TreeNodeRefId.GetIdFrom(value);
-        if(id !== undefined) {
-            /* this.self = this.tree.GetIdNode(id);
-            return this.self; */
+        var id = TreeNodeRefId.GetIdFrom(value as any);
+        if(id !== undefined)
             return this.tree.GetIdNode(id);
-        }
 
         return this;
     }
@@ -97,67 +86,70 @@ export class TreeNode {
         this.property = val;
     }
 
-    get ParentKey() {
-        return this.parentKey;
-    }
-
-    set ParentKey(val: string) {
-        this.parentKey = val;
-    }
-
     constructor(tree: Tree, parentNode: TreeNode, property: string, resolvePath: { (path: string): any }) {
         this.tree = tree;
+        this.proxy = undefined;
+        this.value = undefined;
         this.parentNode = parentNode;
         this.Property = property;
         this.resolvePath = resolvePath;
-        this.destroyed = false;
         this.children = new Map();
         this.emitter = new Emitter();
         this.emitter.addListener("set", () => {
-            this.nodeCache = null;
-            // this.self = null;
+            this.value = undefined;
+            this.proxy = undefined;
+            this.parentNode && this.parentNode.UpdateCachedArray(this.property, this.Proxy);
         });
-        // this.UpdateParentKey();
     }
 
-    public OverwriteChildren(children: [string, TreeNode][]) {
-        this.children = new Map(children);
+    public UpdateCachedArray(index: string, value: any) {
+        if(this.proxyArray)
+            this.proxyArray[parseInt(index)] = value;
     }
 
-    /* public UpdateParentKey() {
-        if(this.parentKey === this.property || !this.parentNode)
-            return;
-
-        this.parentKey && this.parentNode.Children.delete(this.parentKey);
-        this.parentNode.Children.set(this.property, this);;
-        this.parentKey = this.property;
-    } */
+    public ClearCachedArray() {
+        this.proxyArray = null;
+    }
 
     public EnsureChild(prop: string) {
-        if(this.destroyed)
+        if(!this.children)
             return null;
         
-        var child: TreeNode = this.Children.get(prop);
+        var child: TreeNode = this.children.get(prop);
         if(!child) {
-            child = new TreeNode(this.tree, this, prop, this.resolvePath); // this.storeManager);
-            this.Children.set(prop, child);
+            child = new TreeNode(this.tree, this, prop, this.resolvePath);
+            this.children.set(prop, child);
         }
 
         return child;
     }
 
-    public Destroy() {
-        if(this.destroyed)
-            return;
-        
+    public Destroy() {        
         this.parentNode && this.parentNode.Children.delete(this.property);
         this.parentNode = null;
 
-        this.children.forEach(val => val.Destroy());
-        this.destroyed = true;
-
-        this.emitter.emit("destroy", this.emitter);
+        var children = this.children;
+        this.children = new Map();
+        children.forEach(val => val.Destroy());
         this.emitter.removeAllListeners();
+    }
+
+    private UpdateProxyArray(value: any) {
+        if(Array.isArray(value)) {
+            var proxyArrayLength = this.proxyArray ? this.proxyArray.length : 0;
+            this.proxyArray = this.proxyArray || new Array(value.length);
+            if(value.length > proxyArrayLength) {
+                for(var x=proxyArrayLength; x < value.length; x++) {
+                    var child = this.EnsureChild(x.toString());
+                    this.proxyArray[x] = child.Proxy;
+                }
+            }
+            else if(value.length < this.proxyArray.length) {
+                this.proxyArray.splice(value.length);
+            }
+        }
+        else
+            this.proxyArray = null;
     }
 
 }

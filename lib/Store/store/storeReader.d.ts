@@ -9,6 +9,5 @@ export declare class StoreReader<T> {
     Watching: boolean;
     constructor(store: StoreManager<T>);
     Get<O>(id: string): O;
-    Register(emitter: Emitter): void;
     Destroy(): void;
 }

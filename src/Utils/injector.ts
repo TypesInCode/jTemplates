@@ -13,12 +13,6 @@ export class Injector {
             return this.parent && this.parent.Get(type);
         
         var ret = this.typeMap.get(type);
-        /* if(!ret) {
-            this.typeMap.forEach((value, key) => {
-                if(value instanceof type)
-                    ret = value;
-            });
-        } */
 
         if(!ret)
             ret = this.parent && this.parent.Get(type);
@@ -33,18 +27,6 @@ export class Injector {
 }
 
 export namespace Injector {
-    /* var currentScopes = new Array<Injector>();
-
-    export function Current() {
-        return currentScopes[currentScopes.length - 1];
-    }
-
-    export function Scope(injector: Injector, action: {(): void}) {
-        currentScopes.push(injector);
-        action();
-        currentScopes.pop();
-    } */
-
     var scope: Injector = null;
     export function Current() {
         return scope;

@@ -54,7 +54,6 @@ export abstract class Router<T extends {}> {
 
     public Destroy() {
         this.routeScope.Destroy();
-        // this.store.Destroy();
         Router.Destroy(this);
     }
 
@@ -70,7 +69,6 @@ export namespace Router {
     export function PushRoute() {
         if(updateScheduled)
             return;
-        // do history API calls
 
         updateScheduled = true;
         setTimeout(() => {
@@ -113,18 +111,9 @@ export namespace Router {
         }
     }
 
-    /* async function ReadRoute() {
-        var route = wndw.location.pathname;
-        for(var x=0; x<routers.length; x++) {
-            route = await routers[x].ReadRoute(route.replace(leadingSlash, ""));
-        }
-    } */
-
     export async function Register(router: Router<any>) {
         var index = routers.indexOf(router);
         if(index < 0) {
-            /* routers.push(router);
-            await ReadRoute(); */
             var route = wndw.location.pathname.replace(leadingSlash, "");
             for(var x=0; x<routers.length; x++) {
                 route = route.replace(routers[x].GetRoutePart(route), "");

@@ -55,28 +55,46 @@ var jTemplate =
 	var __metadata = (this && this.__metadata) || function (k, v) {
 	    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 	};
+	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const storeAsync_1 = __webpack_require__(1);
 	exports.StoreAsync = storeAsync_1.StoreAsync;
-	const storeSync_1 = __webpack_require__(21);
+	const storeSync_1 = __webpack_require__(19);
 	exports.StoreSync = storeSync_1.StoreSync;
 	const storeBase_1 = __webpack_require__(2);
 	exports.AbstractStore = storeBase_1.AbstractStore;
 	exports.StoreBase = storeBase_1.StoreBase;
-	const nodeRef_1 = __webpack_require__(23);
+	const nodeRef_1 = __webpack_require__(21);
 	exports.NodeRef = nodeRef_1.NodeRef;
-	const component_1 = __webpack_require__(28);
+	const component_1 = __webpack_require__(26);
 	exports.Component = component_1.Component;
-	const decorators_1 = __webpack_require__(31);
+	const decorators_1 = __webpack_require__(29);
 	exports.Store = decorators_1.Store;
 	exports.Scope = decorators_1.Scope;
 	exports.Inject = decorators_1.Inject;
 	exports.Destroy = decorators_1.Destroy;
-	const elements_1 = __webpack_require__(32);
+	exports.PreReq = decorators_1.PreReq;
+	exports.PreReqTemplate = decorators_1.PreReqTemplate;
+	const elements_1 = __webpack_require__(30);
 	class Temp {
 	    getVal() {
 	        return "temp function val";
 	    }
+	    Destroy() {
+	    }
+	}
+	class Temp2 {
+	    notVal() {
+	        return "temp";
+	    }
+	    Destroy() { }
 	}
 	class ChildComp extends component_1.Component {
 	    Template() {
@@ -88,23 +106,39 @@ var jTemplate =
 	    __metadata("design:type", Temp)
 	], ChildComp.prototype, "temp", void 0);
 	var childComp = component_1.Component.ToFunction("child-comp", null, ChildComp);
-	class TestComp extends component_1.Component {
+	let TestComp = class TestComp extends component_1.Component {
 	    constructor() {
 	        super(...arguments);
-	        this.state = { test: "start" };
+	        this.prereq = { Init: Promise.resolve() };
+	        this.state = { test: "start", array: [1, 2, 3, 4] };
 	        this.state2 = { temp: "end" };
+	        this.fullStore = new storeSync_1.StoreSync({ data: [{ _id: 1, val: 'any' }, { _id: 2, val: 'second' }, { _id: 3, val: 'third' }] });
 	        this.temp = new Temp();
 	    }
 	    get Test() {
 	        return `${this.state.test} ${this.state2.temp}`;
 	    }
+	    get Array() {
+	        return this.state.array.map((val) => val * 10);
+	    }
 	    Template() {
 	        return elements_1.div({}, () => [
-	            elements_1.div({ text: () => this.Test, on: { click: () => this.state = { test: "changed to this" } } }),
-	            childComp({})
+	            elements_1.div({ text: () => this.Test, on: { click: () => this.state = { test: "changed to this", array: [1, 2, 3, 4, 5] } } }),
+	            childComp({}),
+	            elements_1.div({ key: (val) => val._id, data: () => this.fullStore.Root.Value.data }, (val) => elements_1.div({ text: () => val.val, on: { click: () => __awaiter(this, void 0, void 0, function* () {
+	                        yield this.fullStore.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
+	                            var ind = reader.Root.data.findIndex(v => v._id === val._id);
+	                            writer.Splice(reader.Root.data, ind, 1);
+	                        }));
+	                    })
+	                } }))
 	        ]);
 	    }
-	}
+	};
+	__decorate([
+	    decorators_1.PreReq(),
+	    __metadata("design:type", Object)
+	], TestComp.prototype, "prereq", void 0);
 	__decorate([
 	    decorators_1.Store(),
 	    __metadata("design:type", Object)
@@ -123,6 +157,14 @@ var jTemplate =
 	    __metadata("design:type", Object),
 	    __metadata("design:paramtypes", [])
 	], TestComp.prototype, "Test", null);
+	__decorate([
+	    decorators_1.Scope(),
+	    __metadata("design:type", Object),
+	    __metadata("design:paramtypes", [])
+	], TestComp.prototype, "Array", null);
+	TestComp = __decorate([
+	    decorators_1.PreReqTemplate(() => [])
+	], TestComp);
 	var testComp = component_1.Component.ToFunction("test-comp", null, TestComp);
 	var node = testComp({});
 	component_1.Component.Attach(document.getElementById("container"), node);
@@ -135,7 +177,7 @@ var jTemplate =
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const storeBase_1 = __webpack_require__(2);
-	const diffAsync_1 = __webpack_require__(17);
+	const diffAsync_1 = __webpack_require__(15);
 	class StoreAsync extends storeBase_1.StoreBase {
 	    constructor(init, idFunction) {
 	        super(idFunction, init, new diffAsync_1.DiffAsync());
@@ -159,11 +201,12 @@ var jTemplate =
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const storeManager_1 = __webpack_require__(3);
-	const storeReader_1 = __webpack_require__(9);
+	const storeReader_1 = __webpack_require__(10);
 	const storeWriter_1 = __webpack_require__(11);
 	const promiseQueue_1 = __webpack_require__(12);
-	const storeQuery_1 = __webpack_require__(14);
+	const scope_1 = __webpack_require__(14);
 	class AbstractStore {
+	    ActionSync(action) { }
 	    Action(action) {
 	        return __awaiter(this, void 0, void 0, function* () { });
 	    }
@@ -179,26 +222,28 @@ var jTemplate =
 	    Get(id) {
 	        return __awaiter(this, void 0, void 0, function* () { });
 	    }
-	    Query(id, defaultValue, queryFunc) {
+	    Query(queryFunc) {
 	        return null;
 	    }
 	}
 	exports.AbstractStore = AbstractStore;
-	class StoreBase extends AbstractStore {
+	class StoreBase {
 	    constructor(idFunction, init, diff) {
-	        super();
 	        this.manager = new storeManager_1.StoreManager(idFunction, diff);
 	        this.reader = new storeReader_1.StoreReader(this.manager);
 	        this.writer = new storeWriter_1.StoreWriter(this.manager);
 	        this.promiseQueue = new promiseQueue_1.PromiseQueue();
-	        this.queryCache = new Map();
-	        this.init = init;
 	        this.Action(() => __awaiter(this, void 0, void 0, function* () {
 	            yield this.manager.WritePath("root", init);
 	        }));
+	        this.rootScope = new scope_1.Scope(() => {
+	            var value = null;
+	            this.ActionSync(reader => value = reader.Root);
+	            return value || init;
+	        });
 	    }
 	    get Root() {
-	        return this.Query("root", this.init, (reader) => __awaiter(this, void 0, void 0, function* () { return reader.Root; }));
+	        return this.rootScope;
 	    }
 	    Action(action) {
 	        return __awaiter(this, void 0, void 0, function* () {
@@ -207,16 +252,19 @@ var jTemplate =
 	            });
 	        });
 	    }
+	    ActionSync(action) {
+	        action(this.reader);
+	    }
 	    Next(action) {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            yield this.Action(() => __awaiter(this, void 0, void 0, function* () { }));
 	            action && action();
 	        });
 	    }
-	    Update(updateOrCallback) {
+	    Update(value) {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            yield this.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
-	                yield writer.Update(reader.Root, updateOrCallback);
+	                yield writer.Update(reader.Root, value);
 	            }));
 	        });
 	    }
@@ -246,21 +294,15 @@ var jTemplate =
 	            }));
 	        });
 	    }
-	    Query(id, defaultValue, queryFunc) {
-	        if (this.queryCache.has(id))
-	            return this.queryCache.get(id);
-	        var query = new storeQuery_1.StoreQuery(this, defaultValue, queryFunc);
-	        var destroy = () => {
-	            this.queryCache.delete(id);
-	            query.removeListener("destroy", destroy);
-	        };
-	        query.addListener("destroy", destroy);
-	        this.queryCache.set(id, query);
-	        return query;
+	    Query(queryFunc) {
+	        return new scope_1.Scope(() => {
+	            var value = null;
+	            this.ActionSync(reader => value = queryFunc(reader));
+	            return value;
+	        });
 	    }
 	    Destroy() {
-	        this.queryCache.forEach(q => q.Destroy());
-	        this.queryCache.clear();
+	        this.rootScope.Destroy();
 	        this.manager.Destroy();
 	    }
 	}
@@ -283,8 +325,8 @@ var jTemplate =
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const tree_1 = __webpack_require__(4);
 	const treeNode_1 = __webpack_require__(5);
-	const utils_1 = __webpack_require__(8);
 	const treeNodeRefId_1 = __webpack_require__(7);
+	const proxy_1 = __webpack_require__(9);
 	class StoreManager {
 	    constructor(idFunction, diff) {
 	        this.idFunction = idFunction;
@@ -312,21 +354,44 @@ var jTemplate =
 	            if (!id)
 	                throw "Written value must have an id";
 	            var path = ["id", id].join(".");
+	            if (this.ResolvePropertyPath(path) === undefined)
+	                this.AssignPropertyPath(null, path);
 	            yield this.WritePath(path, value);
 	        });
 	    }
-	    WritePath(path, updateCallback) {
+	    WritePaths(keyValues) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            var value = this.ResolveUpdateCallback(path, updateCallback);
-	            var breakUpMap = new Map();
-	            var brokenValue = this.BreakUpValue(path, value, breakUpMap);
-	            var batch = [{ path: path, newValue: brokenValue, oldValue: this.ResolvePropertyPath(path) }];
+	            var batch = new Array();
+	            for (var x = 0; x < keyValues.length; x++) {
+	                var path = keyValues[x][0];
+	                var value = keyValues[x][1];
+	                var breakUpMap = this.BreakUpValue(path, value);
+	                breakUpMap.forEach((value, key) => {
+	                    batch.push({
+	                        path: key,
+	                        newValue: value,
+	                        oldValue: this.ResolvePropertyPath(key)
+	                    });
+	                });
+	            }
+	            var diff = yield this.diff.DiffBatch(batch);
+	            for (var x = 0; x < batch.length; x++)
+	                this.AssignPropertyPath(batch[x].newValue, batch[x].path);
+	            this.ProcessDiff(diff);
+	        });
+	    }
+	    WritePath(path, value) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var breakUpMap = this.BreakUpValue(path, value);
+	            var batch = new Array(breakUpMap.size);
+	            var index = 0;
 	            breakUpMap.forEach((value, key) => {
-	                batch.push({
+	                batch[index] = {
 	                    path: key,
 	                    newValue: value,
 	                    oldValue: this.ResolvePropertyPath(key)
-	                });
+	                };
+	                index++;
 	            });
 	            var diff = yield this.diff.DiffBatch(batch);
 	            for (var x = 0; x < batch.length; x++)
@@ -347,24 +412,33 @@ var jTemplate =
 	        this.tree.Destroy();
 	        this.diff.Destroy();
 	    }
-	    BreakUpValue(path, value, map) {
+	    BreakUpValue(path, parent, key, map) {
+	        var value = key ? parent[key] : parent;
+	        if (!map) {
+	            map = new Map();
+	            map.set(path, value);
+	        }
 	        if (value && value.toJSON && typeof value.toJSON === 'function')
 	            value = value.toJSON();
-	        if (utils_1.IsValue(value)) {
-	            return value;
+	        if (proxy_1.IProxy.ValueType(value) === proxy_1.IProxyType.Value) {
+	            return map;
 	        }
 	        var id = this.idFunction && this.idFunction(value);
 	        var idPath = ["id", id].join(".");
-	        if ((id || id === 0) && path !== idPath && !map.has(idPath)) {
+	        if ((id || id === 0) && path !== idPath) {
+	            var treeNodeRef = treeNodeRefId_1.TreeNodeRefId.GetString(id);
+	            if (key)
+	                parent[key] = treeNodeRef;
 	            map.set(idPath, value);
-	            this.BreakUpValue(idPath, value, map);
-	            return treeNodeRefId_1.TreeNodeRefId.GetString(id);
+	            this.BreakUpValue(idPath, value, null, map);
 	        }
-	        for (var key in value) {
-	            var childPath = [path, key].join(".");
-	            value[key] = this.BreakUpValue(childPath, value[key], map);
+	        else {
+	            for (var key in value) {
+	                var childPath = [path, key].join(".");
+	                this.BreakUpValue(childPath, value, key, map);
+	            }
 	        }
-	        return value;
+	        return map;
 	    }
 	    AssignPropertyPath(value, path) {
 	        var parts = path.split(".");
@@ -372,15 +446,6 @@ var jTemplate =
 	        var parentParts = parts.slice(0, parts.length - 1);
 	        var parentObj = this.ResolvePropertyPath(parentParts.join("."));
 	        parentObj[prop] = value;
-	    }
-	    ResolveUpdateCallback(path, updateCallback) {
-	        if (typeof updateCallback === 'function') {
-	            var node = this.tree.GetNode(path);
-	            var localValue = utils_1.CreateCopy(this.ResolvePropertyPath(node.Self.Path));
-	            updateCallback(localValue);
-	            return localValue;
-	        }
-	        return updateCallback;
 	    }
 	    ProcessDiff(data) {
 	        var emit = new Set();
@@ -441,18 +506,26 @@ var jTemplate =
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const emitter_1 = __webpack_require__(6);
 	const treeNodeRefId_1 = __webpack_require__(7);
+	const scopeCollector_1 = __webpack_require__(8);
+	const proxy_1 = __webpack_require__(9);
 	class TreeNode {
-	    get NodeCache() {
-	        return this.nodeCache;
+	    get Proxy() {
+	        scopeCollector_1.ScopeCollector.Register(this.emitter);
+	        if (this.Self !== this)
+	            return this.Self.Proxy;
+	        if (this.proxy !== undefined)
+	            return this.proxy;
+	        var value = this.Value;
+	        var proxyType = proxy_1.IProxy.ValueType(value);
+	        if (proxyType === proxy_1.IProxyType.Value)
+	            this.proxy = value;
+	        else
+	            this.proxy = proxy_1.IProxy.Create(this, proxyType);
+	        return this.proxy;
 	    }
-	    set NodeCache(val) {
-	        this.nodeCache = val;
-	    }
-	    get Destroyed() {
-	        return this.destroyed;
-	    }
-	    get Parent() {
-	        return this.parentNode;
+	    get ProxyArray() {
+	        this.UpdateProxyArray(this.Value);
+	        return this.proxyArray;
 	    }
 	    get Children() {
 	        return this.children;
@@ -461,18 +534,15 @@ var jTemplate =
 	        return (this.parentNode ? this.parentNode.Path + "." : "") + this.property;
 	    }
 	    get Value() {
-	        if (this.destroyed)
-	            return undefined;
-	        return this.resolvePath(this.Path);
+	        if (this.value === undefined)
+	            this.value = this.resolvePath(this.Path);
+	        return this.value;
 	    }
 	    get Self() {
-	        if (this.destroyed)
-	            return this;
 	        var value = this.Value;
 	        var id = treeNodeRefId_1.TreeNodeRefId.GetIdFrom(value);
-	        if (id !== undefined) {
+	        if (id !== undefined)
 	            return this.tree.GetIdNode(id);
-	        }
 	        return this;
 	    }
 	    get Emitter() {
@@ -490,46 +560,62 @@ var jTemplate =
 	        }
 	        this.property = val;
 	    }
-	    get ParentKey() {
-	        return this.parentKey;
-	    }
-	    set ParentKey(val) {
-	        this.parentKey = val;
-	    }
 	    constructor(tree, parentNode, property, resolvePath) {
 	        this.tree = tree;
+	        this.proxy = undefined;
+	        this.value = undefined;
 	        this.parentNode = parentNode;
 	        this.Property = property;
 	        this.resolvePath = resolvePath;
-	        this.destroyed = false;
 	        this.children = new Map();
 	        this.emitter = new emitter_1.default();
 	        this.emitter.addListener("set", () => {
-	            this.nodeCache = null;
+	            this.value = undefined;
+	            var value = this.Self.Value;
+	            var valueType = proxy_1.IProxy.ValueType(value);
+	            if (valueType !== proxy_1.IProxy.Type(this.Proxy) || valueType === proxy_1.IProxyType.Value) {
+	                this.proxy = undefined;
+	                this.parentNode && this.parentNode.UpdateCachedArray(this.property, this.Proxy);
+	            }
 	        });
 	    }
-	    OverwriteChildren(children) {
-	        this.children = new Map(children);
+	    UpdateCachedArray(index, value) {
+	        if (this.proxyArray)
+	            this.proxyArray[parseInt(index)] = value;
+	    }
+	    ClearCachedArray() {
+	        this.proxyArray = null;
 	    }
 	    EnsureChild(prop) {
-	        if (this.destroyed)
+	        if (!this.children)
 	            return null;
-	        var child = this.Children.get(prop);
+	        var child = this.children.get(prop);
 	        if (!child) {
 	            child = new TreeNode(this.tree, this, prop, this.resolvePath);
-	            this.Children.set(prop, child);
+	            this.children.set(prop, child);
 	        }
 	        return child;
 	    }
 	    Destroy() {
-	        if (this.destroyed)
-	            return;
-	        this.parentNode && this.parentNode.Children.delete(this.property);
-	        this.parentNode = null;
 	        this.children.forEach(val => val.Destroy());
-	        this.destroyed = true;
-	        this.emitter.emit("destroy", this.emitter);
 	        this.emitter.removeAllListeners();
+	    }
+	    UpdateProxyArray(value) {
+	        if (Array.isArray(value)) {
+	            var proxyArrayLength = this.proxyArray ? this.proxyArray.length : 0;
+	            this.proxyArray = this.proxyArray || new Array(value.length);
+	            if (value.length > proxyArrayLength) {
+	                for (var x = proxyArrayLength; x < value.length; x++) {
+	                    var child = this.EnsureChild(x.toString());
+	                    this.proxyArray[x] = child.Proxy;
+	                }
+	            }
+	            else if (value.length < this.proxyArray.length) {
+	                this.proxyArray.splice(value.length);
+	            }
+	        }
+	        else
+	            this.proxyArray = null;
 	    }
 	}
 	exports.TreeNode = TreeNode;
@@ -602,151 +688,146 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	function IsValue(value) {
-	    if (!value)
-	        return true;
-	    return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor));
-	}
-	exports.IsValue = IsValue;
-	function CreateProxy(node, reader) {
-	    reader && reader.Register(node.Emitter);
-	    var self = node.Self;
-	    if (node !== self)
-	        reader && reader.Register(node.Self.Emitter);
-	    var value = self.Value;
-	    if (IsValue(value))
-	        return value;
-	    return CreateProxyObject(node, reader, value);
-	}
-	exports.CreateProxy = CreateProxy;
-	function CreateProxyObject(node, reader, value) {
-	    var ret = null;
-	    var clearTimeout = null;
-	    if (Array.isArray(value)) {
-	        ret = new Proxy([], {
-	            get: (obj, prop) => {
-	                if (node.Destroyed)
-	                    return undefined;
-	                if (prop === '___storeProxy')
-	                    return true;
-	                if (prop === "___node")
-	                    return node;
-	                if (prop === 'toJSON')
-	                    return () => {
-	                        return CreateNodeCopy(node.Self);
-	                    };
-	                var isInt = typeof (prop) !== 'symbol' && !isNaN(parseInt(prop));
-	                if (isInt || prop === 'length') {
-	                    var childNode = node.Self.EnsureChild(prop);
-	                    if (!childNode)
-	                        return null;
-	                    if (isInt || prop === 'length')
-	                        return CreateProxy(childNode, reader);
-	                }
-	                var ret = obj[prop];
-	                if (typeof ret === 'function') {
-	                    var cachedArray = CreateProxyArray(node.Self, reader);
-	                    return ret.bind(cachedArray);
-	                }
-	                return ret;
-	            }
-	        });
+	var ScopeCollector;
+	(function (ScopeCollector) {
+	    var currentSet = null;
+	    function Watch(action) {
+	        var parentSet = currentSet;
+	        currentSet = new Set();
+	        action();
+	        var lastSet = currentSet;
+	        currentSet = parentSet;
+	        return lastSet;
 	    }
-	    else {
-	        ret = new Proxy({}, {
-	            get: (obj, prop) => {
-	                if (node.Destroyed)
-	                    return undefined;
-	                if (prop === '___storeProxy')
-	                    return true;
-	                if (prop === '___node')
-	                    return node;
-	                if (prop === 'toJSON')
-	                    return () => {
-	                        var copy = CreateNodeCopy(node.Self);
-	                        for (var key in obj)
-	                            copy[key] = obj[key];
-	                        return copy;
-	                    };
-	                if (typeof prop !== 'symbol') {
-	                    if (typeof obj[prop] !== 'undefined')
-	                        return obj[prop];
-	                    var childNode = node.Self.EnsureChild(prop);
-	                    if (!childNode)
-	                        return null;
-	                    return CreateProxy(childNode, reader);
-	                }
-	                return obj[prop];
-	            },
-	            set: (obj, prop, value) => {
-	                obj[prop] = value;
-	                clearTimeout = clearTimeout || setTimeout(() => {
-	                    for (var key in obj)
-	                        delete obj[key];
-	                    clearTimeout = null;
-	                }, 0);
-	                return true;
-	            }
-	        });
+	    ScopeCollector.Watch = Watch;
+	    function Register(emitter) {
+	        if (!currentSet)
+	            return;
+	        if (!currentSet.has(emitter))
+	            currentSet.add(emitter);
 	    }
-	    return ret;
-	}
-	function CreateProxyArray(node, reader) {
-	    if (node.NodeCache)
-	        return node.NodeCache;
-	    var localArray = node.Value;
-	    var proxyArray = new Array(localArray.length);
-	    for (var x = 0; x < proxyArray.length; x++) {
-	        var childNode = node.EnsureChild(x.toString());
-	        proxyArray[x] = CreateProxy(childNode, reader);
-	    }
-	    node.NodeCache = proxyArray;
-	    return proxyArray;
-	}
-	exports.CreateProxyArray = CreateProxyArray;
-	function CreateNodeCopy(node) {
-	    var value = node.Value;
-	    if (IsValue(value))
-	        return value;
-	    var ret = null;
-	    if (Array.isArray(value))
-	        ret = [];
-	    else
-	        ret = {};
-	    for (var key in value) {
-	        var child = node.Self.EnsureChild(key);
-	        ret[key] = CreateNodeCopy(child);
-	    }
-	    return ret;
-	}
-	function CreateCopy(source) {
-	    if (IsValue(source))
-	        return source;
-	    var ret = null;
-	    if (Array.isArray(source)) {
-	        ret = new Array(source.length);
-	        for (var x = 0; x < source.length; x++)
-	            ret[x] = this.CreateCopy(source[x]);
-	        return ret;
-	    }
-	    else {
-	        ret = {};
-	        for (var key in source)
-	            ret[key] = this.CreateCopy(source[key]);
-	    }
-	    return ret;
-	}
-	exports.CreateCopy = CreateCopy;
+	    ScopeCollector.Register = Register;
+	})(ScopeCollector = exports.ScopeCollector || (exports.ScopeCollector = {}));
 
 
 /***/ }),
 /* 9 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(8);
-	const scopeCollector_1 = __webpack_require__(10);
+	var IProxyType;
+	(function (IProxyType) {
+	    IProxyType[IProxyType["Value"] = 0] = "Value";
+	    IProxyType[IProxyType["Object"] = 1] = "Object";
+	    IProxyType[IProxyType["Array"] = 2] = "Array";
+	})(IProxyType = exports.IProxyType || (exports.IProxyType = {}));
+	var IProxy;
+	(function (IProxy) {
+	    function Type(proxy) {
+	        return proxy && proxy.___type || IProxyType.Value;
+	    }
+	    IProxy.Type = Type;
+	    function ValueType(value) {
+	        if (!value)
+	            return IProxyType.Value;
+	        if (Array.isArray(value))
+	            return IProxyType.Array;
+	        else if (typeof value === 'object')
+	            return IProxyType.Object;
+	        return IProxyType.Value;
+	    }
+	    IProxy.ValueType = ValueType;
+	    function Create(node, type) {
+	        var ret = null;
+	        switch (type) {
+	            case IProxyType.Array:
+	                ret = CreateArrayProxy(node);
+	                break;
+	            case IProxyType.Object:
+	                ret = CreateObjectProxy(node);
+	                break;
+	            default:
+	                throw "Can't create IProxy from Value type";
+	        }
+	        return ret;
+	    }
+	    IProxy.Create = Create;
+	})(IProxy = exports.IProxy || (exports.IProxy = {}));
+	function CreateArrayProxy(node) {
+	    return new Proxy([], {
+	        get: (obj, prop) => {
+	            switch (prop) {
+	                case '___type':
+	                    return IProxyType.Array;
+	                case '___storeProxy':
+	                    return true;
+	                case '___node':
+	                    return node;
+	                case 'toJSON':
+	                    return () => {
+	                        return CreateNodeCopy(node.Self);
+	                    };
+	                case 'length':
+	                    return node.Self.EnsureChild(prop).Proxy;
+	                default:
+	                    if (typeof (prop) !== 'symbol' && !isNaN(parseInt(prop)))
+	                        return node.Self.EnsureChild(prop).Proxy;
+	                    var ret = obj[prop];
+	                    if (typeof ret === 'function') {
+	                        return ret.bind(node.ProxyArray);
+	                    }
+	                    return ret;
+	            }
+	        }
+	    });
+	}
+	function CreateObjectProxy(node) {
+	    return new Proxy({}, {
+	        get: (obj, prop) => {
+	            switch (prop) {
+	                case '___type':
+	                    return IProxyType.Object;
+	                case '___storeProxy':
+	                    return true;
+	                case '___node':
+	                    return node;
+	                case 'toJSON':
+	                    return () => {
+	                        return CreateNodeCopy(node.Self);
+	                    };
+	                default:
+	                    if (typeof (prop) !== 'symbol')
+	                        return node.Self.EnsureChild(prop).Proxy;
+	                    return obj[prop];
+	            }
+	        }
+	    });
+	}
+	function CreateNodeCopy(node) {
+	    var value = node.Value;
+	    if (IProxy.ValueType(value) === IProxyType.Value)
+	        return value;
+	    var ret = null;
+	    if (Array.isArray(value))
+	        ret = value.map((v, i) => CreateNodeCopy(node.Self.EnsureChild(i.toString()).Self));
+	    else {
+	        ret = {};
+	        for (var key in value) {
+	            var child = node.Self.EnsureChild(key);
+	            ret[key] = CreateNodeCopy(child.Self);
+	        }
+	    }
+	    return ret;
+	}
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports) {
+
+	"use strict";
+	Object.defineProperty(exports, "__esModule", { value: true });
 	class StoreReader {
 	    constructor(store) {
 	        this.store = store;
@@ -754,8 +835,7 @@ var jTemplate =
 	    }
 	    get Root() {
 	        var node = this.store.GetNode("root");
-	        node && this.Register(node.Emitter);
-	        return utils_1.CreateProxy(node, this);
+	        return node.Proxy;
 	    }
 	    get Emitters() {
 	        return this.emitterSet;
@@ -768,14 +848,7 @@ var jTemplate =
 	        this.watching = val;
 	    }
 	    Get(id) {
-	        var node = this.store.GetIdNode(id);
-	        node && this.Register(node.Emitter);
-	        return node && utils_1.CreateProxy(node, this);
-	    }
-	    Register(emitter) {
-	        if (this.watching && !this.emitterSet.has(emitter))
-	            this.emitterSet.add(emitter);
-	        scopeCollector_1.scopeCollector.Register(emitter);
+	        return this.store.GetIdNode(id).Proxy;
 	    }
 	    Destroy() {
 	        this.watching = false;
@@ -786,34 +859,8 @@ var jTemplate =
 
 
 /***/ }),
-/* 10 */
-/***/ (function(module, exports) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	class ScopeCollector {
-	    constructor() {
-	        this.emitterStack = [];
-	    }
-	    Watch(callback) {
-	        this.emitterStack.push(new Set());
-	        callback();
-	        return this.emitterStack.pop();
-	    }
-	    Register(emitter) {
-	        if (this.emitterStack.length === 0)
-	            return;
-	        var set = this.emitterStack[this.emitterStack.length - 1];
-	        if (!set.has(emitter))
-	            set.add(emitter);
-	    }
-	}
-	exports.scopeCollector = new ScopeCollector();
-
-
-/***/ }),
 /* 11 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
 	"use strict";
 	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
@@ -825,7 +872,6 @@ var jTemplate =
 	    });
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const utils_1 = __webpack_require__(8);
 	class StoreWriter {
 	    constructor(store) {
 	        this.store = store;
@@ -835,72 +881,42 @@ var jTemplate =
 	            yield this.store.Write(value);
 	        });
 	    }
-	    Update(readOnly, updateCallback) {
+	    Update(readOnly, value) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            var path = null;
-	            if (typeof readOnly === 'string') {
-	                var node = this.store.GetIdNode(readOnly);
-	                path = node && node.Path;
-	            }
-	            var path = path || readOnly && readOnly.___node.Path;
+	            var path = readOnly && readOnly.___node.Path;
 	            if (!path)
 	                return;
-	            yield this.store.WritePath(path, updateCallback);
+	            yield this.store.WritePath(path, value);
 	        });
 	    }
 	    Merge(readOnly, value) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            var path = null;
-	            if (typeof readOnly === 'string') {
-	                var node = this.store.GetIdNode(readOnly);
-	                path = node && node.Path;
-	            }
-	            var path = path || readOnly && readOnly.___node.Path;
+	            var path = readOnly && readOnly.___node.Path;
 	            if (!path)
 	                return;
-	            for (var key in value) {
-	                var childPath = [path, key].join(".");
-	                yield this.store.WritePath(childPath, value[key]);
-	            }
+	            var keys = Object.keys(value);
+	            var writes = keys.map(key => [[path, key].join("."), value[key]]);
+	            yield this.store.WritePaths(writes);
 	        });
 	    }
 	    Push(readOnly, newValue) {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            var node = readOnly.___node;
-	            var lengthPath = [node.Path, 'length'].join(".");
-	            var length = this.store.ResolvePropertyPath(lengthPath);
+	            var lengthNode = node.EnsureChild('length');
+	            var length = lengthNode.Value;
 	            var childPath = [node.Path, length].join(".");
 	            yield this.store.WritePath(childPath, newValue);
 	            this.store.EmitSet(node.Path);
 	        });
 	    }
-	    Pop(readOnly) {
-	        var node = readOnly.___node;
-	        var localValue = this.store.ResolvePropertyPath(node.Path);
-	        var ret = localValue.pop();
-	        this.store.EmitSet(node.Path);
-	        return ret;
-	    }
 	    Splice(readOnly, start, deleteCount, ...items) {
-	        var args = Array.from(arguments).slice(1);
-	        var arrayNode = readOnly.___node;
-	        var localValue = this.store.ResolvePropertyPath(arrayNode.Path);
-	        var proxyArray = utils_1.CreateProxyArray(arrayNode, null);
-	        var removedProxies = proxyArray.splice.apply(proxyArray, args);
-	        for (var x = 0; x < removedProxies.length; x++) {
-	            let node = removedProxies[x] && removedProxies[x].___node;
-	            if (node)
-	                node.Destroy();
-	        }
-	        for (var x = start + items.length; x < proxyArray.length; x++) {
-	            let node = proxyArray[x] && proxyArray[x].___node;
-	            if (node) {
-	                node.Property = x.toString();
-	            }
-	        }
-	        var ret = localValue.splice.apply(localValue, args);
-	        this.store.EmitSet(arrayNode);
-	        return ret;
+	        return __awaiter(this, void 0, void 0, function* () {
+	            var node = readOnly.___node;
+	            var array = node.Proxy.toJSON();
+	            var ret = array.splice(start, deleteCount, ...items);
+	            yield this.Update(node.Proxy, array);
+	            return ret;
+	        });
 	    }
 	}
 	exports.StoreWriter = StoreWriter;
@@ -989,55 +1005,64 @@ var jTemplate =
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(15);
-	const scope_1 = __webpack_require__(16);
-	class StoreQuery extends scopeBase_1.ScopeBase {
-	    constructor(store, defaultValue, getFunction) {
-	        super(defaultValue);
-	        this.store = store;
-	        this.getFunction = getFunction;
+	const emitter_1 = __webpack_require__(6);
+	const scopeCollector_1 = __webpack_require__(8);
+	class Scope extends emitter_1.default {
+	    constructor(getFunction) {
+	        super();
+	        if (typeof getFunction === 'function')
+	            this.getFunction = getFunction;
+	        else
+	            this.getFunction = () => getFunction;
+	        this.emitters = new Set();
+	        this.setCallback = this.SetCallback.bind(this);
+	        this.dirty = true;
 	    }
-	    get Promise() {
-	        return new Promise((resolve, reject) => {
-	            if (this.HasValue)
-	                resolve(this.Value);
-	            else {
-	                var listener = () => {
-	                    resolve(this.Value);
-	                    this.removeListener("set", listener);
-	                };
-	                this.addListener("set", listener);
-	                this.UpdateValueBase();
-	            }
-	        });
+	    get Value() {
+	        scopeCollector_1.ScopeCollector.Register(this);
+	        if (this.dirty) {
+	            this.dirty = false;
+	            var emitters = scopeCollector_1.ScopeCollector.Watch(() => this.value = this.getFunction());
+	            this.UpdateEmitters(emitters);
+	        }
+	        return this.value;
+	    }
+	    get HasValue() {
+	        return typeof this.value !== 'undefined';
 	    }
 	    Scope(callback) {
-	        return new scope_1.Scope(() => callback(this.Value));
+	        return new Scope(() => callback(this.Value));
+	    }
+	    Watch(callback) {
+	        this.addListener("set", () => callback(this.Value));
+	        callback(this.Value);
 	    }
 	    Destroy() {
-	        super.Destroy();
+	        this.emitters.forEach(e => this.RemoveListenersFrom(e));
+	        this.emitters.clear();
+	        this.removeAllListeners();
 	    }
-	    UpdateValue(callback) {
-	        var value = null;
-	        var emitters = null;
-	        this.store.Action((reader, writer) => __awaiter(this, void 0, void 0, function* () {
-	            reader.Watching = true;
-	            value = yield this.getFunction(reader, writer);
-	            reader.Watching = false;
-	            emitters = reader.Emitters;
-	        })).then(() => callback(emitters, value));
+	    UpdateEmitters(newEmitters) {
+	        newEmitters.forEach(e => {
+	            if (!this.emitters.delete(e))
+	                this.AddListenersTo(e);
+	        });
+	        this.emitters.forEach(e => this.RemoveListenersFrom(e));
+	        this.emitters = newEmitters;
+	    }
+	    SetCallback() {
+	        this.dirty = true;
+	        this.emit("set");
+	    }
+	    AddListenersTo(emitter) {
+	        emitter.addListener("set", this.setCallback);
+	    }
+	    RemoveListenersFrom(emitter) {
+	        emitter.removeListener("set", this.setCallback);
 	    }
 	}
-	exports.StoreQuery = StoreQuery;
+	exports.Scope = Scope;
 
 
 /***/ }),
@@ -1046,125 +1071,8 @@ var jTemplate =
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const emitter_1 = __webpack_require__(6);
-	const scopeCollector_1 = __webpack_require__(10);
-	class ScopeBase extends emitter_1.default {
-	    constructor(defaultValue = null) {
-	        super();
-	        this.defaultValue = defaultValue;
-	        this.emitters = new Set();
-	        this.setCallback = this.SetCallback.bind(this);
-	        this.destroyCallback = this.DestroyCallback.bind(this);
-	        this.dirty = true;
-	        this.isAsync = false;
-	    }
-	    get Value() {
-	        scopeCollector_1.scopeCollector.Register(this);
-	        if (this.dirty)
-	            this.UpdateValueBase();
-	        return !this.HasValue ? this.defaultValue : this.value;
-	    }
-	    get HasValue() {
-	        return typeof this.value !== 'undefined';
-	    }
-	    Destroy() {
-	        this.emitters.forEach(e => {
-	            e.removeListener("set", this.setCallback);
-	            e.removeListener("destroy", this.destroyCallback);
-	        });
-	        this.emitters.clear();
-	        this.emit("destroy", this);
-	        this.removeAllListeners();
-	    }
-	    UpdateValueBase() {
-	        this.dirty = false;
-	        var callbackFired = false;
-	        this.UpdateValue((emitters, value) => {
-	            callbackFired = true;
-	            this.UpdateEmitters(emitters);
-	            this.value = value;
-	            if (this.isAsync)
-	                this.emit("set");
-	        });
-	        this.isAsync = !callbackFired;
-	    }
-	    UpdateEmitters(newEmitters) {
-	        this.emitters.forEach(e => {
-	            if (!newEmitters.has(e)) {
-	                this.RemoveListenersFrom(e);
-	            }
-	        });
-	        newEmitters.forEach(e => {
-	            this.AddListenersTo(e);
-	        });
-	        this.emitters = newEmitters;
-	    }
-	    SetCallback() {
-	        if (!this.isAsync) {
-	            this.dirty = true;
-	            this.emit("set");
-	        }
-	        else
-	            this.UpdateValueBase();
-	    }
-	    DestroyCallback(emitter) {
-	        this.RemoveListenersFrom(emitter);
-	        this.emitters.delete(emitter);
-	        if (this.emitters.size === 0)
-	            this.Destroy();
-	    }
-	    AddListenersTo(emitter) {
-	        emitter.addListener("set", this.setCallback);
-	        emitter.addListener("destroy", this.destroyCallback);
-	    }
-	    RemoveListenersFrom(emitter) {
-	        emitter.removeListener("set", this.setCallback);
-	        emitter.removeListener("destroy", this.destroyCallback);
-	    }
-	}
-	exports.ScopeBase = ScopeBase;
-
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const scopeBase_1 = __webpack_require__(15);
-	const scopeCollector_1 = __webpack_require__(10);
-	class Scope extends scopeBase_1.ScopeBase {
-	    constructor(getFunction) {
-	        if (typeof getFunction !== 'function')
-	            super(getFunction);
-	        else {
-	            super(null);
-	            this.getFunction = getFunction;
-	        }
-	    }
-	    Scope(callback) {
-	        return new Scope(() => callback(this.Value));
-	    }
-	    UpdateValue(callback) {
-	        var value = undefined;
-	        var emitters = scopeCollector_1.scopeCollector.Watch(() => {
-	            if (this.getFunction)
-	                value = this.getFunction();
-	        });
-	        callback(emitters, value);
-	    }
-	}
-	exports.Scope = Scope;
-
-
-/***/ }),
-/* 17 */
-/***/ (function(module, exports, __webpack_require__) {
-
-	"use strict";
-	Object.defineProperty(exports, "__esModule", { value: true });
-	const workerQueue_1 = __webpack_require__(18);
-	const storeWorker_1 = __webpack_require__(19);
+	const workerQueue_1 = __webpack_require__(16);
+	const storeWorker_1 = __webpack_require__(17);
 	class DiffAsync {
 	    constructor() {
 	        this.workerQueue = new workerQueue_1.WorkerQueue(storeWorker_1.StoreWorker.Create());
@@ -1184,7 +1092,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 18 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1219,12 +1127,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 19 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(20);
+	const objectDiff_1 = __webpack_require__(18);
 	var StoreWorker;
 	(function (StoreWorker) {
 	    var workerConstructor = null;
@@ -1244,7 +1152,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 20 */
+/* 18 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1306,11 +1214,12 @@ var jTemplate =
 	            return resp;
 	        }
 	        DiffValues(rootPath, path, newValue, oldValue, resp) {
+	            if (oldValue === undefined)
+	                return;
 	            var newIsObject = !IsValue(newValue);
 	            var oldIsObject = !IsValue(oldValue);
-	            if (!newIsObject && !oldIsObject) {
-	                if (oldValue !== undefined && newValue !== oldValue)
-	                    resp.changedPaths.push(path);
+	            if (!newIsObject && !oldIsObject && newValue !== oldValue) {
+	                resp.changedPaths.push(path);
 	                return;
 	            }
 	            var newKeys = new Set();
@@ -1341,13 +1250,13 @@ var jTemplate =
 
 
 /***/ }),
-/* 21 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const storeBase_1 = __webpack_require__(2);
-	const diffSync_1 = __webpack_require__(22);
+	const diffSync_1 = __webpack_require__(20);
 	class StoreSync extends storeBase_1.StoreBase {
 	    constructor(init, idFunction) {
 	        super(idFunction, init, new diffSync_1.DiffSync());
@@ -1357,12 +1266,12 @@ var jTemplate =
 
 
 /***/ }),
-/* 22 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const objectDiff_1 = __webpack_require__(20);
+	const objectDiff_1 = __webpack_require__(18);
 	class DiffSync {
 	    constructor() {
 	        this.diff = objectDiff_1.ObjectDiff();
@@ -1383,25 +1292,16 @@ var jTemplate =
 
 
 /***/ }),
-/* 23 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const nodeConfig_1 = __webpack_require__(24);
-	const injector_1 = __webpack_require__(27);
+	const nodeConfig_1 = __webpack_require__(22);
+	const injector_1 = __webpack_require__(25);
 	class NodeRef {
 	    get Node() {
 	        return this.node;
-	    }
-	    get ChildNodes() {
-	        return this.childNodes;
-	    }
-	    set Parent(val) {
-	        if (this.parent && this.parent !== val)
-	            this.Detach();
-	        this.parent = val;
-	        this.parent && this.parent.ChildNodes.add(this);
 	    }
 	    get Injector() {
 	        return this.injector;
@@ -1412,66 +1312,70 @@ var jTemplate =
 	        this.injector = new injector_1.Injector();
 	    }
 	    AddChild(nodeRef) {
-	        nodeRef.Parent = this;
+	        nodeRef.parent = this;
 	        this.childNodes.add(nodeRef);
 	        nodeConfig_1.NodeConfig.addChild(this.Node, nodeRef.Node);
 	    }
 	    AddChildAfter(currentChild, newChild) {
 	        if (currentChild && !this.childNodes.has(currentChild))
 	            throw "currentChild is not valid";
-	        newChild.Parent = this;
+	        newChild.parent = this;
+	        this.childNodes.add(newChild);
 	        nodeConfig_1.NodeConfig.addChildAfter(this.Node, currentChild && currentChild.Node, newChild.Node);
 	    }
 	    DetachChild(nodeRef) {
-	        this.childNodes.delete(nodeRef);
-	        nodeConfig_1.NodeConfig.removeChild(this.Node, nodeRef.Node);
+	        if (this.childNodes.has(nodeRef)) {
+	            this.childNodes.delete(nodeRef);
+	            nodeConfig_1.NodeConfig.removeChild(this.Node, nodeRef.Node);
+	            nodeRef.parent = null;
+	        }
+	    }
+	    Init() {
 	    }
 	    Detach() {
 	        if (this.parent)
 	            this.parent.DetachChild(this);
-	        nodeConfig_1.NodeConfig.remove(this.Node);
 	    }
 	    Destroy() {
-	        this.Detach();
-	        this.ClearChildren();
+	        this.DestroyChildren();
 	    }
-	    ClearChildren() {
+	    DestroyChildren() {
 	        this.childNodes.forEach(node => node.Destroy());
-	        this.childNodes.clear();
 	    }
 	}
 	exports.NodeRef = NodeRef;
 
 
 /***/ }),
-/* 24 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const domNodeConfig_1 = __webpack_require__(25);
+	const domNodeConfig_1 = __webpack_require__(23);
 	exports.NodeConfig = domNodeConfig_1.DOMNodeConfig;
 
 
 /***/ }),
-/* 25 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const window_1 = __webpack_require__(26);
-	var pendingUpdates = [];
+	const window_1 = __webpack_require__(24);
+	var pendingUpdates = new Array(5000);
 	var updateScheduled = false;
 	var updateIndex = 0;
+	var updateTotal = 0;
 	function processUpdates() {
 	    var start = Date.now();
-	    while (updateIndex < pendingUpdates.length && (Date.now() - start) < 66) {
+	    while (updateIndex < updateTotal && (Date.now() - start) < 66) {
 	        pendingUpdates[updateIndex]();
 	        updateIndex++;
 	    }
-	    if (updateIndex === pendingUpdates.length) {
+	    if (updateIndex === updateTotal) {
 	        updateIndex = 0;
-	        pendingUpdates = [];
+	        updateTotal = 0;
 	        updateScheduled = false;
 	    }
 	    else
@@ -1484,7 +1388,8 @@ var jTemplate =
 	        return window_1.wndw.document.createElement(type);
 	    },
 	    scheduleUpdate: function (callback) {
-	        pendingUpdates.push(callback);
+	        pendingUpdates[updateTotal] = callback;
+	        updateTotal++;
 	        if (!updateScheduled) {
 	            updateScheduled = true;
 	            window_1.wndw.requestAnimationFrame(processUpdates);
@@ -1552,7 +1457,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 26 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -1567,7 +1472,7 @@ var jTemplate =
 
 
 /***/ }),
-/* 27 */
+/* 25 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -1591,43 +1496,40 @@ var jTemplate =
 	}
 	exports.Injector = Injector;
 	(function (Injector) {
-	    var currentScopes = new Array();
+	    var scope = null;
 	    function Current() {
-	        return currentScopes[currentScopes.length - 1];
+	        return scope;
 	    }
 	    Injector.Current = Current;
 	    function Scope(injector, action) {
-	        currentScopes.push(injector);
+	        var parent = Current();
+	        scope = injector;
 	        action();
-	        currentScopes.pop();
+	        scope = parent;
 	    }
 	    Injector.Scope = Scope;
 	})(Injector = exports.Injector || (exports.Injector = {}));
 
 
 /***/ }),
-/* 28 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const scope_1 = __webpack_require__(16);
-	const nodeRef_1 = __webpack_require__(23);
-	const componentNode_1 = __webpack_require__(29);
+	const scope_1 = __webpack_require__(14);
+	const nodeRef_1 = __webpack_require__(21);
+	const componentNode_1 = __webpack_require__(27);
+	const decorators_1 = __webpack_require__(29);
 	class Component {
 	    constructor(data, templates, nodeRef, injector) {
 	        this.templates = templates;
 	        this.nodeRef = nodeRef;
 	        this.injector = injector;
 	        this.scope = new scope_1.Scope(data);
-	        this.destroyables = new Set([this.scope]);
-	        this.Init();
 	    }
 	    get Injector() {
 	        return this.injector;
-	    }
-	    get Destroyables() {
-	        return this.destroyables;
 	    }
 	    get Scope() {
 	        return this.scope;
@@ -1650,9 +1552,7 @@ var jTemplate =
 	        this.NodeRef.Fire(event, data);
 	    }
 	    Destroy() {
-	        this.Destroyables.forEach(d => d.Destroy());
-	    }
-	    Init() {
+	        decorators_1.Destroy.All(this);
 	    }
 	}
 	exports.Component = Component;
@@ -1670,20 +1570,19 @@ var jTemplate =
 
 
 /***/ }),
-/* 29 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const boundNode_1 = __webpack_require__(30);
-	const nodeConfig_1 = __webpack_require__(24);
-	const injector_1 = __webpack_require__(27);
+	const boundNode_1 = __webpack_require__(28);
+	const nodeConfig_1 = __webpack_require__(22);
+	const injector_1 = __webpack_require__(25);
+	const decorators_1 = __webpack_require__(29);
 	class ComponentNode extends boundNode_1.BoundNode {
 	    constructor(nodeDef, constructor, templates) {
 	        super(nodeDef);
-	        this.setChildren = false;
 	        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
-	        this.SetChildren();
 	    }
 	    SetEvents() {
 	        this.componentEvents = this.eventsScope.Value;
@@ -1692,26 +1591,48 @@ var jTemplate =
 	        var eventCallback = this.componentEvents && this.componentEvents[event];
 	        eventCallback && eventCallback(data);
 	    }
-	    ScheduleSetChildren() {
-	        if (this.setChildren)
-	            return;
-	        nodeConfig_1.NodeConfig.scheduleUpdate(() => {
-	            this.SetChildren();
-	            this.setChildren = false;
-	        });
-	    }
-	    SetChildren() {
-	        this.ClearChildren();
-	        var nodes = null;
-	        injector_1.Injector.Scope(this.Injector, () => nodes = this.component.Template());
-	        if (!Array.isArray(nodes))
-	            nodes = [nodes];
-	        nodes.forEach(node => this.AddChild(node));
-	        setTimeout(() => this.component.Bound(), 0);
+	    Init() {
+	        super.Init();
+	        this.SetChildren();
 	    }
 	    Destroy() {
 	        super.Destroy();
 	        this.component.Destroy();
+	    }
+	    SetChildren() {
+	        if (decorators_1.PreReq.Has(this.component)) {
+	            var preNodes = null;
+	            injector_1.Injector.Scope(this.Injector, () => preNodes = decorators_1.PreReqTemplate.Get(this.component));
+	            preNodes.forEach(node => {
+	                this.AddChild(node);
+	            });
+	            decorators_1.PreReq.All(this.component).then(() => {
+	                nodeConfig_1.NodeConfig.scheduleUpdate(() => {
+	                    preNodes.forEach(node => {
+	                        node.Detach();
+	                        node.Destroy();
+	                    });
+	                    this.AddTemplate();
+	                });
+	            });
+	        }
+	        else
+	            this.AddTemplate();
+	    }
+	    AddTemplate() {
+	        var nodes = null;
+	        injector_1.Injector.Scope(this.Injector, () => {
+	            var parentVal = boundNode_1.BoundNode.Immediate;
+	            boundNode_1.BoundNode.Immediate = this.Immediate;
+	            nodes = this.component.Template();
+	            boundNode_1.BoundNode.Immediate = parentVal;
+	        });
+	        if (!Array.isArray(nodes))
+	            nodes = [nodes];
+	        nodes.forEach(node => {
+	            this.AddChild(node);
+	        });
+	        setTimeout(() => this.component.Bound(), 0);
 	    }
 	}
 	exports.ComponentNode = ComponentNode;
@@ -1721,13 +1642,16 @@ var jTemplate =
 	            var def = {
 	                type: type,
 	                namespace: namespace,
+	                immediate: nodeDef.immediate,
 	                props: nodeDef.props,
 	                attrs: nodeDef.attrs,
 	                on: nodeDef.on,
 	                static: nodeDef.static,
 	                data: nodeDef.data,
 	            };
-	            return new ComponentNode(def, constructor, templates);
+	            var comp = new ComponentNode(def, constructor, templates);
+	            comp.Init();
+	            return comp;
 	        };
 	    }
 	    ComponentNode.ToFunction = ToFunction;
@@ -1735,14 +1659,14 @@ var jTemplate =
 
 
 /***/ }),
-/* 30 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const nodeConfig_1 = __webpack_require__(24);
-	const scope_1 = __webpack_require__(16);
-	const nodeRef_1 = __webpack_require__(23);
+	const nodeConfig_1 = __webpack_require__(22);
+	const scope_1 = __webpack_require__(14);
+	const nodeRef_1 = __webpack_require__(21);
 	function defaultChildren() {
 	    return [];
 	}
@@ -1754,26 +1678,11 @@ var jTemplate =
 	        this.setProperties = false;
 	        this.setAttributes = false;
 	        this.setEvents = false;
-	        if (nodeDef.text) {
-	            this.textScope = new scope_1.Scope(nodeDef.text);
-	            this.textScope.addListener("set", this.ScheduleSetText.bind(this));
-	            this.SetText();
-	        }
-	        if (nodeDef.props) {
-	            this.propertiesScope = new scope_1.Scope(nodeDef.props);
-	            this.propertiesScope.addListener("set", this.ScheduleSetProperties.bind(this));
-	            this.SetProperties();
-	        }
-	        if (nodeDef.attrs) {
-	            this.attributesScope = new scope_1.Scope(nodeDef.attrs);
-	            this.attributesScope.addListener("set", this.ScheduleSetAttributes.bind(this));
-	            this.SetAttributes();
-	        }
-	        if (nodeDef.on) {
-	            this.eventsScope = new scope_1.Scope(nodeDef.on);
-	            this.eventsScope.addListener("set", this.ScheduleSetEvents.bind(this));
-	            this.SetEvents();
-	        }
+	        this.nodeDef = nodeDef;
+	        this.immediate = nodeDef.immediate !== undefined ? nodeDef.immediate : BoundNode.Immediate;
+	    }
+	    get Immediate() {
+	        return this.immediate;
 	    }
 	    ScheduleSetText() {
 	        if (this.setText)
@@ -1827,6 +1736,29 @@ var jTemplate =
 	            this.setEvents = false;
 	        });
 	    }
+	    Init() {
+	        super.Init();
+	        if (this.nodeDef.text) {
+	            this.textScope = new scope_1.Scope(this.nodeDef.text);
+	            this.textScope.addListener("set", this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
+	            this.SetText();
+	        }
+	        if (this.nodeDef.props) {
+	            this.propertiesScope = new scope_1.Scope(this.nodeDef.props);
+	            this.propertiesScope.addListener("set", this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
+	            this.SetProperties();
+	        }
+	        if (this.nodeDef.attrs) {
+	            this.attributesScope = new scope_1.Scope(this.nodeDef.attrs);
+	            this.attributesScope.addListener("set", this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
+	            this.SetAttributes();
+	        }
+	        if (this.nodeDef.on) {
+	            this.eventsScope = new scope_1.Scope(this.nodeDef.on);
+	            this.eventsScope.addListener("set", this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
+	            this.SetEvents();
+	        }
+	    }
 	    Destroy() {
 	        super.Destroy();
 	        this.attributesScope && this.attributesScope.Destroy();
@@ -1854,35 +1786,36 @@ var jTemplate =
 	    }
 	}
 	exports.BoundNode = BoundNode;
+	(function (BoundNode) {
+	    BoundNode.Immediate = false;
+	})(BoundNode = exports.BoundNode || (exports.BoundNode = {}));
 
 
 /***/ }),
-/* 31 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const storeSync_1 = __webpack_require__(21);
-	const scope_1 = __webpack_require__(16);
+	const storeSync_1 = __webpack_require__(19);
+	const scope_1 = __webpack_require__(14);
 	function Store() {
 	    return StoreDecorator;
 	}
 	exports.Store = Store;
 	function StoreDecorator(target, propertyKey) {
-	    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+	    DestroyDecorator(target, `StoreDecorator_${propertyKey}`);
 	    return {
 	        configurable: false,
 	        enumerable: true,
 	        get: function () {
-	            var store = destroyDescriptor.get.apply(this);
-	            if (store)
-	                return store.Root.Value;
-	            return null;
+	            var store = this[`StoreDecorator_${propertyKey}`];
+	            return store ? store.Root.Value : null;
 	        },
 	        set: function (val) {
-	            var store = destroyDescriptor.get.apply(this);
+	            var store = this[`StoreDecorator_${propertyKey}`];
 	            if (!store)
-	                destroyDescriptor.set.apply(this, [new storeSync_1.StoreSync(val)]);
+	                this[`StoreDecorator_${propertyKey}`] = new storeSync_1.StoreSync(val);
 	            else
 	                store.Merge(val);
 	        }
@@ -1895,20 +1828,17 @@ var jTemplate =
 	function ScopeDecorator(target, propertyKey, descriptor) {
 	    if (!(descriptor && descriptor.get))
 	        throw "Scope decorator requires a getter";
-	    var destroyDescriptor = DestroyDecorator(target, propertyKey, null);
+	    if (descriptor && descriptor.set)
+	        throw "Scope decorator does not support setters";
+	    DestroyDecorator(target, `ScopeDecorator_${propertyKey}`);
 	    return {
 	        configurable: false,
 	        enumerable: true,
 	        get: function () {
-	            var scope = destroyDescriptor.get.apply(this);
-	            if (!scope) {
-	                destroyDescriptor.set.apply(this, [new scope_1.Scope(descriptor.get.bind(this))]);
-	                scope = destroyDescriptor.get.apply(this);
-	            }
+	            var scope = this[`ScopeDecorator_${propertyKey}`];
+	            if (!scope)
+	                scope = this[`ScopeDecorator_${propertyKey}`] = new scope_1.Scope(descriptor.get.bind(this));
 	            return scope.Value;
-	        },
-	        set: function () {
-	            throw "Scope decorator: setter not supported";
 	        }
 	    };
 	}
@@ -1936,37 +1866,73 @@ var jTemplate =
 	    return DestroyDecorator;
 	}
 	exports.Destroy = Destroy;
-	function DestroyDecorator(target, propertyKey, descriptor) {
-	    var parentGet = descriptor && descriptor.get;
-	    var parentSet = descriptor && descriptor.set;
-	    return {
-	        configurable: false,
-	        enumerable: true,
-	        get: function () {
-	            return parentGet && parentGet.apply(this) || this[`DestroyDecorator_${propertyKey}`];
-	        },
-	        set: function (val) {
-	            var thisObj = this;
-	            parentSet && parentSet.apply(thisObj, [val]);
-	            var loc = this[`DestroyDecorator_${propertyKey}`];
-	            if (thisObj.Destroyables.has(loc))
-	                thisObj.Destroyables.delete(loc);
-	            if (loc && loc !== val)
-	                loc.Destroy();
-	            this[`DestroyDecorator_${propertyKey}`] = val;
-	            val && thisObj.Destroyables.add(val);
-	        }
-	    };
+	(function (Destroy) {
+	    function Get(value) {
+	        return value && value.DestroyDecorator_Destroys || [];
+	    }
+	    function All(value) {
+	        var arr = Get(value);
+	        arr.map(prop => value[prop])
+	            .filter(o => !!o)
+	            .forEach(o => o.Destroy());
+	    }
+	    Destroy.All = All;
+	})(Destroy = exports.Destroy || (exports.Destroy = {}));
+	function DestroyDecorator(target, propertyKey) {
+	    var proto = target;
+	    proto.DestroyDecorator_Destroys = proto.DestroyDecorator_Destroys || [];
+	    proto.DestroyDecorator_Destroys.push(propertyKey);
+	}
+	function PreReqTemplate(template) {
+	    return PreReqTemplateDecorator.bind(null, template);
+	}
+	exports.PreReqTemplate = PreReqTemplate;
+	(function (PreReqTemplate) {
+	    function Get(value) {
+	        var func = value && value.PreReqTemplateDecorator_Template;
+	        var ret = func ? func() : [];
+	        if (!Array.isArray(ret))
+	            ret = [ret];
+	        return ret;
+	    }
+	    PreReqTemplate.Get = Get;
+	})(PreReqTemplate = exports.PreReqTemplate || (exports.PreReqTemplate = {}));
+	function PreReqTemplateDecorator(template, target) {
+	    var proto = target.prototype;
+	    proto.PreReqTemplateDecorator_Template = template;
+	}
+	function PreReq() {
+	    return PreReqDecorator;
+	}
+	exports.PreReq = PreReq;
+	(function (PreReq) {
+	    function Get(value) {
+	        return value && value.PreReqDecorator_PreReqs || [];
+	    }
+	    function All(value) {
+	        var arr = Get(value).map((prop) => (value[prop] && value[prop].Init) || Promise.resolve());
+	        return Promise.all(arr);
+	    }
+	    PreReq.All = All;
+	    function Has(value) {
+	        return Get(value).length > 0;
+	    }
+	    PreReq.Has = Has;
+	})(PreReq = exports.PreReq || (exports.PreReq = {}));
+	function PreReqDecorator(target, propertyKey) {
+	    var proto = target;
+	    proto.PreReqDecorator_PreReqs = proto.PreReqDecorator_PreReqs || [];
+	    proto.PreReqDecorator_PreReqs.push(propertyKey);
 	}
 
 
 /***/ }),
-/* 32 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const elementNode_1 = __webpack_require__(33);
+	const elementNode_1 = __webpack_require__(31);
 	function div(nodeDef, children) {
 	    return elementNode_1.ElementNode.Create("div", null, nodeDef, children);
 	}
@@ -2008,6 +1974,7 @@ var jTemplate =
 	}
 	exports.source = source;
 	function input(nodeDef) {
+	    nodeDef.immediate = true;
 	    return elementNode_1.ElementNode.Create("input", null, nodeDef, null);
 	}
 	exports.input = input;
@@ -2046,15 +2013,15 @@ var jTemplate =
 
 
 /***/ }),
-/* 33 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
-	const boundNode_1 = __webpack_require__(30);
-	const scope_1 = __webpack_require__(16);
-	const nodeConfig_1 = __webpack_require__(24);
-	const injector_1 = __webpack_require__(27);
+	const boundNode_1 = __webpack_require__(28);
+	const scope_1 = __webpack_require__(14);
+	const nodeConfig_1 = __webpack_require__(22);
+	const injector_1 = __webpack_require__(25);
 	class ElementNode extends boundNode_1.BoundNode {
 	    constructor(nodeDef) {
 	        super(nodeDef);
@@ -2069,10 +2036,10 @@ var jTemplate =
 	                value = [];
 	            else if (!Array.isArray(value))
 	                value = [value];
-	            return new Map(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v]));
+	            var keyInit = value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v]);
+	            return new Map(keyInit);
 	        });
 	        this.keyDataScope.addListener("set", () => this.ScheduleSetData());
-	        this.ScheduleSetData();
 	    }
 	    ScheduleSetData() {
 	        if (this.setData)
@@ -2090,7 +2057,12 @@ var jTemplate =
 	        this.keyDataScope.Value.forEach((value, key) => {
 	            var nodes = this.nodeRefMap.get(key);
 	            if (!nodes) {
-	                injector_1.Injector.Scope(this.Injector, () => nodes = this.childrenFunc(value, index));
+	                injector_1.Injector.Scope(this.Injector, () => {
+	                    var parentVal = boundNode_1.BoundNode.Immediate;
+	                    boundNode_1.BoundNode.Immediate = this.Immediate;
+	                    nodes = this.childrenFunc(value, index);
+	                    boundNode_1.BoundNode.Immediate = parentVal;
+	                });
 	                if (!Array.isArray(nodes))
 	                    nodes = [nodes];
 	            }
@@ -2103,7 +2075,10 @@ var jTemplate =
 	            index++;
 	        });
 	        this.nodeRefMap.forEach(value => {
-	            value.forEach(v => v.Destroy());
+	            value.forEach(v => {
+	                v.Detach();
+	                v.Destroy();
+	            });
 	        });
 	        this.nodeRefMap = newNodeRefMap;
 	    }
@@ -2114,6 +2089,15 @@ var jTemplate =
 	        for (var key in events)
 	            nodeConfig_1.NodeConfig.addListener(this.Node, key, events[key]);
 	        this.lastEvents = events;
+	    }
+	    Init() {
+	        super.Init();
+	        if (this.Immediate) {
+	            this.SetData();
+	        }
+	        else {
+	            this.ScheduleSetData();
+	        }
 	    }
 	    Destroy() {
 	        super.Destroy();
@@ -2127,6 +2111,7 @@ var jTemplate =
 	        var def = {
 	            type: type,
 	            namespace: namespace,
+	            immediate: nodeDef.immediate,
 	            text: nodeDef.text,
 	            props: nodeDef.props,
 	            attrs: nodeDef.attrs,
@@ -2136,7 +2121,9 @@ var jTemplate =
 	            key: nodeDef.key,
 	            children: children
 	        };
-	        return new ElementNode(def);
+	        var elem = new ElementNode(def);
+	        elem.Init();
+	        return elem;
 	    }
 	    ElementNode.Create = Create;
 	})(ElementNode = exports.ElementNode || (exports.ElementNode = {}));

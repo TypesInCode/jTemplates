@@ -3,6 +3,7 @@ import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
 import { Destroy } from "../Utils/decorators";
+import { NodeConfig } from "./nodeConfig";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
@@ -44,7 +45,6 @@ export class Component<D = void, T = void, E = void> {
     }
 
     public Destroy() {
-        // this.Destroyables.forEach(d => d.Destroy());
         Destroy.All(this);
     }
 }
@@ -54,12 +54,6 @@ export namespace Component {
     export function ToFunction<D = void, T = void, E = void>(type: any, namespace: any, constructor: ComponentConstructor<D, T, E>) {
         return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
     }
-
-    /* export function Render(node: Node, type: any, namespace: string, constructor: ComponentConstructor<any, any>) {
-        var rootRef = new NodeRef(node);
-        var component = ComponentNode.ToFunction(type, namespace, constructor)({});
-        rootRef.AddChild(component);
-    } */
 
     export function Attach(node: Node, nodeRef: NodeRef) {
         var rootRef = new NodeRef(node);

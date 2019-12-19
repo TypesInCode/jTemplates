@@ -20,13 +20,6 @@ export class DiffSync implements Diff {
         }));
     }
 
-    /* public Diff(path: string, newValue: any, resolveOldValue: {(): any}): Promise<IDiffResponse> {
-        return Promise.resolve(this.diff({
-            method: "diff",
-            arguments: [path, newValue, resolveOldValue()]
-        }));
-    } */
-
     public Destroy() { }
     
 }

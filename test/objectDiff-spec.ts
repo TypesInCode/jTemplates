@@ -12,4 +12,10 @@ describe("ObjectDiff", () => {
     expect(resp.changedPaths.length).to.equal(1);
     expect(resp.changedPaths[0]).to.equal("root.value");
   });
+  it("Basic Array Diff", async () => {
+    var diff = new DiffSync();
+    var resp = await diff.DiffBatch([{ path: "root.arr", oldValue: [1, 2], newValue: [null, 2] }]);
+    expect(resp.changedPaths.length).to.equal(1);
+    expect(resp.changedPaths[0]).to.equal("root.arr.0");
+  });
 });

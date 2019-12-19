@@ -1,31 +1,80 @@
-import { ScopeBase } from "./scopeBase";
-import { Emitter } from "../../Utils/emitter";
+import Emitter from "../../Utils/emitter";
 import { ScopeCollector } from "./scopeCollector";
 
-export class Scope<T> extends ScopeBase<T> {
+export class Scope<T> extends Emitter {
     private getFunction: {(): T};
+    private emitters: Set<Emitter>;
+    private setCallback: () => void;
+    private value: T;
+    private dirty: boolean;
 
-    constructor(getFunction: {(): T} | T) {
-        if(typeof getFunction !== 'function')
-            super(getFunction);
-        else {
-            super(null);
-            this.getFunction = getFunction as {(): T};
+    public get Value(): T {        
+        ScopeCollector.Register(this);
+        if(this.dirty) {
+            this.dirty = false;
+            var emitters = ScopeCollector.Watch(() =>
+                this.value = this.getFunction()
+            );
+            this.UpdateEmitters(emitters);
         }
 
+        return this.value;
+    }
+    
+    public get HasValue() {
+        return typeof this.value !== 'undefined';
+    }
+
+    constructor(getFunction: {(): T} | T) {
+        super();
+        if(typeof getFunction === 'function')
+            this.getFunction = getFunction as {(): T};
+        else
+            this.getFunction = () => getFunction;
+        
+        this.emitters = new Set();
+        this.setCallback = this.SetCallback.bind(this);
+        this.dirty = true;
     }
 
     public Scope<O>(callback: {(parent: T): O}): Scope<O> {
         return new Scope<O>(() => callback(this.Value));
     }
-    
-    protected UpdateValue(callback: (emitters: Set<Emitter>, value: T) => void): void {
-        var value = undefined;
-        var emitters = ScopeCollector.Watch(() => {
-            if(this.getFunction)
-                value = this.getFunction();
-        });
-        callback(emitters, value as T);
+
+    public Watch(callback: {(value: T): void}) {
+        this.addListener("set", () => callback(this.Value));
+        callback(this.Value);
     }
-    
+
+    public Destroy() {
+        this.emitters.forEach(e => this.RemoveListenersFrom(e));
+        this.emitters.clear();
+        this.removeAllListeners();
+    }
+
+    private UpdateEmitters(newEmitters: Set<Emitter>) {
+        newEmitters.forEach(e => {
+            if(!this.emitters.delete(e))
+                this.AddListenersTo(e);
+        });
+
+        this.emitters.forEach(e => 
+            this.RemoveListenersFrom(e)
+        );
+
+        this.emitters = newEmitters;
+    }
+
+    private SetCallback() {
+        this.dirty = true;
+        this.emit("set");
+    }
+
+    private AddListenersTo(emitter: Emitter) {
+        emitter.addListener("set", this.setCallback);
+    }
+
+    private RemoveListenersFrom(emitter: Emitter) {
+        emitter.removeListener("set", this.setCallback);
+    }
 }

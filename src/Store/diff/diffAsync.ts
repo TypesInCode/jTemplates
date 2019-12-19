@@ -11,26 +11,12 @@ export class DiffAsync implements Diff {
         this.workerQueue.Push(() => ({ method: "create", arguments: [] }));
     }
 
-    /* public GetPath(id: string): string {
-        return this.diff({
-            method: "getpath",
-            arguments: [id]
-        });
-    } */
-
     public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
         return this.workerQueue.Push(() => ({
             method: "diffbatch",
             arguments: [batch]
         }));
     }
-
-    /* public Diff(path: string, newValue: any, resolveOldValue: { (): any }) {
-        return this.workerQueue.Push(() => ({
-            method: "diff",
-            arguments: [path, newValue, resolveOldValue()]
-        }));
-    } */
 
     public Destroy() {
         this.workerQueue.Destroy();

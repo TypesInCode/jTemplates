@@ -12,13 +12,11 @@ export declare class StoreManager<T> {
     GetIdNode(id: string): TreeNode;
     ResolvePropertyPath(path: string): any;
     Write(value: any): Promise<void>;
-    WritePath(path: string, updateCallback: {
-        (val: any): void;
-    } | any): Promise<void>;
+    WritePaths(keyValues: [string, any][]): Promise<void>;
+    WritePath(path: string, value: any): Promise<void>;
     EmitSet(pathNode: string | TreeNode): void;
     Destroy(): void;
     private BreakUpValue;
     AssignPropertyPath(value: any, path: string): void;
-    private ResolveUpdateCallback;
     private ProcessDiff;
 }

@@ -10,13 +10,13 @@ export type ElementNodeEvents = {
 
 export interface ElementNodeFunctionParam<T> {
     immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
+    props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<ElementNodeEvents>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    on?: FunctionOr<ElementNodeEvents>;
     static?: T | Array<T>;
-    data?: {(): T | Array<T>}; // {(): P | Array<P>} | P | Array<P>;
+    data?: {(): T | Array<T>};
     key?: (val: T) => any;
-    text?: FunctionOr<string>; // {(): string} | string;
+    text?: FunctionOr<string>;
 }
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
@@ -25,7 +25,6 @@ export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
 
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}): BoundNode}
 
-// var bindImmediately = false;
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T, index: number): NodeRef | NodeRef[]};
     private keyFunc: {(data: T): string};
@@ -48,13 +47,10 @@ export class ElementNode<T> extends BoundNode {
             else if(!Array.isArray(value))
                 value = [value];
 
-            return new Map<string, T>(value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any));
+            var keyInit = value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any);
+            return new Map<string, T>(keyInit);
         });
         this.keyDataScope.addListener("set", () => this.ScheduleSetData());
-        /* if(nodeDef.immediate || BoundNode.Immediate)
-            this.SetData();
-        else
-            this.ScheduleSetData(); */
     }
 
     private setData = false;
@@ -74,7 +70,17 @@ export class ElementNode<T> extends BoundNode {
         var previousNode: BoundNode = null;
         var index = 0;
         
-        this.keyDataScope.Value.forEach((value: T, key: string) => {
+        var keyMap = this.keyDataScope.Value;
+        this.nodeRefMap.forEach((value, key) => {
+            if(!keyMap.has(key)) {
+                value.forEach(v => {
+                    v.Detach();
+                    v.Destroy();
+                });
+            }
+        });
+
+        keyMap.forEach((value: T, key: string) => {
             var nodes = this.nodeRefMap.get(key);
             if(!nodes) {
                 Injector.Scope(this.Injector, () => {
@@ -93,16 +99,16 @@ export class ElementNode<T> extends BoundNode {
             }
             
             newNodeRefMap.set(key, nodes);
-            this.nodeRefMap.delete(key);
+            // this.nodeRefMap.delete(key);
             index++;
         });
 
-        this.nodeRefMap.forEach(value => {
+        /* this.nodeRefMap.forEach(value => {
             value.forEach(v => {
                 v.Detach();
                 v.Destroy();
             });
-        });
+        }); */
 
         this.nodeRefMap = newNodeRefMap;
     }
@@ -158,26 +164,5 @@ export namespace ElementNode {
         elem.Init();
         return elem;
     }
-
-    /* export function CreateFunction<T>(type: string, namespace: string): BoundElementNodeFunction<T> {
-
-        return (nodeDef: ElementNodeDefinition<T>, children?: {(data?: T, i?: number): BoundNode | BoundNode[]}) => {
-            var def = {
-                type: type,
-                namespace: namespace,
-                text: nodeDef.text,
-                props: nodeDef.props,
-                attrs: nodeDef.attrs,
-                on: nodeDef.on,
-                static: nodeDef.static,
-                data: nodeDef.data,
-                key: nodeDef.key,
-                children: children
-            } as NodeDefinition<any>;
-
-            return new ElementNodeRef(def);
-        }
-
-    } */
 
 }

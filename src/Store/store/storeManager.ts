@@ -1,8 +1,8 @@
 import { Tree } from "../tree/tree";
 import { TreeNode } from "../tree/treeNode";
-import { CreateCopy, IsValue } from "../utils";
 import { TreeNodeRefId } from "../tree/treeNodeRefId";
 import { IDiffResponse, Diff } from "../diff/diff.types";
+import { IProxy, IProxyType } from "../tree/proxy";
 
 export class StoreManager<T> {
 
@@ -14,18 +14,10 @@ export class StoreManager<T> {
     constructor(idFunction: {(val: any): any}, diff: Diff) {
         this.idFunction = idFunction;
 
-        this.data = { root: undefined, id: {} };
-        this.tree = new Tree((path: string) => this.ResolvePropertyPath(path)); // this);
+        this.data = { root: null, id: {} };
+        this.tree = new Tree((path: string) => this.ResolvePropertyPath(path));
         this.diff = diff;
     }
-
-    /* public async Diff(path: string, newValue: any) {        
-        return await this.diff.Diff(path, newValue, () => this.ResolvePropertyPath(path));
-    } */
-
-    /* public GetPathById(id: string): string {
-        return this.diff.GetPath(id);
-    } */
 
     public GetNode(path: string): TreeNode {
         return this.tree.GetNode(path);
@@ -51,42 +43,51 @@ export class StoreManager<T> {
             throw "Written value must have an id";
 
         var path = ["id", id].join(".");
+        if(this.ResolvePropertyPath(path) === undefined)
+            this.AssignPropertyPath(null, path);
+
         await this.WritePath(path, value);
     }
 
-    public async WritePath(path: string, updateCallback: {(val: any): void} | any) {
-        var value = this.ResolveUpdateCallback(path, updateCallback);
-        var breakUpMap = new Map();
-        var brokenValue = this.BreakUpValue(path, value, breakUpMap);
-        var batch = [{ path: path, newValue: brokenValue, oldValue: this.ResolvePropertyPath(path) }];
+    public async WritePaths(keyValues: [string, any][]) {
+        var batch = new Array();
+        for(var x=0; x<keyValues.length; x++) {
+            var path = keyValues[x][0];
+            var value = keyValues[x][1];
+            var breakUpMap = this.BreakUpValue(path, value);
+            breakUpMap.forEach((value, key) => {
+                batch.push({
+                    path: key,
+                    newValue: value,
+                    oldValue: this.ResolvePropertyPath(key)
+                });
+            });
+        }
+
+        var diff = await this.diff.DiffBatch(batch);
+        for(var x=0; x<batch.length; x++)
+            this.AssignPropertyPath(batch[x].newValue, batch[x].path);
+
+        this.ProcessDiff(diff);
+    }
+
+    public async WritePath(path: string, value: any) {
+        var breakUpMap = this.BreakUpValue(path, value);
+        var batch = new Array(breakUpMap.size);
+        var index = 0;
         breakUpMap.forEach((value, key) => {
-            batch.push({
+            batch[index] = {
                 path: key,
                 newValue: value,
                 oldValue: this.ResolvePropertyPath(key)
-            });
+            };
+            index++;
         });
 
         var diff = await this.diff.DiffBatch(batch);
         for(var x=0; x<batch.length; x++)
             this.AssignPropertyPath(batch[x].newValue, batch[x].path);
 
-        /* var diff = await this.Diff(path, brokenValue);
-        this.AssignPropertyPath(brokenValue, path);
-
-        var promises = [] as Array<Promise<void>>;
-        breakUpMap.forEach((breakValue, breakPath) => {
-            promises.push(new Promise((resolve, reject) => {
-                this.Diff(breakPath, breakValue).then((val) => {
-                    this.AssignPropertyPath(breakValue, breakPath);
-                    diff.changedPaths.push(...val.changedPaths);
-                    diff.deletedPaths.push(...val.deletedPaths);
-                    resolve();
-                });
-            }));
-        });
-
-        await Promise.all(promises); */
         this.ProcessDiff(diff);
     }
 
@@ -106,28 +107,40 @@ export class StoreManager<T> {
         this.diff.Destroy();
     }
 
-    private BreakUpValue(path: string, value: any, map: Map<string, any>): any {
+    private BreakUpValue(path: string, parent: any, key?: string, map?: Map<string, any>): Map<string, any> {
+        var value = key ? parent[key] : parent;
+        var id = this.idFunction && this.idFunction(value);
+        var hasId = id || id === 0;
+        var idPath = hasId && ["id", id].join(".");
+        var treeNodeRef = hasId && TreeNodeRefId.GetString(id);
+
+        if(!map) {
+            map = new Map();
+            map.set(path, hasId && path !== idPath ? treeNodeRef : value);
+        }
+        
         if(value && value.toJSON && typeof value.toJSON === 'function')
             value = value.toJSON();
 
-        if(IsValue(value)) {            
-            return value;
+        if(IProxy.ValueType(value) === IProxyType.Value) {
+            return map;
         }
 
-        var id = this.idFunction && this.idFunction(value);
-        var idPath = ["id", id].join(".");
-        if((id || id === 0) && path !== idPath && !map.has(idPath)) {
+        if(hasId && path !== idPath) {
+            if(key)
+                parent[key] = treeNodeRef;
+            
             map.set(idPath, value);
-            this.BreakUpValue(idPath, value, map);
-            return TreeNodeRefId.GetString(id); // new TreeNodeRefId(this.tree, id);
+            this.BreakUpValue(idPath, value, null, map);
+        }
+        else {
+            for(var key in value) {
+                var childPath = [path, key].join(".");
+                this.BreakUpValue(childPath, value, key, map);
+            }
         }
 
-        for(var key in value) {
-            var childPath = [path, key].join(".");
-            value[key] = this.BreakUpValue(childPath, value[key], map);
-        }
-
-        return value;
+        return map;
     }
 
     public AssignPropertyPath(value: any, path: string) {
@@ -139,30 +152,9 @@ export class StoreManager<T> {
         (parentObj as any)[prop] = value;
     }
 
-    private ResolveUpdateCallback(path: string, updateCallback: {(): any} | any): any {
-        /* if(updateCallback && updateCallback.___storeProxy)
-            return updateCallback.toJSON(); */
-        
-        if(typeof updateCallback === 'function') {
-            var node = this.tree.GetNode(path);
-            // var localValue = node.Value;
-            var localValue = CreateCopy(this.ResolvePropertyPath(node.Self.Path))
-            updateCallback(localValue);
-
-            // var localValue = this.ResolvePropertyPathInternal(path, false);
-            // var ret = (updateCallback as any)(localValue);
-            return localValue;
-        }
-        
-        return updateCallback;
-    }
-
     private ProcessDiff(data: IDiffResponse) {
         var emit = new Set<string>();
         data.changedPaths.forEach(p => {
-            // var node = this.GetNode(p);
-            // node && this.ResolveNode(node);
-            // this.EmitSet(node || p);
             var match = p.match(/(.+)\.[^.]+$/);
             var parent = match && match[1];
             if(parent && !emit.has(parent) && Array.isArray(this.ResolvePropertyPath(parent)))
@@ -177,13 +169,6 @@ export class StoreManager<T> {
             var node = this.GetNode(p);
             node && node.Destroy();
         });
-
-        /* data.pathDependencies.forEach(dep => {
-            var value = this.ResolvePropertyPath(dep.path, false);
-            dep.targets.forEach(target => {
-                this.WritePath(target, value);
-            });
-        }); */
     }
 
 }

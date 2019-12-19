@@ -1,20 +1,21 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 
-var pendingUpdates: Array<() => void> = [];
+var pendingUpdates: Array<() => void> = new Array(5000);
 var updateScheduled = false;
 var updateIndex = 0;
+var updateTotal = 0;
 
 function processUpdates() {
     var start = Date.now();
-    while(updateIndex < pendingUpdates.length && (Date.now() - start) < 66) {
+    while(updateIndex < updateTotal && (Date.now() - start) < 66) {
         pendingUpdates[updateIndex]();
         updateIndex++;
     }
     
-    if(updateIndex === pendingUpdates.length) {
+    if(updateIndex === updateTotal) {
         updateIndex = 0;
-        pendingUpdates = [];
+        updateTotal = 0;
         updateScheduled = false;
     }
     else
@@ -29,7 +30,8 @@ export var DOMNodeConfig: INodeConfig = {
         return wndw.document.createElement(type);
     },
     scheduleUpdate: function(callback: () => void): void {
-        pendingUpdates.push(callback);
+        pendingUpdates[updateTotal] = callback;
+        updateTotal++;
     
         if(!updateScheduled) {
             updateScheduled = true;
