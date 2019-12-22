@@ -79,8 +79,13 @@ export class StoreBase<T> implements AbstractStore {
         });
     }
 
-    public async Get<O = T>(id?: string): Promise<O> {
+    public Get<O>(id?: string): O {
         var ret = null;
+        this.ActionSync(reader => {
+            ret = reader.Get<O>(id);
+        });
+        return ret;
+        /* var ret = null;
         await this.Action(async (reader) => {
             if(id)
                 ret = reader.Get<O>(id);
@@ -88,7 +93,7 @@ export class StoreBase<T> implements AbstractStore {
                 ret = reader.Root;
         });
 
-        return ret;
+        return ret; */
     }
 
     public async Write(value: any) {
