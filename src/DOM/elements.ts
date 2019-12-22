@@ -51,7 +51,7 @@ export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(dat
 }
 
 export function option<T>(nodeDef: ElementNodeFunctionParam<T>) {
-    return ElementNode.Create("div", null, nodeDef, null);
+    return ElementNode.Create("option", null, nodeDef, null);
 }
 
 export function h1<T>(nodeDef: ElementNodeFunctionParam<T>) {
