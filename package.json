@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "3.0.03",
+  "version": "3.0.07",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -16,7 +16,7 @@
   "scripts": {
     "clean": "rimraf lib",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
-    "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty",
+    "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty && node ./tools/copy-package-json.js",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
     "test": "npm run buildquick && mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
     "watch": "npm run build -- --watch",
@@ -26,12 +26,13 @@
     "webdevbuild": "npm run clean && webpack",
     "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
   },
-  "dependencies": { },
+  "dependencies": {},
   "devDependencies": {
     "@types/chai": "3.4.30",
     "@types/mocha": "2.2.29",
     "@types/node": "^6.0.117",
     "chai": "^3.5.0",
+    "fs-extra": "^8.1.0",
     "jsdom": "^13.2.0",
     "mocha": "^3.0.1",
     "rimraf": "^2.5.4",

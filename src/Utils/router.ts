@@ -1,6 +1,6 @@
 import { Scope } from "../Store/scope/scope";
 import { wndw } from "../DOM/window";
-import { StoreBase } from "..";
+import { Store } from "../Store";
 
 export abstract class Router<T extends {}> {
 
@@ -19,7 +19,7 @@ export abstract class Router<T extends {}> {
         return this.initPromise;
     }
 
-    constructor(private store: StoreBase<T>) {
+    constructor(private store: Store<T>) {
         this.initPromise = new Promise(async (resolve, reject) => {
             try{
                 this.routeScope = new Scope(() => this.CreateRoutePart());

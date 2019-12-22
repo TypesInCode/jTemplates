@@ -1,4 +1,4 @@
-import { StoreBase } from "..";
+import { Store } from "../store";
 export declare abstract class Router<T extends {}> {
     private store;
     private routeScope;
@@ -6,7 +6,7 @@ export declare abstract class Router<T extends {}> {
     protected readonly State: T;
     protected readonly ReplaceHistory: boolean;
     readonly Init: Promise<void>;
-    constructor(store: StoreBase<T>);
+    constructor(store: Store<T>);
     protected abstract CreateRoutePart(): string;
     abstract GetRoutePart(route: string): string;
     abstract Read(routePart: string): Promise<void>;
