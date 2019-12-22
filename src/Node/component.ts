@@ -3,7 +3,6 @@ import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
 import { Destroy } from "../Utils/decorators";
-import { NodeConfig } from "./nodeConfig";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;

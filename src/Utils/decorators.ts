@@ -1,5 +1,5 @@
 import { StoreSync } from "../Store/storeSync";
-import { StoreBase } from "../Store/store/storeBase";
+import { Store as StoreClass } from "../Store/store/store";
 import { Scope as ScopeClass } from "../Store/scope/scope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
@@ -8,7 +8,7 @@ export function Store(): any {
     return StoreDecorator;
 }
 
-function StoreDecorator<T extends Component<any, any, any> & Record<K, StoreBase<any>>, K extends string>(target: T, propertyKey: K) {
+function StoreDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
 
     DestroyDecorator(target, `StoreDecorator_${propertyKey}`);
     return {
