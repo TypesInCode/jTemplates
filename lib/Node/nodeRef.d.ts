@@ -4,6 +4,8 @@ export declare class NodeRef {
     private parent;
     private childNodes;
     private injector;
+    private destroyed;
+    readonly Destroyed: boolean;
     readonly Node: any;
     protected readonly Injector: Injector;
     constructor(node: any);

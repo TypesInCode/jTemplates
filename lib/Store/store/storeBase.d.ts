@@ -25,7 +25,7 @@ export declare class StoreBase<T> implements AbstractStore {
     Next(action?: () => void): Promise<void>;
     Update(value: T): Promise<void>;
     Merge(value: Partial<T>): Promise<void>;
-    Get<O = T>(id?: string): Promise<O>;
+    Get<O>(id?: string): O;
     Write(value: any): Promise<void>;
     Query<O>(queryFunc: FuncCallback<T, O>): Scope<O>;
     Destroy(): void;
