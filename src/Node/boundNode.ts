@@ -62,6 +62,9 @@ export abstract class BoundNode extends NodeRef {
     }
 
     public SetText() {
+        if(this.Destroyed)
+            return;
+
         NodeConfig.setText(this.Node, this.textScope.Value);
     }
 
@@ -77,6 +80,9 @@ export abstract class BoundNode extends NodeRef {
     }
 
     public SetProperties() {
+        if(this.Destroyed)
+            return;
+        
         var properties = this.propertiesScope.Value;
         this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
         this.lastProperties = properties;
@@ -94,6 +100,9 @@ export abstract class BoundNode extends NodeRef {
     }
 
     public SetAttributes() {
+        if(this.Destroyed)
+            return;
+        
         var attributes = this.attributesScope.Value;
         for(var key in attributes) {
             var val = NodeConfig.getAttribute(this.Node, key);

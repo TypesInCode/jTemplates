@@ -63,6 +63,9 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
             PreReq.All(this.component).then(() => {
                 NodeConfig.scheduleUpdate(() => {
+                    if(this.Destroyed)
+                       return;
+         
                     preNodes.forEach(node => {
                         node.Detach();
                         node.Destroy();
@@ -76,7 +79,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
             this.AddTemplate();
     }
 
-    private AddTemplate() {
+    private AddTemplate() {        
         var nodes = null as Array<NodeRef>;
         Injector.Scope(this.Injector, () => {
             var parentVal = BoundNode.Immediate;

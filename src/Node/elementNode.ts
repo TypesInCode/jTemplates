@@ -66,6 +66,9 @@ export class ElementNode<T> extends BoundNode {
     }
 
     public SetData() {
+        if(this.Destroyed)
+            return;
+        
         var newNodeRefMap = new Map();
         var previousNode: BoundNode = null;
         var index = 0;
@@ -114,6 +117,9 @@ export class ElementNode<T> extends BoundNode {
     }
 
     public SetEvents() {
+        if(this.Destroyed)
+            return;
+        
         for(var key in this.lastEvents)
             NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
 

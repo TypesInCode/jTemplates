@@ -6,6 +6,11 @@ export class NodeRef {
     private parent: NodeRef;
     private childNodes: Set<NodeRef>;
     private injector: Injector;
+    private destroyed: boolean;
+
+    public get Destroyed() {
+        return this.destroyed;
+    }
 
     public get Node() {
         return this.node;
@@ -17,6 +22,7 @@ export class NodeRef {
 
     constructor(node: any) {
         this.node = node;
+        this.destroyed = false;
         this.childNodes = new Set();
         this.injector = new Injector();
     }
@@ -54,6 +60,7 @@ export class NodeRef {
     }
 
     public Destroy() {
+        this.destroyed = true;
         this.DestroyChildren();
     }
 
