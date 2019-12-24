@@ -39,8 +39,10 @@ var store = new StoreSync({
     firstProperty: 'old value',
     secondProperty: 'second old value'
 });
+
 // store.Root is a Scope watching the root of the store
 var rootScope = store.Root;
+
 // rootScope.Value gets the current value of the Scope
 console.log(rootScope.Value.firstProperty);
 // outputs: "old value"
@@ -60,6 +62,7 @@ var childScope = rootScope.Scope(rootValue => {
 childScope.addListener('set', () => {
     console.log(childScope.Value); 
     // outputs: 'new value - second new value'
+    // ...
     // outputs: 'merged value - second new value'
 });
 
