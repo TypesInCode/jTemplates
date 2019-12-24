@@ -10,14 +10,7 @@ export class Scope<T> extends Emitter {
 
     public get Value(): T {        
         ScopeCollector.Register(this);
-        if(this.dirty) {
-            this.dirty = false;
-            var emitters = ScopeCollector.Watch(() =>
-                this.value = this.getFunction()
-            );
-            this.UpdateEmitters(emitters);
-        }
-
+        this.UpdateValue();
         return this.value;
     }
     
@@ -32,9 +25,10 @@ export class Scope<T> extends Emitter {
         else
             this.getFunction = () => getFunction;
         
+        this.dirty = true;
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
-        this.dirty = true;
+        this.UpdateValue();
     }
 
     public Scope<O>(callback: {(parent: T): O}): Scope<O> {
@@ -50,6 +44,17 @@ export class Scope<T> extends Emitter {
         this.emitters.forEach(e => this.RemoveListenersFrom(e));
         this.emitters.clear();
         this.removeAllListeners();
+    }
+
+    private UpdateValue() {
+        if(!this.dirty)
+            return false;
+
+        this.dirty = false;
+        var emitters = ScopeCollector.Watch(() =>
+            this.value = this.getFunction()
+        );
+        this.UpdateEmitters(emitters);
     }
 
     private UpdateEmitters(newEmitters: Set<Emitter>) {
