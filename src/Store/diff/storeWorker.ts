@@ -7,13 +7,11 @@ export namespace StoreWorker {
         workerConstructor = Worker;
         workerParameter = URL.createObjectURL(new Blob([`(${ObjectDiffScope})(false)`]));
     }
-    else {
-        /* workerConstructor = (require("webworker-threads").Worker as any);
-        workerParameter = ObjectDiffScope; */
-        throw "Worker is not available";
-    }
     
     export function Create() {
+        if(!workerConstructor)
+            throw "Worker is not available";
+        
         return new workerConstructor(workerParameter) as Worker;
     }
 }
