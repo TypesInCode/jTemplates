@@ -24,7 +24,11 @@ export class StoreManager<T> {
     }
 
     public GetIdNode(id: string): TreeNode {
-        return this.tree.GetIdNode(id);
+        var node = this.tree.GetIdNode(id);
+        /* if(node.Proxy === undefined)
+            this.AssignPropertyPath(null, node.Path); */
+
+        return node;
     }
 
     public ResolvePropertyPath(path: string) {
@@ -43,9 +47,7 @@ export class StoreManager<T> {
             throw "Written value must have an id";
 
         var path = ["id", id].join(".");
-        if(this.ResolvePropertyPath(path) === undefined)
-            this.AssignPropertyPath(null, path);
-
+        this.EnsurePropertyPath(path);
         await this.WritePath(path, value);
     }
 
@@ -147,9 +149,19 @@ export class StoreManager<T> {
         var parts = path.split(".");
         var prop = parts[parts.length - 1];
         var parentParts = parts.slice(0, parts.length - 1);
-        var parentObj = this.ResolvePropertyPath(parentParts.join("."));
+        var parentObj = this.ResolvePropertyPath(parentParts.join(".")) as any;
 
-        (parentObj as any)[prop] = value;
+        parentObj[prop] = value;
+    }
+
+    public EnsurePropertyPath(path: string) {
+        var parts = path.split(".");
+        var prop = parts[parts.length - 1];
+        var parentParts = parts.slice(0, parts.length - 1);
+        var parentObj = this.ResolvePropertyPath(parentParts.join(".")) as any;
+
+        if(parentObj[prop] === undefined)
+            parentObj[prop] = null;
     }
 
     private ProcessDiff(data: IDiffResponse) {
