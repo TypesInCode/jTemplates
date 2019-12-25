@@ -67,12 +67,12 @@ store.Write({
 });
 ```
 ### Scope
-A `Scope` is used to observe changes made to any `Store`s or `Scope`s referenced during its value callback.  A `Store` provides a scope to access its root value:
+A `Scope` is used to observe changes made to any `Store`s or `Scope`s referenced during its value callback.  A `Store` provides a `Scope` to access its root value:
 ```typescript
 console.log(store.Root.Value.firstProperty);
 // outputs: 'merged first value'
 ```
-A new scope can be created from an existing `Scope`:
+A new `Scope` can be created from an existing `Scope`:
 ```typescript
 var childScope = store.Root.Scope(root => root.firstProperty);
 console.log(childScope.Value);
