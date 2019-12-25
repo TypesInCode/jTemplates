@@ -62,11 +62,6 @@ export class Store<T> implements AbstractStore {
         action(this.reader);
     }
 
-    public async Next(action?: () => void) {
-        await this.Action(async () => {});
-        action && action();
-    }
-
     public async Update(value: T) {
         await this.Action(async (reader, writer) => {
             await writer.Update(reader.Root, value);
@@ -85,15 +80,6 @@ export class Store<T> implements AbstractStore {
             ret = reader.Get<O>(id);
         });
         return ret;
-        /* var ret = null;
-        await this.Action(async (reader) => {
-            if(id)
-                ret = reader.Get<O>(id);
-            else
-                ret = reader.Root;
-        });
-
-        return ret; */
     }
 
     public async Write(value: any) {
