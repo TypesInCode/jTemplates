@@ -8,7 +8,7 @@ async function Test() {
     });
 
     var setFired = false;
-    query.addListener("set", () => {
+    query.Watch((val) => {
       setFired = true;
     });
 

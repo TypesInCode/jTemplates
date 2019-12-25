@@ -16,9 +16,9 @@ describe("Store (Sync)", () => {
     var store = new StoreSync({ firstProperty: 'old value', secondProperty: 'second old value' });
     var scope = new Scope(() => `${store.Root.Value.firstProperty} ${store.Root.Value.secondProperty}`);
     expect(scope.Value).to.equal('old value second old value');
-
+    
     var setFired = false;
-    scope.addListener('set', () => {
+    scope.Watch(() => {
       setFired = true;
     });
 
@@ -41,7 +41,7 @@ describe("Store (Sync)", () => {
     });
 
     var setFired = false;
-    query.addListener("set", () => {
+    query.Watch(() => {
       setFired = true;
     });
 

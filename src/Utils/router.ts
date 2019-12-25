@@ -24,7 +24,7 @@ export abstract class Router<T extends {}> {
             try{
                 this.routeScope = new Scope(() => this.CreateRoutePart());
                 await Router.Register(this);
-                this.routeScope.addListener("set", () => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
+                this.routeScope.Watch(() => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
                 resolve();
             }
             catch(e) {

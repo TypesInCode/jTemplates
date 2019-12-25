@@ -50,7 +50,8 @@ export class ElementNode<T> extends BoundNode {
             var keyInit = value.map((v, i) => [this.keyFunc && this.keyFunc(v) || i.toString(), v] as any);
             return new Map<string, T>(keyInit);
         });
-        this.keyDataScope.addListener("set", () => this.ScheduleSetData());
+        // this.keyDataScope.addListener("set", () => this.ScheduleSetData());
+        this.keyDataScope.Watch(() => this.ScheduleSetData());
     }
 
     private setData = false;

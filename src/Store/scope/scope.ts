@@ -1,30 +1,31 @@
 import Emitter from "../../Utils/emitter";
 import { ScopeCollector } from "./scopeCollector";
 
-export class Scope<T> extends Emitter {
+export class Scope<T> {
     private getFunction: {(): T};
+    private emitter: Emitter;
     private emitters: Set<Emitter>;
     private setCallback: () => void;
     private value: T;
     private dirty: boolean;
 
     public get Value(): T {        
-        ScopeCollector.Register(this);
+        ScopeCollector.Register(this.emitter);
         this.UpdateValue();
         return this.value;
     }
     
-    public get HasValue() {
+    /* public get HasValue() {
         return typeof this.value !== 'undefined';
-    }
+    } */
 
     constructor(getFunction: {(): T} | T) {
-        super();
         if(typeof getFunction === 'function')
             this.getFunction = getFunction as {(): T};
         else
             this.getFunction = () => getFunction;
         
+        this.emitter = new Emitter();
         this.dirty = true;
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
@@ -35,15 +36,15 @@ export class Scope<T> extends Emitter {
         return new Scope<O>(() => callback(this.Value));
     }
 
-    public Watch(callback: {(value: T): void}) {
-        this.addListener("set", () => callback(this.Value));
-        callback(this.Value);
+    public Watch(callback: {(scope?: Scope<T>): void}) {
+        this.emitter.addListener("set", () => callback(this));
+        callback(this);
     }
 
     public Destroy() {
         this.emitters.forEach(e => this.RemoveListenersFrom(e));
         this.emitters.clear();
-        this.removeAllListeners();
+        this.emitter.removeAllListeners();
     }
 
     private UpdateValue() {
@@ -72,7 +73,7 @@ export class Scope<T> extends Emitter {
 
     private SetCallback() {
         this.dirty = true;
-        this.emit("set");
+        this.emitter.emit("set");
     }
 
     private AddListenersTo(emitter: Emitter) {

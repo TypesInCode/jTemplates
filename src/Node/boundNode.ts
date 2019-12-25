@@ -129,25 +129,25 @@ export abstract class BoundNode extends NodeRef {
 
         if(this.nodeDef.text) {
             this.textScope = new Scope(this.nodeDef.text);
-            this.textScope.addListener("set", this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
+            this.textScope.Watch(this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
             this.SetText();
         }
 
         if(this.nodeDef.props) {
             this.propertiesScope = new Scope(this.nodeDef.props);
-            this.propertiesScope.addListener("set", this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
+            this.propertiesScope.Watch(this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(this.nodeDef.attrs) {
             this.attributesScope = new Scope(this.nodeDef.attrs);
-            this.attributesScope.addListener("set", this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
+            this.attributesScope.Watch(this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(this.nodeDef.on) {
             this.eventsScope = new Scope(this.nodeDef.on);
-            this.eventsScope.addListener("set", this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
+            this.eventsScope.Watch(this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }
     }
