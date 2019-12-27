@@ -47,7 +47,7 @@ function CreateSample(sample) {
     var curScriptFolder = curScriptUrl.replace(/docHelpers\.js$/, "");
     AddDependencies(curScriptFolder, () => {
         var samplesFolder = curScriptFolder + "../samples/";
-        var sampleUrl = samplesFolder + url + ".ts";
+        var sampleUrl = samplesFolder + sample + ".ts";
 
         GetFile(sampleUrl, (text) => {
             var container = document.getElementById(sample);
