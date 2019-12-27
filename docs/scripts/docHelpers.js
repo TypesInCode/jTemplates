@@ -1,5 +1,3 @@
-import { SSL_OP_SINGLE_DH_USE } from "constants";
-
 function GetFile(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
