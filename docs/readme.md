@@ -14,7 +14,7 @@
         GetFile('./samples/helloWorld.ts', (code) => {
             var elem = document.getElementById("hello-world");
             elem.innerHTML = code;
-            var js = ts.transpile(code);
+            var js = ts.transpile(code, { target: 'es6' });
             var jsElem = document.getElementById("hello-world-js");
             jsElem.innerHTML = js;
         });
