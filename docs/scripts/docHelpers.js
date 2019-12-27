@@ -51,10 +51,16 @@ function CreateSample(sample) {
 
         GetFile(sampleUrl, (text) => {
             var container = document.getElementById(sample);
-            var code = document.createElement("code");
+            container.innerHTML = "";
+            var code = document.createElement("pre");
             code.innerHTML = text;
             hljs.highlightBlock(code);
             container.appendChild(code);
+            var js = ts.transpile(text, { target: "es6" });
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.innerHTML = js;
+            document.body.appendChild(script);
         });
     });
 }
