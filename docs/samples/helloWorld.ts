@@ -7,4 +7,4 @@ class HelloWorld extends Component {
 }
 
 var helloWorld = Component.ToFunction("hello-world", null, HelloWorld);
-Component.Attach(document.body, helloWorld({}));
+Component.Attach(document.getElementById("hello-world"), helloWorld({}));
