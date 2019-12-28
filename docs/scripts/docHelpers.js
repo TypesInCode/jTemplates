@@ -43,6 +43,25 @@ function AddDependencies(scriptFolder, callback) {
     LoadCSS(scriptFolder + "codemirror.css");
 }
 
+function ExecuteTs(ts) {
+    var js = ts.transpile(ts, { target: "es6" });
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.innerHTML = js;
+    document.body.appendChild(script);
+}
+
+var changeTimeout = null;
+function CreateCodeMirror(container, initValue) {
+    var cm = CodeMirror(container, { value: initValue });
+    cm.on("change", () => {
+        clearTimeout(changeTimeout);
+        changeTimeout = setTimeout(() => {
+            ExecuteTs(cm.getDoc().getValue());
+        }, 4000);
+    });
+}
+
 function CreateSample(sample) {
     var curScriptUrl = document.querySelector("[src$='docHelpers.js'").src;
     var curScriptFolder = curScriptUrl.replace(/docHelpers\.js$/, "");
@@ -53,19 +72,8 @@ function CreateSample(sample) {
         GetFile(sampleUrl, (text) => {
             var container = document.getElementById(sample);
             container.innerHTML = "";
-            var code = document.createElement("textarea");
-            code.value = text;
-            // hljs.highlightBlock(code);
-            container.appendChild(code);
-            CodeMirror.fromTextArea(code, {
-                lineNumbers: true,
-                readOnly: true
-            });
-            var js = ts.transpile(text, { target: "es6" });
-            var script = document.createElement("script");
-            script.type = "text/javascript";
-            script.innerHTML = js;
-            document.body.appendChild(script);
+            CreateCodeMirror(text);
+            ExecuteTs(text);
         });
     });
 }
