@@ -102,7 +102,9 @@ function ExecuteTs(container, code) {
 var changeTimeout = null;
 function CreateCodeMirror(container, initValue) {
     var cm = CodeMirror(container, { 
-        value: initValue
+        value: initValue,
+        matchBrackets: true,
+        mode: "text/typescript"
     });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
