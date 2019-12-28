@@ -150,8 +150,8 @@
       for (var c = token.state.context; c; c = c.prev)
         for (var v = c.vars; v; v = v.next) maybeAdd(v.name)
       for (var v = token.state.globalVars; v; v = v.next) maybeAdd(v.name);
-      if (!options || options.useGlobalScope !== false)
-        gatherCompletions(global);
+      /* if (!options || options.useGlobalScope !== false)
+        gatherCompletions(global); */
       forEach(keywords, maybeAdd);
     }
     return found;
