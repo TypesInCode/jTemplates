@@ -112,7 +112,7 @@ function CreateCodeMirror(container, initValue) {
         matchBrackets: true,
         lineNumbers: true,
         extraKeys: { "Ctrl-Space": "autocomplete" },
-        mode: {name: "text/typescript", globalVars: true}
+        mode: {name: "text/typescript", globalVars: false}
     });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
