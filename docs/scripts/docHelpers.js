@@ -43,12 +43,19 @@ function AddDependencies(scriptFolder, callback) {
     LoadCSS(scriptFolder + "codemirror.css");
 }
 
-function ExecuteTs(code) {
+function ExecuteTs(container, code) {
+    var iframe = container.querySelector("iframe");
+    if(iframe)
+        container.removeChild(iframe);
+    
+    iframe = document.createElement("iframe");
+    iframe.srcDoc = '<!DOCTYPE html><html><head><script type="text/javascript" src="https://unpkg.com/j-templates/jTemplates.js"></script></head><body></body></html>';
+    container.appendChild(iframe);
     var js = ts.transpile(code, { target: "es6" });
-    var script = document.createElement("script");
+    var script = iframe.contentDocument.createElement("script");
     script.type = "text/javascript";
     script.innerHTML = js;
-    document.body.appendChild(script);
+    iframe.contentDocument.head.appendChild(script);
 }
 
 var changeTimeout = null;
@@ -57,7 +64,7 @@ function CreateCodeMirror(container, initValue) {
     cm.on("change", () => {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
-            ExecuteTs(cm.getDoc().getValue());
+            ExecuteTs(container, cm.getDoc().getValue());
         }, 4000);
     });
 }
