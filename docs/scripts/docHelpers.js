@@ -17,7 +17,7 @@ function AppendScript(url, callback) {
     var script = document.createElement("script");
     script.type = "text/javascript";
     script.onload = callback;
-    script.src = scriptUrl;
+    script.src = url;
     document.body.appendChild(script);
 }
 
