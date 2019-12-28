@@ -99,7 +99,7 @@ function CreateSample(sample) {
 
             h2 = document.createElement("h2");
             h2.innerText = "Output";
-            container.appendChild(h1);
+            container.appendChild(h2);
             
             ExecuteTs(container, text);
         });
