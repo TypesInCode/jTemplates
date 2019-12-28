@@ -40,7 +40,7 @@ function AddDependencies(scriptFolder, callback) {
     LoadScript("https://unpkg.com/j-templates/jTemplates.js", callback);
     LoadScript(scriptFolder + "codemirror.js", callback);
     LoadScript(scriptFolder + "javascript.js", callback);
-    LoadCSS(scriptFolder + "codemirror.css");
+    LoadCSS(scriptFolder + "/styles/codemirror.css");
 }
 
 function ExecuteTs(container, code) {
@@ -49,6 +49,7 @@ function ExecuteTs(container, code) {
         container.removeChild(iframe);
     
     iframe = document.createElement("iframe");
+    iframe.className = "output";
     iframe.srcDoc = '<!DOCTYPE html><html><head></head><body></body></html>';
     container.appendChild(iframe);
     var jTempScript = iframe.contentDocument.createElement("script");
@@ -79,6 +80,8 @@ function CreateCodeMirror(container, initValue) {
 }
 
 function CreateSample(sample) {
+    var container = document.getElementById(sample);
+    container.innerHTML = "Loading...";
     var curScriptUrl = document.querySelector("[src$='docHelpers.js'").src;
     var curScriptFolder = curScriptUrl.replace(/docHelpers\.js$/, "");
     AddDependencies(curScriptFolder, () => {
@@ -86,9 +89,18 @@ function CreateSample(sample) {
         var sampleUrl = samplesFolder + sample + ".ts";
 
         GetFile(sampleUrl, (text) => {
-            var container = document.getElementById(sample);
             container.innerHTML = "";
+
+            var h2 = document.createElement("h2");
+            h2.innerText = "Code";
+            container.appendChild(h2);
+            
             CreateCodeMirror(container, text);
+
+            h2 = document.createElement("h2");
+            h2.innerText = "Output";
+            container.appendChild(h1);
+            
             ExecuteTs(container, text);
         });
     });

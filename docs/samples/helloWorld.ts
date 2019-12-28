@@ -1,3 +1,6 @@
+import { Component } from 'j-templates';
+import { div } from 'j-templates/DOM';
+
 class HelloWorld extends Component {
 
     public Template() {

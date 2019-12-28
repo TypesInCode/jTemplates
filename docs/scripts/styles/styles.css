@@ -1,0 +1,8 @@
+.CodeMirror {
+    border: 1px solid #ddd;
+}
+
+iframe.output {
+    width: 100%;
+    border-style: none;
+}
