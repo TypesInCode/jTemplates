@@ -41,6 +41,7 @@ function AddDependencies(scriptFolder, callback) {
     LoadScript(scriptFolder + "codemirror.js", callback);
     LoadScript(scriptFolder + "javascript.js", callback);
     LoadCSS(scriptFolder + "/styles/codemirror.css");
+    LoadCSS(scriptFolder + "/styles/styles.css");
 }
 
 function ExecuteTs(container, code) {
