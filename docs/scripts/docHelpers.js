@@ -13,19 +13,42 @@ function GetFile(url, callback) {
     xhr.send(null);
 }
 
-var onLoadCount = 0;
-var totalOnLoad = 0;
-function LoadScript(scriptUrl, callback) {
-    totalOnLoad++;
+function AppendScript(url, callback) {
     var script = document.createElement("script");
     script.type = "text/javascript";
-    script.onload = () => {
+    script.onload = callback;
+    script.src = scriptUrl;
+    document.body.appendChild(script);
+}
+
+var onLoadCount = 0;
+var totalOnLoad = 0;
+/* function LoadScript(scriptUrl, callback) {
+    totalOnLoad++;
+    AppendScript(scriptUrl, () => {
         onLoadCount++;
         if(onLoadCount >= totalOnLoad)
             callback();
-    };
-    script.src = scriptUrl;
-    document.body.appendChild(script);
+    });
+} */
+
+function LoadScripts(scriptUrls, callback, index) {
+    if(index === undefined) {
+        index = 0;
+        totalOnLoad += scriptUrls.length;
+    }
+    
+    if(index >= scriptUrls.length && onLoadCount >= totalOnLoad) {
+        onLoadCount = 0;
+        totalOnLoad = 0;
+        callback();
+        return;
+    }
+    
+    AppendScript(scriptUrls[index], () => {
+        onLoadCount++;
+        LoadScripts(scriptUrls, callback, index + 1);
+    });
 }
 
 function LoadCSS(cssUrl) {
@@ -36,10 +59,10 @@ function LoadCSS(cssUrl) {
 }
 
 function AddDependencies(scriptFolder, callback) {
-    LoadScript("https://rawgit.com/Microsoft/TypeScript/master/lib/typescriptServices.js", callback);
-    LoadScript("https://unpkg.com/j-templates/jTemplates.js", callback);
-    LoadScript(scriptFolder + "codemirror.js", callback);
-    LoadScript(scriptFolder + "javascript.js", callback);
+    LoadScripts(["https://rawgit.com/Microsoft/TypeScript/master/lib/typescriptServices.js"], callback);
+    // LoadScript("https://unpkg.com/j-templates/jTemplates.js", callback);
+    LoadScripts([scriptFolder + "codemirror.js", scriptFolder + "javascript.js"], callback);
+    // LoadScript(scriptFolder + "javascript.js", callback);
     LoadCSS(scriptFolder + "/styles/codemirror.css");
     LoadCSS(scriptFolder + "/styles/styles.css");
 }
@@ -70,8 +93,7 @@ function ExecuteTs(container, code) {
 var changeTimeout = null;
 function CreateCodeMirror(container, initValue) {
     var cm = CodeMirror(container, { 
-        value: initValue,
-        lineNumbers: true
+        value: initValue
     });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
