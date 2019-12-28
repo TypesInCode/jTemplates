@@ -70,8 +70,9 @@ function AddDependencies(scriptFolder, callback) {
         scriptFolder + "javascript-hint.js"
     ], callback);
     // LoadScript(scriptFolder + "javascript.js", callback);
-    LoadCSS(scriptFolder + "/styles/codemirror.css");
-    LoadCSS(scriptFolder + "/styles/styles.css");
+    LoadCSS(scriptFolder + "styles/codemirror.css");
+    LoadCSS(scriptFolder + "styles/styles.css");
+    LoadCSS(scriptFolder + "styles/show-hint.css");
 }
 
 function ReportError(e) {
