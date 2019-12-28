@@ -18,5 +18,6 @@ export declare class StoreManager<T> {
     Destroy(): void;
     private BreakUpValue;
     AssignPropertyPath(value: any, path: string): void;
+    EnsurePropertyPath(path: string): void;
     private ProcessDiff;
 }

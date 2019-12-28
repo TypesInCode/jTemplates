@@ -1,4 +1,4 @@
-import { Store } from "../store";
+import { Store } from "../Store";
 export declare abstract class Router<T extends {}> {
     private store;
     private routeScope;

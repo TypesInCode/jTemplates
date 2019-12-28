@@ -2,7 +2,7 @@ import { Component } from "../Node/component";
 import { NodeRef } from "..";
 export declare function Store(): any;
 export declare function Scope(): typeof ScopeDecorator;
-function ScopeDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor): PropertyDescriptor;
+declare function ScopeDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor): PropertyDescriptor;
 export declare function Inject<I>(type: {
     new (): I;
 }): <F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor) => any;

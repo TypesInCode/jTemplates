@@ -1,12 +1,11 @@
-import Emitter from "../../Utils/emitter";
-export declare class Scope<T> extends Emitter {
+export declare class Scope<T> {
     private getFunction;
+    private emitter;
     private emitters;
     private setCallback;
     private value;
     private dirty;
     readonly Value: T;
-    readonly HasValue: boolean;
     constructor(getFunction: {
         (): T;
     } | T);
@@ -14,9 +13,10 @@ export declare class Scope<T> extends Emitter {
         (parent: T): O;
     }): Scope<O>;
     Watch(callback: {
-        (value: T): void;
+        (scope?: Scope<T>): void;
     }): void;
     Destroy(): void;
+    private UpdateValue;
     private UpdateEmitters;
     private SetCallback;
     private AddListenersTo;
