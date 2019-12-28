@@ -109,8 +109,9 @@ function CreateCodeMirror(container, initValue) {
     var cm = CodeMirror(container, { 
         value: initValue,
         matchBrackets: true,
-        mode: "text/typescript",
-        lineNumbers: true
+        lineNumbers: true,
+        extraKeys: { "Ctrl-Space": "autocomplete" },
+        mode: {name: "text/typescript", globalVars: true}
     });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
