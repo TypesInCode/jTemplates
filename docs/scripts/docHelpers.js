@@ -38,6 +38,7 @@ function LoadCSS(cssUrl) {
 function AddDependencies(scriptFolder, callback) {
     LoadScript("https://rawgit.com/Microsoft/TypeScript/master/lib/typescriptServices.js", callback);
     LoadScript("https://unpkg.com/j-templates/jTemplates.js", callback);
+    LoadScript(scriptFolder + "javascript.js", callback);
     LoadScript(scriptFolder + "codemirror.js", callback);
     LoadCSS(scriptFolder + "codemirror.css");
 }
@@ -58,8 +59,7 @@ function CreateSample(sample) {
             container.appendChild(code);
             CodeMirror.fromTextArea(code, {
                 lineNumbers: true,
-                readOnly: true,
-                mode: "typescript"
+                readOnly: true
             });
             var js = ts.transpile(text, { target: "es6" });
             var script = document.createElement("script");
