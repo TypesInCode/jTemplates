@@ -31,7 +31,7 @@ class MyComponent extends Component<IData, ITemplates, IEvents> {
     // Store definition
     _store = new StoreSync({ headerToggled: false });
     // Scope definition
-    _headerClassScope = this._store.Scope(root => {
+    _headerClassScope = this._store.Root.Scope(root => {
         return root.headerToggled ? 'toggled' : 'not-toggled';
     });
 
@@ -87,7 +87,7 @@ var myComponent = Component.ToFunction("my-component", null, MyComponent);
 class RootComponent extends Component {
 
     _state = new StoreSync({ inputValue: "" });
-    _inputValueScope = this._state.Scope(root => root.inputValue);
+    _inputValueScope = this._state.Root.Scope(root => root.inputValue);
     get InputValue() {
         return this._inputValueScope.Value;
     }
