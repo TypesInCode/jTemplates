@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "3.0.11",
+  "version": "3.0.15",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -16,7 +16,7 @@
   "scripts": {
     "clean": "rimraf lib",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
-    "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty && node ./tools/copy-package-json.js",
+    "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty && node ./tools/copy-package-json.js && webpack",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
     "test": "npm run buildquick && mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
     "watch": "npm run build -- --watch",

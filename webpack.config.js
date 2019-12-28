@@ -1,22 +1,25 @@
 var webpack = require('webpack');
 
 module.exports = {  
-  entry: './src/index',
+  entry: './src/web',
   output: {
-    filename: 'jTemplate.js',
-    libraryTarget: 'var',
-    library: 'jTemplate'
+    filename: './lib/jTemplates.js',
+    /* libraryTarget: 'var',
+    library: 'jTemplate' */
   },
-  //devtool: 'source-map',
+  devtool: 'source-map',
   resolve: {
     extensions: ['.ts', '.js']
   },
   module: {
     loaders: [
-      { test: /\.ts$/, loader: 'ts-loader' }
+      { 
+        test: /\.ts$/, 
+        loader: 'ts-loader'
+      }
     ]
   },
   plugins: [
-    new webpack.IgnorePlugin(/jsdom|webworker-threads/)
+    new webpack.IgnorePlugin(/jsdom/)
   ]
 }
