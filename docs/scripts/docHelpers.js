@@ -66,7 +66,10 @@ function ExecuteTs(container, code) {
 
 var changeTimeout = null;
 function CreateCodeMirror(container, initValue) {
-    var cm = CodeMirror(container, { value: initValue });
+    var cm = CodeMirror(container, { 
+        value: initValue,
+        lineNumbers: true
+    });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
