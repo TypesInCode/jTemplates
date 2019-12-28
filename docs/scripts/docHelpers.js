@@ -62,7 +62,7 @@ function LoadCSS(cssUrl) {
 
 function AddDependencies(scriptFolder, callback) {
     LoadScripts(["https://rawgit.com/Microsoft/TypeScript/master/lib/typescriptServices.js"], callback);
-    LoadScript("https://unpkg.com/j-templates/jTemplates.js", callback);
+    LoadScripts(["https://unpkg.com/j-templates/jTemplates.js"], callback);
     LoadScripts([
         scriptFolder + "codemirror.js", 
         scriptFolder + "javascript.js",
