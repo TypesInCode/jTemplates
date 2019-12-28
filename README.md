@@ -4,7 +4,7 @@ Type-safe templating for the browser written in TypeScript.
 ```
 npm install --save-dev j-templates
 ```
-## Hello World - [sample](./docs/pages/helloWorld.md)
+## Hello World - [sample](https://typesincode.github.io/jTemplates/pages/helloWorld.html)
 ```typescript
 import { Component } from 'j-templates';
 import { div } from 'j-templates/DOM';
