@@ -72,7 +72,7 @@ function CreateSample(sample) {
         GetFile(sampleUrl, (text) => {
             var container = document.getElementById(sample);
             container.innerHTML = "";
-            CreateCodeMirror(text);
+            CreateCodeMirror(container, text);
             ExecuteTs(text);
         });
     });
