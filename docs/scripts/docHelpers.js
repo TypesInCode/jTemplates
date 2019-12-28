@@ -105,7 +105,8 @@ function CreateCodeMirror(container, initValue) {
         value: initValue,
         matchBrackets: true,
         mode: "text/typescript",
-        lineNumbers: true
+        lineNumbers: true,
+        viewportMargin: Infinity
     });
     cm.on("change", () => {
         clearTimeout(changeTimeout);
