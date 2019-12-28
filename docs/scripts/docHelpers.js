@@ -43,8 +43,8 @@ function AddDependencies(scriptFolder, callback) {
     LoadCSS(scriptFolder + "codemirror.css");
 }
 
-function ExecuteTs(ts) {
-    var js = ts.transpile(ts, { target: "es6" });
+function ExecuteTs(code) {
+    var js = ts.transpile(code, { target: "es6" });
     var script = document.createElement("script");
     script.type = "text/javascript";
     script.innerHTML = js;
