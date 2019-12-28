@@ -1,5 +1,6 @@
 .CodeMirror {
     border: 1px solid #ddd;
+    height: 600px;
 }
 
 iframe.output {
