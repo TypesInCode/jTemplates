@@ -7,3 +7,9 @@ iframe.output {
     width: 100%;
     border-style: none;
 }
+
+span.error {
+    font-size: .7em;
+    margin-left: 15px;
+    color: red;
+}

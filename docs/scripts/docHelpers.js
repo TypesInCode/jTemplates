@@ -38,10 +38,12 @@ function LoadScripts(scriptUrls, callback, index) {
         totalOnLoad += scriptUrls.length;
     }
     
-    if(index >= scriptUrls.length && onLoadCount >= totalOnLoad) {
-        onLoadCount = 0;
-        totalOnLoad = 0;
-        callback();
+    if(index >= scriptUrls.length) {
+        if(onLoadCount >= totalOnLoad) {
+            onLoadCount = 0;
+            totalOnLoad = 0;
+            callback();
+        }
         return;
     }
     
