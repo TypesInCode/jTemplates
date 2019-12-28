@@ -80,7 +80,7 @@ function CreateSample(sample) {
             var container = document.getElementById(sample);
             container.innerHTML = "";
             CreateCodeMirror(container, text);
-            ExecuteTs(text);
+            ExecuteTs(container, text);
         });
     });
 }
