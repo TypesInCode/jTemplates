@@ -57,6 +57,7 @@ function ExecuteTs(container, code) {
     jTempScript.src = "https://unpkg.com/j-templates/jTemplates.js";
     jTempScript.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
+        js = js.replace(/^import.*$/gm, "");
         var script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
