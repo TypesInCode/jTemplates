@@ -58,7 +58,8 @@ function CreateSample(sample) {
             container.appendChild(code);
             CodeMirror.fromTextArea(code, {
                 lineNumbers: true,
-                readOnly: true
+                readOnly: true,
+                mode: "typescript"
             });
             var js = ts.transpile(text, { target: "es6" });
             var script = document.createElement("script");
