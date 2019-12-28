@@ -49,13 +49,19 @@ function ExecuteTs(container, code) {
         container.removeChild(iframe);
     
     iframe = document.createElement("iframe");
-    iframe.srcDoc = '<!DOCTYPE html><html><head><script type="text/javascript" src="https://unpkg.com/j-templates/jTemplates.js"></script></head><body></body></html>';
+    iframe.srcDoc = '<!DOCTYPE html><html><head></head><body></body></html>';
     container.appendChild(iframe);
-    var js = ts.transpile(code, { target: "es6" });
-    var script = iframe.contentDocument.createElement("script");
-    script.type = "text/javascript";
-    script.innerHTML = js;
-    iframe.contentDocument.head.appendChild(script);
+    var jTempScript = iframe.contentDocument.createElement("script");
+    jTempScript.type = "text/javascript";
+    jTempScript.src = "https://unpkg.com/j-templates/jTemplates.js";
+    jTempScript.onload = () => {
+        var js = ts.transpile(code, { target: "es6" });
+        var script = iframe.contentDocument.createElement("script");
+        script.type = "text/javascript";
+        script.innerHTML = js;
+        iframe.contentDocument.head.appendChild(script);
+    };
+    iframe.contentDocument.head.appendChild(jTempScript);
 }
 
 var changeTimeout = null;
