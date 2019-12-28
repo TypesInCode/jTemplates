@@ -67,6 +67,12 @@ function AddDependencies(scriptFolder, callback) {
     LoadCSS(scriptFolder + "/styles/styles.css");
 }
 
+function ReportError(e) {
+    var parentDoc = window.parent.document;
+    var errorSpan = parentDoc.querySelector("span.error");
+    errorSpan.innerHTML = e.toString();
+}
+
 function ExecuteTs(container, code) {
     var iframe = container.querySelector("iframe");
     if(iframe)
@@ -82,6 +88,7 @@ function ExecuteTs(container, code) {
     jTempScript.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
+        js = ReportError.toString() + ' try { ' + js + '; ReportError(""); } catch(e) { ReportError(e); }'
         var script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
@@ -124,6 +131,10 @@ function CreateSample(sample) {
             h2 = document.createElement("h2");
             h2.innerText = "Output";
             container.appendChild(h2);
+
+            var span = document.createElement("span");
+            span.className = "error";
+            h2.appendChild(span);
             
             ExecuteTs(container, text);
         });
