@@ -53,6 +53,26 @@ describe("Store (Sync)", () => {
     store.Destroy();
     query.Destroy();
   });
+  it("Overwritten ID", async () => {
+    var store = new StoreSync({}, (val) => val._id);
+    var query = store.Query((reader) => {
+      return reader.Get<{ _id: string, property: string }>("very-unique-id");
+    });
+    expect(query.Value).to.equal(undefined);
+
+    await store.Write({ _id: "very-unique-id", property: "first value" });
+    expect(query.Value.property).to.equal("first value");
+
+    await store.Write({ _id: "some-collection", collection: [
+        { _id: "different-unique-id", property: "different value" },
+        { _id: "very-unique-id", property: "new unique value" }
+      ]
+    });
+
+    expect(query.Value.property).to.be.equal("new unique value");
+    query.Destroy();
+    store.Destroy();
+  });
 });
 
 /* import { Store } from "../src/Store/sync/store";

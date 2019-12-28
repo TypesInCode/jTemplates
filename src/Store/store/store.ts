@@ -17,14 +17,14 @@ export class AbstractStore {
 
     public async Write(value: any): Promise<void> { }
 
-    public async Get(id?: string): Promise<any> { }
+    // public async Get(id?: string): Promise<any> { }
 
     public Query<O>(queryFunc: FuncCallback<any, O>): Scope<O> {
         return null;
     }
 }
 
-export class Store<T> implements AbstractStore {
+export class Store<T extends {} | Array<any>> implements AbstractStore {
 
     private manager: StoreManager<T>;
     private reader: StoreReader<T>;
@@ -74,13 +74,13 @@ export class Store<T> implements AbstractStore {
         });
     }
 
-    public Get<O>(id?: string): O {
+    /* public Get<O>(id?: string): O {
         var ret = null;
         this.ActionSync(reader => {
             ret = reader.Get<O>(id);
         });
         return ret;
-    }
+    } */
 
     public async Write(value: any) {
         await this.Action(async (reader, writer) => {

@@ -72,6 +72,9 @@ export class Scope<T> {
     }
 
     private SetCallback() {
+        if(this.dirty)
+            return;
+        
         this.dirty = true;
         this.emitter.emit("set");
     }
