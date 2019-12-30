@@ -61,7 +61,7 @@ function LoadCSS(cssUrl) {
 }
 
 var loading = false;
-var loaded = true;
+var loaded = false;
 var callbacks = [];
 function AddDependencies(scriptFolder, callback) {
     if(loaded) {
