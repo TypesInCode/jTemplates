@@ -24,10 +24,8 @@ export class StoreManager<T> {
     }
 
     public GetIdNode(id: string): TreeNode {
+        this.EnsurePropertyPath(["id", id].join("."));
         var node = this.tree.GetIdNode(id);
-        /* if(node.Proxy === undefined)
-            this.AssignPropertyPath(null, node.Path); */
-
         return node;
     }
 
