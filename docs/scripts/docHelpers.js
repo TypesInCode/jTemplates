@@ -60,25 +60,46 @@ function LoadCSS(cssUrl) {
     document.body.appendChild(css);
 }
 
+var loading = false;
+var loaded = true;
+var callbacks = [];
 function AddDependencies(scriptFolder, callback) {
-    LoadScripts(["https://rawgit.com/Microsoft/TypeScript/master/lib/typescriptServices.js"], callback);
-    LoadScripts(["https://unpkg.com/j-templates/jTemplates.js"], callback);
+    if(loaded) {
+        callback();
+        return;
+    }
+
+    callbacks.push(callback);
+    if(loading)
+        return;
+
+    loading = true;
+    function onComplete() {
+        loaded = true;
+        callbacks.forEach(cb => cb());
+        callbacks = [];
+    }
+
+    LoadScripts(["https://cdn.jsdelivr.net/gh/Microsoft/TypeScript@master/lib/typescriptServices.js"], onComplete);
+    // LoadScripts(["https://unpkg.com/j-templates/jTemplates.js"], callback);
     LoadScripts([
         scriptFolder + "codemirror.js", 
         scriptFolder + "javascript.js",
-        scriptFolder + "show-hint.js",
-        scriptFolder + "javascript-hint.js"
-    ], callback);
+        // scriptFolder + "show-hint.js",
+        // scriptFolder + "javascript-hint.js"
+    ], onComplete);
     // LoadScript(scriptFolder + "javascript.js", callback);
     LoadCSS(scriptFolder + "styles/codemirror.css");
     LoadCSS(scriptFolder + "styles/styles.css");
     LoadCSS(scriptFolder + "styles/show-hint.css");
 }
 
-function ReportError(e) {
+function HandleError(containerId, message, source, lineNo, colNo, error) {
+    console.debug(arguments);
     var parentDoc = window.parent.document;
-    var errorSpan = parentDoc.querySelector("span.error");
-    errorSpan.innerHTML = e.toString();
+    var errorSpan = parentDoc.querySelector("#" + containerId + " span.error");
+    errorSpan.innerHTML = message;
+    return false;
 }
 
 function ExecuteTs(container, code) {
@@ -96,7 +117,7 @@ function ExecuteTs(container, code) {
     jTempScript.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
-        js = ReportError.toString() + ' try { ' + js + '; ReportError(""); } catch(e) { ReportError(e); }'
+        js = HandleError.toString() + '; var containerId="' + container.id + '";  var errorHandler = HandleError.bind(null, containerId); window.onerror = errorHandler; ' + js;
         var script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
