@@ -16,11 +16,12 @@
 }
 
 .example > .code {
+    float: left;
     width: calc(100% - 320px);
 }
 
 .CodeMirror {
-    border: 1px solid #ddd;
+    border: 1px solid #eaecef;
     margin-top: -17px;
     height: 500px;
     line-height: 18px;

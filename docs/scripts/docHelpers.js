@@ -135,7 +135,7 @@ function CreateCodeMirror(id, initValue) {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
             var div = document.getElementById(id + "_output");
-            ExecuteTs(container.id, div, cm.getDoc().getValue());
+            ExecuteTs(id, div, cm.getDoc().getValue());
         }, 4000);
     });
 }
@@ -163,8 +163,8 @@ function CreateSample(sample) {
             span.className = "error";
             h2.appendChild(span);
             div.appendChild(h2);
-            CreateCodeMirror(sample, text);
             container.appendChild(div);
+            CreateCodeMirror(sample, text);
 
             div = document.createElement("div");
             div.id = sample + "_output";
