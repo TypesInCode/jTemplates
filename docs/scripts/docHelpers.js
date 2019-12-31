@@ -88,7 +88,7 @@ function AddDependencies(scriptFolder, callback) {
 function HandleError(id, message, source, lineNo, colNo, error) {
     console.debug(arguments);
     var parentDoc = window.parent.document;
-    var errorSpan = parentDoc.getElementById(id + "_sample");
+    var errorSpan = parentDoc.getElementById(id + "_error");
     errorSpan.innerHTML = message;
     return false;
 }
