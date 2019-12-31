@@ -163,7 +163,7 @@ function CreateSample(sample) {
             span.className = "error";
             h2.appendChild(span);
             div.appendChild(h2);
-            CreateCodeMirror(id, div, text);
+            CreateCodeMirror(sample, text);
             container.appendChild(div);
 
             div = document.createElement("div");
