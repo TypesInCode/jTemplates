@@ -86,7 +86,6 @@ function AddDependencies(scriptFolder, callback) {
 }
 
 function HandleError(id, message, source, lineNo, colNo, error) {
-    console.debug(arguments);
     var parentDoc = window.parent.document;
     var errorSpan = parentDoc.getElementById(id + "_error");
     errorSpan.innerHTML = message;
@@ -110,10 +109,14 @@ function ExecuteTs(id, code) {
     jTempScript.type = "text/javascript";
     jTempScript.src = "https://unpkg.com/j-templates/jTemplates.js";
     jTempScript.onload = () => {
+        var script = iframe.contentDocument.createElement("script");
+        script.type = "text/javascript";
+        script.innerHTML = HandleError.toString() + '; var id="' + id + '";  var errorHandler = HandleError.bind(null, id); window.onerror = errorHandler;';
+        iframe.contentDocument.head.appendChild(script);
+
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
-        js = HandleError.toString() + '; var id="' + id + '";  var errorHandler = HandleError.bind(null, id); window.onerror = errorHandler; ' + js;
-        var script = iframe.contentDocument.createElement("script");
+        script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
         iframe.contentDocument.head.appendChild(script);
