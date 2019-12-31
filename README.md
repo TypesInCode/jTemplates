@@ -1,5 +1,5 @@
 # j-templates
-Type-safe templating for the browser written in TypeScript.
+Type-safe templating for the browser.
 ## Install
 ```
 npm install --save-dev j-templates

@@ -103,6 +103,9 @@ function HandleError(containerId, message, source, lineNo, colNo, error) {
 }
 
 function ExecuteTs(container, code) {
+    var errorSpan = document.querySelector("#" + containerId + " span.error");
+    errorSpan.innerHTML = message;
+
     var iframe = container.querySelector("iframe");
     if(iframe)
         container.removeChild(iframe);
@@ -157,6 +160,9 @@ function CreateSample(sample) {
 
             var h2 = document.createElement("h2");
             h2.innerText = "Code";
+            var span = document.createElement("span");
+            span.className = "error";
+            h2.appendChild(span);
             container.appendChild(h2);
             
             CreateCodeMirror(container, text);
@@ -164,10 +170,6 @@ function CreateSample(sample) {
             h2 = document.createElement("h2");
             h2.innerText = "Output";
             container.appendChild(h2);
-
-            var span = document.createElement("span");
-            span.className = "error";
-            h2.appendChild(span);
             
             ExecuteTs(container, text);
         });
