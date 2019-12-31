@@ -23,15 +23,6 @@ function AppendScript(url, callback) {
 
 var onLoadCount = 0;
 var totalOnLoad = 0;
-/* function LoadScript(scriptUrl, callback) {
-    totalOnLoad++;
-    AppendScript(scriptUrl, () => {
-        onLoadCount++;
-        if(onLoadCount >= totalOnLoad)
-            callback();
-    });
-} */
-
 function LoadScripts(scriptUrls, callback, index) {
     if(index === undefined) {
         index = 0;
@@ -158,20 +149,27 @@ function CreateSample(sample) {
         GetFile(sampleUrl, (text) => {
             container.innerHTML = "";
 
+            var div = document.createElement("div");
+            div.className = "code";
+
             var h2 = document.createElement("h2");
             h2.innerText = "Code";
             var span = document.createElement("span");
             span.className = "error";
             h2.appendChild(span);
-            container.appendChild(h2);
-            
-            CreateCodeMirror(container, text);
+            div.appendChild(h2);
+            CreateCodeMirror(div, text);
+            container.appendChild(div);
+
+            div = document.createElement("div");
+            div.className = "output";
+            div.id = sample + "_output";
 
             h2 = document.createElement("h2");
             h2.innerText = "Output";
-            container.appendChild(h2);
-            
-            ExecuteTs(container, text);
+            div.appendChild(h2);
+            ExecuteTs(div, text);
+            container.appendChild(div);
         });
     });
 }

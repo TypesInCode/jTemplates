@@ -1,7 +1,24 @@
+.example {
+    width: calc(100% + 320px);
+}
+
+.example::after {
+    content: " ";
+    display: block;
+    clear: both;
+}
+
+.example > .output {
+    float: right;
+    height: 500px;
+    width: 300px;
+    overflow: auto;
+}
+
 .CodeMirror {
     border: 1px solid #ddd;
     margin-top: -17px;
-    height: 600px;
+    height: 500px;
     line-height: 18px;
 }
 
@@ -14,4 +31,9 @@ span.error {
     font-size: .7em;
     margin-left: 15px;
     color: red;
+}
+
+div.container-lg {
+    margin-left: initial;
+    margin-right: initial;
 }
