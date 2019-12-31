@@ -85,16 +85,17 @@ function AddDependencies(scriptFolder, callback) {
     LoadCSS(scriptFolder + "styles/show-hint.css");
 }
 
-function HandleError(containerId, message, source, lineNo, colNo, error) {
+function HandleError(id, message, source, lineNo, colNo, error) {
     console.debug(arguments);
     var parentDoc = window.parent.document;
-    var errorSpan = parentDoc.querySelector("#" + containerId + " span.error");
+    var errorSpan = parentDoc.getElementById(id + "_sample");
     errorSpan.innerHTML = message;
     return false;
 }
 
-function ExecuteTs(container, code) {
-    var errorSpan = document.querySelector("#" + container.id + " span.error");
+function ExecuteTs(id, code) {
+    var container = document.getElementById(id + "_output");
+    var errorSpan = document.getElementById(id + "_error");
     errorSpan.innerHTML = "";
 
     var iframe = container.querySelector("iframe");
@@ -111,7 +112,7 @@ function ExecuteTs(container, code) {
     jTempScript.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
-        js = HandleError.toString() + '; var containerId="' + container.id + '";  var errorHandler = HandleError.bind(null, containerId); window.onerror = errorHandler; ' + js;
+        js = HandleError.toString() + '; var id="' + id + '";  var errorHandler = HandleError.bind(null, id); window.onerror = errorHandler; ' + js;
         var script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
@@ -121,7 +122,8 @@ function ExecuteTs(container, code) {
 }
 
 var changeTimeout = null;
-function CreateCodeMirror(container, initValue) {
+function CreateCodeMirror(id, initValue) {
+    var container = document.getElementById(id + "_code");
     var cm = CodeMirror(container, { 
         value: initValue,
         matchBrackets: true,
@@ -132,7 +134,8 @@ function CreateCodeMirror(container, initValue) {
     cm.on("change", () => {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
-            ExecuteTs(container, cm.getDoc().getValue());
+            var div = document.getElementById(id + "_output");
+            ExecuteTs(container.id, div, cm.getDoc().getValue());
         }, 4000);
     });
 }
@@ -150,26 +153,28 @@ function CreateSample(sample) {
             container.innerHTML = "";
 
             var div = document.createElement("div");
+            div.id = sample + "_code";
             div.className = "code";
 
             var h2 = document.createElement("h2");
             h2.innerText = "Code";
             var span = document.createElement("span");
+            span.id = sample + "_error";
             span.className = "error";
             h2.appendChild(span);
             div.appendChild(h2);
-            CreateCodeMirror(div, text);
+            CreateCodeMirror(id, div, text);
             container.appendChild(div);
 
             div = document.createElement("div");
-            div.className = "output";
             div.id = sample + "_output";
+            div.className = "output";
 
             h2 = document.createElement("h2");
             h2.innerText = "Output";
             div.appendChild(h2);
             container.appendChild(div);
-            ExecuteTs(div, text);
+            ExecuteTs(sample, text);
         });
     });
 }
