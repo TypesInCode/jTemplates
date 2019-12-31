@@ -134,8 +134,7 @@ function CreateCodeMirror(id, initValue) {
     cm.on("change", () => {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
-            var div = document.getElementById(id + "_output");
-            ExecuteTs(id, div, cm.getDoc().getValue());
+            ExecuteTs(id, cm.getDoc().getValue());
         }, 4000);
     });
 }
