@@ -135,7 +135,7 @@ function CreateCodeMirror(id, initValue) {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
             ExecuteTs(id, cm.getDoc().getValue());
-        }, 4000);
+        }, 2000);
     });
 }
 
