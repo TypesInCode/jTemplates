@@ -103,7 +103,7 @@ function HandleError(containerId, message, source, lineNo, colNo, error) {
 }
 
 function ExecuteTs(container, code) {
-    var errorSpan = document.querySelector("#" + containerId + " span.error");
+    var errorSpan = document.querySelector("#" + container.id + " span.error");
     errorSpan.innerHTML = message;
 
     var iframe = container.querySelector("iframe");
