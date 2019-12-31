@@ -168,8 +168,8 @@ function CreateSample(sample) {
             h2 = document.createElement("h2");
             h2.innerText = "Output";
             div.appendChild(h2);
-            ExecuteTs(div, text);
             container.appendChild(div);
+            ExecuteTs(div, text);
         });
     });
 }
