@@ -7,10 +7,10 @@
     CreateSample("dynamic");
 </script>
 
-<h1>Dynamic Component with Decorators</h1>
+# Dynamic Component with Decorators
 
 <div class="example" id="dynamicDecorators">
 </div>
-<sript type="text/javascript">
+<script type="text/javascript">
     CreateSample("dynamicDecorators");
 </script>
