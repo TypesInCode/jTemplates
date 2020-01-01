@@ -163,6 +163,7 @@ export class StoreManager<T> {
     }
 
     private ProcessDiff(data: IDiffResponse) {
+        var emitted = new Set<string>();
         var emit = new Set<string>();
         data.changedPaths.forEach(p => {
             var match = p.match(/(.+)\.[^.]+$/);
@@ -171,9 +172,10 @@ export class StoreManager<T> {
                 emit.add(parent);
 
             this.EmitSet(p);
+            emitted.add(p);
         });
 
-        emit.forEach(path => this.EmitSet(path));
+        emit.forEach(path => !emitted.has(path) && this.EmitSet(path));
 
         data.deletedPaths.forEach(p => {
             var node = this.GetNode(p);

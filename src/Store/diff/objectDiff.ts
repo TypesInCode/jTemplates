@@ -65,7 +65,6 @@ export function ObjectDiffScope(notWorker: boolean) {
                 deletedPaths: [],
             } as IDiffResponse;
             this.DiffValues(path, path, newValue, oldValue, resp);
-            resp.changedPaths = resp.changedPaths.reverse();
             return resp;
         }
 
