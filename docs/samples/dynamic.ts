@@ -6,7 +6,7 @@ class HelloWorld extends Component {
 
     state = new StoreSync({ inputValue: "Hello world" });
     inputScope = this.state.Root.Scope(root => root.inputValue);
-    
+
     get State() {
         return this.state.Root.Value;
     }
@@ -30,7 +30,7 @@ class HelloWorld extends Component {
                     keyup: (e: any) => this.State = { inputValue: e.target.value } 
                 } 
             }),
-            div({ text: () => this.InputValue }),
+            div({ text: () => this.InputValue })
         ]
     }
 
