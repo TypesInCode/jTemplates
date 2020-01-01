@@ -1,19 +1,19 @@
 import { ElementNode, ElementNodeFunctionParam } from "../Node/elementNode";
 import { NodeRef } from "../Node/nodeRef";
 
-export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("div", null, nodeDef, children);
 }
 
-export function a<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function a<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("a", null, nodeDef, children);
 }
 
-export function ul<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function ul<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("ul", null, nodeDef, children);
 }
 
-export function li<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function li<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("li", null, nodeDef, children);
 }
 
@@ -25,7 +25,7 @@ export function b<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create("b", null, nodeDef);
 }
 
-export function span<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function span<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("span", null, nodeDef, children);
 }
 
@@ -33,7 +33,7 @@ export function img<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create("img", null, nodeDef, null);
 }
 
-export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("video", null, nodeDef, children);
 }
 
@@ -46,7 +46,7 @@ export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create("input", null, nodeDef, null);
 }
 
-export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("select", null, nodeDef, children);
 }
 
@@ -66,15 +66,15 @@ export function h3<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create("h3", null, nodeDef, null);
 }
 
-export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("p", null, nodeDef, children);
 }
 
-export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("style", null, nodeDef, children);
 }
 
-export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T, i?: number): NodeRef | NodeRef[]}) {
+export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
     return ElementNode.Create("button", null, nodeDef, children);
 }
 
