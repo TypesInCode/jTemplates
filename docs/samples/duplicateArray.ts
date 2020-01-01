@@ -1,7 +1,7 @@
 import { Component } from "j-templates";
 import { StoreSync } from "j-templates/Store";
+import { Computed } from "j-templates/Utils";
 import { div, br } from "j-templates/DOM";
-import { stringify } from "querystring";
 
 class DuplicateArray extends Component {
     state = new StoreSync({ 
@@ -12,6 +12,11 @@ class DuplicateArray extends Component {
         ],
         targetArray: [] as Array<{ _id: string, value: string }>
     }, (val) => val._id);
+
+    @Computed()
+    get indexedArray() {
+        return this.state.Root.Value.targetArray.map((d, i) => ({ index: i, _id: d._id, value: d.value }))
+    }
 
     public Template() {
         return [
@@ -28,18 +33,21 @@ class DuplicateArray extends Component {
             ),
             br({}),
             div({ text: "Target:" }),
-            div({ data: () => this.state.Root.Value.targetArray }, (data) => 
+            div({ data: () => this.indexedArray }, (data) => 
                 div({ on: {
                     click: () => {
                         this.state.Action(async (reader, writer) => {
-                            var ind = reader.Root.targetArray.findIndex(v => v === data);
-                            if(ind >= 0)
-                                await writer.Splice(reader.Root.targetArray, ind, 1);
+                            await writer.Splice(reader.Root.targetArray, data.index, 1);
                         });
                     }
                 }, text: data.value })
             )
         ]
+    }
+
+    public Destroy() {
+        super.Destroy();
+        this.state.Destroy();
     }
 }
 
