@@ -14,10 +14,6 @@ export class Scope<T> {
         this.UpdateValue();
         return this.value;
     }
-    
-    /* public get HasValue() {
-        return typeof this.value !== 'undefined';
-    } */
 
     constructor(getFunction: {(): T} | T) {
         if(typeof getFunction === 'function')
@@ -38,7 +34,6 @@ export class Scope<T> {
 
     public Watch(callback: {(scope?: Scope<T>): void}) {
         this.emitter.addListener("set", () => callback(this));
-        callback(this);
     }
 
     public Destroy() {
@@ -49,7 +44,7 @@ export class Scope<T> {
 
     private UpdateValue() {
         if(!this.dirty)
-            return false;
+            return;
 
         this.dirty = false;
         var emitters = ScopeCollector.Watch(() =>
