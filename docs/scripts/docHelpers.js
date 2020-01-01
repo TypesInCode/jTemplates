@@ -105,23 +105,24 @@ function ExecuteTs(id, code) {
     iframe.className = "output";
     iframe.srcDoc = '<!DOCTYPE html><html><head></head><body></body></html>';
     container.appendChild(iframe);
-    var jTempScript = iframe.contentDocument.createElement("script");
-    jTempScript.type = "text/javascript";
-    jTempScript.src = "https://unpkg.com/j-templates/jTemplates.js";
-    jTempScript.onload = () => {
-        var script = iframe.contentDocument.createElement("script");
-        script.type = "text/javascript";
-        script.innerHTML = HandleError.toString() + '; var id="' + id + '";  var errorHandler = HandleError.bind(null, id); window.onerror = errorHandler;';
-        iframe.contentDocument.head.appendChild(script);
 
+    var script = iframe.contentDocument.createElement("script");
+    script.type = "text/javascript";
+    script.innerHTML = HandleError.toString() + '; var id="' + id + '";  var errorHandler = HandleError.bind(null, id); window.onerror = errorHandler;';
+    iframe.contentDocument.head.appendChild(script);
+
+    script = iframe.contentDocument.createElement("script");
+    script.type = "text/javascript";
+    script.src = "https://unpkg.com/j-templates/jTemplates.js";
+    script.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
-        script = iframe.contentDocument.createElement("script");
+        var script = iframe.contentDocument.createElement("script");
         script.type = "text/javascript";
         script.innerHTML = js;
         iframe.contentDocument.head.appendChild(script);
     };
-    iframe.contentDocument.head.appendChild(jTempScript);
+    iframe.contentDocument.head.appendChild(script);
 }
 
 var changeTimeout = null;
