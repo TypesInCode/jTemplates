@@ -17,7 +17,7 @@ export interface NodeDefinition<T = any, E = any> {
     on?: FunctionOr<BoundNodeEvents>;
     static?: T | Array<T>;
     data?: any;
-    key?: (val: T) => any;
+    // key?: (val: T) => any;
     text?: FunctionOr<string>;
 }
 
