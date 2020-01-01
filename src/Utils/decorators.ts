@@ -53,6 +53,37 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(ta
     } as PropertyDescriptor;
 }
 
+export function Computed() {
+    return ComputedDecorator;
+}
+
+function ComputedDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    if(!(descriptor && descriptor.get))
+        throw "Computed decorator requires a getter";
+
+    if(descriptor && descriptor.set)
+        throw "Computed decorator does not support setters";
+
+    DestroyDecorator(target as T & Record<K, ScopeClass<any>>, `ComputedDecorator_Scope_${propertyKey}`);
+    DestroyDecorator(target as T & Record<K, StoreSync<any>>, `ComputedDecorator_Store_${propertyKey}`);
+
+    return {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            var store = this[`ComputedDecorator_Store_${propertyKey}`] as StoreSync<any>;
+            if(!store) {
+                var getter = descriptor.get.bind(this);
+                store = this[`ComputedDecorator_Store_${propertyKey}`] = new StoreSync(getter());
+                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(getter);
+                scope.Watch(scope => store.Update(scope.Value));
+            }
+
+            return store.Root.Value;
+        }
+    } as PropertyDescriptor;
+}
+
 export function Inject<I>(type: { new (): I }) {
     return InjectorDecorator.bind(null, type) as <F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(target: T, propertyKey: K, descriptor?: PropertyDescriptor) => any;
 }

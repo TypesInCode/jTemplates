@@ -2,7 +2,7 @@ import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
-import { Destroy } from "../Utils/decorators";
+import { Destroy, Computed } from "../Utils/decorators";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
@@ -15,6 +15,7 @@ export class Component<D = void, T = void, E = void> {
         return this.scope;
     }
 
+    @Computed()
     protected get Data() {
         return this.scope.Value;
     }
