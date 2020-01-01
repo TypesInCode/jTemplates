@@ -10,7 +10,6 @@
 
 .example > .output {
     float: right;
-    height: 500px;
     width: 300px;
     overflow: auto;
 }
@@ -29,7 +28,7 @@
 
 .output iframe {
     width: 100%;
-    height: calc(100% - 283px);
+    height: 500px;
     border: 1px solid #eaecef;
     margin-top: -17px;
 }
