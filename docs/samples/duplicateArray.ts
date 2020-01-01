@@ -41,3 +41,6 @@ class DuplicateArray extends Component {
         ]
     }
 }
+
+var duplicateArray = Component.ToFunction("duplicate-array", null, DuplicateArray);
+Component.Attach(document.body, duplicateArray({}));
