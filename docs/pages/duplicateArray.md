@@ -1,3 +1,5 @@
+# Handling Duplicates in Arrays
+
 <script type="text/javascript" src="../scripts/docHelpers.js"></script>
 <div class="example" id="duplicateArray">
 </div>
