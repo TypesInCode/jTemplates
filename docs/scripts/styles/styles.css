@@ -27,9 +27,11 @@
     line-height: 18px;
 }
 
-iframe.output {
+.output iframe {
     width: 100%;
-    border-style: none;
+    height: calc(100% - 283px);
+    border: 1px solid #eaecef;
+    margin-top: -17px;
 }
 
 span.error {

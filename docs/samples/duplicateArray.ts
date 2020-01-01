@@ -1,6 +1,6 @@
 import { Component } from "j-templates";
 import { StoreSync } from "j-templates/Store";
-import { div } from "j-templates/DOM";
+import { div, br } from "j-templates/DOM";
 import { stringify } from "querystring";
 
 class DuplicateArray extends Component {
@@ -26,6 +26,7 @@ class DuplicateArray extends Component {
                     }
                 }, text: () => data.value })
             ),
+            br({}),
             div({ text: "Target:" }),
             div({ data: () => this.state.Root.Value.targetArray }, (data) => 
                 div({ on: {
