@@ -21,7 +21,7 @@ class DuplicateArray extends Component {
                     click: () => {
                         this.state.Action(async (reader, writer) => {
                             var obj = reader.Get<{ _id: string, value: string }>(data._id);
-                            await writer.Push(reader.Root.sourceArray, obj);
+                            await writer.Push(reader.Root.targetArray, obj);
                         })
                     }
                 }, text: () => data.value })
