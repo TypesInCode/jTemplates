@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "3.0.41",
+  "version": "3.0.46",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@types/chai": "3.4.30",
     "@types/mocha": "2.2.29",
-    "@types/node": "^6.0.117",
+    "@types/node": "^13.1.2",
     "chai": "^3.5.0",
     "fs-extra": "^8.1.0",
     "jsdom": "^13.2.0",
@@ -39,7 +39,7 @@
     "ts-loader": "^1.2.0",
     "ts-node": "^6.1.1",
     "tslint": "3.15.1",
-    "typescript": "^2.9.2",
+    "typescript": "^3.7.4",
     "uglifyjs-webpack-plugin": "^1.2.4",
     "webpack": "^1.15.0"
   },
