@@ -47,6 +47,27 @@ export namespace IProxy {
     
         return ret;
     }
+
+    export function CopyValue<T>(value: T): T {
+        var type = ValueType(value);
+        if(type === IProxyType.Value)
+            return value;
+        
+        if((value as any as IProxy).___storeProxy)
+            return (value as any as IProxy).toJSON();
+
+        if(type === IProxyType.Array)
+            return (value as any as Array<any>).map(v => CopyValue(v)) as any as T;
+        else if(type === IProxyType.Object) {
+            var ret = {} as T;
+            for(var key in value)
+                ret[key] = CopyValue(value[key]);
+
+            return ret;
+        }
+
+        return null;
+    }
 }
 
 function CreateArrayProxy(node: TreeNode) {
