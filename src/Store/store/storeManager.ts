@@ -54,7 +54,7 @@ export class StoreManager<T> {
         for(var x=0; x<keyValues.length; x++) {
             var path = keyValues[x][0];
             var value = keyValues[x][1];
-            var breakUpMap = this.BreakUpValue(path, value);
+            var breakUpMap = this.GetBreakUpMap(path, value);
             breakUpMap.forEach((value, key) => {
                 batch.push({
                     path: key,
@@ -72,7 +72,7 @@ export class StoreManager<T> {
     }
 
     public async WritePath(path: string, value: any) {
-        var breakUpMap = this.BreakUpValue(path, value);
+        var breakUpMap = this.GetBreakUpMap(path, value);
         var batch = new Array(breakUpMap.size);
         var index = 0;
         breakUpMap.forEach((value, key) => {
@@ -107,20 +107,27 @@ export class StoreManager<T> {
         this.diff.Destroy();
     }
 
+    private GetBreakUpMap(path: string, value: any) {
+        if(!this.idFunction)
+            return new Map([[path, IProxy.CopyValue(value)]]);
+        
+        return this.BreakUpValue(path, value);
+    }
+
     private BreakUpValue(path: string, parent: any, key?: string, map?: Map<string, any>): Map<string, any> {
         var value = key ? parent[key] : parent;
-        var id = this.idFunction && this.idFunction(value);
+        if(value && value.toJSON && typeof value.toJSON === 'function')
+            value = value.toJSON();
+        
+        var id = this.idFunction(value);
         var hasId = id || id === 0;
         var idPath = hasId && ["id", id].join(".");
         var treeNodeRef = hasId && TreeNodeRefId.GetString(id);
 
         if(!map) {
-            map = new Map();
-            map.set(path, hasId && path !== idPath ? treeNodeRef : value);
+            map = new Map([[path, hasId && path !== idPath ? treeNodeRef : value]]);
+            // map.set(path, hasId && path !== idPath ? treeNodeRef : value);
         }
-        
-        if(value && value.toJSON && typeof value.toJSON === 'function')
-            value = value.toJSON();
 
         if(IProxy.ValueType(value) === IProxyType.Value) {
             return map;
