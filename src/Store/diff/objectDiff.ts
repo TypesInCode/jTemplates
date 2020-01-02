@@ -71,6 +71,11 @@ export function ObjectDiffScope(notWorker: boolean) {
         private DiffValues(rootPath: string, path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
             if(oldValue === undefined)
                 return;
+
+            if(oldValue === null && newValue !== null) {
+                resp.changedPaths.push(path);
+                return;
+            }
             
             var newIsObject = !IsValue(newValue);
             var oldIsObject = !IsValue(oldValue);
