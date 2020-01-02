@@ -4,6 +4,7 @@ import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
+import { AsyncQueue } from "../Utils/asyncQueue";
 
 export type ElementNodeEvents = {
     [name: string]: {(event: Event): void}
@@ -25,6 +26,10 @@ export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
 
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}): BoundNode}
 
+function EmptyAsyncCallback(next: {(): void}) {
+    next();
+} 
+
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): NodeRef | NodeRef[]};
     private nodesMap: Map<any, List<Array<BoundNode>>>;
@@ -32,6 +37,7 @@ export class ElementNode<T> extends BoundNode {
     private arrayScope: Scope<Array<T>>;
     private mapScope: Scope<Map<T, List<Array<BoundNode>>>>;
     private lastEvents: {[name: string]: any};
+    private asyncQueue: AsyncQueue;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
@@ -53,27 +59,66 @@ export class ElementNode<T> extends BoundNode {
             return new Map<T, List<Array<BoundNode>>>(mapInit);
         });
         this.mapScope.Watch(() => this.ScheduleSetData());
+        this.asyncQueue = new AsyncQueue(EmptyAsyncCallback, EmptyAsyncCallback);
     }
 
-    private setData = false;
-    public ScheduleSetData() {
-        if(this.setData)
-            return;
+    private SetData() {
+        var dataArray = this.arrayScope.Value;
 
-        this.setData = true;
-        NodeConfig.scheduleUpdate(() => {
-            this.SetData();
-            this.setData = false;
+        var newNodesMap = this.mapScope.Value;
+        this.InitSetData(newNodesMap);
+        var previousNode: BoundNode = null;
+        dataArray.forEach(value => {
+            previousNode = this.ValueSetData(value, previousNode, newNodesMap);
+        });
+
+        this.FinishSetData(newNodesMap);
+    }
+
+    private ScheduleSetData() {
+        var newNodesMap: Map<any, List<Array<BoundNode>>> = null;
+
+        this.asyncQueue.Cancel(() => {
+            this.asyncQueue = new AsyncQueue((next) => {
+                NodeConfig.scheduleUpdate(() => {
+                    if(!this.Destroyed) {
+                        newNodesMap = this.mapScope.Value;
+                        this.InitSetData(newNodesMap);
+                    }
+                    next();
+                });
+            }, (next) => {
+                NodeConfig.scheduleUpdate(() => {
+                    if(!this.Destroyed)
+                        this.FinishSetData(newNodesMap);
+                    
+                    next();
+                });
+            });
+
+            NodeConfig.scheduleUpdate(() => {
+                if(this.Destroyed)
+                    return;
+                
+                var previousNode: BoundNode = null;
+                var dataArray = this.arrayScope.Value;
+                dataArray.forEach(value => {
+                    this.asyncQueue.Add((next) => {
+                        NodeConfig.scheduleUpdate(() => {
+                            if(!this.Destroyed)
+                                previousNode = this.ValueSetData(value, previousNode, newNodesMap);
+                            
+                            next();
+                        });
+                    });
+                });
+
+                this.asyncQueue.Start();
+            });            
         });
     }
 
-    public SetData() {
-        if(this.Destroyed)
-            return;
-
-        var newNodesMap = this.mapScope.Value;
-        var dataArray = this.arrayScope.Value;
-
+    private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
         this.nodesMap.forEach((nodesList, value) => {
             if(!newNodesMap.has(value))
                 nodesList.ForEach(nodes => nodes.forEach(n => {
@@ -81,39 +126,41 @@ export class ElementNode<T> extends BoundNode {
                     n.Destroy();
                 }));
         });
+    }
 
-        var previousNode: BoundNode = null;
-        dataArray.forEach(value => {
-            var nodes: Array<BoundNode> = null;
-            var nodesList = this.nodesMap.get(value);
-            if(nodesList && nodesList.Size > 0) {
-                nodes = nodesList.Tail;
-                nodesList.PopEnd();
-            }
-            
-            if(nodesList && nodesList.Size === 0)
-                this.nodesMap.delete(value);
+    private ValueSetData(value: T, previousNode: BoundNode, newNodesMap: Map<any, List<Array<BoundNode>>>) {
+        var nodes: Array<BoundNode> = null;
+        var nodesList = this.nodesMap.get(value);
+        if(nodesList && nodesList.Size > 0) {
+            nodes = nodesList.Tail;
+            nodesList.PopEnd();
+        }
+        
+        if(nodesList && nodesList.Size === 0)
+            this.nodesMap.delete(value);
 
-            if(!nodes) {
-                Injector.Scope(this.Injector, () => {
-                    var parentVal = BoundNode.Immediate;
-                    BoundNode.Immediate = this.Immediate;
-                    nodes = this.childrenFunc(value) as BoundNode[]
-                    BoundNode.Immediate = parentVal;
-                });
-                if(!Array.isArray(nodes))
-                    nodes = [nodes];
-            }
+        if(!nodes) {
+            Injector.Scope(this.Injector, () => {
+                var parentVal = BoundNode.Immediate;
+                BoundNode.Immediate = this.Immediate;
+                nodes = this.childrenFunc(value) as BoundNode[]
+                BoundNode.Immediate = parentVal;
+            });
+            if(!Array.isArray(nodes))
+                nodes = [nodes];
+        }
 
-            for(var x=0; x<nodes.length; x++) {
-                this.AddChildAfter(previousNode, nodes[x]);
-                previousNode = nodes[x];
-            }
+        for(var x=0; x<nodes.length; x++) {
+            this.AddChildAfter(previousNode, nodes[x]);
+            previousNode = nodes[x];
+        }
 
-            var newNodesList = newNodesMap.get(value);
-            newNodesList.Push(nodes);
-        });
+        var newNodesList = newNodesMap.get(value);
+        newNodesList.Push(nodes);
+        return previousNode;
+    }
 
+    private FinishSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
         this.nodesMap.forEach((nodesList) => {
             nodesList.ForEach(nodes => nodes.forEach(n => {
                 n.Detach();
@@ -151,6 +198,7 @@ export class ElementNode<T> extends BoundNode {
 
     public Destroy() {
         super.Destroy();
+        this.asyncQueue.Cancel();
         this.dataScope.Destroy();
         this.arrayScope.Destroy();
         this.mapScope.Destroy();

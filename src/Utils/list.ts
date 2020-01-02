@@ -31,6 +31,21 @@ export class List<T> {
         }
     }
 
+    public Add(data: T) {
+        var node = new Node(data);
+        if(this.size === 0) {
+            this.head = node;
+            this.tail = node;
+            this.size = 1;
+        }
+        else {
+            node.Previous = this.tail;
+            node.Previous.Next = node;
+            this.tail = node;
+            this.size++;
+        }
+    }
+
     public PopEnd(): T {
         if(this.size === 0)
             return null;
@@ -53,6 +68,10 @@ export class List<T> {
             callback(node.Data);
             node = node.Next;
         }
+    }
+
+    public Navigator() {
+        return new ListNavigator(this.head);
     }
 
 }
@@ -83,4 +102,30 @@ class Node<T> {
     }
 
     constructor(private data: T) { }
+}
+
+export class ListNavigator<T> {
+
+    private currentNode: Node<T>;
+
+    get Value() {
+        return this.currentNode && this.currentNode.Data;
+    }
+
+    constructor(private start: Node<T>) { }
+
+    public MoveNext(): boolean {
+        if(!this.currentNode) {
+            this.currentNode = this.start;
+            return !!this.currentNode;
+        }
+
+        if(this.currentNode.Next) {
+            this.currentNode = this.currentNode.Next;
+            return true;
+        }
+
+        return false;
+    }
+
 }
