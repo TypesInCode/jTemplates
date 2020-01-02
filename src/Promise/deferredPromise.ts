@@ -21,6 +21,10 @@ export class DeferredPromise<T> implements PromiseLike<T> {
         return this.promise.then(onfulfilled, onrejected);
     }
 
+    public finally(onfinally?: () => void): Promise<T> {
+        return this.promise.finally(onfinally);
+    }
+
     public catch<TResult>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>): Promise<T | TResult> {
         return this.promise.catch(onrejected);
     }
