@@ -1,9 +1,10 @@
 import { Component } from 'j-templates';
 import { div } from 'j-templates/DOM';
-import { Animation, Store, AnimationType } from 'j-templates/Utils';
+import { Animation, Store, AnimationType, Destroy } from 'j-templates/Utils';
 
 class AnimationComponent extends Component {
 
+    @Destroy()
     animation: Animation;
 
     @Store()
@@ -40,11 +41,15 @@ class AnimationComponent extends Component {
     }
 
     public AnimateDown() {
-        this.animation.Animate(this.state.top, 100);
+        this.animation.Animate(this.state.top, 100).then(() => 
+            this.AnimateUp()
+        );
     }
 
     public async AnimateUp() {
-        this.animation.Animate(0, this.state.top);
+        this.animation.Animate(0, this.state.top).then(() => 
+            this.AnimateDown()
+        );
     }
 
 }

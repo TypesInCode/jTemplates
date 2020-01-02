@@ -69,6 +69,10 @@ export class Animation {
         this.running = false;
     }
 
+    public Destroy() {
+        this.Cancel();
+    }
+
     private SetTimeout(index: number, delay: number, value: number, resolve: {(): void}) {
         this.animationTimeouts[index] = setTimeout(() => {
             this.update(value);
