@@ -3,6 +3,7 @@ import { Store as StoreClass } from "../Store/store/store";
 import { Scope as ScopeClass } from "../Store/scope/scope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
+import { StoreAsync } from "../Store";
 
 export function Store(): any {
     return StoreDecorator;
@@ -54,10 +55,14 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(ta
 }
 
 export function Computed() {
-    return ComputedDecorator;
+    return ComputedDecorator.bind(null, StoreSync) as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
 }
 
-function ComputedDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+export function ComputedAsync() {
+    return ComputedDecorator.bind(null, StoreAsync) as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
+}
+
+function ComputedDecorator<T extends Component<any, any, any>, K extends string>(storeConstructor: { new(init: any): StoreClass<any> }, target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     if(!(descriptor && descriptor.get))
         throw "Computed decorator requires a getter";
 
@@ -73,10 +78,11 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
         get: function () {
             var store = this[`ComputedDecorator_Store_${propertyKey}`] as StoreSync<any>;
             if(!store) {
-                var getter = descriptor.get.bind(this);
-                store = this[`ComputedDecorator_Store_${propertyKey}`] = new StoreSync(getter());
-                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(getter);
-                scope.Watch(scope => store.Update(scope.Value));
+                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
+                store = this[`ComputedDecorator_Store_${propertyKey}`] = new storeConstructor(scope.Value);
+                scope.Watch(scope => {
+                    store.Update(scope.Value);
+                });
             }
 
             return store.Root.Value;
