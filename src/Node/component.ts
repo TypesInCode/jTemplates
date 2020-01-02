@@ -2,7 +2,7 @@ import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
-import { Destroy, Computed } from "../Utils/decorators";
+import { Destroy } from "../Utils/decorators";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
