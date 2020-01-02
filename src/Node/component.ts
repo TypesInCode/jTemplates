@@ -15,7 +15,6 @@ export class Component<D = void, T = void, E = void> {
         return this.scope;
     }
 
-    @Computed()
     protected get Data() {
         return this.scope.Value;
     }
