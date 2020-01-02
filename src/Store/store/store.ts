@@ -30,13 +30,15 @@ export class Store<T extends {} | Array<any>> implements AbstractStore {
     private reader: StoreReader<T>;
     private writer: StoreWriter<T>;
     private promiseQueue: PromiseQueue<any>;
-    private rootScope: Scope<T>
+    private rootScope: Scope<T>;
+    private destroyed: boolean;
 
     public get Root() {
         return this.rootScope;
     }
 
     constructor(idFunction: (val: any) => any, init: T, diff: Diff) {
+        this.destroyed = false;
         this.manager = new StoreManager(idFunction, diff);
         this.reader = new StoreReader<T>(this.manager);
         this.writer = new StoreWriter<T>(this.manager);
@@ -54,7 +56,7 @@ export class Store<T extends {} | Array<any>> implements AbstractStore {
 
     public async Action(action: AsyncActionCallback<T>) {
         await this.promiseQueue.Push((resolve) => {
-            resolve(action(this.reader, this.writer));
+            resolve(this.destroyed || action(this.reader, this.writer));
         });
     }
 
@@ -99,6 +101,7 @@ export class Store<T extends {} | Array<any>> implements AbstractStore {
     public Destroy() {
         this.rootScope.Destroy();
         this.manager.Destroy();
+        this.destroyed = true;
     }
 
 }
