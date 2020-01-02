@@ -38,10 +38,12 @@ export class ElementNode<T> extends BoundNode {
     private mapScope: Scope<Map<T, List<Array<BoundNode>>>>;
     private lastEvents: {[name: string]: any};
     private asyncQueue: AsyncQueue;
+    private setData: boolean;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
 
+        this.setData = false;
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children || defaultChildren;
         this.dataScope = new Scope(nodeDef.data || nodeDef.static || true);
@@ -58,11 +60,11 @@ export class ElementNode<T> extends BoundNode {
             var mapInit = array.map(v => [v, new List()] as [any, List<Array<BoundNode>>]);
             return new Map<T, List<Array<BoundNode>>>(mapInit);
         });
-        this.mapScope.Watch(() => this.ScheduleSetData());
+        this.mapScope.Watch(() => this.ScheduleSetDataAsync());
         this.asyncQueue = new AsyncQueue(EmptyAsyncCallback, EmptyAsyncCallback);
     }
 
-    private SetData() {
+    private SetDataSync() {
         var dataArray = this.arrayScope.Value;
 
         var newNodesMap = this.mapScope.Value;
@@ -75,47 +77,53 @@ export class ElementNode<T> extends BoundNode {
         this.FinishSetData(newNodesMap);
     }
 
-    private ScheduleSetData() {
+    private ScheduleSetDataAsync() {
+        if(this.setData)
+            return;
+
+        this.setData = true;
+        this.asyncQueue.Cancel(() => {
+            NodeConfig.scheduleUpdate(() => {
+                this.setData = false;
+                this.SetDataAsync();
+            });
+        });
+    }
+
+    private SetDataAsync() {
+        var previousNode: BoundNode = null;
+        var dataArray = this.arrayScope.Value;
         var newNodesMap: Map<any, List<Array<BoundNode>>> = null;
 
-        this.asyncQueue.Cancel(() => {
-            this.asyncQueue = new AsyncQueue((next) => {
-                NodeConfig.scheduleUpdate(() => {
-                    if(!this.Destroyed) {
-                        newNodesMap = this.mapScope.Value;
-                        this.InitSetData(newNodesMap);
-                    }
-                    next();
-                });
-            }, (next) => {
+        this.asyncQueue = new AsyncQueue((next) => {
+            NodeConfig.scheduleUpdate(() => {
+                if(!this.Destroyed) {
+                    newNodesMap = this.mapScope.Value;
+                    this.InitSetData(newNodesMap);
+                }
+                next();
+            });
+        }, (next) => {
+            NodeConfig.scheduleUpdate(() => {
+                if(!this.Destroyed)
+                    this.FinishSetData(newNodesMap);
+                
+                next();
+            });
+        });
+        
+        dataArray.forEach(value => {
+            this.asyncQueue.Add((next) => {
                 NodeConfig.scheduleUpdate(() => {
                     if(!this.Destroyed)
-                        this.FinishSetData(newNodesMap);
+                        previousNode = this.ValueSetData(value, previousNode, newNodesMap);
                     
                     next();
                 });
             });
-
-            NodeConfig.scheduleUpdate(() => {
-                if(this.Destroyed)
-                    return;
-                
-                var previousNode: BoundNode = null;
-                var dataArray = this.arrayScope.Value;
-                dataArray.forEach(value => {
-                    this.asyncQueue.Add((next) => {
-                        NodeConfig.scheduleUpdate(() => {
-                            if(!this.Destroyed)
-                                previousNode = this.ValueSetData(value, previousNode, newNodesMap);
-                            
-                            next();
-                        });
-                    });
-                });
-
-                this.asyncQueue.Start();
-            });            
         });
+
+        this.asyncQueue.Start();
     }
 
     private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
@@ -189,10 +197,10 @@ export class ElementNode<T> extends BoundNode {
         super.Init();
         
         if(this.Immediate) {
-            this.SetData();
+            this.SetDataSync();
         }
         else {
-            this.ScheduleSetData();
+            this.ScheduleSetDataAsync();
         }
     }
 
