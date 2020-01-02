@@ -40,7 +40,7 @@ class DuplicateArray extends Component {
                             await writer.Splice(reader.Root.targetArray, data.index, 1);
                         });
                     }
-                }, text: data.value })
+                }, text: () => data.value })
             )
         ]
     }
