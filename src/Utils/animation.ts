@@ -24,6 +24,7 @@ export class Animation {
     private update: {(next: number): void};
     private animationTimeouts: Array<any>;
     private running: boolean;
+    private enabled: boolean;
 
     public get Running() {
         return this.running;
@@ -31,6 +32,7 @@ export class Animation {
 
     constructor(type: AnimationType, duration: number, update: {(next: number): void}) {
         this.running = false;
+        this.enabled = true;
         this.type = type;
 
         this.frameCount = (duration/1000) * 60;
@@ -45,10 +47,15 @@ export class Animation {
     }
 
     public Animate(start: number, end: number): Promise<void> {
-        this.Cancel();
-
-        this.running = true;
+        if(!this.enabled)
+            return;
+        
         var diff = end - start;
+        if(diff === 0)
+            return;
+
+        this.Cancel();
+        this.running = true;
         return new Promise(resolve => {
             var stepFunc = (StepFunctions as any)[AnimationType[this.type]] as {(count: number): Generator<number>};
             var index = 0;
@@ -60,6 +67,15 @@ export class Animation {
         }).then(() => {
             this.running = false;
         });
+    }
+
+    public Disable() {
+        this.Cancel();
+        this.enabled = false;
+    }
+
+    public Enable() {
+        this.enabled = true;
     }
 
     public Cancel() {
