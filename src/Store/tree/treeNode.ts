@@ -102,7 +102,7 @@ export class TreeNode {
         });
     }
 
-    public UpdateCachedArray(index: string, value: any) {
+    public UpdateCachedArray(index: string, value: IProxy) {
         if(this.proxyArray)
             this.proxyArray[parseInt(index)] = value;
     }
