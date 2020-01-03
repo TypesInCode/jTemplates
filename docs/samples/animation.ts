@@ -7,8 +7,11 @@ class AnimationComponent extends Component {
     @Destroy()
     animation: Animation;
 
+    @Destroy()
+    animation2: Animation;
+
     @Store()
-    state = { top: 0 };
+    state: Partial<{ top: number, left: number }> = { top: 0, left: 0 };
 
     public Template() {
         return div({ 
@@ -16,14 +19,18 @@ class AnimationComponent extends Component {
                 style: { position: "relative", height: "300px" }
             },
             on: {
-                click: () => this.AnimateDown()
+                click: () => {
+                    this.AnimateDown();
+                    this.AnimateLeft();
+                }
             }
         }, () => 
             div({ 
                 props: () => ({
                     style: {
                         position: "absolute",
-                        top: `${this.state.top}%`
+                        top: `${this.state.top}%`,
+                        left: `${this.state.left}%`
                     }
                 }),
                 text: "Hello world" 
@@ -37,7 +44,24 @@ class AnimationComponent extends Component {
             this.state = { top: next }
         );
 
+        this.animation2 = new Animation(AnimationType.Linear, 3000, (next) => 
+            this.state = { left: next }
+        );
+
         this.AnimateDown();
+        this.AnimateRight();
+    }
+
+    public AnimateRight() {
+        this.animation2.Animate(this.state.left, 100).then(() => 
+            this.AnimateLeft()
+        );
+    }
+
+    public AnimateLeft() {
+        this.animation2.Animate(this.state.left, 0).then(() => {
+            this.AnimateRight()
+        });
     }
 
     public AnimateDown() {
@@ -47,7 +71,7 @@ class AnimationComponent extends Component {
     }
 
     public async AnimateUp() {
-        this.animation.Animate(0, this.state.top).then(() => 
+        this.animation.Animate(this.state.top, 0).then(() => 
             this.AnimateDown()
         );
     }
