@@ -15,16 +15,13 @@
   "typings": "lib/index.d.ts",
   "scripts": {
     "clean": "rimraf lib",
-    "lint": "tslint --force --format verbose \"src/**/*.ts\"",
-    "build": "npm run clean && npm run lint && echo Using TypeScript && tsc --version && tsc --pretty && node ./tools/copy-package-json.js && webpack",
+    "build": "npm run buildquick && node ./tools/copy-package-json.js && webpack",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
-    "test": "npm run buildquick && mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
+    "test": "mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
+    "testcoverage": "nyc  --reporter=html mocha --compilers ts:ts-node/register --recursive test/**/*-spec.ts",
     "watch": "npm run build -- --watch",
     "watch:test": "npm run test -- --watch",
-    "webbuild": "npm run clean && webpack --config webpack.dist.config.js",
-    "webexamplebuild": "npm run clean && webpack --config webpack.example.config.js",
-    "webdevbuild": "npm run clean && webpack",
-    "webtest": "npm run clean && webpack && mocha-phantomjs jTemplate.test.html"
+    "webbuild": "npm run clean && webpack --config webpack.dist.config.js"
   },
   "dependencies": {},
   "devDependencies": {
@@ -35,10 +32,10 @@
     "fs-extra": "^8.1.0",
     "jsdom": "^13.2.0",
     "mocha": "^3.0.1",
+    "nyc": "^15.0.0",
     "rimraf": "^2.5.4",
     "ts-loader": "^1.2.0",
     "ts-node": "^6.1.1",
-    "tslint": "3.15.1",
     "typescript": "^3.7.4",
     "uglifyjs-webpack-plugin": "^1.2.4",
     "webpack": "^1.15.0"

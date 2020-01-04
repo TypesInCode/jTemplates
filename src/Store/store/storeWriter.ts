@@ -1,7 +1,6 @@
 import { StoreManager } from "./storeManager";
 import { TreeNode } from "../tree/treeNode";
 import { IProxy } from "../tree/proxy";
-import { TreeNodeRefId } from "../tree/treeNodeRefId";
 
 export class StoreWriter<T> {
     
