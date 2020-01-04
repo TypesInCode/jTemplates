@@ -58,7 +58,7 @@ describe("Store (Sync)", () => {
     var query = store.Query((reader) => {
       return reader.Get<{ _id: string, property: string }>("very-unique-id");
     });
-    expect(query.Value).to.equal(undefined);
+    expect(query.Value).to.equal(null);
 
     await store.Write({ _id: "very-unique-id", property: "first value" });
     expect(query.Value.property).to.equal("first value");
