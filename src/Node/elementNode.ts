@@ -128,11 +128,13 @@ export class ElementNode<T> extends BoundNode {
 
     private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
         this.nodesMap.forEach((nodesList, value) => {
-            if(!newNodesMap.has(value))
+            if(!newNodesMap.has(value)) {
                 nodesList.ForEach(nodes => nodes.forEach(n => {
                     n.Detach();
                     n.Destroy();
                 }));
+                this.nodesMap.set(value, null);
+            }
         });
     }
 
@@ -169,12 +171,14 @@ export class ElementNode<T> extends BoundNode {
     }
 
     private FinishSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
-        this.nodesMap.forEach((nodesList) => {
-            nodesList.ForEach(nodes => nodes.forEach(n => {
-                n.Detach();
-                n.Destroy();
-            }));
-        });
+        if(newNodesMap.size > 0) {
+            this.nodesMap.forEach((nodesList) => {
+                nodesList && nodesList.ForEach(nodes => nodes.forEach(n => {
+                    n.Detach();
+                    n.Destroy();
+                }));
+            });
+        }
 
         this.nodesMap = newNodesMap;
     }
