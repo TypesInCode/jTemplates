@@ -37,7 +37,7 @@ export class ElementNode<T> extends BoundNode {
     private arrayScope: Scope<Array<T>>;
     private mapScope: Scope<Map<T, List<Array<BoundNode>>>>;
     private lastEvents: {[name: string]: any};
-    private asyncQueue: AsyncQueue;
+    private asyncQueue: AsyncQueue<{ previousNode: BoundNode, nodeMap: Map<any, List<Array<BoundNode>>> }>;
     private setData: boolean;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
@@ -61,7 +61,7 @@ export class ElementNode<T> extends BoundNode {
             return new Map<T, List<Array<BoundNode>>>(mapInit);
         });
         this.mapScope.Watch(() => this.ScheduleSetDataAsync());
-        this.asyncQueue = new AsyncQueue(EmptyAsyncCallback, EmptyAsyncCallback);
+        this.asyncQueue = new AsyncQueue();
     }
 
     private SetDataSync() {
@@ -82,16 +82,66 @@ export class ElementNode<T> extends BoundNode {
             return;
 
         this.setData = true;
-        this.asyncQueue.Cancel(() => {
+        if(this.asyncQueue.Running) {
+            var oldData = this.asyncQueue.Stop();
+            this.asyncQueue.Add((next, data) => {
+                NodeConfig.scheduleUpdate(() => {
+                    if(!this.Destroyed)
+                        this.FinishSetData(oldData.nodeMap);
+                    
+                    next(data);
+                });
+            });
+        }
+
+        NodeConfig.scheduleUpdate(() => {
+            this.setData = false;
+            this.SetDataAsync();
+        });
+
+        /* this.asyncQueue.Cancel(() => {
             NodeConfig.scheduleUpdate(() => {
                 this.setData = false;
                 this.SetDataAsync();
             });
-        });
+        }); */
     }
 
     private SetDataAsync() {
-        var previousNode: BoundNode = null;
+        var dataArray = this.arrayScope.Value;
+
+        this.asyncQueue.Add((next, data) => {
+            NodeConfig.scheduleUpdate(() => {
+                if(!this.Destroyed)
+                    this.InitSetData(data.nodeMap);
+                
+                next(data);
+            });
+        });
+
+        dataArray.forEach(value => {
+            this.asyncQueue.Add((next, data) => {
+                NodeConfig.scheduleUpdate(() => {
+                    if(!this.Destroyed)
+                        data.previousNode = this.ValueSetData(value, data.previousNode, data.nodeMap);
+
+                    next(data);
+                });
+            });
+        });
+
+        this.asyncQueue.Add((next, data) => {
+            NodeConfig.scheduleUpdate(() => {
+                if(!this.Destroyed)
+                    this.FinishSetData(data.nodeMap);
+                
+                next();
+            });
+        });
+
+        this.asyncQueue.Start({ previousNode: null, nodeMap: this.mapScope.Value });
+
+        /* var previousNode: BoundNode = null;
         var dataArray = this.arrayScope.Value;
         var newNodesMap: Map<any, List<Array<BoundNode>>> = null;
 
@@ -123,7 +173,7 @@ export class ElementNode<T> extends BoundNode {
             });
         });
 
-        this.asyncQueue.Start();
+        this.asyncQueue.Start(); */
     }
 
     private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
@@ -143,7 +193,7 @@ export class ElementNode<T> extends BoundNode {
         var nodesList = this.nodesMap.get(value);
         if(nodesList && nodesList.Size > 0) {
             nodes = nodesList.Tail;
-            nodesList.PopEnd();
+            nodesList.Remove();
         }
         
         if(nodesList && nodesList.Size === 0)
@@ -171,14 +221,12 @@ export class ElementNode<T> extends BoundNode {
     }
 
     private FinishSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
-        if(newNodesMap.size > 0) {
-            this.nodesMap.forEach((nodesList) => {
-                nodesList && nodesList.ForEach(nodes => nodes.forEach(n => {
-                    n.Detach();
-                    n.Destroy();
-                }));
-            });
-        }
+        this.nodesMap.forEach((nodesList) => {
+            nodesList && nodesList.ForEach(nodes => nodes.forEach(n => {
+                n.Detach();
+                n.Destroy();
+            }));
+        });
 
         this.nodesMap = newNodesMap;
     }
@@ -210,7 +258,7 @@ export class ElementNode<T> extends BoundNode {
 
     public Destroy() {
         super.Destroy();
-        this.asyncQueue.Cancel();
+        this.asyncQueue.Stop();
         this.dataScope.Destroy();
         this.arrayScope.Destroy();
         this.mapScope.Destroy();
