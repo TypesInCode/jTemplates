@@ -11,11 +11,11 @@ export class List<T> {
     private size = 0;
 
     get Head() {
-        return this.head.data;
+        return this.head && this.head.data;
     }
 
     get Tail() {
-        return this.tail.data;
+        return this.tail && this.tail.data;
     }
 
     get Size() {
