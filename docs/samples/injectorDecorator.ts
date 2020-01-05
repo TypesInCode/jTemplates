@@ -16,7 +16,7 @@ class Child extends Component {
     greeting: IHello;
 
     public Template() {
-        return div({ text: () => this.Injector.Get(IHello).Hello() });
+        return div({ text: () => this.greeting.Hello() });
     }
 
 }
