@@ -1,83 +1,61 @@
-import { List, ListNavigator } from "./list";
+import { List } from "./list";
 
-interface AsyncCallback {
-    (next: {(): void}): void;
+interface AsyncCallback<T> {
+    (next: {(data?: T): void}, data?: T): void;
 }
 
 enum AsyncQueueState {
     Idle,
-    Running,
-    Complete
+    Running
 }
 
-export class AsyncQueue {
-    private list: List<AsyncCallback>;
-    private navigator: ListNavigator<AsyncCallback>;
-    private onStart: AsyncCallback;
-    private onComplete: AsyncCallback;
-    private onCancel: {(): void};
-
+export class AsyncQueue<T> {
+    private list: List<AsyncCallback<T>>;
     private state: AsyncQueueState;
+    private data: T;
 
-    public get IsRunning() {
+    public get Running() {
         return this.state === AsyncQueueState.Running;
     }
 
-    public get IsComplete() {
-        return this.state === AsyncQueueState.Complete;
-    }
-
-    constructor(onStart: AsyncCallback, onComplete: AsyncCallback) {
+    constructor() {
         this.list = new List();
         this.state = AsyncQueueState.Idle;
-        this.onStart = onStart;
-        this.onComplete = onComplete;
     }
 
-    public Add(callback: AsyncCallback) {
-        if(this.state !== AsyncQueueState.Idle)
-            throw `Can't push in current state: ${AsyncQueueState[this.state]}`;
-
+    public Add(callback: AsyncCallback<T>) {
         this.list.Add(callback);
     }
 
-    public Start() {
-        if(this.state === AsyncQueueState.Complete)
+    public Start(init?: T) {
+        if(this.state === AsyncQueueState.Running)
             return;
-
-        if(this.state !== AsyncQueueState.Idle)
-            throw "Can't start after Queue has started";
-        
-        this.onStart(() => {
-            this.state = AsyncQueueState.Running;
-            this.navigator = this.list.Navigator();
-            this.Continue();
-        });
+    
+        this.state = AsyncQueueState.Running;
+        this.data = init;
+        this.Continue();
     }
 
-    public Cancel(callback?: {(): void}) {
-        this.onCancel = callback;
-        this.Complete(() => {
-            this.onCancel && this.onCancel();
-        });
+    public Stop(): T {
+        this.state = AsyncQueueState.Idle;
+        this.list.Clear();
+        var data = this.data;
+        this.data = null;
+
+        return data;
     }
 
     private Continue() {
-        if(this.state === AsyncQueueState.Running && this.navigator.MoveNext())
-            this.navigator.Value(() => this.Continue());
-        else
-            this.Complete();
-    }
-
-    private Complete(next?: {(): void}) {
-        if(this.state === AsyncQueueState.Complete) {
-            next && next();
+        if(this.state !== AsyncQueueState.Running)
             return;
-        }
         
-        this.state = AsyncQueueState.Complete;
-        this.onComplete(() => {
-            next && next();
-        });
+        var callback = this.list.Pop();
+        if(callback)
+            callback((data) => {
+                this.data = data;
+                this.Continue();
+            }, this.data);
+        else 
+            this.Stop();
     }
 }

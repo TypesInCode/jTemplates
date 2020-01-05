@@ -1,131 +1,101 @@
+interface INode<T> {
+    previous: INode<T>;
+    next: INode<T>;
+    data: T;
+}
+
 export class List<T> {
 
-    private head: Node<T> = null;
-    private tail: Node<T> = null;
+    private head: INode<T> = null;
+    private tail: INode<T> = null;
     private size = 0;
 
     get Head() {
-        return this.head.Data;
+        return this.head.data;
     }
 
     get Tail() {
-        return this.tail.Data;
+        return this.tail.data;
     }
 
     get Size() {
         return this.size;
     }
 
+    public Clear() {
+        this.head = null;
+        this.tail = null;
+        this.size = 0;
+    }
+
     public Push(data: T) {
-        var node = new Node(data);
+        var node: INode<T> = { previous: null, next: null, data: data };
         if(this.size === 0) {
             this.head = node;
             this.tail = node;
             this.size = 1;
         }
         else {
-            node.Next = this.head;
-            node.Next.Previous = node;
+            node.next = this.head;
+            this.head.previous = node;
             this.head = node;
             this.size++;
         }
+    }
+
+    public Pop(): T {
+        if(this.size === 0)
+            return null;
+
+        var node = this.head;
+        this.head = node.next;
+        if(this.head)
+            this.head.previous = null;
+
+        this.size--;
+        if(this.size === 0)
+            this.tail = null;
+
+        return node.data;
     }
 
     public Add(data: T) {
-        var node = new Node(data);
+        var node: INode<T> = { previous: null, next: null, data: data };
         if(this.size === 0) {
             this.head = node;
             this.tail = node;
             this.size = 1;
         }
         else {
-            node.Previous = this.tail;
-            node.Previous.Next = node;
+            node.previous = this.tail;
+            this.tail.next = node;
             this.tail = node;
             this.size++;
         }
     }
 
-    public PopEnd(): T {
+    public Remove(): T {
         if(this.size === 0)
             return null;
 
         var node = this.tail;
-        this.tail = node.Previous;
+        this.tail = node.previous;
         if(this.tail)
-            this.tail.Next = null;
+            this.tail.next = null;
             
         this.size--;
         if(this.size === 0)
             this.head = null;
         
-        return node.Data;
+        return node.data;
     }
 
     public ForEach(callback: {(value: T): void}) {
         var node = this.head;
         while(node) {
-            callback(node.Data);
-            node = node.Next;
+            callback(node.data);
+            node = node.next;
         }
-    }
-
-    public Navigator() {
-        return new ListNavigator(this.head);
-    }
-
-}
-
-class Node<T> {
-
-    private previous: Node<T> = null;
-    private next: Node<T> = null;
-
-    get Data() {
-        return this.data;
-    }
-
-    get Previous() {
-        return this.previous;
-    }
-
-    set Previous(val: Node<T>) {
-        this.previous = val;
-    }
-
-    get Next() {
-        return this.next;
-    }
-
-    set Next(val: Node<T>) {
-        this.next = val;
-    }
-
-    constructor(private data: T) { }
-}
-
-export class ListNavigator<T> {
-
-    private currentNode: Node<T>;
-
-    get Value() {
-        return this.currentNode && this.currentNode.Data;
-    }
-
-    constructor(private start: Node<T>) { }
-
-    public MoveNext(): boolean {
-        if(!this.currentNode) {
-            this.currentNode = this.start;
-            return !!this.currentNode;
-        }
-
-        if(this.currentNode.Next) {
-            this.currentNode = this.currentNode.Next;
-            return true;
-        }
-
-        return false;
     }
 
 }
