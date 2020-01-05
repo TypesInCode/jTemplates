@@ -1,25 +1,23 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
+import { List } from '../Utils/list';
 
-var pendingUpdates: Array<() => void> = new Array(5000);
+var pendingUpdates = new List<{(): void}>();
 var updateScheduled = false;
-var updateIndex = 0;
-var updateTotal = 0;
 
 function processUpdates() {
     var start = Date.now();
-    while(updateIndex < updateTotal && (Date.now() - start) < 66) {
-        pendingUpdates[updateIndex]();
-        updateIndex++;
+    var callback = pendingUpdates.Pop();
+    callback && callback();
+    while(callback && (Date.now() - start) < 66) {
+        callback = pendingUpdates.Pop();
+        callback && callback();
     }
-    
-    if(updateIndex === updateTotal) {
-        updateIndex = 0;
-        updateTotal = 0;
-        updateScheduled = false;
-    }
-    else
+
+    if(pendingUpdates.Size > 0)
         wndw.requestAnimationFrame(processUpdates);
+    else
+        updateScheduled = false;
 }
 
 export var DOMNodeConfig: INodeConfig = {
@@ -30,8 +28,7 @@ export var DOMNodeConfig: INodeConfig = {
         return wndw.document.createElement(type);
     },
     scheduleUpdate: function(callback: () => void): void {
-        pendingUpdates[updateTotal] = callback;
-        updateTotal++;
+        pendingUpdates.Add(callback);
     
         if(!updateScheduled) {
             updateScheduled = true;
