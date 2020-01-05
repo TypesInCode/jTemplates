@@ -1,7 +1,7 @@
-/// <reference path="../node_modules/@types/mocha/index.d.ts" />
+/// <reference path="../../node_modules/@types/mocha/index.d.ts" />
 
 // import { ObjectDiff } from "../src/ObjectStore/objectDiff";
-import { DiffSync } from "../src/Store/diff/diffSync";
+import { DiffSync } from "../../src/Store/diff/diffSync";
 import * as chai from "chai";
 const expect = chai.expect;
 
