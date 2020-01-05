@@ -61,7 +61,7 @@ export class Animation {
             var index = 0;
             for(var step of stepFunc(this.frameCount)) {
                 var value = (step * diff) + start;
-                this.SetTimeout(index, this.frameTimings[index], value, index === (this.frameCount - 1) ? resolve : null);
+                this.SetTimeout(index, value, index === (this.frameCount - 1) ? resolve : null);
                 index++;
             }
         }).then(() => {
@@ -89,11 +89,11 @@ export class Animation {
         this.Cancel();
     }
 
-    private SetTimeout(index: number, delay: number, value: number, resolve: {(): void}) {
+    private SetTimeout(index: number, value: number, resolve: {(): void}) {
         this.animationTimeouts[index] = setTimeout(() => {
             this.update(value);
             resolve && resolve();
-        }, delay)
+        }, this.frameTimings[index])
     }
 
 }
