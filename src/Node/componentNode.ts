@@ -3,7 +3,6 @@ import { NodeRef } from "./nodeRef";
 import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
-import { ElementNode } from "./elementNode";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 
 export type ComponentNodeEvents<E> = {
@@ -12,13 +11,11 @@ export type ComponentNodeEvents<E> = {
 
 export interface ComponentNodeFunctionParam<D, T, E> {
     immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>; //{(): {[name: string]: any}} | {[name: string]: any};
-    attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<ComponentNodeEvents<E>>; // {(): {[name: string]: {(event?: any): void}}} | {[name: string]: {(event?: any): void}};
+    props?: FunctionOr<{[name: string]: any}>;
+    attrs?: FunctionOr<{[name: string]: string}>;
+    on?: FunctionOr<ComponentNodeEvents<E>>;
     static?: D | Array<D>;
-    data?: {(): D | Array<D>}; // {(): P | Array<P>} | P | Array<P>;
-    // key?: (val: D) => any;
-    // text?: FunctionOr<string>; // {(): string} | string;
+    data?: {(): D | Array<D>};
     templates?: T;
 }
 
@@ -100,22 +97,17 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
 export namespace ComponentNode {
 
-    // export function CreateFunction<D, T = any>(type: any, namespace: string, childrenFunc: {(ctx: IComponentContext<D, T>): NodeRef | NodeRef[]}) {
     export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>) {
         return (nodeDef: ComponentNodeFunctionParam<D, T, E>, templates?: T) => {
             var def = {
                 type: type,
                 namespace: namespace,
-                // text: nodeDef.text,
                 immediate: nodeDef.immediate,
                 props: nodeDef.props,
                 attrs: nodeDef.attrs,
                 on: nodeDef.on,
                 static: nodeDef.static,
-                data: nodeDef.data,
-                // key: nodeDef.key,
-                /* templates: templates,
-                component: constructor */
+                data: nodeDef.data
             }
 
             var comp = new ComponentNode<D, T, E>(def, constructor, templates);
