@@ -2,21 +2,21 @@ import { Component } from "j-templates";
 import { div } from "j-templates/DOM";
 import { Inject } from "j-templates/Utils";
 
-class IHello {
-    Hello(): string { return ""; }
+class IGreeting {
+    Greet(): string { return ""; }
 }
 
-class Hello implements IHello {
-    Hello() { return "Hello!" }
+class Hello implements IGreeting {
+    Greet() { return "Hello!" }
 }
 
 class Child extends Component {
 
-    @Inject(IHello)
-    greeting: IHello;
+    @Inject(IGreeting)
+    Greeting: IGreeting;
 
     public Template() {
-        return div({ text: () => this.greeting.Hello() });
+        return div({ text: () => this.Greeting.Greet() });
     }
 
 }
@@ -25,8 +25,8 @@ var child = Component.ToFunction("chi-ld", null, Child);
 
 class Parent extends Component {
 
-    @Inject(IHello)
-    greeting = new Hello();
+    @Inject(IGreeting)
+    Greeting = new Hello();
 
     public Template() {
         return child({});

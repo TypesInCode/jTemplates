@@ -3,18 +3,22 @@ import { div } from "j-templates/DOM";
 import { ComponentNode } from "j-templates/Node/componentNode";
 import { Injector } from "j-templates/Utils/injector";
 
-class IHello {
-    Hello(): string { return ""; }
+class IGreeting {
+    Greet(): string { return ""; }
 }
 
-class Hello implements IHello {
-    Hello() { return "Hello!" }
+class Hello implements IGreeting {
+    Greet() { return "Hello!" }
 }
 
 class Child extends Component {
 
+    get Greeting() {
+        return this.Injector.Get(IGreeting);
+    }
+
     public Template() {
-        return div({ text: () => this.Injector.Get(IHello).Hello() });
+        return div({ text: () => this.Greeting.Greet() });
     }
 
 }
@@ -23,9 +27,17 @@ var child = Component.ToFunction("chi-ld", null, Child);
 
 class Parent extends Component {
 
+    get Greeting() {
+        return this.Injector.Get(IGreeting);
+    }
+
+    set Greeting(val: IGreeting) {
+        this.Injector.Set(IGreeting, val);
+    }
+
     constructor(data: void, templates: void, nodeRef: ComponentNode<void, void, void>, injector: Injector) {
         super(data, templates, nodeRef, injector);
-        this.Injector.Set(IHello, new Hello);
+        this.Greeting = new Hello();
     }
 
     public Template() {
