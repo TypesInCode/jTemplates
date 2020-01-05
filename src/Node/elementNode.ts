@@ -26,10 +26,6 @@ export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
 
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}): BoundNode}
 
-function EmptyAsyncCallback(next: {(): void}) {
-    next();
-} 
-
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): NodeRef | NodeRef[]};
     private nodesMap: Map<any, List<Array<BoundNode>>>;
@@ -39,6 +35,7 @@ export class ElementNode<T> extends BoundNode {
     private lastEvents: {[name: string]: any};
     private asyncQueue: AsyncQueue<{ previousNode: BoundNode, nodeMap: Map<any, List<Array<BoundNode>>> }>;
     private setData: boolean;
+    private injector: Injector;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
@@ -62,6 +59,7 @@ export class ElementNode<T> extends BoundNode {
         });
         this.mapScope.Watch(() => this.ScheduleSetDataAsync());
         this.asyncQueue = new AsyncQueue();
+        this.injector = Injector.Current();
     }
 
     private SetDataSync() {
@@ -98,13 +96,6 @@ export class ElementNode<T> extends BoundNode {
             this.setData = false;
             this.SetDataAsync();
         });
-
-        /* this.asyncQueue.Cancel(() => {
-            NodeConfig.scheduleUpdate(() => {
-                this.setData = false;
-                this.SetDataAsync();
-            });
-        }); */
     }
 
     private SetDataAsync() {
@@ -140,40 +131,6 @@ export class ElementNode<T> extends BoundNode {
         });
 
         this.asyncQueue.Start({ previousNode: null, nodeMap: this.mapScope.Value });
-
-        /* var previousNode: BoundNode = null;
-        var dataArray = this.arrayScope.Value;
-        var newNodesMap: Map<any, List<Array<BoundNode>>> = null;
-
-        this.asyncQueue = new AsyncQueue((next) => {
-            NodeConfig.scheduleUpdate(() => {
-                if(!this.Destroyed) {
-                    newNodesMap = this.mapScope.Value;
-                    this.InitSetData(newNodesMap);
-                }
-                next();
-            });
-        }, (next) => {
-            NodeConfig.scheduleUpdate(() => {
-                if(!this.Destroyed)
-                    this.FinishSetData(newNodesMap);
-                
-                next();
-            });
-        });
-        
-        dataArray.forEach(value => {
-            this.asyncQueue.Add((next) => {
-                NodeConfig.scheduleUpdate(() => {
-                    if(!this.Destroyed)
-                        previousNode = this.ValueSetData(value, previousNode, newNodesMap);
-                    
-                    next();
-                });
-            });
-        });
-
-        this.asyncQueue.Start(); */
     }
 
     private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
@@ -200,7 +157,7 @@ export class ElementNode<T> extends BoundNode {
             this.nodesMap.delete(value);
 
         if(!nodes) {
-            Injector.Scope(this.Injector, () => {
+            Injector.Scope(this.injector, () => {
                 var parentVal = BoundNode.Immediate;
                 BoundNode.Immediate = this.Immediate;
                 nodes = this.childrenFunc(value) as BoundNode[]

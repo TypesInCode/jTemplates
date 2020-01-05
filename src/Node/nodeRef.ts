@@ -1,11 +1,9 @@
 import { NodeConfig } from "./nodeConfig";
-import { Injector } from "../Utils/injector";
 
 export class NodeRef {
     private node: any;
     private parent: NodeRef;
     private childNodes: Set<NodeRef>;
-    private injector: Injector;
     private destroyed: boolean;
 
     public get Destroyed() {
@@ -16,15 +14,10 @@ export class NodeRef {
         return this.node;
     }
 
-    protected get Injector() {
-        return this.injector;
-    }
-
     constructor(node: any) {
         this.node = node;
         this.destroyed = false;
         this.childNodes = new Set();
-        this.injector = new Injector();
     }
 
     public AddChild(nodeRef: NodeRef) {

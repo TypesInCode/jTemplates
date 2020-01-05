@@ -22,10 +22,12 @@ export interface ComponentNodeFunctionParam<D, T, E> {
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private component: Component<D, T, E>;
     private componentEvents: {[name: string]: {(...args: Array<any>): void}};
+    private injector: Injector;
 
     constructor(nodeDef: NodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef);
-        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.Injector);
+        this.injector = new Injector();
+        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.injector);
     }
 
     public SetEvents() {
@@ -50,7 +52,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private SetChildren() {
         if(PreReq.Has(this.component)) {
             var preNodes = null as Array<NodeRef>;
-            Injector.Scope(this.Injector, () => 
+            Injector.Scope(this.injector, () => 
                 preNodes = PreReqTemplate.Get(this.component)
             );
 
@@ -78,7 +80,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
     private AddTemplate() {        
         var nodes = null as Array<NodeRef>;
-        Injector.Scope(this.Injector, () => {
+        Injector.Scope(this.injector, () => {
             var parentVal = BoundNode.Immediate;
             BoundNode.Immediate = this.Immediate;
             nodes = this.component.Template() as Array<NodeRef>
