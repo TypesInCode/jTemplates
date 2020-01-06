@@ -11,6 +11,10 @@ export class Component<D = void, T = void, E = void> {
         return this.injector;
     }
 
+    public get Destroyed() {
+        return this.nodeRef.Destroyed;
+    }
+
     protected get Scope() {
         return this.scope;
     }

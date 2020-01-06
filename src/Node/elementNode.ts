@@ -94,7 +94,8 @@ export class ElementNode<T> extends BoundNode {
 
         NodeConfig.scheduleUpdate(() => {
             this.setData = false;
-            this.SetDataAsync();
+            if(!this.Destroyed)
+                this.SetDataAsync();
         });
     }
 

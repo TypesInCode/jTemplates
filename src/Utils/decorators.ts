@@ -4,6 +4,7 @@ import { Scope as ScopeClass } from "../Store/scope/scope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
 import { StoreAsync } from "../Store";
+import { NodeConfig } from "../Node/nodeConfig";
 
 export function Store(): any {
     return StoreDecorator;
@@ -72,6 +73,7 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
     DestroyDecorator(target as T & Record<K, ScopeClass<any>>, `ComputedDecorator_Scope_${propertyKey}`);
     DestroyDecorator(target as T & Record<K, StoreSync<any>>, `ComputedDecorator_Store_${propertyKey}`);
 
+    var updateScheduled = false;
     return {
         configurable: false,
         enumerable: true,
@@ -81,7 +83,15 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
                 var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
                 store = this[`ComputedDecorator_Store_${propertyKey}`] = new storeConstructor(scope.Value);
                 scope.Watch(scope => {
-                    store.Update(scope.Value);
+                    if(updateScheduled)
+                        return;
+
+                    updateScheduled = true;
+                    NodeConfig.scheduleUpdate(() => {
+                        updateScheduled = false;
+                        if(!(this as Component).Destroyed)
+                            store.Update(scope.Value);
+                    });
                 });
             }
 
