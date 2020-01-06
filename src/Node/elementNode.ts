@@ -88,7 +88,7 @@ export class ElementNode<T> extends BoundNode {
                         this.FinishSetData(oldData.nodeMap);
                     
                     next(data);
-                });
+                }, true);
             });
         }
 
@@ -103,11 +103,12 @@ export class ElementNode<T> extends BoundNode {
 
         this.asyncQueue.Add((next, data) => {
             NodeConfig.scheduleUpdate(() => {
+                this.setData = false;
                 if(!this.Destroyed)
                     this.InitSetData(data.nodeMap);
                 
                 next(data);
-            });
+            }, true);
         });
 
         dataArray.forEach(value => {

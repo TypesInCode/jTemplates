@@ -2,15 +2,16 @@ import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 
+var priorityUpdates = new List<{(): void}>();
 var pendingUpdates = new List<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
     var start = Date.now();
-    var callback = pendingUpdates.Pop();
+    var callback = priorityUpdates.Pop() || pendingUpdates.Pop();
     callback && callback();
     while(callback && (Date.now() - start) < 66) {
-        callback = pendingUpdates.Pop();
+        callback = priorityUpdates.Pop() || pendingUpdates.Pop();
         callback && callback();
     }
 
@@ -27,8 +28,11 @@ export var DOMNodeConfig: INodeConfig = {
 
         return wndw.document.createElement(type);
     },
-    scheduleUpdate: function(callback: () => void): void {
-        pendingUpdates.Add(callback);
+    scheduleUpdate: function(callback: () => void, highPriority = false): void {
+        if(highPriority)
+            priorityUpdates.Add(callback);
+        else
+            pendingUpdates.Add(callback);
     
         if(!updateScheduled) {
             updateScheduled = true;
