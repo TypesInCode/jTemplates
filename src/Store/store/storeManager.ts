@@ -54,6 +54,8 @@ export class StoreManager<T> {
         for(var x=0; x<keyValues.length; x++) {
             var path = keyValues[x][0];
             var value = keyValues[x][1];
+            this.EnsurePropertyPath(path);
+            
             var breakUpMap = this.GetBreakUpMap(path, value);
             breakUpMap.forEach((value, key) => {
                 batch.push({
@@ -165,7 +167,7 @@ export class StoreManager<T> {
         var parentParts = parts.slice(0, parts.length - 1);
         var parentObj = this.ResolvePropertyPath(parentParts.join(".")) as any;
 
-        if(parentObj[prop] === undefined)
+        if(parentObj && parentObj[prop] === undefined)
             parentObj[prop] = null;
     }
 
