@@ -118,24 +118,24 @@ export class StoreManager<T> {
 
     private BreakUpValue(path: string, parent: any, key?: string, map?: Map<string, any>): Map<string, any> {
         var value = key ? parent[key] : parent;
+        var valueType = IProxy.ValueType(value);
         if(value && value.toJSON && typeof value.toJSON === 'function')
             value = value.toJSON();
         
-        var id = this.idFunction(value);
-        var hasId = id || id === 0;
-        var idPath = hasId && ["id", id].join(".");
-        var treeNodeRef = hasId && TreeNodeRefId.GetString(id);
+        var id = valueType !== IProxyType.Value ? this.idFunction(value) : null;
+        var idPath = id && ["id", id].join(".");
+        var treeNodeRef = id && TreeNodeRefId.GetString(id);
 
         if(!map) {
-            map = new Map([[path, hasId && path !== idPath ? treeNodeRef : value]]);
+            map = new Map([[path, id && path !== idPath ? treeNodeRef : value]]);
             // map.set(path, hasId && path !== idPath ? treeNodeRef : value);
         }
 
-        if(IProxy.ValueType(value) === IProxyType.Value) {
+        if(valueType === IProxyType.Value) {
             return map;
         }
 
-        if(hasId && path !== idPath) {
+        if(id && path !== idPath) {
             if(key)
                 parent[key] = treeNodeRef;
             
