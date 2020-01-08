@@ -70,8 +70,8 @@ export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T
     return ElementNode.Create("p", null, nodeDef, children);
 }
 
-export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
-    return ElementNode.Create("style", null, nodeDef, children);
+export function style<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create("style", null, nodeDef, null);
 }
 
 export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
