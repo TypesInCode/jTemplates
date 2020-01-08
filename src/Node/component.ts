@@ -6,6 +6,7 @@ import { Destroy } from "../Utils/decorators";
 
 export class Component<D = void, T = void, E = void> {
     private scope: Scope<D>;
+    private templates: T;
 
     public get Injector() {
         return this.injector;
@@ -31,8 +32,9 @@ export class Component<D = void, T = void, E = void> {
         return this.templates;
     }
 
-    constructor(data: {(): D} | D, private templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
+    constructor(data: {(): D} | D, templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new Scope(data);
+        this.templates = templates || {} as T;
     }
 
     public Template(): NodeRef | NodeRef[] {
