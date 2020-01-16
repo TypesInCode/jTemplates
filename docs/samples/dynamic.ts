@@ -1,5 +1,5 @@
 import { Component } from 'j-templates';
-import { div, input } from 'j-templates/DOM';
+import { div, input, text } from 'j-templates/DOM';
 import { StoreSync } from 'j-templates/Store';
 
 class HelloWorld extends Component {
@@ -30,7 +30,7 @@ class HelloWorld extends Component {
                     keyup: (e: any) => this.State = { inputValue: e.target.value } 
                 } 
             }),
-            div({ text: () => this.InputValue })
+            div({}, () => text(() => this.InputValue))
         ]
     }
 

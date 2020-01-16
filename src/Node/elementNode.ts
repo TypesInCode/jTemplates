@@ -1,4 +1,4 @@
-import { BoundNode, FunctionOr, NodeDefinition, defaultChildren } from "./boundNode";
+import { BoundNode, FunctionOr, NodeDefinition, defaultChildren, NodeRefEvents } from "./boundNode";
 import { Scope } from "../Store/scope/scope";
 import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
@@ -6,22 +6,19 @@ import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { AsyncQueue } from "../Utils/asyncQueue";
 
-export type ElementNodeEvents = {
-    [name: string]: {(event: Event): void}
+export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
+    static?: T | Array<T>;
+    data?: {(): T | Array<T>};
+    children?: {(data?: T, i?: number): BoundNode};
 }
 
 export interface ElementNodeFunctionParam<T> {
     immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<ElementNodeEvents>;
+    attrs?: FunctionOr<{[name: string]: string}>;
+    on?: FunctionOr<NodeRefEvents>;
     static?: T | Array<T>;
     data?: {(): T | Array<T>};
-    text?: FunctionOr<string>;
-}
-
-export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
-    children?: {(data?: T, i?: number): BoundNode};
 }
 
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}): BoundNode}
@@ -32,7 +29,6 @@ export class ElementNode<T> extends BoundNode {
     private dataScope: Scope<any>;
     private arrayScope: Scope<Array<T>>;
     private mapScope: Scope<Map<T, List<Array<BoundNode>>>>;
-    private lastEvents: {[name: string]: any};
     private asyncQueue: AsyncQueue<{ previousNode: BoundNode, nodeMap: Map<any, List<Array<BoundNode>>> }>;
     private setData: boolean;
     private injector: Injector;
@@ -190,20 +186,6 @@ export class ElementNode<T> extends BoundNode {
         this.nodesMap = newNodesMap;
     }
 
-    public SetEvents() {
-        if(this.Destroyed)
-            return;
-        
-        for(var key in this.lastEvents)
-            NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
-
-        var events = this.eventsScope.Value;
-        for(var key in events)
-            NodeConfig.addListener(this.Node, key, events[key]);
-
-        this.lastEvents = events;
-    }
-
     public Init() {
         super.Init();
         
@@ -232,7 +214,6 @@ export namespace ElementNode {
             type: type,
             namespace: namespace,
             immediate: nodeDef.immediate,
-            text: nodeDef.text,
             props: nodeDef.props,
             attrs: nodeDef.attrs,
             on: nodeDef.on,
@@ -241,7 +222,7 @@ export namespace ElementNode {
             children: children
         } as ElementNodeDefinition<any>;
 
-        var elem = new ElementNode(def);
+        var elem = new ElementNode<T>(def);
         elem.Init();
         return elem;
     }

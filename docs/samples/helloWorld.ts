@@ -1,10 +1,10 @@
 import { Component } from 'j-templates';
-import { div } from 'j-templates/DOM';
+import { span } from 'j-templates/DOM';
 
 class HelloWorld extends Component {
 
     public Template() {
-        return div({ text: "Hello world" });
+        return span({}, () => "Hello world");
     }
 
 }

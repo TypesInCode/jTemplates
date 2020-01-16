@@ -1,5 +1,5 @@
 import { Component } from 'j-templates';
-import { div } from 'j-templates/DOM';
+import { div, text } from 'j-templates/DOM';
 import { Animation, Store, AnimationType, Destroy } from 'j-templates/Utils';
 
 class AnimationComponent extends Component {
@@ -32,9 +32,8 @@ class AnimationComponent extends Component {
                         top: `${this.state.top}%`,
                         left: `${this.state.left}%`
                     }
-                }),
-                text: "Hello world" 
-            })
+                })
+            }, () => text("Hello world"))
         );
     }
 

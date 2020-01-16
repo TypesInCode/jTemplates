@@ -26,7 +26,7 @@ export var DOMNodeConfig: INodeConfig = {
         if(namespace)
             return wndw.document.createElementNS(namespace, type);
 
-        return wndw.document.createElement(type);
+        return type === "text" ? wndw.document.createTextNode("") : wndw.document.createElement(type);
     },
     scheduleUpdate: function(callback: () => void, highPriority = false): void {
         if(highPriority)

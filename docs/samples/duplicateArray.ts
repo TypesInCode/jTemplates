@@ -1,7 +1,7 @@
 import { Component } from "j-templates";
 import { StoreSync } from "j-templates/Store";
 import { Computed } from "j-templates/Utils";
-import { div, br } from "j-templates/DOM";
+import { div, br, text } from "j-templates/DOM";
 
 class DuplicateArray extends Component {
     state = new StoreSync({ 
@@ -20,7 +20,7 @@ class DuplicateArray extends Component {
 
     public Template() {
         return [
-            div({ text: "Source:" }),
+            div({}, () => text("Source:")),
             div({ data: () => this.state.Root.Value.sourceArray }, (data) => 
                 div({ on: { 
                     click: () => {
@@ -29,10 +29,10 @@ class DuplicateArray extends Component {
                             await writer.Push(reader.Root.targetArray, obj);
                         })
                     }
-                }, text: () => data.value })
+                } }, () => text(() => data.value))
             ),
             br({}),
-            div({ text: "Target:" }),
+            div({}, () => text("Target:")),
             div({ data: () => this.indexedArray }, (data) => 
                 div({ on: {
                     click: () => {
@@ -40,7 +40,7 @@ class DuplicateArray extends Component {
                             await writer.Splice(reader.Root.targetArray, data.index, 1);
                         });
                     }
-                }, text: () => data.value })
+                } }, () => text(() => data.value))
             )
         ]
     }

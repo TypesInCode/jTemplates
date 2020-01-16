@@ -4,7 +4,7 @@ import { NodeRef } from "./nodeRef";
 
 export type FunctionOr<T> = {(...args: Array<any>): T } | T;
 
-export type BoundNodeEvents = {
+export type NodeRefEvents = {
     [name: string]: {(...args: Array<any>): void}
 }
 
@@ -13,28 +13,33 @@ export interface NodeDefinition<T = any, E = any> {
     namespace: string;
     immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>,
-    on?: FunctionOr<BoundNodeEvents>;
-    static?: T | Array<T>;
-    data?: any;
-    text?: FunctionOr<string>;
+    attrs?: FunctionOr<{[name: string]: string}>;
+    on?: FunctionOr<NodeRefEvents>;
+}
+
+export interface BoundNodeFunctionParam<T> {
+    immediate?: boolean;
+    props?: FunctionOr<{[name: string]: any}>;
+    attrs?: FunctionOr<{[name: string]: string}>;
+    on?: FunctionOr<NodeRefEvents>;
 }
 
 export function defaultChildren(): Array<NodeRef> {
     return [];
 }
 
-export abstract class BoundNode extends NodeRef {
+export class BoundNode extends NodeRef {
     private nodeDef: NodeDefinition;
     private lastProperties: any;
+    private lastEvents: {[name: string]: any};
     private immediate: boolean;
 
-    private setText = false;
+    // private setText = false;
     private setProperties = false;
     private setAttributes = false;
     private setEvents = false;
 
-    protected textScope: Scope<string>;
+    // protected textScope: Scope<string>;
     protected propertiesScope: Scope<{[name: string]: any}>;
     protected attributesScope: Scope<{[name: string]: string}>;
     protected eventsScope: Scope<{[name: string]: (...args: Array<any>) => void}>;
@@ -49,7 +54,7 @@ export abstract class BoundNode extends NodeRef {
         this.immediate = nodeDef.immediate !== undefined ? nodeDef.immediate : BoundNode.Immediate;
     }
 
-    public ScheduleSetText() {
+    /* public ScheduleSetText() {
         if(this.setText)
             return;
 
@@ -58,14 +63,14 @@ export abstract class BoundNode extends NodeRef {
             this.SetText();
             this.setText = false;
         });
-    }
+    } */
 
-    public SetText() {
+    /* public SetText() {
         if(this.Destroyed)
             return;
 
         NodeConfig.setText(this.Node, this.textScope.Value);
-    }
+    } */
 
     public ScheduleSetProperties() {
         if(this.setProperties)
@@ -121,16 +126,28 @@ export abstract class BoundNode extends NodeRef {
         });
     }
 
-    public abstract SetEvents(): void;
+    public SetEvents() {
+        if(this.Destroyed)
+            return;
+        
+        for(var key in this.lastEvents)
+            NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
+
+        var events = this.eventsScope.Value;
+        for(var key in events)
+            NodeConfig.addListener(this.Node, key, events[key]);
+
+        this.lastEvents = events;
+    }
 
     public Init() {
         super.Init();
 
-        if(this.nodeDef.text) {
+        /* if(this.nodeDef.text) {
             this.textScope = new Scope(this.nodeDef.text);
             this.textScope.Watch(this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
             this.SetText();
-        }
+        } */
 
         if(this.nodeDef.props) {
             this.propertiesScope = new Scope(this.nodeDef.props);
@@ -155,7 +172,7 @@ export abstract class BoundNode extends NodeRef {
         super.Destroy();
         this.attributesScope && this.attributesScope.Destroy();
         this.propertiesScope && this.propertiesScope.Destroy();
-        this.textScope && this.textScope.Destroy();
+        // this.textScope && this.textScope.Destroy();
         this.eventsScope && this.eventsScope.Destroy();
     }
 
@@ -184,4 +201,19 @@ export abstract class BoundNode extends NodeRef {
 
 export namespace BoundNode {
     export var Immediate = false;
+
+    export function Create<T>(type: any, namespace: string, nodeDef: BoundNodeFunctionParam<T>) {
+        var def = {
+            type: type,
+            namespace: namespace,
+            immediate: nodeDef.immediate,
+            props: nodeDef.props,
+            attrs: nodeDef.attrs,
+            on: nodeDef.on
+        } as NodeDefinition<any>;
+
+        var elem = new BoundNode(def);
+        elem.Init();
+        return elem;
+    }
 }

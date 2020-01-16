@@ -1,5 +1,5 @@
 import { Component } from "j-templates";
-import { div } from "j-templates/DOM";
+import { span } from "j-templates/DOM";
 import { Inject } from "j-templates/Utils";
 
 class IGreeting {
@@ -16,7 +16,7 @@ class Child extends Component {
     Greeting: IGreeting;
 
     public Template() {
-        return div({ text: () => this.Greeting.Greet() });
+        return span({}, () => this.Greeting.Greet());
     }
 
 }

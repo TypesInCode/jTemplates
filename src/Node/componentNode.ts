@@ -5,11 +5,17 @@ import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 
-export type ComponentNodeEvents<E> = {
+export type ComponentNodeEvents<E = void> = {
     [P in keyof E]: {(data?: E[P]): void};
 }
 
-export interface ComponentNodeFunctionParam<D, T, E> {
+interface ComponentNodeDefinition<D = void, E = void> extends NodeDefinition<D> {
+    on: ComponentNodeEvents<E>;
+    static?: D;
+    data?: D | {(): D};
+}
+
+export interface ComponentNodeFunctionParam<D = void, T = void, E = void> {
     immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
@@ -24,14 +30,14 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private componentEvents: {[name: string]: {(...args: Array<any>): void}};
     private injector: Injector;
 
-    constructor(nodeDef: NodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
+    constructor(nodeDef: ComponentNodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef);
         this.injector = new Injector();
         this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.injector);
     }
 
     public SetEvents() {
-        this.componentEvents = this.eventsScope.Value;        
+        this.componentEvents = this.eventsScope.Value;
     }
 
     public Fire<P extends keyof E>(event: P, data?: E[P]) {
@@ -110,7 +116,7 @@ export namespace ComponentNode {
                 on: nodeDef.on,
                 static: nodeDef.static,
                 data: nodeDef.data
-            }
+            } as ComponentNodeDefinition<D, E>;
 
             var comp = new ComponentNode<D, T, E>(def, constructor, templates);
             comp.Init();
