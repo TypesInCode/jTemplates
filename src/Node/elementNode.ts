@@ -160,7 +160,7 @@ export class ElementNode<T> extends BoundNode {
 
                 var newNodes = this.childrenFunc(value); // as BoundNode[]
                 if(typeof newNodes === "string")
-                    newNodes = [ElementNode.Create("text", null, { static: value }, this.childrenFunc)];
+                    newNodes = [BoundNode.Create("text", null, { props: () => ({ nodeValue: this.childrenFunc(value) }) })];
 
                 nodes = newNodes as Array<NodeRef>;
 

@@ -23,7 +23,7 @@ class HelloWorld extends Component {
                     keyup: (e: any) => this.State = { inputValue: e.target.value } 
                 } 
             }),
-            div({}, () => text(() => this.InputValue)),
+            div({}, () => this.InputValue),
         ]
     }
 
