@@ -20,7 +20,7 @@ class DuplicateArray extends Component {
 
     public Template() {
         return [
-            div({}, () => text("Source:")),
+            div({}, () => "Source:"),
             div({ data: () => this.state.Root.Value.sourceArray }, (data) => 
                 div({ on: { 
                     click: () => {
@@ -32,7 +32,7 @@ class DuplicateArray extends Component {
                 } }, () => text(() => data.value))
             ),
             br({}),
-            div({}, () => text("Target:")),
+            div({}, () => "Target:"),
             div({ data: () => this.indexedArray }, (data) => 
                 div({ on: {
                     click: () => {

@@ -9,7 +9,7 @@ import { AsyncQueue } from "../Utils/asyncQueue";
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     static?: T | Array<T>;
     data?: {(): T | Array<T>};
-    children?: {(data?: T, i?: number): BoundNode};
+    children?: {(data?: T): string | NodeRef | NodeRef[]};
 }
 
 export interface ElementNodeFunctionParam<T> {
@@ -21,15 +21,16 @@ export interface ElementNodeFunctionParam<T> {
     data?: {(): T | Array<T>};
 }
 
-export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}): BoundNode}
+export type ElementChildrenFunction<T> = {(data?: T): string | NodeRef | NodeRef[]};
+export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): NodeRef}
 
 export class ElementNode<T> extends BoundNode {
-    private childrenFunc: {(data: T): NodeRef | NodeRef[]};
-    private nodesMap: Map<any, List<Array<BoundNode>>>;
+    private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};
+    private nodesMap: Map<any, List<Array<NodeRef>>>;
     private dataScope: Scope<any>;
     private arrayScope: Scope<Array<T>>;
-    private mapScope: Scope<Map<T, List<Array<BoundNode>>>>;
-    private asyncQueue: AsyncQueue<{ previousNode: BoundNode, nodeMap: Map<any, List<Array<BoundNode>>> }>;
+    private mapScope: Scope<Map<T, List<Array<NodeRef>>>>;
+    private asyncQueue: AsyncQueue<{ previousNode: NodeRef, nodeMap: Map<any, List<Array<NodeRef>>> }>;
     private setData: boolean;
     private injector: Injector;
 
@@ -50,8 +51,8 @@ export class ElementNode<T> extends BoundNode {
             return value;
         });
         this.mapScope = this.arrayScope.Scope(array => {
-            var mapInit = array.map(v => [v, new List()] as [any, List<Array<BoundNode>>]);
-            return new Map<T, List<Array<BoundNode>>>(mapInit);
+            var mapInit = array.map(v => [v, new List()] as [any, List<Array<NodeRef>>]);
+            return new Map<T, List<Array<NodeRef>>>(mapInit);
         });
         this.mapScope.Watch(() => this.ScheduleSetDataAsync());
         this.asyncQueue = new AsyncQueue();
@@ -63,7 +64,7 @@ export class ElementNode<T> extends BoundNode {
 
         var newNodesMap = this.mapScope.Value;
         this.InitSetData(newNodesMap);
-        var previousNode: BoundNode = null;
+        var previousNode: NodeRef = null;
         dataArray.forEach(value => {
             previousNode = this.ValueSetData(value, previousNode, newNodesMap);
         });
@@ -131,7 +132,7 @@ export class ElementNode<T> extends BoundNode {
         this.asyncQueue.Start({ previousNode: null, nodeMap: this.mapScope.Value });
     }
 
-    private InitSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
+    private InitSetData(newNodesMap: Map<any, List<Array<NodeRef>>>) {
         this.nodesMap.forEach((nodesList, value) => {
             if(!newNodesMap.has(value)) {
                 nodesList.ForEach(nodes => nodes.forEach(n => {
@@ -143,13 +144,11 @@ export class ElementNode<T> extends BoundNode {
         });
     }
 
-    private ValueSetData(value: T, previousNode: BoundNode, newNodesMap: Map<any, List<Array<BoundNode>>>) {
-        var nodes: Array<BoundNode> = null;
+    private ValueSetData(value: T, previousNode: NodeRef, newNodesMap: Map<any, List<Array<NodeRef>>>) {
+        var nodes: Array<NodeRef> = null;
         var nodesList = this.nodesMap.get(value);
-        if(nodesList && nodesList.Size > 0) {
-            nodes = nodesList.Tail;
-            nodesList.Remove();
-        }
+        if(nodesList && nodesList.Size > 0)
+            nodes = nodesList.Remove();
         
         if(nodesList && nodesList.Size === 0)
             this.nodesMap.delete(value);
@@ -158,9 +157,16 @@ export class ElementNode<T> extends BoundNode {
             Injector.Scope(this.injector, () => {
                 var parentVal = BoundNode.Immediate;
                 BoundNode.Immediate = this.Immediate;
-                nodes = this.childrenFunc(value) as BoundNode[]
-                BoundNode.Immediate = parentVal;
+
+                var newNodes = this.childrenFunc(value); // as BoundNode[]
+                if(typeof newNodes === "string")
+                    newNodes = [ElementNode.Create("text", null, { static: value }, this.childrenFunc)];
+
+                nodes = newNodes as Array<NodeRef>;
+
+                BoundNode.Immediate = parentVal; 
             });
+
             if(!Array.isArray(nodes))
                 nodes = [nodes];
         }
@@ -175,7 +181,7 @@ export class ElementNode<T> extends BoundNode {
         return previousNode;
     }
 
-    private FinishSetData(newNodesMap: Map<any, List<Array<BoundNode>>>) {
+    private FinishSetData(newNodesMap: Map<any, List<Array<NodeRef>>>) {
         this.nodesMap.forEach((nodesList) => {
             nodesList && nodesList.ForEach(nodes => nodes.forEach(n => {
                 n.Detach();
@@ -209,7 +215,7 @@ export class ElementNode<T> extends BoundNode {
 
 export namespace ElementNode {
     
-    export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children?: {(data?: T): NodeRef | NodeRef[]}) {
+    export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
         var def = {
             type: type,
             namespace: namespace,

@@ -33,7 +33,7 @@ class AnimationComponent extends Component {
                         left: `${this.state.left}%`
                     }
                 })
-            }, () => text("Hello world"))
+            }, () => "Hello world")
         );
     }
 
