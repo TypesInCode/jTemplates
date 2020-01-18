@@ -98,6 +98,7 @@ export class TreeNode {
         this.emitter.addListener("set", () => {
             this.value = undefined;
             this.proxy = undefined;
+            this.ShrinkProxyArray(this.Value);
             this.parentNode && this.parentNode.UpdateCachedArray(this.property, this.Proxy);
         });
     }
@@ -132,6 +133,15 @@ export class TreeNode {
         this.children = new Map();
         children.forEach(val => val.Destroy());
         this.emitter.removeAllListeners();
+    }
+
+    private ShrinkProxyArray(value: any) {
+        if(Array.isArray(value)) {
+            var proxyArrayLength = this.proxyArray ? this.proxyArray.length : 0;
+            if(value.length < proxyArrayLength) {
+                this.proxyArray.splice(value.length);
+            }
+        }
     }
 
     private UpdateProxyArray(value: any) {
