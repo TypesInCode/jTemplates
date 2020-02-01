@@ -73,7 +73,6 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
     DestroyDecorator(target as T & Record<K, ScopeClass<any>>, `ComputedDecorator_Scope_${propertyKey}`);
     DestroyDecorator(target as T & Record<K, StoreSync<any>>, `ComputedDecorator_Store_${propertyKey}`);
 
-    var updateScheduled = false;
     return {
         configurable: false,
         enumerable: true,
@@ -83,12 +82,12 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
                 var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
                 store = this[`ComputedDecorator_Store_${propertyKey}`] = new storeConstructor(scope.Value);
                 scope.Watch(scope => {
-                    if(updateScheduled)
+                    if(this[`ComputedDecorator_Update_${propertyKey}`])
                         return;
 
-                    updateScheduled = true;
+                    this[`ComputedDecorator_Update_${propertyKey}`] = true;
                     NodeConfig.scheduleUpdate(() => {
-                        updateScheduled = false;
+                        this[`ComputedDecorator_Update_${propertyKey}`] = false;
                         if(!(this as Component).Destroyed)
                             store.Update(scope.Value);
                     });
