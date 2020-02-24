@@ -16,7 +16,7 @@ export namespace ScopeCollector {
         if(!currentSet)
             return;
 
-        if(!currentSet.has(emitter))
+        // if(!currentSet.has(emitter))
             currentSet.add(emitter);
     }
 }
