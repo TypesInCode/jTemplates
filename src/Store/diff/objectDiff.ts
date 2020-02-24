@@ -31,11 +31,12 @@ export function ObjectDiffScope(notWorker: boolean) {
         return Call;
     }
 
+    var jsonConstructor = {}.constructor;
     function IsValue(value: any) {
         if(!value)
             return true;
         
-        return !(Array.isArray(value) || (typeof value === 'object' && {}.constructor === value.constructor))
+        return !(Array.isArray(value) || jsonConstructor === value.constructor)
     }
 
     function Create() { 
@@ -81,7 +82,7 @@ export function ObjectDiffScope(notWorker: boolean) {
             var oldIsObject = !IsValue(oldValue);
 
             if(!newIsObject && !oldIsObject && newValue !== oldValue) {
-                resp.changedPaths.push(path);                
+                resp.changedPaths.push(path);
                 return;
             }
 
