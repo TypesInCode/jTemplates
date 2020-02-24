@@ -54,15 +54,21 @@ export class Scope<T> {
     }
 
     private UpdateEmitters(newEmitters: Set<Emitter>) {
-        newEmitters.forEach(e => {
+        /* newEmitters.forEach(e => {
             if(!this.emitters.delete(e))
                 this.AddListenersTo(e);
         });
 
         this.emitters.forEach(e => 
             this.RemoveListenersFrom(e)
-        );
+        ); */
 
+        newEmitters.forEach(e => {
+            this.emitters.delete(e);
+            this.AddListenersTo(e);
+        });
+
+        this.emitters.forEach(e => this.RemoveListenersFrom(e));
         this.emitters = newEmitters;
     }
 
