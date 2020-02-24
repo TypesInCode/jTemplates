@@ -108,9 +108,9 @@ export class TreeNode {
             this.proxyArray[parseInt(index)] = value;
     }
 
-    public ClearCachedArray() {
+    /* public ClearCachedArray() {
         this.proxyArray = null;
-    }
+    } */
 
     public EnsureChild(prop: string) {
         if(!this.children)
