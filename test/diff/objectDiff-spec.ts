@@ -18,4 +18,12 @@ describe("ObjectDiff", () => {
     expect(resp.changedPaths.length).to.equal(1);
     expect(resp.changedPaths[0]).to.equal("root.arr.0");
   });
+  it("Deleted path", async () => {
+    var diff = new DiffSync();
+    var resp = await diff.DiffBatch([{ path: "root", oldValue: { prop1: "prop1", prop2: "prop2" }, newValue: { prop1: "prop1" } }]);
+    expect(resp.changedPaths.length).to.equal(1);
+    expect(resp.deletedPaths.length).to.equal(1);
+    expect(resp.changedPaths[0]).to.equal("root");
+    expect(resp.deletedPaths[0]).to.equal("root.prop2");
+  });
 });

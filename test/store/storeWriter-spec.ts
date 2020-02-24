@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@types/mocha/index.d.ts" />
 
-import { StoreSync, Scope } from "../../src/Store";
+import { StoreSync } from "../../src/Store";
 import * as chai from "chai";
 const expect = chai.expect;
 
