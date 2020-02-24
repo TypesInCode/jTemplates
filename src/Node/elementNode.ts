@@ -29,9 +29,9 @@ export class ElementNode<T> extends BoundNode {
     private nodesMap: Map<any, List<Array<NodeRef>>>;
     private dataScope: Scope<any>;
     private arrayScope: Scope<Array<T>>;
-    private mapScope: Scope<Map<T, List<Array<NodeRef>>>>;
-    private asyncQueue: AsyncQueue<{ previousNode: NodeRef, nodeMap: Map<any, List<Array<NodeRef>>> }>;
-    private setData: boolean;
+    // private mapScope: Scope<Map<T, List<Array<NodeRef>>>>;
+    private asyncQueue: AsyncQueue<{ previousNode: NodeRef }>;
+    // private setData: boolean;
     private injector: Injector;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
@@ -50,16 +50,83 @@ export class ElementNode<T> extends BoundNode {
 
             return value;
         });
-        this.mapScope = this.arrayScope.Scope(array => {
+        /* this.mapScope = this.arrayScope.Scope(array => {
             var mapInit = array.map(v => [v, new List()] as [any, List<Array<NodeRef>>]);
             return new Map<T, List<Array<NodeRef>>>(mapInit);
         });
-        this.mapScope.Watch(() => this.ScheduleSetDataAsync());
+        this.mapScope.Watch(() => this.ScheduleSetDataAsync()); */
         this.asyncQueue = new AsyncQueue();
         this.injector = Injector.Current();
+        this.arrayScope.Watch(() => this.ScheduleSetData());
     }
 
-    private SetDataSync() {
+    private setData = false;
+    private ScheduleSetData() {
+        if(this.setData)
+            return;
+
+        this.setData = true;
+        NodeConfig.scheduleUpdate(() => {
+            this.setData = false;
+            if(this.Destroyed)
+                return;
+            
+            this.SetData();
+        });
+    }
+
+    private SetData() {
+        this.asyncQueue.Stop();
+        var newNodesMap = new Map();
+
+        this.arrayScope.Value.forEach(value => {
+            var nodeArrayList = this.nodesMap.get(value);
+            var nodes = nodeArrayList && nodeArrayList.Remove(); //  || this.CreateNodeArray(value);
+            if(nodeArrayList && nodeArrayList.Size === 0)
+                this.nodesMap.delete(value);
+
+            var newNodeArrayList = newNodesMap.get(value);
+            if(!newNodeArrayList) {
+                newNodeArrayList = new List<NodeRef[]>();
+                newNodesMap.set(value, newNodeArrayList);
+            }
+
+            if(nodes)
+                newNodeArrayList.Push(nodes);
+
+            this.asyncQueue.Add((next, data) => {
+                NodeConfig.scheduleUpdate(() => {
+                    if(this.Destroyed)
+                        return;
+
+                    if(!nodes) {
+                        nodes = this.CreateNodeArray(value);
+                        newNodeArrayList.Push(nodes);
+                    }
+
+                    for(var x=0; x<nodes.length; x++) {
+                        this.AddChildAfter(data.previousNode, nodes[x]);
+                        data.previousNode = nodes[x];
+                    }
+
+                    next(data); 
+                });
+            });
+        });
+        
+        this.nodesMap.forEach(nodeArrayList => 
+            nodeArrayList.ForEach(nodes => 
+                nodes.forEach(node => {
+                    node.Detach();
+                    node.Destroy();
+                })
+            )
+        );
+        this.nodesMap = newNodesMap;
+        this.asyncQueue.Start({ previousNode: null });
+    }
+
+    /* private SetDataSync() {
         var dataArray = this.arrayScope.Value;
 
         var newNodesMap = this.mapScope.Value;
@@ -190,16 +257,39 @@ export class ElementNode<T> extends BoundNode {
         });
 
         this.nodesMap = newNodesMap;
+    } */
+
+    private CreateNodeArray(value: any) {
+        var nodes: NodeRef[] = null;
+        Injector.Scope(this.injector, () => {
+            var parentVal = BoundNode.Immediate;
+            BoundNode.Immediate = this.Immediate;
+
+            var newNodes = this.childrenFunc(value); // as BoundNode[]
+            if(typeof newNodes === "string")
+                newNodes = [BoundNode.Create("text", null, { props: () => ({ nodeValue: this.childrenFunc(value) }) })];
+
+            nodes = newNodes as Array<NodeRef>;
+            if(!Array.isArray(nodes))
+                nodes = [nodes];
+
+            BoundNode.Immediate = parentVal; 
+        });
+
+        return nodes;
     }
 
     public Init() {
         super.Init();
         
         if(this.Immediate) {
-            this.SetDataSync();
+        // if(BoundNode.Immediate) {
+            // this.SetDataSync();
+            this.SetData();
         }
         else {
-            this.ScheduleSetDataAsync();
+            // this.ScheduleSetDataAsync();
+            this.ScheduleSetData();
         }
     }
 
@@ -208,7 +298,7 @@ export class ElementNode<T> extends BoundNode {
         this.asyncQueue.Stop();
         this.dataScope.Destroy();
         this.arrayScope.Destroy();
-        this.mapScope.Destroy();
+        // this.mapScope.Destroy();
     }
 
 }
