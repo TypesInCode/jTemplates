@@ -66,6 +66,7 @@ export class ElementNode<T> extends BoundNode {
             return;
 
         this.setData = true;
+        this.asyncQueue.Stop();
         NodeConfig.scheduleUpdate(() => {
             this.setData = false;
             if(this.Destroyed)
