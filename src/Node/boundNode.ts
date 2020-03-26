@@ -2,6 +2,8 @@ import { NodeConfig } from "./nodeConfig";
 import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 
+var alwaysAssignPaths = new Set(["value"]);
+
 export type FunctionOr<T> = {(...args: Array<any>): T } | T;
 
 export type NodeRefEvents = {
@@ -176,21 +178,22 @@ export class BoundNode extends NodeRef {
         this.eventsScope && this.eventsScope.Destroy();
     }
 
-    private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}) {
+    private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}, path = "") {
         if(typeof source !== "object")
             throw "Property binding must resolve to an object";
 
         for(var key in source) {
+            var currentPath = path + key;
             var val = source[key];
             if(val && typeof val === 'object') {
                 if(!target[key])
                     target[key] = {};
                 
-                this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val);
+                this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val, currentPath + ".");
             }
-            else if(!lastValue || lastValue[key] !== val) {
-                if(NodeConfig.setPropertyOverrides[key])
-                    NodeConfig.setPropertyOverrides[key](target, val);
+            else if(!lastValue || lastValue[key] !== val || alwaysAssignPaths.has(path)) {
+                if(NodeConfig.setPropertyOverrides[path])
+                    NodeConfig.setPropertyOverrides[path](target, val);
                 else
                     target[key] = val;
             }

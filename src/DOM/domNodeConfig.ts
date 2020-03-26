@@ -88,7 +88,7 @@ export var DOMNodeConfig: INodeConfig = {
         target.dispatchEvent(cEvent);
     },
     setPropertyOverrides: {
-        value: (target: HTMLInputElement, value: string) => {
+        ["value"]: (target: HTMLInputElement, value: string) => {
             if(target.nodeName !== "INPUT")
                 target.value = value;
             else {
