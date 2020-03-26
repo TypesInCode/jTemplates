@@ -191,9 +191,9 @@ export class BoundNode extends NodeRef {
                 
                 this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val, currentPath + ".");
             }
-            else if(!lastValue || lastValue[key] !== val || alwaysAssignPaths.has(path)) {
-                if(NodeConfig.setPropertyOverrides[path])
-                    NodeConfig.setPropertyOverrides[path](target, val);
+            else if(!lastValue || lastValue[key] !== val || alwaysAssignPaths.has(currentPath)) {
+                if(NodeConfig.setPropertyOverrides[currentPath])
+                    NodeConfig.setPropertyOverrides[currentPath](target, val);
                 else
                     target[key] = val;
             }
