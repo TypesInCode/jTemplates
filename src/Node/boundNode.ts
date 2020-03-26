@@ -2,8 +2,6 @@ import { NodeConfig } from "./nodeConfig";
 import { Scope } from "../Store/scope/scope";
 import { NodeRef } from "./nodeRef";
 
-var alwaysAssignPaths = new Set(["value"]);
-
 export type FunctionOr<T> = {(...args: Array<any>): T } | T;
 
 export type NodeRefEvents = {
@@ -191,7 +189,7 @@ export class BoundNode extends NodeRef {
                 
                 this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val, currentPath + ".");
             }
-            else if(!lastValue || lastValue[key] !== val || alwaysAssignPaths.has(currentPath)) {
+            else if(!lastValue || lastValue[key] !== val) {
                 if(NodeConfig.setPropertyOverrides[currentPath])
                     NodeConfig.setPropertyOverrides[currentPath](target, val);
                 else
