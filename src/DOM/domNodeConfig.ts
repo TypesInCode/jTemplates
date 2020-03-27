@@ -1,6 +1,7 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
+import { SetInputValue } from './utils';
 
 var priorityUpdates = new List<{(): void}>();
 var pendingUpdates = new List<{(): void}>();
@@ -88,15 +89,6 @@ export var DOMNodeConfig: INodeConfig = {
         target.dispatchEvent(cEvent);
     },
     setPropertyOverrides: {
-        ["value"]: (target: HTMLInputElement, value: string) => {
-            if(target.nodeName !== "INPUT")
-                target.value = value;
-            else {
-                var start = target.selectionStart;
-                var end = target.selectionEnd;
-                target.value = value;
-                target.setSelectionRange(start, end);
-            }
-        }
+        ["value"]: SetInputValue
     }
 }
