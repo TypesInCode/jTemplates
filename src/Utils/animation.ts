@@ -24,14 +24,30 @@ export class Animation {
     private update: {(next: number): void};
     private animationTimeouts: Array<any>;
     private running: boolean;
+    private start: number;
+    private end: number;
     private enabled: boolean;
 
     public get Running() {
         return this.running;
     }
 
+    public get Start() {
+        return this.start;
+    }
+
+    public get End() {
+        return this.end;
+    }
+
+    public get Enabled() {
+        return this.enabled;
+    }
+
     constructor(type: AnimationType, duration: number, update: {(next: number): void}) {
         this.running = false;
+        this.start = null;
+        this.end = null;
         this.enabled = true;
         this.type = type;
 
@@ -56,6 +72,8 @@ export class Animation {
 
         this.Cancel();
         this.running = true;
+        this.start = start;
+        this.end = end;
         return new Promise(resolve => {
             var stepFunc = (StepFunctions as any)[AnimationType[this.type]] as {(count: number): Generator<number>};
             var index = 0;
@@ -66,6 +84,8 @@ export class Animation {
             }
         }).then(() => {
             this.running = false;
+            this.start = null;
+            this.end = null;
         });
     }
 
@@ -83,6 +103,8 @@ export class Animation {
             clearTimeout(this.animationTimeouts[x]);
 
         this.running = false;
+        this.start = null;
+        this.end = null;
     }
 
     public Destroy() {
