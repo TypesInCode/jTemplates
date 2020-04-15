@@ -88,13 +88,11 @@ export class ObservableTree {
 
     private UpdatePathNode(path: string) {
         var node = this.GetNode(path);
-        if(node) {
-            node.Update();
+        node.Update();
             // node.EmitSet();
 
-            if(node.Parent && node.Parent.Type === Type.Array)
-                node.Parent.EmitSet();
-        }
+        if(node.Parent && node.Parent.Type === Type.Array)
+            node.Parent.ArrayUpdate();
     }
 
 }

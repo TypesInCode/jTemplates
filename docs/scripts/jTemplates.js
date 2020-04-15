@@ -913,11 +913,9 @@
 	    }
 	    UpdatePathNode(path) {
 	        var node = this.GetNode(path);
-	        if (node) {
-	            node.Update();
-	            if (node.Parent && node.Parent.Type === observableProxy_1.Type.Array)
-	                node.Parent.EmitSet();
-	        }
+	        node.Update();
+	        if (node.Parent && node.Parent.Type === observableProxy_1.Type.Array)
+	            node.Parent.ArrayUpdate();
 	    }
 	}
 	exports.ObservableTree = ObservableTree;
@@ -1018,6 +1016,11 @@
 	        this.self = undefined;
 	        this.EmitSet();
 	        this.children.forEach(node => node.Update());
+	    }
+	    ArrayUpdate() {
+	        this.value = undefined;
+	        this.EnsureChild("length").Update();
+	        this.EmitSet();
 	    }
 	    EmitSet() {
 	        this.emitter.Emit("set");
@@ -1239,7 +1242,7 @@
 	        if (init) {
 	            var id = this.idFunc(init);
 	            this.observableTree.Write(id, init);
-	            this.Write(init); 
+	            this.Write(init);
 	        }
 	    }
 	    Scope(id, func) {

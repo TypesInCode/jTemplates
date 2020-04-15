@@ -134,6 +134,12 @@ export class ObservableNode {
             // this.parent.UpdateProxyArrayIndex(parseInt(this.key), this.Proxy);
     }
 
+    public ArrayUpdate() {
+        this.value = undefined;
+        this.EnsureChild("length").Update();
+        this.EmitSet();
+    }
+
     public EmitSet() {
         this.emitter.Emit("set");
     }
