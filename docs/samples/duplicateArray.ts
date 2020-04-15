@@ -46,9 +46,9 @@ class DuplicateArray extends Component {
             div({ data: () => this.indexedArray }, (data) => 
                 div({ on: {
                     click: () => {
-                        /* this.state.Action(async (reader, writer) => {
-                            await writer.Splice(reader.Root.targetArray, data.index, 1);
-                        }); */
+                        this.state.Action<State>("root", async (root, writer) => {
+                            await writer.Splice(root.targetArray, data.index, 1);
+                        });
                     }
                 } }, () => text(() => data.value))
             )

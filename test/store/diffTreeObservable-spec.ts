@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
-import { DiffTreeScope } from '../src/Store/Diff/diffTree';
-import { ObservableTree } from '../src/Store/Tree/observableTree';
+import { DiffTreeScope } from '../../src/Store/Diff/diffTree';
+import { ObservableTree } from '../../src/Store/Tree/observableTree';
 
 describe("Diff Observable Test", () => {
     it('Default Test', () => {

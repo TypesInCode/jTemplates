@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import 'mocha';
-import { DiffTreeScope } from '../src/Store/Diff/diffTree';
-import { DiffSync } from '../src/Store/Diff/diffSync';
+import { DiffTreeScope } from '../../src/Store/Diff/diffTree';
+import { DiffSync } from '../../src/Store/Diff/diffSync';
 
 describe("Diff Test", () => {
     it('Default Test', () => {
