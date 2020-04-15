@@ -1239,7 +1239,7 @@
 	        if (init) {
 	            var id = this.idFunc(init);
 	            this.observableTree.Write(id, init);
-	            this.Write(init);
+	            this.Write(init); 
 	        }
 	    }
 	    Scope(id, func) {
