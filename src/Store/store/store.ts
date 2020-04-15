@@ -1,6 +1,6 @@
 import { ObservableTree } from "../Tree/observableTree";
 import { ObservableProxy, Type } from "../Tree/observableProxy";
-import { StoreWriter } from "./StoreWriter";
+import { StoreWriter } from "./storeWriter";
 
 export class Store<T> {
 

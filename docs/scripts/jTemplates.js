@@ -804,11 +804,11 @@
 	"use strict";
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const observableTree_1 = __webpack_require__(16);
-	const StoreWriter_1 = __webpack_require__(19);
+	const storeWriter_1 = __webpack_require__(19);
 	class Store {
 	    constructor(init) {
 	        this.observableTree = new observableTree_1.ObservableTree();
-	        this.storeWriter = new StoreWriter_1.StoreWriter(this.observableTree);
+	        this.storeWriter = new storeWriter_1.StoreWriter(this.observableTree);
 	        this.rootScope = this.observableTree.Scope("ROOT", root => root);
 	        if (init)
 	            this.Write(init);
@@ -891,7 +891,7 @@
 	    Scope(path, func) {
 	        return new observableScope_1.ObservableScope(() => {
 	            var node = this.GetNode(path);
-	            return func(node.Proxy);
+	            return func && func(node.Proxy) || node.Proxy;
 	        });
 	    }
 	    WritePath(path, value) {
@@ -1232,13 +1232,15 @@
 	Object.defineProperty(exports, "__esModule", { value: true });
 	const observableTree_1 = __webpack_require__(16);
 	const diffAsync_1 = __webpack_require__(21);
-	const StoreAsyncWriter_1 = __webpack_require__(26);
+	const storeAsyncWriter_1 = __webpack_require__(26);
+	const asyncQueue_1 = __webpack_require__(24);
 	class StoreAsync {
 	    constructor(idFunc, init) {
 	        this.idFunc = idFunc;
 	        this.diffAsync = new diffAsync_1.DiffAsync(this.idFunc);
 	        this.observableTree = new observableTree_1.ObservableTree(diffAsync_1.DiffAsync.ReadKeyRef);
-	        this.asyncWriter = new StoreAsyncWriter_1.StoreAsyncWriter(this.idFunc, this.diffAsync, this.observableTree);
+	        this.asyncWriter = new storeAsyncWriter_1.StoreAsyncWriter(this.idFunc, this.diffAsync, this.observableTree);
+	        this.asyncQueue = new asyncQueue_1.AsyncQueue();
 	        if (init) {
 	            var id = this.idFunc(init);
 	            this.observableTree.Write(id, init);
@@ -1252,16 +1254,23 @@
 	    }
 	    Action(id, action) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            var node;
-	            if (id)
-	                node = this.observableTree.GetNode(id);
-	            yield action(node && node.Proxy, this.asyncWriter);
+	            return new Promise(resolve => {
+	                this.asyncQueue.Add((next) => __awaiter(this, void 0, void 0, function* () {
+	                    var node;
+	                    if (id)
+	                        node = this.observableTree.GetNode(id);
+	                    yield action(node && node.Proxy, this.asyncWriter);
+	                    resolve();
+	                    next();
+	                }));
+	                this.asyncQueue.Start();
+	            });
 	        });
 	    }
 	    Write(data) {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            yield this.Action(null, (val, writer) => __awaiter(this, void 0, void 0, function* () {
-	                yield writer.Write(data);
+	                yield writer.Write(val, data);
 	            }));
 	        });
 	    }
@@ -1631,12 +1640,19 @@
 	        this.diffAsync = diffAsync;
 	        this.observableTree = observableTree;
 	    }
-	    Write(data) {
+	    Write(source, data) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            var id = this.idFunc(data);
-	            if (!id)
-	                throw new Error("data must have an id");
-	            var diff = yield this.diffAsync.DiffPath(id, data);
+	            var path;
+	            if (source) {
+	                var proxy = source;
+	                path = proxy.___node.Path;
+	            }
+	            else {
+	                path = this.idFunc(data);
+	                if (!path)
+	                    throw new Error("data must have an id");
+	            }
+	            var diff = yield this.diffAsync.DiffPath(path, data);
 	            this.ApplyChanges(diff);
 	        });
 	    }

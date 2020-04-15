@@ -1,7 +1,8 @@
 import { ObservableTree } from "../Tree/observableTree";
 import { DiffAsync } from "../Diff/diffAsync";
-import { StoreAsyncWriter } from "./StoreAsyncWriter";
+import { StoreAsyncWriter } from "./storeAsyncWriter";
 import { ObservableNode } from "../Tree/observableNode";
+import { AsyncQueue } from "../../Utils/asyncQueue";
 
 export class StoreAsync {
 
@@ -9,12 +10,14 @@ export class StoreAsync {
     private diffAsync: DiffAsync;
     private observableTree: ObservableTree;
     private asyncWriter: StoreAsyncWriter;
+    private asyncQueue: AsyncQueue<void>;
 
     constructor(idFunc: { (val: any): string }, init?: any) { 
         this.idFunc = idFunc;
         this.diffAsync = new DiffAsync(this.idFunc);
         this.observableTree = new ObservableTree(DiffAsync.ReadKeyRef);
         this.asyncWriter = new StoreAsyncWriter(this.idFunc, this.diffAsync, this.observableTree);
+        this.asyncQueue = new AsyncQueue();
         if(init) {
             var id = this.idFunc(init);
             this.observableTree.Write(id, init);
@@ -30,11 +33,18 @@ export class StoreAsync {
     }
 
     public async Action<T>(id: string, action: {(val: T, writer: StoreAsyncWriter): Promise<void>}) {
-        var node: ObservableNode;
-        if(id)
-            node = this.observableTree.GetNode(id);
-        
-        await action(node && node.Proxy, this.asyncWriter);
+        return new Promise(resolve => {
+            this.asyncQueue.Add(async next => {
+                var node: ObservableNode;
+                if(id)
+                    node = this.observableTree.GetNode(id);
+                
+                await action(node && node.Proxy, this.asyncWriter);
+                resolve();
+                next();
+            });
+            this.asyncQueue.Start();
+        });
     }
 
     public async Write(data: any) {

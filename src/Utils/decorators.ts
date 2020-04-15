@@ -1,5 +1,5 @@
 import { Store as StoreSync } from "../Store/Store/store";
-import { Store as StoreClass } from "../Store/store/store";
+import { Store as StoreClass } from "../Store/Store/store";
 import { ObservableScope } from "../Store/Tree/observableScope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
