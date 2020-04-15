@@ -1,11 +1,11 @@
-import { ObjectDiffScope } from "./objectDiff";
+import { DiffTreeScope } from "./diffTree";
 
-export namespace StoreWorker {
+export namespace DiffWorker {
     var workerConstructor: any = null;
     var workerParameter: any = null;
     if(typeof Worker !== 'undefined') {
         workerConstructor = Worker;
-        workerParameter = URL.createObjectURL(new Blob([`(${ObjectDiffScope})(false)`]));
+        workerParameter = URL.createObjectURL(new Blob([`(${DiffTreeScope}).call(this, true)`]));
     }
     
     export function Create() {

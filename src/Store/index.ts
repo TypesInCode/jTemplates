@@ -1,4 +1,3 @@
-export { AbstractStore, Store } from "./store/store";
-export { StoreSync } from "./storeSync";
-export { StoreAsync } from "./storeAsync";
-export { Scope } from "./scope/scope";
+export { Store } from "./Store/store";
+export { StoreAsync } from "./Store/storeAsync";
+export { ObservableScope } from "./Tree/observableScope";

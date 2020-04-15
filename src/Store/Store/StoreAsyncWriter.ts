@@ -1,0 +1,57 @@
+import { DiffAsync } from "../Diff/diffAsync";
+import { ObservableTree } from "../Tree/observableTree";
+import { IDiffResponse } from "../Diff/diffTree";
+import { ObservableProxy } from "../Tree/observableProxy";
+
+export class StoreAsyncWriter {
+
+    constructor(private idFunc: {(val: any): string}, private diffAsync: DiffAsync, private observableTree: ObservableTree) { }
+
+    public async Write(data: any) {
+        var id = this.idFunc(data);
+        if(!id)
+            throw new Error("data must have an id");
+
+        var diff = await this.diffAsync.DiffPath(id, data);
+        this.ApplyChanges(diff);
+    }
+
+    public async Merge<T>(source: T | ObservableProxy, data: Partial<T>) {
+        var proxy = source as ObservableProxy;
+        var rootPath = proxy.___node.Path;
+
+        var keys = Object.keys(data);
+        var message = keys.map(key => ({ path: `${rootPath}.${key}`, value: (data as any)[key] }));
+        var diff = await this.diffAsync.DiffBatch(message);
+        this.ApplyChanges(diff);
+    }
+
+    public async Push<T>(source: Array<T> | ObservableProxy, data: T) {
+        var array = source as Array<T>;
+        var proxy = source as ObservableProxy;
+        var rootPath = proxy.___node.Path;
+        var length = array.length;
+
+        var diff = await this.diffAsync.DiffPath(`${rootPath}.${length}`, data);
+        this.ApplyChanges(diff);
+    }
+
+    public async Splice<T>(source: Array<T> | ObservableProxy, start: number, deleteCount?: number, ...items: Array<T>) {        
+        var proxy = source as ObservableProxy;
+        var rootPath = proxy.___node.Path;
+
+        var array = this.observableTree.Get<Array<T>>(rootPath);
+        array = array.map(val => val);
+        array.splice(start, deleteCount, ...items);
+        var diff = await this.diffAsync.DiffPath(rootPath, array);
+        this.ApplyChanges(diff);
+    }
+
+    private ApplyChanges(diff: IDiffResponse) {
+        for(var x=0; x<diff.deletedPaths.length; x++)
+            this.observableTree.Delete(diff.deletedPaths[x]);
+
+        this.observableTree.WriteAll(diff.changedPaths);
+    }
+
+}

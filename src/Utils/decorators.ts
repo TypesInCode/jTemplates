@@ -1,16 +1,16 @@
-import { StoreSync } from "../Store/storeSync";
+import { Store as StoreSync } from "../Store/Store/store";
 import { Store as StoreClass } from "../Store/store/store";
-import { Scope as ScopeClass } from "../Store/scope/scope";
+import { ObservableScope } from "../Store/Tree/observableScope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
 import { StoreAsync } from "../Store";
 import { NodeConfig } from "../Node/nodeConfig";
 
-export function Store(): any {
-    return StoreDecorator;
+export function State(): any {
+    return StateDecorator;
 }
 
-function StoreDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
+function StateDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
 
     DestroyDecorator(target, `StoreDecorator_${propertyKey}`);
     return {
@@ -41,14 +41,14 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(ta
     if(descriptor && descriptor.set)
         throw "Scope decorator does not support setters";
 
-    DestroyDecorator(target as T & Record<K, ScopeClass<any>>, `ScopeDecorator_${propertyKey}`);
+    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, `ScopeDecorator_${propertyKey}`);
     return {
         configurable: false,
         enumerable: true,
         get: function() {
             var scope = this[`ScopeDecorator_${propertyKey}`];
             if(!scope)
-                scope = this[`ScopeDecorator_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
+                scope = this[`ScopeDecorator_${propertyKey}`] = new ObservableScope(descriptor.get.bind(this));
 
             return scope.Value;
         }
@@ -70,7 +70,7 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
     if(descriptor && descriptor.set)
         throw "Computed decorator does not support setters";
 
-    DestroyDecorator(target as T & Record<K, ScopeClass<any>>, `ComputedDecorator_Scope_${propertyKey}`);
+    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, `ComputedDecorator_Scope_${propertyKey}`);
     DestroyDecorator(target as T & Record<K, StoreSync<any>>, `ComputedDecorator_Store_${propertyKey}`);
 
     return {
@@ -79,7 +79,7 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
         get: function () {
             var store = this[`ComputedDecorator_Store_${propertyKey}`] as StoreSync<any>;
             if(!store) {
-                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ScopeClass(descriptor.get.bind(this));
+                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ObservableScope(descriptor.get.bind(this));
                 store = this[`ComputedDecorator_Store_${propertyKey}`] = new storeConstructor(scope.Value);
                 scope.Watch(scope => {
                     if(this[`ComputedDecorator_Update_${propertyKey}`])
@@ -89,7 +89,7 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
                     NodeConfig.scheduleUpdate(() => {
                         this[`ComputedDecorator_Update_${propertyKey}`] = false;
                         if(!(this as Component).Destroyed)
-                            store.Update(scope.Value);
+                            store.Write(scope.Value);
                     });
                 });
             }

@@ -1,5 +1,5 @@
 import { BoundNode, FunctionOr, NodeDefinition, defaultChildren, NodeRefEvents } from "./boundNode";
-import { Scope } from "../Store/scope/scope";
+import { ObservableScope } from "../Store/Tree/observableScope";
 import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
@@ -27,8 +27,8 @@ export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, chi
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};
     private nodesMap: Map<any, List<Array<NodeRef>>>;
-    private dataScope: Scope<any>;
-    private arrayScope: Scope<Array<T>>;
+    private dataScope: ObservableScope<any>;
+    private arrayScope: ObservableScope<Array<T>>;
     // private mapScope: Scope<Map<T, List<Array<NodeRef>>>>;
     private asyncQueue: AsyncQueue<{ previousNode: NodeRef }>;
     // private setData: boolean;
@@ -40,7 +40,7 @@ export class ElementNode<T> extends BoundNode {
         this.setData = false;
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children || defaultChildren;
-        this.dataScope = new Scope(nodeDef.data || nodeDef.static || true);
+        this.dataScope = new ObservableScope(nodeDef.data || nodeDef.static || true);
         this.arrayScope = this.dataScope.Scope(data => {
             var value = data as Array<T>;
             if(!value)

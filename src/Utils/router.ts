@@ -1,10 +1,10 @@
-import { Scope } from "../Store/scope/scope";
+import { ObservableScope } from "../Store/Tree/observableScope";
 import { wndw } from "../DOM/window";
 import { Store } from "../Store";
 
 export abstract class Router<T extends {}> {
 
-    private routeScope: Scope<string>;
+    private routeScope: ObservableScope<string>;
     private initPromise: Promise<void>;
 
     protected get State() {
@@ -22,7 +22,7 @@ export abstract class Router<T extends {}> {
     constructor(private store: Store<T>) {
         this.initPromise = new Promise(async (resolve, reject) => {
             try{
-                this.routeScope = new Scope(() => this.CreateRoutePart());
+                this.routeScope = new ObservableScope(() => this.CreateRoutePart());
                 await Router.Register(this);
                 this.routeScope.Watch(() => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
                 resolve();

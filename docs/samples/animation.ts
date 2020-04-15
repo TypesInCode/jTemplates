@@ -1,6 +1,6 @@
 import { Component } from 'j-templates';
 import { div, text } from 'j-templates/DOM';
-import { Animation, Store, AnimationType, Destroy } from 'j-templates/Utils';
+import { Animation, State, AnimationType, Destroy } from 'j-templates/Utils';
 
 class AnimationComponent extends Component {
 
@@ -10,7 +10,7 @@ class AnimationComponent extends Component {
     @Destroy()
     animation2: Animation;
 
-    @Store()
+    @State()
     state: Partial<{ top: number, left: number }> = { top: 0, left: 0 };
 
     public Template() {

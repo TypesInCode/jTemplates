@@ -1,25 +1,24 @@
-import { ObjectDiff } from "./objectDiff";
-import { IDiffMethod, IDiffResponse, Diff } from "./diff.types";
+import { DiffTreeScope, IDiffTree } from "./diffTree";
 
-export class DiffSync implements Diff {
+const diffCnstr = DiffTreeScope();
+export class DiffSync {
 
-    private diff: {(data: IDiffMethod): any};
+    private diffTree: IDiffTree;
 
-    constructor() {
-        this.diff = ObjectDiff();
-        this.diff({
-            method: "create",
-            arguments: []
-        });
+    constructor(keyFunc?: {(val: any): string}) {
+        this.diffTree = new diffCnstr(keyFunc);
     }
 
-    public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
-        return Promise.resolve(this.diff({
-            method: "diffbatch",
-            arguments: [batch]
-        }));
+    public static GetKeyRef(key: string) {
+        return diffCnstr.GetKeyRef(key);
     }
 
-    public Destroy() { }
-    
+    public static ReadKeyRef(ref: string) {
+        return diffCnstr.ReadKeyRef(ref);
+    }
+
+    public DiffPath(path: string, value: any) {
+        return this.diffTree.DiffPath(path, value);
+    }
+
 }

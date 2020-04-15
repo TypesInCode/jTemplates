@@ -1,25 +1,35 @@
+import { DiffTreeScope, IDiffMethod, IDiffResponse } from "./diffTree";
 import { WorkerQueue } from "./workerQueue";
-import { StoreWorker } from "./storeWorker";
-import { Diff, IDiffMethod } from "./diff.types";
+import { DiffWorker } from "./diffWorker";
 
-export class DiffAsync implements Diff {
+const diffCnstr = DiffTreeScope();
+export class DiffAsync {
 
-    private workerQueue: WorkerQueue<IDiffMethod, any>;
+    private workerQueue: WorkerQueue<IDiffMethod, IDiffResponse>;
 
-    constructor() {
-        this.workerQueue = new WorkerQueue(StoreWorker.Create());
-        this.workerQueue.Push(() => ({ method: "create", arguments: [] }));
+    constructor(keyFunc?: {(val: any): string}) {
+        this.workerQueue = new WorkerQueue(DiffWorker.Create());
+        this.workerQueue.Push({ method: "create", arguments: [keyFunc.toString()] })
     }
 
-    public DiffBatch(batch:  Array<{ path: string, newValue: any, oldValue: any }>) {
-        return this.workerQueue.Push(() => ({
-            method: "diffbatch",
-            arguments: [batch]
-        }));
+    public static GetKeyRef(key: string) {
+        return diffCnstr.GetKeyRef(key);
+    }
+
+    public static ReadKeyRef(ref: string) {
+        return diffCnstr.ReadKeyRef(ref);
+    }
+
+    public async DiffPath(path: string, value: any) {
+        return await this.workerQueue.Push({ method: "diffpath", arguments: [path, value] });
+    }
+
+    public async DiffBatch(data: Array<{ path: string, value: any }>) {
+        return await this.workerQueue.Push({ method: "diffbatch", arguments: [data] });
     }
 
     public Destroy() {
         this.workerQueue.Destroy();
     }
-    
+
 }

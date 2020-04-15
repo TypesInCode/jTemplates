@@ -1,5 +1,5 @@
 import { NodeConfig } from "./nodeConfig";
-import { Scope } from "../Store/scope/scope";
+import { ObservableScope } from "../Store";
 import { NodeRef } from "./nodeRef";
 
 export type FunctionOr<T> = {(...args: Array<any>): T } | T;
@@ -40,9 +40,9 @@ export class BoundNode extends NodeRef {
     private setEvents = false;
 
     // protected textScope: Scope<string>;
-    protected propertiesScope: Scope<{[name: string]: any}>;
-    protected attributesScope: Scope<{[name: string]: string}>;
-    protected eventsScope: Scope<{[name: string]: (...args: Array<any>) => void}>;
+    protected propertiesScope: ObservableScope<{[name: string]: any}>;
+    protected attributesScope: ObservableScope<{[name: string]: string}>;
+    protected eventsScope: ObservableScope<{[name: string]: (...args: Array<any>) => void}>;
 
     protected get Immediate() {
         return this.immediate;
@@ -150,19 +150,19 @@ export class BoundNode extends NodeRef {
         } */
 
         if(this.nodeDef.props) {
-            this.propertiesScope = new Scope(this.nodeDef.props);
+            this.propertiesScope = new ObservableScope(this.nodeDef.props);
             this.propertiesScope.Watch(this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(this.nodeDef.attrs) {
-            this.attributesScope = new Scope(this.nodeDef.attrs);
+            this.attributesScope = new ObservableScope(this.nodeDef.attrs);
             this.attributesScope.Watch(this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(this.nodeDef.on) {
-            this.eventsScope = new Scope(this.nodeDef.on);
+            this.eventsScope = new ObservableScope(this.nodeDef.on);
             this.eventsScope.Watch(this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }

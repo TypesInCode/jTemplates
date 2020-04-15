@@ -1,10 +1,10 @@
 import { Component } from 'j-templates';
 import { div, input, text } from 'j-templates/DOM';
-import { StoreSync } from 'j-templates/Store';
+import { Store } from 'j-templates/Store';
 
 class HelloWorld extends Component {
 
-    state = new StoreSync({ inputValue: "Hello world" });
+    state = new Store({ inputValue: "Hello world" });
     inputScope = this.state.Root.Scope(root => root.inputValue);
 
     get State() {

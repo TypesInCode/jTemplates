@@ -1,10 +1,10 @@
 import { Component } from 'j-templates';
 import { div, input, text } from 'j-templates/DOM';
-import { Store, Scope } from 'j-templates/Utils';
+import { State, Scope } from 'j-templates/Utils';
 
 class HelloWorld extends Component {
 
-    @Store()
+    @State()
     State: Partial<{ inputValue: string }> = { inputValue: "Hello world" };
 
     @Scope()

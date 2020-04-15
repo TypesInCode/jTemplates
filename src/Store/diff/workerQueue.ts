@@ -11,7 +11,8 @@ export class WorkerQueue<S, R> {
         this.asyncQueue = new AsyncQueue();
     }
 
-    public Push(getMessage: {(): S}): Promise<R> {
+    // public Push(getMessage: {(): S}): Promise<R> {
+    public Push(message: S): Promise<R> {
         return new Promise((resolve, reject) => {
             this.asyncQueue.Add(next => {
                 this.worker.onmessage = (message: any) => {
@@ -22,7 +23,8 @@ export class WorkerQueue<S, R> {
                     reject(event);
                     next();
                 };
-                this.worker.postMessage(getMessage());
+                // this.worker.postMessage(getMessage());
+                this.worker.postMessage(message);
             });
             this.asyncQueue.Start();
         });
@@ -33,6 +35,7 @@ export class WorkerQueue<S, R> {
     }
 
     public Destroy() {
+        this.asyncQueue.Stop();
         this.worker.terminate();
     }
 

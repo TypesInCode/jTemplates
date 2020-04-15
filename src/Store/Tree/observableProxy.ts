@@ -1,64 +1,55 @@
-import { TreeNode } from "./treeNode";
+import { ObservableNode } from "./observableNode";
 
-export enum IProxyType {
+export enum Type {
     Value,
     Object,
     Array
 }
 
-export interface IProxy {
-    ___type: IProxyType;
+
+export interface ObservableProxy {
     ___storeProxy: boolean;
-    ___node: TreeNode;
+    ___type: Type;
+    ___node: ObservableNode;
     toJSON(): any;
 }
 
-export namespace IProxy {
+export namespace ObservableProxy {
 
-    export function Type(proxy: IProxy) {
-        return proxy && proxy.___type || IProxyType.Value;
-    }
-
-    export function ValueType(value: any): IProxyType {
+    export function TypeOf(value: any): Type {
         if(!value)
-            return IProxyType.Value;
+            return Type.Value;
 
         if(Array.isArray(value))
-            return IProxyType.Array;
+            return Type.Array;
         else if(typeof value === 'object')
-            return IProxyType.Object;
+            return Type.Object;
 
-        return IProxyType.Value;
+        return Type.Value;
     }
 
-    export function Create(node: TreeNode, type: IProxyType): any {
-        var ret = null;
-    
+    export function CreateFrom(node: ObservableNode, type: Type) {
         switch(type) {
-            case IProxyType.Array:
-                ret = CreateArrayProxy(node);
-                break;
-            case IProxyType.Object:
-                ret = CreateObjectProxy(node);
-                break;
+            case Type.Array:
+                return CreateArrayProxy(node);
+            case Type.Object:
+                return CreateObjectProxy(node);
             default:
-                throw "Can't create IProxy from Value type";
+                throw new Error("Can't create proxy from Value type");
         }
-    
-        return ret;
     }
 
     export function CopyValue<T>(value: T): T {
-        var type = ValueType(value);
-        if(type === IProxyType.Value)
+        var type = TypeOf(value);
+        if(type === Type.Value)
             return value;
         
-        if((value as any as IProxy).___storeProxy)
-            return (value as any as IProxy).toJSON();
+        if((value as any as ObservableProxy).___storeProxy)
+            return (value as any as ObservableProxy).toJSON() as T;
 
-        if(type === IProxyType.Array)
+        if(type === Type.Array)
             return (value as any as Array<any>).map(v => CopyValue(v)) as any as T;
-        else if(type === IProxyType.Object) {
+        else if(type === Type.Object) {
             var ret = {} as T;
             for(var key in value)
                 ret[key] = CopyValue(value[key]);
@@ -68,56 +59,58 @@ export namespace IProxy {
 
         return null;
     }
+
 }
 
-function CreateArrayProxy(node: TreeNode) {
+function CreateArrayProxy(node: ObservableNode) {
     return new Proxy([], {
         get: (obj: any, prop: any) => {
             switch(prop) {
                 case '___type':
-                    return IProxyType.Array;
+                    return Type.Array;
                 case '___storeProxy':
                     return true;
                 case '___node':
                     return node;
                 case 'toJSON':
                     return () => {
-                        return CreateNodeCopy(node.Self);
+                        return CopyNode(node);
                     };
                 case 'length':
-                    return node.Self.EnsureChild(prop).StoreValue;
+                    return node.EnsureChild(prop).Value;
                 default:
                     if(typeof(prop) !== 'symbol' && !isNaN(parseInt(prop)))
-                        return node.Self.EnsureChild(prop).Proxy;
+                        return node.EnsureChild(prop).Proxy;
                     
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
-                        return ret.bind(node.ProxyArray);
+                        // return ret.bind(node.ProxyArray);
+                        return ret.bind(node.NodeArray.map(n => n.Proxy));
                     }
         
                     return ret;
             }
         }
-    }) as IProxy;
+    }) as ObservableProxy;
 }
 
-function CreateObjectProxy(node: TreeNode) {
+function CreateObjectProxy(node: ObservableNode) {
     return new Proxy({}, {
         get: (obj: any, prop: any) => {  
             switch(prop) {
                 case '___type':
-                    return IProxyType.Object;
+                    return Type.Object;
                 case '___storeProxy':
                     return true;
                 case '___node':
                     return node;
                 case 'toJSON':
                     return () => {
-                        return CreateNodeCopy(node.Self);
+                        return CopyNode(node);
                     };
                 default:
                     if(typeof(prop) !== 'symbol')
-                        return node.Self.EnsureChild(prop).Proxy;
+                        return node.EnsureChild(prop).Proxy;
                     
                     return obj[prop];
             }
@@ -125,19 +118,20 @@ function CreateObjectProxy(node: TreeNode) {
     });
 }
 
-function CreateNodeCopy(node: TreeNode) {
+function CopyNode(node: ObservableNode) {
     var value = node.Value;
-    if(IProxy.ValueType(value) === IProxyType.Value)
+    var type = ObservableProxy.TypeOf(value);
+    if(type === Type.Value)
         return value;
     
     var ret: any = null;
-    if(Array.isArray(value))
-        ret = value.map((v, i) => CreateNodeCopy(node.Self.EnsureChild(i.toString()).Self));
+    if(type === Type.Array)
+        ret = (value as Array<any>).map((v, i) => CopyNode(node.Self.EnsureChild(i.toString()).Self));
     else {
         ret = {};   
         for(var key in value) {
             var child = node.Self.EnsureChild(key);
-            ret[key] = CreateNodeCopy(child.Self);
+            ret[key] = CopyNode(child.Self);
         }
     }
 
