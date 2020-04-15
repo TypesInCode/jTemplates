@@ -39,7 +39,7 @@ export class StoreAsync {
 
     public async Write(data: any) {
         await this.Action(null, async (val, writer) => {
-            await writer.Write(data);
+            await writer.Write(val, data);
         });
     }
 

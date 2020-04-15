@@ -7,12 +7,20 @@ export class StoreAsyncWriter {
 
     constructor(private idFunc: {(val: any): string}, private diffAsync: DiffAsync, private observableTree: ObservableTree) { }
 
-    public async Write(data: any) {
-        var id = this.idFunc(data);
-        if(!id)
-            throw new Error("data must have an id");
+    public async Write<T>(source: T | ObservableProxy, data: any) {
+        var path: string;
 
-        var diff = await this.diffAsync.DiffPath(id, data);
+        if(source) {
+            var proxy = source as ObservableProxy;
+            path = proxy.___node.Path;
+        }
+        else {
+            path = this.idFunc(data);
+            if(!path)
+                throw new Error("data must have an id");
+        }
+
+        var diff = await this.diffAsync.DiffPath(path, data);
         this.ApplyChanges(diff);
     }
 
