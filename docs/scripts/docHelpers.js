@@ -126,6 +126,11 @@ function ExecuteTs(id, code, scriptFolder) {
     iframe.contentDocument.head.appendChild(script);
 }
 
+function GetScriptFolder() {
+    var curScriptUrl = document.querySelector("[src$='docHelpers.js'").src;
+    return curScriptUrl.replace(/docHelpers\.js$/, "");
+}
+
 var changeTimeout = null;
 function CreateCodeMirror(id, initValue) {
     var container = document.getElementById(id + "_code");
@@ -139,7 +144,7 @@ function CreateCodeMirror(id, initValue) {
     cm.on("change", () => {
         clearTimeout(changeTimeout);
         changeTimeout = setTimeout(() => {
-            ExecuteTs(id, cm.getDoc().getValue());
+            ExecuteTs(id, cm.getDoc().getValue(), GetScriptFolder());
         }, 2000);
     });
 }
@@ -147,8 +152,7 @@ function CreateCodeMirror(id, initValue) {
 function CreateSample(sample) {
     var container = document.getElementById(sample);
     container.innerHTML = "Loading...";
-    var curScriptUrl = document.querySelector("[src$='docHelpers.js'").src;
-    var curScriptFolder = curScriptUrl.replace(/docHelpers\.js$/, "");
+    var curScriptFolder = GetScriptFolder();
     AddDependencies(curScriptFolder, () => {
         var samplesFolder = curScriptFolder + "../samples/";
         var sampleUrl = samplesFolder + sample + ".ts";
