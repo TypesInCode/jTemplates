@@ -19,7 +19,7 @@ export class Store<T> {
     }
 
     public Action(action: {(root: T, writer: StoreWriter): void}) {
-        var node = this.observableTree.GetNode("ROOT", true);
+        var node = this.observableTree.GetNode("ROOT");
         action(node.Proxy, this.storeWriter);
     }
     

@@ -15,8 +15,11 @@ export class StoreAsync {
         this.diffAsync = new DiffAsync(this.idFunc);
         this.observableTree = new ObservableTree(DiffAsync.ReadKeyRef);
         this.asyncWriter = new StoreAsyncWriter(this.idFunc, this.diffAsync, this.observableTree);
-        if(init)
+        if(init) {
+            var id = this.idFunc(init);
+            this.observableTree.Write(id, init);
             this.Write(init);
+        }
     }
 
     public Scope<T, R = T>(id: string, func?: {(val: T): R}) {
@@ -29,7 +32,7 @@ export class StoreAsync {
     public async Action<T>(id: string, action: {(val: T, writer: StoreAsyncWriter): Promise<void>}) {
         var node: ObservableNode;
         if(id)
-            node = this.observableTree.GetNode(id, true);
+            node = this.observableTree.GetNode(id);
         
         await action(node && node.Proxy, this.asyncWriter);
     }

@@ -31,22 +31,19 @@ export class ObservableTree {
         }, null);
     }
 
-    public GetNode(path: string, ensure?: boolean): ObservableNode {
+    public GetNode(path: string): ObservableNode {
         return path.split(".").reduce((pre: ObservableNode, curr: string, index) => {
             if(index === 0) {
                 var ret = this.rootNodeMap.get(curr);
-                if(!ret && ensure) {
+                if(!ret) {
                     ret = new ObservableNode(this, curr, null, this.valuePathResolver);
                     this.rootNodeMap.set(curr, ret);
                 }
 
                 return ret;
             }
-
-            if(ensure)
-                return pre.EnsureChild(curr);
-            
-            return pre && pre.Children.get(curr);
+                
+            return pre.EnsureChild(curr);
         }, null);
     }
 
@@ -63,7 +60,7 @@ export class ObservableTree {
 
     public Scope<O, R>(path: string, func: {(val: O): R}): ObservableScope<R> {
         return new ObservableScope(() => {
-            var node = this.GetNode(path, true);
+            var node = this.GetNode(path);
             return func(node.Proxy);
         });
     }

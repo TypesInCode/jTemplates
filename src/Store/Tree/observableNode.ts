@@ -48,7 +48,7 @@ export class ObservableNode {
             typeof this.Value === 'string'  && 
             (resolvedPath = this.valuePathResolver(this.Value))
         )
-            this.self = this.tree.GetNode(resolvedPath, true);
+            this.self = this.tree.GetNode(resolvedPath);
         else if(this.self === undefined)
             this.self = this;
 

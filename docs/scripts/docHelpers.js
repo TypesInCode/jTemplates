@@ -92,7 +92,7 @@ function HandleError(id, message, source, lineNo, colNo, error) {
     return false;
 }
 
-function ExecuteTs(id, code) {
+function ExecuteTs(id, code, scriptFolder) {
     var container = document.getElementById(id + "_output");
     var errorSpan = document.getElementById(id + "_error");
     errorSpan.innerHTML = "";
@@ -113,7 +113,8 @@ function ExecuteTs(id, code) {
 
     script = iframe.contentDocument.createElement("script");
     script.type = "text/javascript";
-    script.src = "https://unpkg.com/j-templates@latest/jTemplates.js";
+    // script.src = "https://unpkg.com/j-templates@latest/jTemplates.js";
+    script.src = scriptFolder + "jTemplates.js";
     script.onload = () => {
         var js = ts.transpile(code, { target: "es6" });
         js = js.replace(/^import.*$/gm, "");
@@ -177,7 +178,7 @@ function CreateSample(sample) {
             h2.innerText = "Output";
             div.appendChild(h2);
             container.appendChild(div);
-            ExecuteTs(sample, text);
+            ExecuteTs(sample, text, curScriptFolder);
         });
     });
 }
