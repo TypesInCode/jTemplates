@@ -51,7 +51,7 @@ export class Animation {
         this.enabled = true;
         this.type = type;
 
-        this.frameCount = Math.floor((duration/1000) * 60);
+        this.frameCount = Math.ceil((duration/1000) * 60);
         this.frameTimings = new Array(this.frameCount);
 
         var frameTime = duration / this.frameCount;
