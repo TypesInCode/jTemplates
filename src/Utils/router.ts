@@ -72,7 +72,7 @@ export namespace Router {
 
         updateScheduled = true;
         setTimeout(() => {
-            var route = routers.map(r => r.Route()).join("/");
+            var route = routers.map(r => r.Route()).filter(r => r).join("/");
             route = "/" + route;
             var state = routers.map(r => r.JSON());
 
@@ -96,7 +96,7 @@ export namespace Router {
             if(updateScheduled)
                 return;
 
-            var route = routers.map(r => r.Route()).join("/");
+            var route = routers.map(r => r.Route()).filter(r => r).join("/");
             route = "/" + route;        
             var state = routers.map(r => r.JSON());
             wndw.history.replaceState(state, "", route);

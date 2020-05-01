@@ -6,10 +6,10 @@ export interface IDiffMethod {
 export interface IDiffResponse {
     changedPaths: Array<{ path: string, value: any }>;
     deletedPaths: Array<string>;
-    // pathDependencies: Array<{ path: string, targets: Array<string> }>;
 }
 
 export interface IDiffTree {
+    DiffBatch(data: Array<{path: string, value: any }>): IDiffResponse;
     DiffPath(path: string, value: any): IDiffResponse;
 }
 
