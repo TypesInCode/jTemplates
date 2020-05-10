@@ -1,12 +1,13 @@
 import { Emitter } from "../../Utils/emitter";
 
 export class ObservableScope<T> {
-    private getFunction: {(): T};
-    private emitter: Emitter;
+    protected getFunction: {(): T};
+    protected value: T;
+    protected dirty: boolean;
+    protected emitter: Emitter;
+
     private emitters: Set<Emitter>;
     private setCallback: () => void;
-    private value: T;
-    private dirty: boolean;
 
     public get Emitter() {
         return this.emitter;
@@ -49,7 +50,7 @@ export class ObservableScope<T> {
         this.emitter.Clear();
     }
 
-    private UpdateValue() {
+    protected UpdateValue() {
         if(!this.dirty)
             return;
 
@@ -60,7 +61,7 @@ export class ObservableScope<T> {
         this.UpdateEmitters(emitters);
     }
 
-    private UpdateEmitters(newEmitters: Set<Emitter>) {
+    protected UpdateEmitters(newEmitters: Set<Emitter>) {
         newEmitters.forEach(e => {
             this.emitters.delete(e);
             this.AddListenersTo(e);
