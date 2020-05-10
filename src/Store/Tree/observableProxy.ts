@@ -84,8 +84,8 @@ function CreateArrayProxy(node: ObservableNode) {
                     
                     var ret = obj[prop];
                     if(typeof ret === 'function') {
-                        // return ret.bind(node.ProxyArray);
-                        return ret.bind(node.NodeArray.map(n => n.Proxy));
+                        return ret.bind(node.ProxyArray);
+                        // return ret.bind(node.NodeArray.map(n => n.Proxy));
                     }
         
                     return ret;

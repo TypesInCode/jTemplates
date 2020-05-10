@@ -16,7 +16,7 @@ export class ObservableNode {
     private self: ObservableNode = undefined;
     private proxy: ObservableProxy = undefined;
     // private proxyArray: Array<ObservableProxy> = undefined;
-    private nodeArray: Array<ObservableNode> = undefined;
+    // private nodeArray: Array<ObservableNode> = undefined;
 
     public get Path() {
         if(this.path === undefined)
@@ -78,14 +78,20 @@ export class ObservableNode {
         return this.proxy;
     }
 
-    /* public get ProxyArray() {
-        this.UpdateProxyArray(true);
-        return this.proxyArray;
-    } */
-    public get NodeArray() {
-        this.UpdateNodeArray(true);
-        return this.nodeArray;
+    public get ProxyArray() {
+        if(this.Type !== Type.Array)
+            return null;
+
+        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).Proxy);
     }
+    /* public get NodeArray() {
+        if(this.Type !== Type.Array)
+            return null;
+        
+        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()));
+        // this.UpdateNodeArray();
+        // return this.nodeArray;
+    } */
 
     public get Parent() {
         return this.parent;
@@ -124,8 +130,11 @@ export class ObservableNode {
         /* if(oldType !== this.Type)
             this.proxy = undefined; */
 
-        this.EmitSet();
+        /* if(this.parent && this.parent.Type === Type.Array)
+            this.parent.ArrayUpdate(this.key); */
+
         this.children.forEach(node => node.Update());
+        this.EmitSet();
 
         // this.UpdateProxyArray();
         // this.UpdateNodeArray();
@@ -137,6 +146,7 @@ export class ObservableNode {
     public ArrayUpdate() {
         this.value = undefined;
         this.EnsureChild("length").Update();
+        // this.UpdateNodeArray();
         this.EmitSet();
     }
 
@@ -176,8 +186,8 @@ export class ObservableNode {
             this.proxyArray = null;
     } */
 
-    private UpdateNodeArray(force?: boolean) {
-        if(this.Type === Type.Array && (this.nodeArray || force)) {
+    /* private UpdateNodeArray() {
+        if(this.Type === Type.Array) {
             var nodeArrayLength = this.nodeArray ? this.nodeArray.length : 0;
             var array = this.Value as Array<any>;
             this.nodeArray = this.nodeArray || new Array(array.length);
@@ -190,6 +200,6 @@ export class ObservableNode {
         }
         else
             this.nodeArray = null;
-    }
+    } */
 
 }
