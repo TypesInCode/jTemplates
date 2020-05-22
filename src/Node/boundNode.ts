@@ -88,8 +88,10 @@ export class BoundNode extends NodeRef {
             return;
         
         var properties = this.propertiesScope.Value;
-        this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
-        this.lastProperties = properties;
+        if(properties) {
+            this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
+            this.lastProperties = properties;
+        }
     }
 
     public ScheduleSetAttributes() {

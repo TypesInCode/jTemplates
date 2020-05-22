@@ -1,8 +1,11 @@
 import { Emitter } from "../../Utils/emitter";
+import { AsyncQueue } from "../../Utils/asyncQueue";
 
 export class ObservableScope<T> {
     protected getFunction: {(): T};
     protected value: T;
+    protected async: boolean;
+    protected asyncQueue: AsyncQueue<T>;
     protected dirty: boolean;
     protected emitter: Emitter;
 
@@ -23,16 +26,19 @@ export class ObservableScope<T> {
         this.emitter = new Emitter();
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
+        this.async = false;
 
         if(typeof getFunction === 'function') {
             this.getFunction = getFunction as {(): T};
+            this.async = (this.getFunction as any)[Symbol.toStringTag] === "AsyncFunction";
             this.dirty = true;
-            // this.UpdateValue();
+
+            if(this.async)
+                this.asyncQueue = new AsyncQueue();
         }
         else {
             this.value = getFunction;
             this.dirty = false;
-            // this.getFunction = () => getFunction;
         }
     }
 
@@ -55,10 +61,26 @@ export class ObservableScope<T> {
             return;
 
         this.dirty = false;
+        var value: T = null;
         var emitters = ObservableScope.Watch(() =>
-            this.value = this.getFunction()
+            value = this.getFunction()
         );
+
         this.UpdateEmitters(emitters);
+
+        if(this.async) {
+            this.asyncQueue.Stop();
+            this.asyncQueue.Add(next =>
+                Promise.resolve(value).then(val => next(val))
+            );
+            this.asyncQueue.OnComplete(val => {
+                this.value = val;
+                this.emitter.Emit("set");
+            });
+            this.asyncQueue.Start();
+        }
+        else
+            this.value = value;
     }
 
     protected UpdateEmitters(newEmitters: Set<Emitter>) {
@@ -76,7 +98,10 @@ export class ObservableScope<T> {
             return;
         
         this.dirty = true;
-        this.emitter.Emit("set");
+        if(this.async)
+            this.UpdateValue();
+        else
+            this.emitter.Emit("set");
     }
 
     private AddListenersTo(emitter: Emitter) {
