@@ -4,8 +4,6 @@ import { AsyncQueue } from "../../Utils/asyncQueue";
 export class ObservableScope<T> {
     protected getFunction: {(): T};
     protected value: T;
-    protected async: boolean;
-    protected asyncQueue: AsyncQueue<T>;
     protected dirty: boolean;
     protected emitter: Emitter;
 
@@ -22,19 +20,14 @@ export class ObservableScope<T> {
         return this.value;
     }
 
-    constructor(getFunction: {(): T} | T) {        
+    constructor(getFunction: {(): T} | T) {
         this.emitter = new Emitter();
         this.emitters = new Set();
         this.setCallback = this.SetCallback.bind(this);
-        this.async = false;
 
         if(typeof getFunction === 'function') {
             this.getFunction = getFunction as {(): T};
-            this.async = (this.getFunction as any)[Symbol.toStringTag] === "AsyncFunction";
             this.dirty = true;
-
-            if(this.async)
-                this.asyncQueue = new AsyncQueue();
         }
         else {
             this.value = getFunction;
@@ -67,20 +60,7 @@ export class ObservableScope<T> {
         );
 
         this.UpdateEmitters(emitters);
-
-        if(this.async) {
-            this.asyncQueue.Stop();
-            this.asyncQueue.Add(next =>
-                Promise.resolve(value).then(val => next(val))
-            );
-            this.asyncQueue.OnComplete(val => {
-                this.value = val;
-                this.emitter.Emit("set");
-            });
-            this.asyncQueue.Start();
-        }
-        else
-            this.value = value;
+        this.value = value;
     }
 
     protected UpdateEmitters(newEmitters: Set<Emitter>) {
@@ -93,15 +73,12 @@ export class ObservableScope<T> {
         this.emitters = newEmitters;
     }
 
-    private SetCallback() {
+    protected SetCallback() {
         if(this.dirty)
             return;
         
         this.dirty = true;
-        if(this.async)
-            this.UpdateValue();
-        else
-            this.emitter.Emit("set");
+        this.emitter.Emit("set");
     }
 
     private AddListenersTo(emitter: Emitter) {

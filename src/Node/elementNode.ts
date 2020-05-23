@@ -5,9 +5,10 @@ import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { AsyncQueue } from "../Utils/asyncQueue";
+import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
-    data?: {(): T | Array<T>};
+    data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
     children?: {(data?: T): string | NodeRef | NodeRef[]};
 }
 
@@ -15,7 +16,7 @@ export interface ElementNodeFunctionParam<T> {
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
-    data?: {(): T | Array<T>};
+    data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
 }
 
 export type ElementChildrenFunction<T> = {(data?: T): string | NodeRef | NodeRef[]};
@@ -24,7 +25,7 @@ export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, chi
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};
     private nodesMap: Map<any, List<Array<NodeRef>>>;
-    private dataScope: ObservableScope<any>;
+    private dataScope: ObservableScopeAsync<any>;
     private arrayScope: ObservableScope<Array<T>>;
     private asyncQueue: AsyncQueue<{ previousNode: NodeRef }>;
     private injector: Injector;
@@ -35,7 +36,7 @@ export class ElementNode<T> extends BoundNode {
         this.setData = false;
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children || defaultChildren;
-        this.dataScope = new ObservableScope<any>(nodeDef.data || true);
+        this.dataScope = new ObservableScopeAsync<any>(nodeDef.data || true);
         this.arrayScope = this.dataScope.Scope(data => {
             var value = data as Array<T>;
             if(!value)

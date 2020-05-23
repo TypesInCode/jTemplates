@@ -12,7 +12,7 @@ export type ComponentNodeEvents<E = void> = {
 interface ComponentNodeDefinition<D = void, E = void> extends NodeDefinition<D> {
     on: ComponentNodeEvents<E>;
     static?: D;
-    data?: D | {(): D};
+    data?: {(): D | Promise<D>};
 }
 
 export interface ComponentNodeFunctionParam<D = void, T = void, E = void> {
@@ -21,7 +21,7 @@ export interface ComponentNodeFunctionParam<D = void, T = void, E = void> {
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<ComponentNodeEvents<E>>;
     static?: D | Array<D>;
-    data?: {(): D | Array<D>};
+    data?: {(): D | Promise<D> };
     templates?: T;
 }
 
@@ -33,7 +33,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     constructor(nodeDef: ComponentNodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef);
         this.injector = new Injector();
-        this.component = new constructor(nodeDef.data || nodeDef.static, templates, this, this.injector);
+        this.component = new constructor(nodeDef.data, templates, this, this.injector);
     }
 
     public SetEvents() {

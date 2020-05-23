@@ -9,7 +9,7 @@ enum AsyncQueueState {
     Running
 }
 
-export class AsyncQueueObject<T> {
+class AsyncQueueObject<T> {
     private list: List<AsyncCallback<T>>;
     private state: AsyncQueueState;
     private data: T;

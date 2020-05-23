@@ -1,11 +1,11 @@
-import { ObservableScope } from "../Store/Tree/observableScope";
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Injector } from "../Utils/injector";
 import { Destroy } from "../Utils/decorators";
+import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 
 export class Component<D = void, T = void, E = void> {
-    private scope: ObservableScope<D>;
+    private scope: ObservableScopeAsync<D>;
     private templates: T;
 
     public get Injector() {
@@ -32,8 +32,8 @@ export class Component<D = void, T = void, E = void> {
         return this.templates;
     }
 
-    constructor(data: {(): D} | D, templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
-        this.scope = new ObservableScope(data);
+    constructor(data: {(): D | Promise<D>} | D, templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
+        this.scope = new ObservableScopeAsync(data);
         this.templates = templates || {} as T;
     }
 
@@ -67,4 +67,4 @@ export namespace Component {
 
 }
 
-export type ComponentConstructor<D, T, E> = { new (data: {(): D} | D, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T, E> };
+export type ComponentConstructor<D, T, E> = { new (data: {(): D | Promise<D>}, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T, E> };

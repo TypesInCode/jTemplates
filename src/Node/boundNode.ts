@@ -1,8 +1,9 @@
 import { NodeConfig } from "./nodeConfig";
 import { ObservableScope } from "../Store";
 import { NodeRef } from "./nodeRef";
+import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 
-export type FunctionOr<T> = {(...args: Array<any>): T } | T;
+export type FunctionOr<T> = {(...args: Array<any>): T | Promise<T> } | T;
 
 export type NodeRefEvents = {
     [name: string]: {(...args: Array<any>): void}
@@ -36,9 +37,9 @@ export class BoundNode extends NodeRef {
     private setAttributes = false;
     private setEvents = false;
 
-    protected propertiesScope: ObservableScope<{[name: string]: any}>;
-    protected attributesScope: ObservableScope<{[name: string]: string}>;
-    protected eventsScope: ObservableScope<{[name: string]: (...args: Array<any>) => void}>;
+    protected propertiesScope: ObservableScopeAsync<{[name: string]: any}>;
+    protected attributesScope: ObservableScopeAsync<{[name: string]: string}>;
+    protected eventsScope: ObservableScopeAsync<{[name: string]: (...args: Array<any>) => void}>;
 
     constructor(nodeDef: NodeDefinition) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace));
@@ -132,19 +133,19 @@ export class BoundNode extends NodeRef {
         } */
 
         if(this.nodeDef.props) {
-            this.propertiesScope = new ObservableScope(this.nodeDef.props);
+            this.propertiesScope = new ObservableScopeAsync(this.nodeDef.props);
             this.propertiesScope.Watch(this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(this.nodeDef.attrs) {
-            this.attributesScope = new ObservableScope(this.nodeDef.attrs);
+            this.attributesScope = new ObservableScopeAsync(this.nodeDef.attrs);
             this.attributesScope.Watch(this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(this.nodeDef.on) {
-            this.eventsScope = new ObservableScope(this.nodeDef.on);
+            this.eventsScope = new ObservableScopeAsync(this.nodeDef.on);
             this.eventsScope.Watch(this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }
