@@ -1,11 +1,11 @@
-var webpack = require('webpack');
+const webpack = require('webpack');
+const path = require('path');
 
 module.exports = {  
   entry: './src/web',
   output: {
-    filename: './lib/jTemplates.js',
-    /* libraryTarget: 'var',
-    library: 'jTemplate' */
+    filename: 'jTemplates.js',
+    path: path.resolve(__dirname, 'lib')
   },
   devtool: 'source-map',
   resolve: {

@@ -11,7 +11,6 @@ export type NodeRefEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
-    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
@@ -32,45 +31,19 @@ export class BoundNode extends NodeRef {
     private nodeDef: NodeDefinition;
     private lastProperties: any;
     private lastEvents: {[name: string]: any};
-    private immediate: boolean;
 
-    // private setText = false;
     private setProperties = false;
     private setAttributes = false;
     private setEvents = false;
 
-    // protected textScope: Scope<string>;
     protected propertiesScope: ObservableScope<{[name: string]: any}>;
     protected attributesScope: ObservableScope<{[name: string]: string}>;
     protected eventsScope: ObservableScope<{[name: string]: (...args: Array<any>) => void}>;
 
-    protected get Immediate() {
-        return this.immediate;
-    }
-
     constructor(nodeDef: NodeDefinition) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace));
         this.nodeDef = nodeDef;
-        this.immediate = nodeDef.immediate !== undefined ? nodeDef.immediate : BoundNode.Immediate;
     }
-
-    /* public ScheduleSetText() {
-        if(this.setText)
-            return;
-
-        this.setText = true;
-        NodeConfig.scheduleUpdate(() => {
-            this.SetText();
-            this.setText = false;
-        });
-    } */
-
-    /* public SetText() {
-        if(this.Destroyed)
-            return;
-
-        NodeConfig.setText(this.Node, this.textScope.Value);
-    } */
 
     public ScheduleSetProperties() {
         if(this.setProperties)
@@ -88,10 +61,11 @@ export class BoundNode extends NodeRef {
             return;
         
         var properties = this.propertiesScope.Value;
-        if(properties) {
-            this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
-            this.lastProperties = properties;
-        }
+        if(!properties)
+            return;
+
+        this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
+        this.lastProperties = properties;
     }
 
     public ScheduleSetAttributes() {
@@ -110,6 +84,9 @@ export class BoundNode extends NodeRef {
             return;
         
         var attributes = this.attributesScope.Value;
+        if(!attributes)
+            return;
+        
         for(var key in attributes) {
             var val = NodeConfig.getAttribute(this.Node, key);
             if(val !== attributes[key])
@@ -132,10 +109,13 @@ export class BoundNode extends NodeRef {
         if(this.Destroyed)
             return;
         
+        var events = this.eventsScope.Value;
+        if(!events)
+            return;
+
         for(var key in this.lastEvents)
             NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
 
-        var events = this.eventsScope.Value;
         for(var key in events)
             NodeConfig.addListener(this.Node, key, events[key]);
 
@@ -153,19 +133,19 @@ export class BoundNode extends NodeRef {
 
         if(this.nodeDef.props) {
             this.propertiesScope = new ObservableScope(this.nodeDef.props);
-            this.propertiesScope.Watch(this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
+            this.propertiesScope.Watch(this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(this.nodeDef.attrs) {
             this.attributesScope = new ObservableScope(this.nodeDef.attrs);
-            this.attributesScope.Watch(this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
+            this.attributesScope.Watch(this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(this.nodeDef.on) {
             this.eventsScope = new ObservableScope(this.nodeDef.on);
-            this.eventsScope.Watch(this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
+            this.eventsScope.Watch(this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }
     }
@@ -203,8 +183,6 @@ export class BoundNode extends NodeRef {
 }
 
 export namespace BoundNode {
-    export var Immediate = false;
-
     export function Create<T>(type: any, namespace: string, nodeDef: BoundNodeFunctionParam<T>) {
         var def = {
             type: type,

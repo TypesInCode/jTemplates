@@ -86,12 +86,9 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
     private AddTemplate() {        
         var nodes = null as Array<NodeRef>;
-        Injector.Scope(this.injector, () => {
-            var parentVal = BoundNode.Immediate;
-            BoundNode.Immediate = this.Immediate;
-            nodes = this.component.Template() as Array<NodeRef>
-            BoundNode.Immediate = parentVal;
-        });
+        Injector.Scope(this.injector, () => 
+            nodes = this.component.Template() as Array<NodeRef>    
+        );
         if(!Array.isArray(nodes))
             nodes = [nodes];
 
