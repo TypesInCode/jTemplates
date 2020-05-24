@@ -27,7 +27,10 @@ class HelloGoodbyeWorld extends Component {
                         style: { 
                             fontWeight: "bold" 
                         } 
-                    } 
+                    },
+                    on: {
+                        click: () => alert("Goobye!")
+                    }
                 }, () => "Goodbye world")
             ])
         ];

@@ -164,7 +164,7 @@ function CreateSample(sample) {
             div.id = sample + "_code";
             div.className = "code";
 
-            var h2 = document.createElement("h2");
+            var h2 = document.createElement("h3");
             h2.innerText = "Code";
             var span = document.createElement("span");
             span.id = sample + "_error";
@@ -178,7 +178,7 @@ function CreateSample(sample) {
             div.id = sample + "_output";
             div.className = "output";
 
-            h2 = document.createElement("h2");
+            h2 = document.createElement("h3");
             h2.innerText = "Output";
             div.appendChild(h2);
             container.appendChild(div);
