@@ -37,4 +37,4 @@ The data property of the `ElementNodeFunctionParam<T>` takes a method with retur
 </div>
 <script type="text/javascript">
     CreateSample("goodbyeWorldData");
-</script>
+</script> 
