@@ -5,8 +5,8 @@ class HelloGoodbyeWorld extends Component {
 
     public Template() {
         return [
-            div({ data: () => ["Hello world", "Goodbye world"] }, (message) => 
-                div({ data: () => message }, (msg) => msg)
+            div({ data: () => ["Hello world", "Goodbye world"] /* string[] */ }, (message /* string */) => 
+                div({ data: () => message /* string */ }, (msg /* string */ ) => msg)
             ),
             div({ data: () => false }, () => 
                 div({}, () => "Not rendered")

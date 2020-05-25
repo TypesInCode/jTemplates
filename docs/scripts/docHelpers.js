@@ -113,8 +113,8 @@ function ExecuteTs(id, code, scriptFolder) {
 
     script = iframe.contentDocument.createElement("script");
     script.type = "text/javascript";
-    // script.src = "https://unpkg.com/j-templates@latest/jTemplates.js";
-    script.src = scriptFolder + "jTemplates.js";
+    script.src = "https://unpkg.com/j-templates@latest/jTemplates.js";
+    // script.src = scriptFolder + "jTemplates.js";
     script.onload = () => {
         var js = ts.transpile(code, { target: "ES2017" });
         js = js.replace(/^import.*$/gm, "");

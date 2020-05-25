@@ -1,5 +1,6 @@
 
 [Hello World](./pages/helloWorld.md)  
+[State Management](./pages/stateManagement.md)  
 [Components](./pages/components.md)  
 [Dynamic Components](./pages/dynamic.md)  
 [Injector](./pages/injectors.md)  
