@@ -10,3 +10,11 @@ To implement dynamic state two store classes are provided: `Store` and `StoreAsy
     CreateSample("storeBasic");
 </script>
 
+## StoreAsync
+`StoreAsync` is an asynchronous JSON store. All objects are stored by ID and a `WebWorker` is used to diff state changes. If the state doesn't change then the store doesn't emit.
+<div class="example" id="storeAsyncBasic">
+</div> 
+<script type="text/javascript">
+    CreateSample("storeAsyncBasic");
+</script>
+

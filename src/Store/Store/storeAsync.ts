@@ -25,11 +25,8 @@ export class StoreAsync {
         }
     }
 
-    public Scope<T, R = T>(id: string, func?: {(val: T): R}) {
-        if(func)
-            return this.observableTree.Scope<T, R>(id, func);
-
-        return this.observableTree.Scope<T, T>(id, (val: T) => val);
+    public Scope<T, R>(id: string, func: {(val: T): R}) {
+        return this.observableTree.Scope(id, func);
     }
 
     public async Action<T>(id: string, action: {(val: T, writer: StoreAsyncWriter): Promise<void>}) {

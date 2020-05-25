@@ -58,7 +58,7 @@ export class ObservableTree {
         this.rootNodeMap.clear();
     }
 
-    public Scope<O, R = O>(path: string, func?: {(val: O): R}): ObservableScope<R> {
+    public Scope<O, R>(path: string, func?: {(val: O): R}): ObservableScope<R> {
         return new ObservableScope(() => {
             var node = this.GetNode(path);
             return func && func(node.Proxy) || node.Proxy;
