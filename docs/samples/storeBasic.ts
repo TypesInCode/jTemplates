@@ -12,26 +12,29 @@ messageScope.Watch(scope => {
     document.getElementById("message").innerText = scope.Value;
 });
 
-var input = document.createElement("input") as HTMLInputElement;
-input.type = "text";
-input.id = "message-input";
-input.value = messageScope.Value;
-document.body.appendChild(input);
-
 var button = document.createElement("input");
-button.type = "button";
-button.value = "UPDATE";
 button.addEventListener("click", () => {
     var value = (document.getElementById("message-input") as HTMLInputElement).value;
     store.Merge({ message: value });
 });
-document.body.appendChild(button);
+
+// creating/adding elements
+var input = document.createElement("input") as HTMLInputElement;
+input.type = "text";
+input.id = "message-input";
+input.value = messageScope.Value;
+
+button.type = "button";
+button.value = "UPDATE";
 
 var div = document.createElement("div");
 div.id = "message";
 div.innerText = messageScope.Value;
-document.body.appendChild(div);
 
-div = document.createElement("div");
-div.id = "log";
+var div2 = document.createElement("div");
+div2.id = "log";
+
+document.body.appendChild(input);
+document.body.appendChild(button);
 document.body.appendChild(div);
+document.body.appendChild(div2);
