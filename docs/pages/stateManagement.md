@@ -16,5 +16,13 @@ To implement dynamic state two store classes are provided: `Store` and `StoreAsy
 </div> 
 <script type="text/javascript">
     CreateSample("storeAsyncBasic"); 
-</script> 
+</script>
 
+## store.Action
+Top level Store methods are wrappers for the `store.Action` method. This method allows for more granular updates to store objects and array operations.
+
+<div class="example" id="storeActionBasic">
+</div> 
+<script type="text/javascript">
+    CreateSample("storeActionBasic"); 
+</script>

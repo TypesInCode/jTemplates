@@ -119,17 +119,15 @@ function CreateObjectProxy(node: ObservableNode) {
 }
 
 function CopyNode(node: ObservableNode) {
-    var value = node.Value;
-    var type = ObservableProxy.TypeOf(value);
-    if(type === Type.Value)
-        return value;
+    if(node.Type === Type.Value)
+        return node.Value;
     
     var ret: any = null;
-    if(type === Type.Array)
-        ret = (value as Array<any>).map((v, i) => CopyNode(node.Self.EnsureChild(i.toString()).Self));
+    if(node.Type === Type.Array)
+        ret = (node.Value as Array<any>).map((v, i) => CopyNode(node.Self.EnsureChild(i.toString()).Self));
     else {
         ret = {};   
-        for(var key in value) {
+        for(var key in node.Value) {
             var child = node.Self.EnsureChild(key);
             ret[key] = CopyNode(child.Self);
         }
