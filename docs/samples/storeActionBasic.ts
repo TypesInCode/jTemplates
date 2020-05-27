@@ -24,7 +24,18 @@ function AddRow(text: string) {
 }
 
 // creating/adding elements
-var jsonScope = store.Root.Scope(parent => JSON.stringify(parent, null, 1));
+function Copy(val: any) {
+    return {
+        header: {
+            title: val.header.title,
+            description: val.header.description,
+        },
+        data: [
+            ...val.data.map(d => ({ row: d.row }))
+        ]
+    }
+}
+var jsonScope = store.Root.Scope(parent => JSON.stringify(Copy(parent), null, 1));
 var pre = document.createElement("pre");
 pre.innerText = jsonScope.Value;
 jsonScope.Watch(scope => pre.innerText = scope.Value);
@@ -40,7 +51,7 @@ var input2 = document.createElement("input");
 input2.type = "text";
 input2.placeholder = "New row...";
 
-var button = document.createElement("button");
+var button = document.createElement("input");
 button.type = "button";
 button.value = "Add Row";
 button.addEventListener("click", () => {
