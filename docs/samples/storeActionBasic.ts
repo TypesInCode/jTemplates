@@ -35,6 +35,7 @@ function Copy(val: any) {
         ]
     }
 }
+
 var jsonScope = store.Root.Scope(parent => JSON.stringify(Copy(parent), null, 1));
 var pre = document.createElement("pre");
 pre.innerText = jsonScope.Value;
