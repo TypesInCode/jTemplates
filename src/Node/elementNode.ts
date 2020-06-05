@@ -13,6 +13,7 @@ export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
 }
 
 export interface ElementNodeFunctionParam<T> {
+    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
@@ -35,9 +36,12 @@ export class ElementNode<T> extends BoundNode {
 
         this.setData = false;
         this.nodesMap = new Map();
-        this.childrenFunc = nodeDef.children || defaultChildren;
+        this.childrenFunc = nodeDef.children; // || defaultChildren;
         this.dataScope = new ObservableScopeAsync<any>(nodeDef.data || true);
         this.arrayScope = this.dataScope.Scope(data => {
+            if(!this.childrenFunc)
+                return [];
+            
             var value = data as Array<T>;
             if(!value)
                 value = [];
@@ -48,7 +52,7 @@ export class ElementNode<T> extends BoundNode {
         });
         this.asyncQueue = new AsyncQueue();
         this.injector = Injector.Current();
-        this.arrayScope.Watch(() => this.ScheduleSetData());
+        this.arrayScope.Watch(this.ScheduleSetData.bind(this));
     }
 
     private setData = false;
@@ -153,6 +157,7 @@ export namespace ElementNode {
         var def = {
             type: type,
             namespace: namespace,
+            immediate: nodeDef.immediate,
             props: nodeDef.props,
             attrs: nodeDef.attrs,
             on: nodeDef.on,

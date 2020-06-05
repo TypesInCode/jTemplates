@@ -12,6 +12,7 @@ export type NodeRefEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
+    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
@@ -134,19 +135,19 @@ export class BoundNode extends NodeRef {
 
         if(this.nodeDef.props) {
             this.propertiesScope = new ObservableScopeAsync(this.nodeDef.props);
-            this.propertiesScope.Watch(this.ScheduleSetProperties.bind(this));
+            this.propertiesScope.Watch(this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
             this.SetProperties();
         }
 
         if(this.nodeDef.attrs) {
             this.attributesScope = new ObservableScopeAsync(this.nodeDef.attrs);
-            this.attributesScope.Watch(this.ScheduleSetAttributes.bind(this));
+            this.attributesScope.Watch(this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this));
             this.SetAttributes();
         }
 
         if(this.nodeDef.on) {
             this.eventsScope = new ObservableScopeAsync(this.nodeDef.on);
-            this.eventsScope.Watch(this.ScheduleSetEvents.bind(this));
+            this.eventsScope.Watch(this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this));
             this.SetEvents();
         }
     }
