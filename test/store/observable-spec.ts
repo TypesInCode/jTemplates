@@ -90,13 +90,4 @@ describe("Observables Test", () => {
             expect(e).to.exist;
         }
     });
-    it('Object Array', () => {
-        var tree = new ObservableTree();
-        tree.Write("ROOT", [{ value: "test1" }, { value: "test2" }]);
-        var treeRoot = tree.Scope<Array<{ value: string }>>("ROOT").Value;
-        var scope = new ObservableScope(() => treeRoot[1].value); // tree.Scope<Array<{value: string}>, string>("ROOT", val => val[1].value);
-        expect(scope.Value).to.equal("test2");
-        tree.Write("ROOT", [{ value: "test2" }, { value: "test3" }]);
-        expect(scope.Value).to.equal("test3");
-    });
 });

@@ -4,6 +4,7 @@ import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
+import { WorkSchedule } from "../Utils/workSchedule";
 
 export type ComponentNodeEvents<E = void> = {
     [P in keyof E]: {(data?: E[P]): void};
@@ -56,46 +57,32 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     }
 
     private SetChildren() {
-        if(PreReq.Has(this.component)) {
-            var preNodes = null as Array<NodeRef>;
-            Injector.Scope(this.injector, () => 
-                preNodes = PreReqTemplate.Get(this.component)
-            );
+        WorkSchedule.Scope(schedule => {
+            var templateNodes: NodeRef[] = null;
+            schedule(() => {
+                if(this.Destroyed)
+                    return;
+                
+                var nodes: NodeRef | NodeRef[] = null;
+                Injector.Scope(this.injector, () => {
+                    nodes = this.component.Template() || [];
+                });
 
-            preNodes.forEach(node => {
-                this.AddChild(node);
+                if(!Array.isArray(nodes))
+                    templateNodes = [nodes];
+                else
+                    templateNodes = nodes;
             });
 
-            PreReq.All(this.component).then(() => {
+            schedule(() => {
                 NodeConfig.scheduleUpdate(() => {
-                    if(this.Destroyed)
-                       return;
-         
-                    preNodes.forEach(node => {
-                        node.Detach();
-                        node.Destroy();
-                    });
+                    for(var x=0; x<templateNodes.length; x++)
+                        this.AddChild(templateNodes[x]);
 
-                    this.AddTemplate();
+                    setTimeout(() => this.component.Bound(), 0);
                 });
             });
-        }
-        else
-            this.AddTemplate();
-    }
-
-    private AddTemplate() {        
-        var nodes = null as Array<NodeRef>;
-        Injector.Scope(this.injector, () => 
-            nodes = this.component.Template() as Array<NodeRef>    
-        );
-        if(!Array.isArray(nodes))
-            nodes = [nodes];
-
-        nodes.forEach(node => {
-            this.AddChild(node);
         });
-        setTimeout(() => this.component.Bound(), 0);
     }
 
 }

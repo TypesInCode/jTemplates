@@ -25,10 +25,6 @@ export interface BoundNodeFunctionParam<T> {
     on?: FunctionOr<NodeRefEvents>;
 }
 
-export function defaultChildren(): Array<NodeRef> {
-    return [];
-}
-
 export class BoundNode extends NodeRef {
     private nodeDef: NodeDefinition;
     private lastProperties: any;

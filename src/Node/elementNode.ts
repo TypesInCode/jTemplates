@@ -1,11 +1,11 @@
-import { BoundNode, FunctionOr, NodeDefinition, defaultChildren, NodeRefEvents } from "./boundNode";
+import { BoundNode, FunctionOr, NodeDefinition, NodeRefEvents } from "./boundNode";
 import { ObservableScope } from "../Store/Tree/observableScope";
 import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
-import { AsyncQueue } from "../Utils/asyncQueue";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
+import { WorkSchedule } from "../Utils/workSchedule";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
@@ -28,15 +28,15 @@ export class ElementNode<T> extends BoundNode {
     private nodesMap: Map<any, List<Array<NodeRef>>>;
     private dataScope: ObservableScopeAsync<any>;
     private arrayScope: ObservableScope<Array<T>>;
-    private asyncQueue: AsyncQueue<{ previousNode: NodeRef }>;
     private injector: Injector;
+    private setData: boolean;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
 
         this.setData = false;
         this.nodesMap = new Map();
-        this.childrenFunc = nodeDef.children; // || defaultChildren;
+        this.childrenFunc = nodeDef.children;
         this.dataScope = new ObservableScopeAsync<any>(nodeDef.data || true);
         this.arrayScope = this.dataScope.Scope(data => {
             if(!this.childrenFunc)
@@ -50,76 +50,91 @@ export class ElementNode<T> extends BoundNode {
 
             return value;
         });
-        this.asyncQueue = new AsyncQueue();
+        
         this.injector = Injector.Current();
         this.arrayScope.Watch(this.ScheduleSetData.bind(this));
     }
 
-    private setData = false;
     private ScheduleSetData() {
         if(this.setData)
             return;
 
         this.setData = true;
-        this.asyncQueue.Stop();
-        NodeConfig.scheduleUpdate(() => {
+        setTimeout(() => {
             this.setData = false;
             if(this.Destroyed)
                 return;
             
             this.SetData();
-        });
+        }, 0);
     }
 
+
     private SetData() {
-        this.asyncQueue.Stop();
-        var newNodesMap = new Map();
+        var newNodesArrays = new Array<NodeRef[]>(this.arrayScope.Value.length);
+        WorkSchedule.Scope(schedule => {
+            var newNodesMap = new Map();
+            this.arrayScope.Value.forEach((value, index) => {
+                var nodeArrayList = this.nodesMap.get(value);
+                var nodes = nodeArrayList && nodeArrayList.Remove();
+                if(nodeArrayList && nodeArrayList.Size === 0)
+                    this.nodesMap.delete(value);
 
-        this.arrayScope.Value.forEach(value => {
-            var nodeArrayList = this.nodesMap.get(value);
-            var nodes = nodeArrayList && nodeArrayList.Remove();
-            if(nodeArrayList && nodeArrayList.Size === 0)
-                this.nodesMap.delete(value);
+                var newNodeArrayList = newNodesMap.get(value);
+                if(!newNodeArrayList) {
+                    newNodeArrayList = new List<NodeRef[]>();
+                    newNodesMap.set(value, newNodeArrayList);
+                }
 
-            var newNodeArrayList = newNodesMap.get(value);
-            if(!newNodeArrayList) {
-                newNodeArrayList = new List<NodeRef[]>();
-                newNodesMap.set(value, newNodeArrayList);
-            }
+                if(nodes) {
+                    newNodeArrayList.Push(nodes);
+                    newNodesArrays[index] = nodes;
+                }
+                else {
+                    schedule(() => {
+                        if(this.Destroyed)
+                            return;
 
-            if(nodes)
-                newNodeArrayList.Push(nodes);
-
-            this.asyncQueue.Add((next, data) => {
-                NodeConfig.scheduleUpdate(() => {
-                    if(this.Destroyed)
-                        return;
-
-                    if(!nodes) {
                         nodes = this.CreateNodeArray(value);
                         newNodeArrayList.Push(nodes);
-                    }
-
-                    for(var x=0; x<nodes.length; x++) {
-                        this.AddChildAfter(data.previousNode, nodes[x]);
-                        data.previousNode = nodes[x];
-                    }
-
-                    next(data); 
-                });
+                        newNodesArrays[index] = nodes;
+                    });
+                }
             });
+
+            this.nodesMap.forEach(nodeArrayList => 
+                nodeArrayList.ForEach(nodes => {
+                    for(var x=0; x<nodes.length; x++) {
+                        nodes[x].Detach();
+                        nodes[x].Destroy();
+                    }
+                })
+            );
+
+            this.nodesMap = newNodesMap;
         });
         
-        this.nodesMap.forEach(nodeArrayList => 
-            nodeArrayList.ForEach(nodes => 
-                nodes.forEach(node => {
-                    node.Detach();
-                    node.Destroy();
-                })
-            )
-        );
-        this.nodesMap = newNodesMap;
-        this.asyncQueue.Start({ previousNode: null });
+        WorkSchedule.Scope(schedule => {
+            schedule(() => {
+                if(this.Destroyed)
+                    return;
+            
+                var previousNode: NodeRef = null;
+                newNodesArrays.forEach(nodes => 
+                    NodeConfig.scheduleUpdate(() => {
+                        if(this.Destroyed)
+                            return;
+                        
+                        for(var x=0; x<nodes.length; x++) {
+                            if(!nodes[x].Destroyed) {
+                                this.AddChildAfter(previousNode, nodes[x]);
+                                previousNode = nodes[x];
+                            }
+                        }
+                    })
+                );
+            });
+        });
     }
 
     private CreateNodeArray(value: any) {
@@ -139,12 +154,11 @@ export class ElementNode<T> extends BoundNode {
 
     public Init() {
         super.Init();
-        this.ScheduleSetData();
+        this.SetData();
     }
 
     public Destroy() {
         super.Destroy();
-        this.asyncQueue.Stop();
         this.dataScope.Destroy();
         this.arrayScope.Destroy();
     }

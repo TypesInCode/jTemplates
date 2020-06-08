@@ -1,4 +1,4 @@
-interface INode<T> {
+export interface INode<T> {
     previous: INode<T>;
     next: INode<T>;
     data: T;
@@ -10,8 +10,16 @@ export class List<T> {
     private tail: INode<T> = null;
     private size = 0;
 
+    get HeadNode() {
+        return this.head;
+    }
+
     get Head() {
         return this.head && this.head.data;
+    }
+
+    get TailNode() {
+        return this.tail;
     }
 
     get Tail() {
@@ -41,6 +49,8 @@ export class List<T> {
             this.head = node;
             this.size++;
         }
+
+        return node;
     }
 
     public Pop(): T {
@@ -72,6 +82,50 @@ export class List<T> {
             this.tail = node;
             this.size++;
         }
+
+        return node;
+    }
+
+    public AddBefore(node: INode<T>, data: T) {
+        if(!node)
+            return this.Add(data);
+
+        var newNode: INode<T> = { previous: null, next: null, data: data };
+        var prevNode = node.previous;
+        newNode.next = node;
+        node.previous = newNode;
+
+        if(this.head === node)
+            this.head = newNode;
+
+        if(prevNode) {
+            prevNode.next = newNode;
+            newNode.previous = prevNode;
+        }
+
+        this.size++;
+        return newNode;
+    }
+
+    public AddAfter(node: INode<T>, data: T) {
+        if(!node)
+            return this.Push(data);
+        
+        var newNode: INode<T> = { previous: null, next: null, data: data };
+        var nextNode = node.next;
+        node.next = newNode;
+        newNode.previous = node;
+
+        if(this.tail === node)
+            this.tail = newNode;
+
+        if(nextNode) {
+            nextNode.previous = newNode;
+            newNode.next = nextNode;
+        }
+
+        this.size++;
+        return newNode;
     }
 
     public Remove(): T {
