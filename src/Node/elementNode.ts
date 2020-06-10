@@ -5,7 +5,8 @@ import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
-import { WorkSchedule } from "../Utils/workSchedule";
+import { Thread, Callback, Schedule } from "../Utils/thread";
+// import { WorkSchedule } from "../Utils/workSchedule";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
@@ -60,19 +61,21 @@ export class ElementNode<T> extends BoundNode {
             return;
 
         this.setData = true;
-        setTimeout(() => {
+        Thread(() => {
             this.setData = false;
             if(this.Destroyed)
                 return;
             
             this.SetData();
-        }, 0);
+        });
     }
 
-
     private SetData() {
-        var newNodesArrays = new Array<NodeRef[]>(this.arrayScope.Value.length);
-        WorkSchedule.Scope(schedule => {
+        Thread(() => {
+            if(this.Destroyed)
+                return;
+            
+            var newNodesArrays = new Array<NodeRef[]>(this.arrayScope.Value.length);
             var newNodesMap = new Map();
             this.arrayScope.Value.forEach((value, index) => {
                 var nodeArrayList = this.nodesMap.get(value);
@@ -91,7 +94,7 @@ export class ElementNode<T> extends BoundNode {
                     newNodesArrays[index] = nodes;
                 }
                 else {
-                    schedule(() => {
+                    Schedule(() => {
                         if(this.Destroyed)
                             return;
 
@@ -112,13 +115,11 @@ export class ElementNode<T> extends BoundNode {
             );
 
             this.nodesMap = newNodesMap;
-        });
-        
-        WorkSchedule.Scope(schedule => {
-            schedule(() => {
+
+            Schedule(() => {
                 if(this.Destroyed)
                     return;
-            
+
                 var previousNode: NodeRef = null;
                 newNodesArrays.forEach(nodes => 
                     NodeConfig.scheduleUpdate(() => {

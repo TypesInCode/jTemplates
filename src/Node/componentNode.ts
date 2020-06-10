@@ -4,7 +4,8 @@ import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
-import { WorkSchedule } from "../Utils/workSchedule";
+import { Thread, Schedule } from "../Utils/thread";
+// import { WorkSchedule } from "../Utils/workSchedule";
 
 export type ComponentNodeEvents<E = void> = {
     [P in keyof E]: {(data?: E[P]): void};
@@ -57,31 +58,29 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     }
 
     private SetChildren() {
-        WorkSchedule.Scope(schedule => {
-            var templateNodes: NodeRef[] = null;
-            schedule(() => {
-                if(this.Destroyed)
-                    return;
-                
-                var nodes: NodeRef | NodeRef[] = null;
-                Injector.Scope(this.injector, () => {
-                    nodes = this.component.Template() || [];
-                });
+        Thread(() => {
+            if(this.Destroyed)
+                return;
 
-                if(!Array.isArray(nodes))
-                    templateNodes = [nodes];
-                else
-                    templateNodes = nodes;
+            var templateNodes: NodeRef[] = null;
+            var nodes: NodeRef | NodeRef[] = null;
+            Injector.Scope(this.injector, () => {
+                nodes = this.component.Template() || [];
             });
 
-            schedule(() => {
+            if(!Array.isArray(nodes))
+                templateNodes = [nodes];
+            else
+                templateNodes = nodes;
+
+            Schedule(() => 
                 NodeConfig.scheduleUpdate(() => {
                     for(var x=0; x<templateNodes.length; x++)
                         this.AddChild(templateNodes[x]);
 
                     setTimeout(() => this.component.Bound(), 0);
-                });
-            });
+                })
+            );
         });
     }
 
