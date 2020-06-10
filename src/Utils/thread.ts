@@ -1,6 +1,6 @@
 import { List, INode } from "../Utils/list";
 
-const workTimeMs = 8;
+const workTimeMs = 16;
 var threadWorkerContext: ThreadWorker = null;
 
 class ThreadWorker {

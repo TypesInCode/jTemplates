@@ -120,20 +120,20 @@ export class ElementNode<T> extends BoundNode {
                 if(this.Destroyed)
                     return;
 
-                var previousNode: NodeRef = null;
-                newNodesArrays.forEach(nodes => 
-                    NodeConfig.scheduleUpdate(() => {
-                        if(this.Destroyed)
-                            return;
-                        
-                        for(var x=0; x<nodes.length; x++) {
-                            if(!nodes[x].Destroyed) {
-                                this.AddChildAfter(previousNode, nodes[x]);
-                                previousNode = nodes[x];
+                NodeConfig.scheduleUpdate(() => {
+                    if(this.Destroyed)
+                        return;
+                    
+                    var previousNode: NodeRef = null;
+                    for(var x=0; x<newNodesArrays.length; x++) {
+                        for(var y=0; y<newNodesArrays[x].length; y++) {
+                            if(!newNodesArrays[x][y].Destroyed) {
+                                this.AddChildAfter(previousNode, newNodesArrays[x][y]);
+                                previousNode = newNodesArrays[x][y];
                             }
                         }
-                    })
-                );
+                    }
+                });
             });
         });
     }

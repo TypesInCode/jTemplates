@@ -3,23 +3,16 @@ import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 import { SetInputValue } from './utils';
 
-var priorityUpdates = new List<{(): void}>();
 var pendingUpdates = new List<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
-    var start = Date.now();
-    var callback = priorityUpdates.Pop() || pendingUpdates.Pop();
-    callback && callback();
-    while(callback && (Date.now() - start) < 66) {
-        callback = priorityUpdates.Pop() || pendingUpdates.Pop();
-        callback && callback();
+    updateScheduled = false;
+    var callback = pendingUpdates.Pop();
+    while(callback) {
+        callback();
+        callback = pendingUpdates.Pop();
     }
-
-    if(pendingUpdates.Size > 0)
-        wndw.requestAnimationFrame(processUpdates);
-    else
-        updateScheduled = false;
 }
 
 export var DOMNodeConfig: INodeConfig = {
@@ -29,11 +22,8 @@ export var DOMNodeConfig: INodeConfig = {
 
         return type === "text" ? wndw.document.createTextNode("") : wndw.document.createElement(type);
     },
-    scheduleUpdate: function(callback: () => void, highPriority = false): void {
-        if(highPriority)
-            priorityUpdates.Add(callback);
-        else
-            pendingUpdates.Add(callback);
+    scheduleUpdate: function(callback: () => void): void {
+        pendingUpdates.Add(callback);
     
         if(!updateScheduled) {
             updateScheduled = true;

@@ -2,7 +2,7 @@ import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export interface INodeConfig {
     createNode(type: any, namespace: string): any;
-    scheduleUpdate(callback: () => void, highPriority?: boolean): void;
+    scheduleUpdate(callback: () => void): void;
     setText(target: any, text: string): void;
     getAttribute(target: any, attribute: string): string;
     setAttribute(target: any, attribute: string, value: string): void;
