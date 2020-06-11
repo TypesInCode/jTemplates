@@ -1,5 +1,5 @@
 import { Component } from 'j-templates';
-import { table, tr, th, td, select, option } from 'j-templates/DOM';
+import { table, tr, th, td, select, option, span } from 'j-templates/DOM';
 import { State, Scope } from 'j-templates/Utils';
 
 const data = [
@@ -55,14 +55,15 @@ class RootComponent extends Component {
 
     @Scope()
     get visibleData() {
-        if(!this.state.filter)
+        if(!this.state.filter || this.state.filter === "null")
             return this.state.data;
 
         var filter = this.state.filter;
         return this.state.data.filter(d => {
-            var match = true;
-            for(var key in Reflect.ownKeys(d))
-                match = match && d[key] === filter;
+            var match = false;
+            Reflect.ownKeys(d).forEach(key =>
+                match = match || d[key] === filter
+			);
 
             return match;
         });
@@ -81,6 +82,7 @@ class RootComponent extends Component {
             }, (val) => 
                 option({ props: { value: val } }, () => val || "None")
             ),
+          	span({}, () => `${this.visibleData.length}`),
             table({ data: () => [null, ...this.visibleData] }, (row) => {
                 if(!row)
                     return tr({}, () => [
