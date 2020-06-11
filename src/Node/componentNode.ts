@@ -75,6 +75,9 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
             Schedule(() => 
                 NodeConfig.scheduleUpdate(() => {
+                    if(this.Destroyed)
+                        return;
+                    
                     for(var x=0; x<templateNodes.length; x++)
                         this.AddChild(templateNodes[x]);
 

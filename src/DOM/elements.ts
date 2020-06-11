@@ -78,6 +78,22 @@ export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: Eleme
     return ElementNode.Create<T>("button", null, nodeDef, children);
 }
 
+export function table<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+    return ElementNode.Create<T>("table", null, nodeDef, children);
+}
+
+export function th<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+    return ElementNode.Create<T>("th", null, nodeDef, children);
+}
+
+export function tr<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+    return ElementNode.Create<T>("tr", null, nodeDef, children);
+}
+
+export function td<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+    return ElementNode.Create<T>("td", null, nodeDef, children);
+}
+
 export function text(value: string | {(): string}) {
     var valueFunc: {(): string} = null;
     if(typeof value === 'string')

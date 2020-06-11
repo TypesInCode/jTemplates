@@ -5,7 +5,7 @@ import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
-import { Thread, Callback, Schedule } from "../Utils/thread";
+import { Thread, Schedule, Callback } from "../Utils/thread";
 // import { WorkSchedule } from "../Utils/workSchedule";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
@@ -61,7 +61,7 @@ export class ElementNode<T> extends BoundNode {
             return;
 
         this.setData = true;
-        Thread(() => {
+        NodeConfig.scheduleUpdate(() => {
             this.setData = false;
             if(this.Destroyed)
                 return;
@@ -71,66 +71,103 @@ export class ElementNode<T> extends BoundNode {
     }
 
     private SetData() {
+        var valueArray = this.arrayScope.Value;
+        var newNodesArrays = new Array<NodeRef[]>(valueArray.length);
+        var missingNodeIndexes: Array<number> = [];
+        var newNodesMap = new Map();
+
+        for(var x=0; x<valueArray.length; x++) {
+            var nodeArrayList = this.nodesMap.get(valueArray[x]);
+            var nodes = nodeArrayList && nodeArrayList.Remove();
+            if(nodeArrayList && nodeArrayList.Size === 0)
+                this.nodesMap.delete(valueArray[x]);
+
+            var newNodeArrayList = newNodesMap.get(valueArray[x]);
+            if(!newNodeArrayList) {
+                newNodeArrayList = new List<NodeRef[]>();
+                newNodesMap.set(valueArray[x], newNodeArrayList);
+            }
+
+            if(nodes) {
+                newNodeArrayList.Push(nodes);
+                newNodesArrays[x] = nodes;
+            }
+            else
+                missingNodeIndexes.push(x);
+        }
+
+        this.nodesMap.forEach(nodeArrayList => 
+            nodeArrayList.ForEach(nodes => {
+                for(var x=0; x<nodes.length; x++) {
+                    nodes[x].Detach();
+                    nodes[x].Destroy();
+                }
+            })
+        );
+
+        this.nodesMap.clear();
+        this.nodesMap = newNodesMap;
+
+        if(valueArray.length > 0)
+            this.CreateAddNodes(valueArray, missingNodeIndexes, newNodesArrays, this.nodesMap);
+    }
+
+    private CreateAddNodes(valueArray: Array<any>, missingNodeIndexes: Array<number>, newNodesArrays: Array<Array<NodeRef>>, nodesMap: Map<any, List<Array<NodeRef>>>) {
+        if(missingNodeIndexes.length === 0) {
+            NodeConfig.scheduleUpdate(() => {
+                if(this.Destroyed || nodesMap.size === 0)
+                    return;
+                
+                var previousNode: NodeRef = null;
+                for(var x=0; x<newNodesArrays.length; x++) {
+                    for(var y=0; y<newNodesArrays[x].length; y++) {
+                        this.AddChildAfter(previousNode, newNodesArrays[x][y]);
+                        previousNode = newNodesArrays[x][y];
+                    }
+                }
+            });
+            return;
+        }
+
         Thread(() => {
-            if(this.Destroyed)
+            if(this.Destroyed || nodesMap.size === 0)
                 return;
             
-            var newNodesArrays = new Array<NodeRef[]>(this.arrayScope.Value.length);
-            var newNodesMap = new Map();
-            this.arrayScope.Value.forEach((value, index) => {
-                var nodeArrayList = this.nodesMap.get(value);
-                var nodes = nodeArrayList && nodeArrayList.Remove();
-                if(nodeArrayList && nodeArrayList.Size === 0)
-                    this.nodesMap.delete(value);
+            missingNodeIndexes.forEach(Callback(index => {
+                if(this.Destroyed || nodesMap.size === 0)
+                        return;
+                    
+                var nodes = this.CreateNodeArray(valueArray[index]);
+                nodesMap.get(valueArray[index]).Push(nodes);
+                newNodesArrays[index] = nodes;
+            }));
 
-                var newNodeArrayList = newNodesMap.get(value);
-                if(!newNodeArrayList) {
-                    newNodeArrayList = new List<NodeRef[]>();
-                    newNodesMap.set(value, newNodeArrayList);
-                }
-
-                if(nodes) {
-                    newNodeArrayList.Push(nodes);
-                    newNodesArrays[index] = nodes;
-                }
-                else {
+            /* valueArray.forEach((value, index) => {
+                if(!newNodesArrays[index]) {
                     Schedule(() => {
-                        if(this.Destroyed)
+                        if(this.Destroyed || nodesMap.size === 0)
                             return;
-
-                        nodes = this.CreateNodeArray(value);
-                        newNodeArrayList.Push(nodes);
+                        
+                        var nodes = this.CreateNodeArray(value);
+                        nodesMap.get(value).Push(nodes);
                         newNodesArrays[index] = nodes;
                     });
                 }
-            });
-
-            this.nodesMap.forEach(nodeArrayList => 
-                nodeArrayList.ForEach(nodes => {
-                    for(var x=0; x<nodes.length; x++) {
-                        nodes[x].Detach();
-                        nodes[x].Destroy();
-                    }
-                })
-            );
-
-            this.nodesMap = newNodesMap;
+            }); */
 
             Schedule(() => {
-                if(this.Destroyed)
+                if(this.Destroyed || nodesMap.size === 0)
                     return;
-
+                
                 NodeConfig.scheduleUpdate(() => {
-                    if(this.Destroyed)
+                    if(this.Destroyed || nodesMap.size === 0)
                         return;
                     
                     var previousNode: NodeRef = null;
                     for(var x=0; x<newNodesArrays.length; x++) {
                         for(var y=0; y<newNodesArrays[x].length; y++) {
-                            if(!newNodesArrays[x][y].Destroyed) {
-                                this.AddChildAfter(previousNode, newNodesArrays[x][y]);
-                                previousNode = newNodesArrays[x][y];
-                            }
+                            this.AddChildAfter(previousNode, newNodesArrays[x][y]);
+                            previousNode = newNodesArrays[x][y];
                         }
                     }
                 });

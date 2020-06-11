@@ -27,17 +27,14 @@ class ThreadWorker {
         threadWorkerContext = this;
 
         var startTime = Date.now();
-        var callback = this.workList.Pop();
-        while(callback && (Date.now() - startTime) < workTimeMs) {
+        var callback: {(): void};
+        while((Date.now() - startTime) < workTimeMs && (callback = this.workList.Pop()))
             this.Invoke(callback);
-            callback = this.workList.Pop();
-        }
+        
         if(this.workList.Size === 0)
             this.running = false;
-        else {
-            this.Invoke(callback);
+        else
             this.ScheduleWork();
-        }
 
         threadWorkerContext = parentContext;
     }
@@ -75,5 +72,5 @@ export function Callback<A = void, B = void, C = void, D = void>(callback: (a: A
 export function Thread(callback: {(): void}) {
     var thread = threadWorkerContext || new ThreadWorker();
     thread.Schedule(callback);
-    return new Promise(resolve => thread.Schedule(resolve));
+    return new Promise<void>(resolve => thread.Schedule(resolve));
 }

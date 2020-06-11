@@ -157,8 +157,8 @@ export class BoundNode extends NodeRef {
     }
 
     private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}, path = "") {
-        if(typeof source !== "object")
-            throw "Property binding must resolve to an object";
+        /* if(typeof source !== "object")
+            throw "Property binding must resolve to an object"; */
 
         for(var key in source) {
             var currentPath = path + key;
