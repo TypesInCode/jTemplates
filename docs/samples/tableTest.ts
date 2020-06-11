@@ -61,7 +61,7 @@ class RootComponent extends Component {
         var filter = this.state.filter;
         return this.state.data.filter(d => {
             var match = true;
-            for(var key in d)
+            for(var key in Reflect.ownKeys(d))
                 match = match && d[key] === filter;
 
             return match;

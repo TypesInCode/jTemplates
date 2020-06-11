@@ -90,6 +90,9 @@ function CreateArrayProxy(node: ObservableNode) {
         
                     return ret;
             }
+        },
+        ownKeys: () => {
+            return Reflect.ownKeys(node.Value);
         }
     }) as ObservableProxy;
 }
@@ -114,6 +117,9 @@ function CreateObjectProxy(node: ObservableNode) {
                     
                     return obj[prop];
             }
+        },
+        ownKeys: () => {
+            return Reflect.ownKeys(node.Value);
         }
     });
 }
