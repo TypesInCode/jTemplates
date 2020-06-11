@@ -2,17 +2,20 @@ import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 import { SetInputValue } from './utils';
+import { Thread } from '../Utils/thread';
 
 var pendingUpdates = new List<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
     updateScheduled = false;
-    var callback = pendingUpdates.Pop();
-    while(callback) {
-        callback();
-        callback = pendingUpdates.Pop();
-    }
+    Thread(() => {
+        var callback = pendingUpdates.Pop();
+        while(callback) {
+            callback();
+            callback = pendingUpdates.Pop();
+        }
+    });
 }
 
 export var DOMNodeConfig: INodeConfig = {
