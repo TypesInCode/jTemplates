@@ -22,11 +22,11 @@ class ThreadWorker {
         this.workEndNode = parent;
     }
 
-    private DoWork() {
+    private DoWork(elapsed = 0) {
         var parentContext = threadWorkerContext;
         threadWorkerContext = this;
 
-        var startTime = Date.now();
+        var startTime = Date.now() - elapsed;
         var callback: {(): void};
         while((Date.now() - startTime) < workTimeMs && (callback = this.workList.Pop()))
             this.Invoke(callback);
@@ -48,7 +48,8 @@ class ThreadWorker {
             return;
 
         this.running = true;
-        this.ScheduleWork();
+        // this.ScheduleWork();
+        this.DoWork(workTimeMs/2);
     }
 
 }
