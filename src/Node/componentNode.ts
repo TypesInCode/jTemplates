@@ -58,32 +58,73 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     }
 
     private SetChildren() {
-        Thread(() => {
-            if(this.Destroyed)
-                return;
+        if(PreReq.Has(this.component)) {
+            this.AddPreReqTemplate().then(() => 
+                this.AddTemplate()
+            )
+        }
+        else
+            this.AddTemplate();
+    }
 
-            var templateNodes: NodeRef[] = null;
-            var nodes: NodeRef | NodeRef[] = null;
-            Injector.Scope(this.injector, () => {
-                nodes = this.component.Template() || [];
-            });
+    private AddPreReqTemplate() {
+        return new Promise(resolve => {
+            Thread(() => {
+                if(this.Destroyed)
+                    return;
 
-            if(!Array.isArray(nodes))
-                templateNodes = [nodes];
-            else
-                templateNodes = nodes;
+                var preNodes: Array<NodeRef> = null;
+                Injector.Scope(this.injector, () => 
+                    preNodes = PreReqTemplate.Get(this.component)
+                );
 
-            Schedule(() => 
                 NodeConfig.scheduleUpdate(() => {
                     if(this.Destroyed)
                         return;
                     
-                    for(var x=0; x<templateNodes.length; x++)
-                        this.AddChild(templateNodes[x]);
+                    for(var x=0; x<preNodes.length; x++)
+                        this.AddChild(preNodes[x]);
 
-                    setTimeout(() => this.component.Bound(), 0);
-                })
-            );
+                    PreReq.All(this.component).then(() => {
+                        NodeConfig.scheduleUpdate(() => {
+                            if(this.Destroyed)
+                                return;
+
+                            for(var x=0; x<preNodes.length; x++) {
+                                preNodes[x].Destroy();
+                                preNodes[x].Detach();
+                            }
+
+                            resolve();
+                        });
+                    });
+                });
+            });
+        });
+    }
+
+    private AddTemplate() {
+        Thread(() => {
+            if(this.Destroyed)
+                return;
+
+            var nodes: NodeRef[] = null;
+            Injector.Scope(this.injector, () => {
+                nodes = this.component.Template() as NodeRef[];
+            });
+
+            if(!Array.isArray(nodes))
+                nodes = [nodes];
+
+            NodeConfig.scheduleUpdate(() => {
+                if(this.Destroyed)
+                    return;
+                
+                for(var x=0; x<nodes.length; x++)
+                    this.AddChild(nodes[x]);
+
+                setTimeout(() => this.component.Bound(), 0);
+            });
         });
     }
 
