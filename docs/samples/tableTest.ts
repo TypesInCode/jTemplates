@@ -1,5 +1,5 @@
 import { Component } from 'j-templates';
-import { table, tr, th, td, select, option, span } from 'j-templates/DOM';
+import { table, tr, th, td, select, option, span, div, button } from 'j-templates/DOM';
 import { State, Scope } from 'j-templates/Utils';
 
 const data = [
@@ -27,8 +27,20 @@ interface IData {
     col9: string;
 }
 
+const headers = {
+  col1: "Col 1",
+  col2: "Col 2",
+  col3: "Col 3",
+  col4: "Col 4",
+  col5: "Col 5",
+  col6: "Col 6",
+  col7: "Col 7",
+  col8: "Col 8",
+  col9: "Col 9"
+} as IData;
+
 function GenerateData() {
-    var ret = new Array(100);
+    var ret = [];
     for(var x=0; x<100; x++) {
         ret[x] = {
             col1: data[Math.floor(Math.random() * data.length)],
@@ -48,10 +60,17 @@ function GenerateData() {
 class RootComponent extends Component {
 
     @State()
-    state: Partial<{ filter: string, data: Array<IData> }> = { 
+    state: Partial<{ filter: string, sort: string, data: Array<IData>, hidden: Array<string> }> = { 
         filter: null,
+      	sort: null,
+      	hidden: [],
         data: GenerateData() 
     };
+  
+  	@Scope()
+  	get hiddenColumns() {
+      	return new Set(this.state.hidden.slice());
+    }
 
     @Scope()
     get visibleData() {
@@ -68,9 +87,26 @@ class RootComponent extends Component {
             return match;
         });
     }
+  
+  	@Scope()
+  	get sortedData() {
+      	if(!this.state.sort)
+          	return this.visibleData;
+      
+      	var data = this.visibleData.slice();
+      	var prop = this.state.sort;
+      	data.sort((a, b) => {
+          	return a[prop] < b[prop] ? -1 : a[prop] === b[prop] ? 0 : 1;
+        });
+      
+      	return data;
+    } 
 
     public Template() {
         return [
+          	div({ data: () => Reflect.ownKeys(headers) }, (key: string) =>
+                button({ on: { click: () => this.ToggleColumn(key) } }, () => `${key} `)
+            ),
             select({ 
                 on: { 
                     change: (e: any) => {
@@ -78,38 +114,50 @@ class RootComponent extends Component {
                     }
                 },
                 props: () => ({ value: this.state.filter }),
-                data: () => [null, ...data]
+                data: () => [null, ...data, "Clear"]
             }, (val) => 
                 option({ props: { value: val } }, () => val || "None")
             ),
-          	span({}, () => `${this.visibleData.length}`),
-            table({ data: () => [null, ...this.visibleData] }, (row) => {
+          	span({}, () => ` ${this.visibleData.length}`),
+            table({ data: () => [null, ...this.sortedData] }, (row) => {
                 if(!row)
-                    return tr({}, () => [
-                        th({}, () => "Col1"),
-                        th({}, () => "Col2"),
-                        th({}, () => "Col3"),
-                        th({}, () => "Col4"),
-                        th({}, () => "Col5"),
-                        th({}, () => "Col6"),
-                        th({}, () => "Col7"),
-                        th({}, () => "Col8"),
-                        th({}, () => "Col9")
-                    ]);
+                    return tr({ 
+                      	data: () => 
+                      		Reflect.ownKeys(headers).filter((key: string) => !this.hiddenColumns.has(key)) 
+                    }, (key: string) => 
+                        th({ on: { 
+                          	click: () => this.SortBy(key) 
+                        	}, 
+                            data: () => headers[key] 
+                        }, val => val)
+					);
 
-                return tr({}, () => [
-                    td({ data: () => row.col1 }, (val) => val),
-                    td({ data: () => row.col2 }, (val) => val),
-                    td({ data: () => row.col3 }, (val) => val),
-                    td({ data: () => row.col4 }, (val) => val),
-                    td({ data: () => row.col5 }, (val) => val),
-                    td({ data: () => row.col6 }, (val) => val),
-                    td({ data: () => row.col7 }, (val) => val),
-                    td({ data: () => row.col8 }, (val) => val),
-                    td({ data: () => row.col9 }, (val) => val)
-                ]);
+                return tr({ 
+                  data: () => 
+                  	Reflect.ownKeys(row).filter((key: string) => !this.hiddenColumns.has(key)) 
+                }, key => 
+					td({ data: () => row[key] }, val => val)
+				);
             })
         ];
+    }
+    
+    private ToggleColumn(prop: string) {
+      	if(this.hiddenColumns.has(prop)) {
+          	var hidden = this.state.hidden.slice();
+          	var ind = hidden.indexOf(prop);
+          	hidden.splice(ind, 1);
+          	this.state = { hidden: hidden };
+        }
+      	else
+          	this.state = { hidden: [...this.state.hidden.slice(), prop] };
+    }
+  
+  	private SortBy(prop: string) {
+      	if(this.state.sort === prop)
+          	this.state = { sort: null };
+      	else
+          	this.state = { sort: prop };
     }
 
 }
