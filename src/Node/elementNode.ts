@@ -5,8 +5,7 @@ import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
-import { Thread, Schedule, Callback } from "../Utils/thread";
-// import { WorkSchedule } from "../Utils/workSchedule";
+import { Thread, Schedule } from "../Utils/thread";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
@@ -71,12 +70,8 @@ export class ElementNode<T> extends BoundNode {
     }
 
     private SetData() {
-        var valueArray = this.arrayScope.Value;
-        var newNodesArrays = new Array<NodeRef[]>(valueArray.length);
-        var detachNodes: Array<NodeRef[]> = [];
         var newNodesMap = new Map();
-
-        valueArray.forEach((value, index) => {
+        var newNodesArrays = this.arrayScope.Value.map((value, index) => {
             var nodeArrayList = this.nodesMap.get(value);
             var nodes = nodeArrayList && nodeArrayList.Remove();
             if(nodeArrayList && nodeArrayList.Size === 0)
@@ -88,29 +83,34 @@ export class ElementNode<T> extends BoundNode {
                 newNodesMap.set(value, newNodeArrayList);
             }
 
-            if(nodes) {
+            if(nodes)
                 newNodeArrayList.Push(nodes);
-                newNodesArrays[index] = nodes;
-            }
             else {
                 Schedule(() => {
                     if(this.Destroyed || newNodesMap.size === 0)
                         return;
 
-                    var nodes = this.CreateNodeArray(valueArray[index]);
-                    newNodesMap.get(valueArray[index]).Push(nodes);
-                    newNodesArrays[index] = nodes;
+                    var newNodes = this.CreateNodeArray(value);
+                    newNodesMap.get(value).Push(newNodes);
+                    if(newNodesArrays)
+                        newNodesArrays[index] = newNodes;
+                    else
+                        nodes = newNodes;
                 });
             }
+
+            return nodes || null;
         });
 
-        this.nodesMap.forEach(nodeArrayList => 
-            nodeArrayList.ForEach(nodes => {
-                detachNodes.push(nodes);
+        var ind = 0;
+        var detachNodes: Array<List<NodeRef[]>> = new Array(this.nodesMap.size);
+        this.nodesMap.forEach(nodeArrayList => {
+            var destroyNodes = detachNodes[ind++] = nodeArrayList;
+            destroyNodes.ForEach(nodes => {
                 for(var x=0; x<nodes.length; x++)
                     nodes[x].Destroy();
-            })
-        );
+            });
+        });
 
         this.nodesMap.clear();
         this.nodesMap = newNodesMap;
@@ -124,11 +124,12 @@ export class ElementNode<T> extends BoundNode {
         });
     }
 
-    private DetachAndAddNodes(detachNodes: Array<Array<NodeRef>>, newNodes: Array<Array<NodeRef>>) {
-        for(var x=0; x<detachNodes.length; x++) {
-            for(var y=0; y<detachNodes[x].length; y++)
-                detachNodes[x][y].Detach();
-        }
+    private DetachAndAddNodes(detachNodes: Array<List<NodeRef[]>>, newNodes: Array<Array<NodeRef>>) {
+        for(var x=0; x<detachNodes.length; x++)
+            detachNodes[x].ForEach(nodes => {
+                for(var x=0; x<nodes.length; x++)
+                    nodes[x].Detach();
+            });
         
         var previousNode: NodeRef = null;
         for(var x=0; newNodes && x<newNodes.length; x++) {
