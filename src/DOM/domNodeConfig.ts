@@ -8,14 +8,9 @@ var pendingUpdates = new List<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
-    updateScheduled = false;
-    Thread(() => {
-        var callback = pendingUpdates.Pop();
-        while(callback) {
-            callback();
-            callback = pendingUpdates.Pop();
-        }
-    }, true);
+    var callback: {(): void};
+    while((callback = pendingUpdates.Pop()))
+        Thread(callback, true);
 }
 
 export var DOMNodeConfig: INodeConfig = {
