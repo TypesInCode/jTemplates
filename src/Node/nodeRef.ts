@@ -53,6 +53,9 @@ export class NodeRef {
     }
 
     public Destroy() {
+        if(this.destroyed)
+            return;
+        
         this.destroyed = true;
         this.DestroyChildren();
     }
