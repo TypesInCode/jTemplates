@@ -48,7 +48,6 @@ class ThreadWorker {
             return;
 
         this.running = true;
-        // this.ScheduleWork();
         this.DoWork();
     }
 
@@ -70,8 +69,8 @@ export function Callback<A = void, B = void, C = void, D = void>(callback: (a: A
     }
 }
 
-export function Thread(callback: {(): void}) {
-    var thread = threadWorkerContext || new ThreadWorker();
+export function Thread(callback: {(): void}, forceNew = false) {
+    var thread = !forceNew && threadWorkerContext || new ThreadWorker();
     thread.Schedule(callback);
     return new Promise<void>(resolve => thread.Schedule(resolve));
 }
