@@ -15,7 +15,7 @@ function processUpdates() {
             callback();
             callback = pendingUpdates.Pop();
         }
-    });
+    }, true);
 }
 
 export var DOMNodeConfig: INodeConfig = {
