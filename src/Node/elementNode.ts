@@ -73,33 +73,40 @@ export class ElementNode<T> extends BoundNode {
     private SetData() {
         var valueArray = this.arrayScope.Value;
         var newNodesArrays = new Array<NodeRef[]>(valueArray.length);
-        var missingNodeIndexes: Array<number> = [];
-        var detachNodes: Array<NodeRef> = [];
+        var detachNodes: Array<NodeRef[]> = [];
         var newNodesMap = new Map();
 
-        for(var x=0; x<valueArray.length; x++) {
-            var nodeArrayList = this.nodesMap.get(valueArray[x]);
+        valueArray.forEach((value, index) => {
+            var nodeArrayList = this.nodesMap.get(value);
             var nodes = nodeArrayList && nodeArrayList.Remove();
             if(nodeArrayList && nodeArrayList.Size === 0)
-                this.nodesMap.delete(valueArray[x]);
+                this.nodesMap.delete(value);
 
-            var newNodeArrayList = newNodesMap.get(valueArray[x]);
+            var newNodeArrayList = newNodesMap.get(value);
             if(!newNodeArrayList) {
                 newNodeArrayList = new List<NodeRef[]>();
-                newNodesMap.set(valueArray[x], newNodeArrayList);
+                newNodesMap.set(value, newNodeArrayList);
             }
 
             if(nodes) {
                 newNodeArrayList.Push(nodes);
-                newNodesArrays[x] = nodes;
+                newNodesArrays[index] = nodes;
             }
-            else
-                missingNodeIndexes.push(x);
-        }
+            else {
+                Schedule(() => {
+                    if(this.Destroyed || newNodesMap.size === 0)
+                        return;
+
+                    var nodes = this.CreateNodeArray(valueArray[index]);
+                    newNodesMap.get(valueArray[index]).Push(nodes);
+                    newNodesArrays[index] = nodes;
+                });
+            }
+        });
 
         this.nodesMap.forEach(nodeArrayList => 
             nodeArrayList.ForEach(nodes => {
-                detachNodes.push(...nodes);
+                detachNodes.push(nodes);
                 for(var x=0; x<nodes.length; x++)
                     nodes[x].Destroy();
             })
@@ -107,46 +114,24 @@ export class ElementNode<T> extends BoundNode {
 
         this.nodesMap.clear();
         this.nodesMap = newNodesMap;
-        this.DetachCreateAddNodes(detachNodes, valueArray, missingNodeIndexes, newNodesArrays, this.nodesMap);
-    }
-
-    private DetachCreateAddNodes(detachNodes: Array<NodeRef>, valueArray: Array<any>, missingNodeIndexes: Array<number>, newNodesArrays: Array<Array<NodeRef>>, nodesMap: Map<any, List<Array<NodeRef>>>) {
         Thread(() => {
-            if(this.Destroyed)
-                return;
-            
-            missingNodeIndexes.forEach(Callback(index => {
-                if(this.Destroyed || nodesMap.size === 0)
-                    return;
-                    
-                var nodes = this.CreateNodeArray(valueArray[index]);
-                nodesMap.get(valueArray[index]).Push(nodes);
-                newNodesArrays[index] = nodes;
-            }));
-
-            Schedule(() => {
+            NodeConfig.scheduleUpdate(() => {
                 if(this.Destroyed)
                     return;
                 
-                NodeConfig.scheduleUpdate(() =>
-                    this.DetachAndAddNodes(detachNodes, newNodesArrays, nodesMap.size === 0)
-                );
+                this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
             });
         });
     }
 
-    private DetachAndAddNodes(detachNodes: Array<NodeRef>, newNodes: Array<Array<NodeRef>>, skipAdd: boolean) {
-        if(this.Destroyed)
-            return;
-
-        for(var d=0; d<detachNodes.length; d++)
-            detachNodes[d].Detach();
-        
-        if(skipAdd)
-            return;
+    private DetachAndAddNodes(detachNodes: Array<Array<NodeRef>>, newNodes: Array<Array<NodeRef>>) {
+        for(var x=0; x<detachNodes.length; x++) {
+            for(var y=0; y<detachNodes[x].length; y++)
+                detachNodes[x][y].Detach();
+        }
         
         var previousNode: NodeRef = null;
-        for(var x=0; x<newNodes.length; x++) {
+        for(var x=0; newNodes && x<newNodes.length; x++) {
             for(var y=0; y<newNodes[x].length; y++) {
                 this.AddChildAfter(previousNode, newNodes[x][y]);
                 previousNode = newNodes[x][y];
