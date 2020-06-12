@@ -79,16 +79,14 @@ function CreateArrayProxy(node: ObservableNode) {
                 case 'length':
                     return node.EnsureChild(prop).Value;
                 default:
-                    if(typeof(prop) !== 'symbol' && !isNaN(parseInt(prop)))
-                        return node.EnsureChild(prop).Proxy;
+                    if(typeof(prop) === 'symbol')
+                        return node.ProxyArray[prop as any];
                     
-                    var ret = obj[prop];
-                    if(typeof ret === 'function') {
-                        return ret.bind(node.ProxyArray);
-                        // return ret.bind(node.NodeArray.map(n => n.Proxy));
-                    }
-        
-                    return ret;
+                    if(!isNaN(parseInt(prop)))
+                        return node.EnsureChild(prop).Proxy;
+
+                    var func = obj[prop];
+                    return func.bind(node.ProxyArray);
             }
         },
         ownKeys: () => {
