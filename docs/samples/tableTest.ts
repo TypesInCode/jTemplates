@@ -139,18 +139,16 @@ class RootComponent extends Component {
                     }, (key: string) => 
                         th({
                       		props: this.Hidden(key),
-                      		on: { click: () => this.SortBy(key) }, 
-                            data: () => headers[key] 
-                        }, val => val)
+                      		on: { click: () => this.SortBy(key) }
+                        }, () => headers[key])
 					);
 
                 return tr({ 
                   data: this.Columns()
                 }, (key: string) => 
 					td({
-                  		props: this.Hidden(key),
-                  		data: () => row[key] 
-                	}, val => val)
+                  		props: this.Hidden(key)
+                	}, () => row[key])
 				);
             })
         ];
