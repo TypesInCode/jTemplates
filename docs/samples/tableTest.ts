@@ -1,6 +1,6 @@
 import { Component } from 'j-templates';
-import { table, tr, th, td, select, option, span, div, button } from 'j-templates/DOM';
-import { State, Scope } from 'j-templates/Utils';
+import { table, tr, th, td, select, option, span, div, button, style } from 'j-templates/DOM';
+import { State, Scope, SharedScope } from 'j-templates/Utils';
 
 const data = [
     "ABAMPERES",
@@ -41,7 +41,7 @@ const headers = {
 
 function GenerateData() {
     var ret = [];
-    for(var x=0; x<100; x++) {
+    for(var x=0; x<1000; x++) {
         ret[x] = {
             col1: data[Math.floor(Math.random() * data.length)],
             col2: data[Math.floor(Math.random() * data.length)],
@@ -100,10 +100,23 @@ class RootComponent extends Component {
         });
       
       	return data;
-    } 
+    }
+  
+  	@SharedScope()
+  	Columns() {
+      	return () => Reflect.ownKeys(headers);
+    }
+  
+  	@SharedScope()
+  	Hidden(key: string) {
+      	return () => ({ className: this.hiddenColumns.has(key) ? 'hidden' : '' });
+    }
 
     public Template() {
         return [
+          	style({
+              props: { type: "text/css" }
+            }, () => ".hidden { display: none; }"),
           	div({ data: () => Reflect.ownKeys(headers) }, (key: string) =>
                 button({ on: { click: () => this.ToggleColumn(key) } }, () => `${key} `)
             ),
@@ -122,21 +135,22 @@ class RootComponent extends Component {
             table({ data: () => [null, ...this.sortedData] }, (row) => {
                 if(!row)
                     return tr({ 
-                      	data: () => 
-                      		Reflect.ownKeys(headers).filter((key: string) => !this.hiddenColumns.has(key)) 
+                      	data: this.Columns() 
                     }, (key: string) => 
-                        th({ on: { 
-                          	click: () => this.SortBy(key) 
-                        	}, 
+                        th({
+                      		props: this.Hidden(key),
+                      		on: { click: () => this.SortBy(key) }, 
                             data: () => headers[key] 
                         }, val => val)
 					);
 
                 return tr({ 
-                  data: () => 
-                  	Reflect.ownKeys(row).filter((key: string) => !this.hiddenColumns.has(key)) 
-                }, key => 
-					td({ data: () => row[key] }, val => val)
+                  data: this.Columns()
+                }, (key: string) => 
+					td({
+                  		props: this.Hidden(key),
+                  		data: () => row[key] 
+                	}, val => val)
 				);
             })
         ];
