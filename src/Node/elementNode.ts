@@ -91,7 +91,10 @@ export class ElementNode<T> extends BoundNode {
             this.dataScope ? 
                 this.dataScope.Value : 
                 [true] : [];
-        if(!Array.isArray(values))
+        
+        if(!values)
+            values = [];
+        else if(!Array.isArray(values))
             values = [values];
         
         var newNodesArrays = values.map((value, index) => {
