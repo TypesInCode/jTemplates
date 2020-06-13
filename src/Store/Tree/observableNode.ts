@@ -15,8 +15,7 @@ export class ObservableNode {
     private oldType: Type = undefined;
     private self: ObservableNode = undefined;
     private proxy: ObservableProxy = undefined;
-    // private proxyArray: Array<ObservableProxy> = undefined;
-    // private nodeArray: Array<ObservableNode> = undefined;
+    private proxyArray: Array<any> = undefined;
 
     public get Path() {
         if(this.path === undefined)
@@ -82,16 +81,11 @@ export class ObservableNode {
         if(this.Type !== Type.Array)
             return null;
 
-        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).Proxy);
+        if(!this.proxyArray)
+            this.proxyArray = (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).Proxy);
+
+        return this.proxyArray;
     }
-    /* public get NodeArray() {
-        if(this.Type !== Type.Array)
-            return null;
-        
-        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()));
-        // this.UpdateNodeArray();
-        // return this.nodeArray;
-    } */
 
     public get Parent() {
         return this.parent;
@@ -126,6 +120,7 @@ export class ObservableNode {
         this.value = undefined;
         this.type = undefined;
         this.self = undefined;
+        this.proxyArray = undefined;
 
         /* if(oldType !== this.Type)
             this.proxy = undefined; */
@@ -145,6 +140,7 @@ export class ObservableNode {
 
     public ArrayUpdate() {
         this.value = undefined;
+        this.proxyArray = undefined;
         this.EnsureChild("length").Update();
         // this.UpdateNodeArray();
         this.EmitSet();
