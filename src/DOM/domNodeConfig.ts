@@ -11,6 +11,8 @@ function processUpdates() {
     var callback: {(): void};
     while((callback = pendingUpdates.Pop()))
         Thread(callback, true);
+
+    updateScheduled = false;
 }
 
 export var DOMNodeConfig: INodeConfig = {

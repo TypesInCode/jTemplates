@@ -123,12 +123,6 @@ export class BoundNode extends NodeRef {
     public Init() {
         super.Init();
 
-        /* if(this.nodeDef.text) {
-            this.textScope = new Scope(this.nodeDef.text);
-            this.textScope.Watch(this.nodeDef.immediate ? this.SetText.bind(this) : this.ScheduleSetText.bind(this));
-            this.SetText();
-        } */
-
         if(this.nodeDef.props) {
             this.propertiesScope = new ObservableScopeAsync(this.nodeDef.props);
             this.propertiesScope.Watch(this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this));
@@ -152,14 +146,10 @@ export class BoundNode extends NodeRef {
         super.Destroy();
         this.attributesScope && this.attributesScope.Destroy();
         this.propertiesScope && this.propertiesScope.Destroy();
-        // this.textScope && this.textScope.Destroy();
         this.eventsScope && this.eventsScope.Destroy();
     }
 
     private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}, path = "") {
-        /* if(typeof source !== "object")
-            throw "Property binding must resolve to an object"; */
-
         for(var key in source) {
             var currentPath = path + key;
             var val = source[key];
