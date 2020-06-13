@@ -26,9 +26,16 @@ export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, chi
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};
     private nodesMap: Map<any, List<Array<NodeRef>>>;
-    private dataScope: ObservableScopeAsync<any>;
-    private arrayScope: ObservableScope<Array<T>>;
+
     private setData: boolean;
+    private dataBound: {(): T[]};
+    private destroyData: boolean;
+
+    private dataScope: ObservableScopeAsync<any>;
+
+    protected get NodeDef(): ElementNodeDefinition<T> {
+        return super.NodeDef;
+    }
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
@@ -36,21 +43,32 @@ export class ElementNode<T> extends BoundNode {
         this.setData = false;
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children;
-        this.dataScope = new ObservableScopeAsync<any>(nodeDef.data || true);
-        this.arrayScope = this.dataScope.Scope(data => {
-            if(!this.childrenFunc)
-                return [];
-            
-            var value = data as Array<T>;
-            if(!value)
-                value = [];
-            else if(!Array.isArray(value))
-                value = [value];
+    }
 
-            return value;
-        });
-        
-        this.arrayScope.Watch(this.ScheduleSetData.bind(this));
+    public Init() {
+        super.Init();
+
+        if(this.NodeDef.data) {
+            this.dataScope = this.Injector.Get(this.NodeDef.data);
+            if(!this.dataScope) {
+                this.destroyData = true;
+                this.dataScope = new ObservableScopeAsync<any>(this.NodeDef.data);
+            }
+            this.dataBound = this.ScheduleSetData.bind(this);
+            this.dataScope.Watch(this.dataBound);
+        }
+
+        this.SetData();
+    }
+
+    public Destroy() {
+        super.Destroy();
+        if(this.dataScope) {
+            if(this.destroyData)
+                this.dataScope.Destroy();
+            else
+                this.dataScope.Unwatch(this.dataBound);
+        }
     }
 
     private ScheduleSetData() {
@@ -69,7 +87,14 @@ export class ElementNode<T> extends BoundNode {
 
     private SetData() {
         var newNodesMap = new Map();
-        var newNodesArrays = this.arrayScope.Value.map((value, index) => {
+        var values: Array<T> = this.childrenFunc ? 
+            this.dataScope ? 
+                this.dataScope.Value : 
+                [true] : [];
+        if(!Array.isArray(values))
+            values = [values];
+        
+        var newNodesArrays = values.map((value, index) => {
             var nodeArrayList = this.nodesMap.get(value);
             var nodes = nodeArrayList && nodeArrayList.Remove();
             if(nodeArrayList && nodeArrayList.Size === 0)
@@ -151,17 +176,6 @@ export class ElementNode<T> extends BoundNode {
         });
 
         return nodes;
-    }
-
-    public Init() {
-        super.Init();
-        this.SetData();
-    }
-
-    public Destroy() {
-        super.Destroy();
-        this.dataScope.Destroy();
-        this.arrayScope.Destroy();
     }
 
 }
