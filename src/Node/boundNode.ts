@@ -37,13 +37,17 @@ export class BoundNode extends NodeRef {
     private setEvents = false;
     private destroyEvents = false;
 
-    private setPropertiesBound: {(): any};
-    private setEventsBound: {(): any};
-    private setAttributesBound: {(): any};
+    private setPropertiesBound: {(): void};
+    private setEventsBound: {(): void};
+    private setAttributesBound: {(): void};
 
     private propertiesScope: ObservableScopeAsync<{[name: string]: any}>;
     private attributesScope: ObservableScopeAsync<{[name: string]: string}>;
     private eventsScope: ObservableScopeAsync<{[name: string]: (...args: Array<any>) => void}>;
+
+    protected get NodeDef() {
+        return this.nodeDef;
+    }
 
     constructor(nodeDef: NodeDefinition, injector = Injector.Current()) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace), injector);
@@ -59,7 +63,9 @@ export class BoundNode extends NodeRef {
                 this.destroyProperties = true;
                 this.propertiesScope = new ObservableScopeAsync(this.nodeDef.props);
             }
-            this.setPropertiesBound = this.nodeDef.immediate ? this.SetProperties.bind(this) : this.ScheduleSetProperties.bind(this);
+            this.setPropertiesBound = this.nodeDef.immediate ? 
+                (scope: ObservableScopeAsync<{ [name: string]: any }>) => this.SetProperties(scope.Value) : 
+                this.ScheduleSetProperties.bind(this);
             this.propertiesScope.Watch(this.setPropertiesBound);
             this.SetProperties(this.propertiesScope.Value);
         }
@@ -70,7 +76,9 @@ export class BoundNode extends NodeRef {
                 this.destroyAttributes = true;
                 this.attributesScope = new ObservableScopeAsync(this.nodeDef.attrs);
             }
-            this.setAttributesBound = this.nodeDef.immediate ? this.SetAttributes.bind(this) : this.ScheduleSetAttributes.bind(this);
+            this.setAttributesBound = this.nodeDef.immediate ? 
+                (scope: ObservableScopeAsync<{ [name: string]: string }>) => this.SetAttributes(scope.Value) : 
+                this.ScheduleSetAttributes.bind(this);
             this.attributesScope.Watch(this.setAttributesBound);
             this.SetAttributes(this.attributesScope.Value);
         }
@@ -81,7 +89,9 @@ export class BoundNode extends NodeRef {
                 this.destroyEvents = true;
                 this.eventsScope = new ObservableScopeAsync(this.nodeDef.on);
             }
-            this.setEventsBound = this.nodeDef.immediate ? this.SetEvents.bind(this) : this.ScheduleSetEvents.bind(this);
+            this.setEventsBound = this.nodeDef.immediate ? 
+                (scope: ObservableScopeAsync<NodeRefEvents>) => this.SetEvents(scope.Value) : 
+                this.ScheduleSetEvents.bind(this);
             this.eventsScope.Watch(this.setEventsBound);
             this.SetEvents(this.eventsScope.Value);
         }
