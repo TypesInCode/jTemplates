@@ -4,8 +4,7 @@ import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
-import { Thread, Schedule } from "../Utils/thread";
-// import { WorkSchedule } from "../Utils/workSchedule";
+import { Thread } from "../Utils/thread";
 
 export type ComponentNodeEvents<E = void> = {
     [P in keyof E]: {(data?: E[P]): void};
@@ -30,16 +29,10 @@ export interface ComponentNodeFunctionParam<D = void, T = void, E = void> {
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private component: Component<D, T, E>;
     private componentEvents: {[name: string]: {(...args: Array<any>): void}};
-    private injector: Injector;
 
     constructor(nodeDef: ComponentNodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
-        super(nodeDef);
-        this.injector = new Injector();
-        this.component = new constructor(nodeDef.data, templates, this, this.injector);
-    }
-
-    public SetEvents() {
-        this.componentEvents = this.eventsScope.Value;
+        super(nodeDef, new Injector());
+        this.component = new constructor(nodeDef.data, templates, this, this.Injector);
     }
 
     public Fire<P extends keyof E>(event: P, data?: E[P]) {
@@ -55,6 +48,10 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     public Destroy() {
         super.Destroy();
         this.component.Destroy();
+    }
+
+    protected SetEvents(events: { [name: string]: (...args: any[]) => void; }) {
+        this.componentEvents = events;
     }
 
     private SetChildren() {
@@ -74,7 +71,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
                     return;
 
                 var preNodes: Array<NodeRef> = null;
-                Injector.Scope(this.injector, () => 
+                Injector.Scope(this.Injector, () => 
                     preNodes = PreReqTemplate.Get(this.component)
                 );
 
@@ -109,7 +106,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
                 return;
 
             var nodes: NodeRef[] = null;
-            Injector.Scope(this.injector, () => {
+            Injector.Scope(this.Injector, () => {
                 nodes = this.component.Template() as NodeRef[];
             });
 

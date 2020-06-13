@@ -28,7 +28,6 @@ export class ElementNode<T> extends BoundNode {
     private nodesMap: Map<any, List<Array<NodeRef>>>;
     private dataScope: ObservableScopeAsync<any>;
     private arrayScope: ObservableScope<Array<T>>;
-    private injector: Injector;
     private setData: boolean;
 
     constructor(nodeDef: ElementNodeDefinition<T>) {
@@ -51,7 +50,6 @@ export class ElementNode<T> extends BoundNode {
             return value;
         });
         
-        this.injector = Injector.Current();
         this.arrayScope.Watch(this.ScheduleSetData.bind(this));
     }
 
@@ -142,7 +140,7 @@ export class ElementNode<T> extends BoundNode {
 
     private CreateNodeArray(value: any) {
         var nodes: NodeRef[] = null;
-        Injector.Scope(this.injector, () => {
+        Injector.Scope(this.Injector, () => {
             var newNodes = this.childrenFunc(value);
             if(typeof newNodes === "string")
                 newNodes = [BoundNode.Create("text", null, { props: () => ({ nodeValue: this.childrenFunc(value) }) })];

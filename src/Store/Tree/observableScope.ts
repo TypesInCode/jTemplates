@@ -9,6 +9,7 @@ export class ObservableScope<T> {
 
     private emitters: Set<Emitter>;
     private setCallback: () => void;
+    private watchMap: Map<{(scope: ObservableScope<T>): void}, {(): void}>;
 
     public get Emitter() {
         return this.emitter;
@@ -40,11 +41,22 @@ export class ObservableScope<T> {
     }
 
     public Watch(callback: {(scope: ObservableScope<T>): void}) {
-        this.emitter.On("set", () => callback(this));
+        this.watchMap = this.watchMap || new Map();
+        var onSet = () => callback(this);
+        this.watchMap.set(callback, onSet);
+        this.emitter.On("set", onSet);
+    }
+
+    public Unwatch(callback: {(scope: ObservableScope<T>): void}) {
+        if(!this.watchMap)
+            return;
+
+        this.emitter.Remove("set", this.watchMap.get(callback));
     }
 
     public Destroy() {
         this.emitters.forEach(e => this.RemoveListenersFrom(e));
+        this.watchMap && this.watchMap.clear();
         this.emitters.clear();
         this.emitter.Clear();
     }
@@ -64,12 +76,19 @@ export class ObservableScope<T> {
     }
 
     protected UpdateEmitters(newEmitters: Set<Emitter>) {
-        newEmitters.forEach(e => {
-            this.emitters.delete(e);
-            this.AddListenersTo(e);
+        var diff = newEmitters.size !== this.emitters.size;
+        this.emitters.forEach(e => {
+            if(!newEmitters.has(e)) {
+                this.RemoveListenersFrom(e);
+                diff = true;
+            }
         });
 
-        this.emitters.forEach(e => this.RemoveListenersFrom(e));
+        if(diff)
+            newEmitters.forEach(e => 
+                this.AddListenersTo(e)
+            );
+
         this.emitters = newEmitters;
     }
 

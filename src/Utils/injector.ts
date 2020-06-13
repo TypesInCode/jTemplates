@@ -8,7 +8,7 @@ export class Injector {
         this.typeMap = new Map();
     }
 
-    public Get<T>(type: { new(...args: Array<any>): T }): T {
+    public Get<T>(type: any): T {
         if(this.typeMap.size === 0)
             return this.parent && this.parent.Get(type);
         
@@ -20,7 +20,7 @@ export class Injector {
         return ret;
     }
 
-    public Set<T>(type: { new(...args: Array<any>): T }, instance: T) {
+    public Set<T>(type: any, instance: T) {
         this.typeMap.set(type, instance);
     }
 

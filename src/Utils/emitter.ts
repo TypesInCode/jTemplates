@@ -5,11 +5,11 @@ export class Emitter {
     public On(event: string, callback: {(): void}) {
         var callbacks = this.events.get(event);
         if(!callbacks) {
-            callbacks = new Set();
+            callbacks = new Set([callback]);
             this.events.set(event, callbacks);
         }
-
-        callbacks.add(callback);
+        else
+            callbacks.add(callback);
     }
 
     public Emit(event: string) {

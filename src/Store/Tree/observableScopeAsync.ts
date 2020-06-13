@@ -9,8 +9,6 @@ export class ObservableScopeAsync<T> extends ObservableScope<T> {
         super(getFunction as {(): T});
 
         this.async = this.getFunction && (this.getFunction as any)[Symbol.toStringTag] === "AsyncFunction";
-        if(this.async)
-            this.asyncQueue = new AsyncQueue();
     }
 
     public Destroy() {
@@ -30,24 +28,11 @@ export class ObservableScopeAsync<T> extends ObservableScope<T> {
 
         this.UpdateEmitters(emitters);
 
-        if(this.value === undefined && 
-            !this.async && 
-            Promise.resolve(value) === value as any) {
-            this.async = true;
-            this.asyncQueue = new AsyncQueue();
-        }
-
-        if(this.async) {
-            this.asyncQueue.Stop();
-            this.asyncQueue.Add(next =>
-                Promise.resolve(value).then(val => next(val))
-            );
-            this.asyncQueue.OnComplete(val => {
+        if(this.async)
+            Promise.resolve(value).then(val => {
                 this.value = val;
                 this.emitter.Emit("set");
             });
-            this.asyncQueue.Start();
-        }
         else
             this.value = value;
     }
