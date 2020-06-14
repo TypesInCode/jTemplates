@@ -27,6 +27,10 @@ export class NodeRef {
         this.injector = injector;
     }
 
+    public Init() {
+        
+    }
+
     public AddChild(nodeRef: NodeRef) {
         nodeRef.parent = this;
         this.childNodes.add(nodeRef);
@@ -48,10 +52,6 @@ export class NodeRef {
             NodeConfig.removeChild(this.Node, nodeRef.Node);
             nodeRef.parent = null;
         }
-    }
-
-    public Init() {
-
     }
 
     public Detach() {

@@ -28,7 +28,7 @@ export class ObservableScopeAsync<T> extends ObservableScope<T> {
 
         this.UpdateEmitters(emitters);
 
-        if(this.async)
+        if(this.async && value)
             Promise.resolve(value).then(val => {
                 this.value = val;
                 this.emitter.Emit("set");

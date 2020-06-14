@@ -1,27 +1,11 @@
-import { BoundNode, FunctionOr, NodeDefinition, NodeRefEvents } from "./boundNode";
-import { ObservableScope } from "../Store/Tree/observableScope";
+import { BoundNode } from "./boundNode";
 import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
-import { Thread, Schedule } from "../Utils/thread";
-
-export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
-    data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
-    children?: {(data?: T): string | NodeRef | NodeRef[]};
-}
-
-export interface ElementNodeFunctionParam<T> {
-    immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
-    data?: {(): T | Array<T> | Promise<T> | Promise<Array<T>>};
-}
-
-export type ElementChildrenFunction<T> = {(data?: T): string | NodeRef | NodeRef[]};
-export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): NodeRef}
+import { Schedule, Thread } from "../Utils/thread";
+import { ElementNodeDefinition, ElementNodeFunctionParam, ElementChildrenFunction } from "./elementNode.types";
 
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};
@@ -58,7 +42,7 @@ export class ElementNode<T> extends BoundNode {
             this.dataScope.Watch(this.dataBound);
         }
 
-        this.SetData();
+        this.SetData(true);
     }
 
     public Destroy() {
@@ -85,7 +69,7 @@ export class ElementNode<T> extends BoundNode {
         });
     }
 
-    private SetData() {
+    private SetData(init = false) {
         var newNodesMap = new Map();
         var values: Array<T> = this.childrenFunc ? 
             this.dataScope ? 
@@ -128,30 +112,39 @@ export class ElementNode<T> extends BoundNode {
             return nodes || null;
         });
 
-        var ind = 0;
-        var detachNodes: Array<List<NodeRef[]>> = new Array(this.nodesMap.size);
-        this.nodesMap.forEach(nodeArrayList => {
-            var destroyNodes = detachNodes[ind++] = nodeArrayList;
-            destroyNodes.ForEach(nodes => {
-                for(var x=0; x<nodes.length; x++)
-                    nodes[x].Destroy();
+        var detachNodes: Array<List<NodeRef[]>>;
+        if(!init) {
+            var ind = 0;
+            detachNodes = new Array(this.nodesMap.size);
+            this.nodesMap.forEach(nodeArrayList => {
+                var destroyNodes = detachNodes[ind++] = nodeArrayList;
+                destroyNodes.ForEach(nodes => {
+                    for(var x=0; x<nodes.length; x++)
+                        nodes[x].Destroy();
+                });
             });
-        });
+        }
 
         this.nodesMap.clear();
         this.nodesMap = newNodesMap;
         Thread(() => {
-            NodeConfig.scheduleUpdate(() => {
-                if(this.Destroyed)
-                    return;
-                
-                this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
-            });
+            if(this.Destroyed)
+                return;
+
+            if(init)
+                this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);                
+            else
+                NodeConfig.scheduleUpdate(() => {
+                    if(this.Destroyed)
+                        return;
+                    
+                    this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
+                });
         });
     }
 
     private DetachAndAddNodes(detachNodes: Array<List<NodeRef[]>>, newNodes: Array<Array<NodeRef>>) {
-        for(var x=0; x<detachNodes.length; x++)
+        for(var x=0; detachNodes && x<detachNodes.length; x++)
             detachNodes[x].ForEach(nodes => {
                 for(var x=0; x<nodes.length; x++)
                     nodes[x].Detach();

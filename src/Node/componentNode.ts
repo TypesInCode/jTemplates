@@ -1,30 +1,11 @@
-import { BoundNode, NodeDefinition, FunctionOr } from "./boundNode";
+import { BoundNode } from "./boundNode";
 import { NodeRef } from "./nodeRef";
 import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
-import { Thread } from "../Utils/thread";
-
-export type ComponentNodeEvents<E = void> = {
-    [P in keyof E]: {(data?: E[P]): void};
-}
-
-interface ComponentNodeDefinition<D = void, E = void> extends NodeDefinition<D> {
-    on: ComponentNodeEvents<E>;
-    static?: D;
-    data?: {(): D | Promise<D>};
-}
-
-export interface ComponentNodeFunctionParam<D = void, T = void, E = void> {
-    immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<ComponentNodeEvents<E>>;
-    static?: D | Array<D>;
-    data?: {(): D | Promise<D> };
-    templates?: T;
-}
+import { Thread, Schedule, After } from "../Utils/thread";
+import { ComponentNodeDefinition, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.types";
 
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private component: Component<D, T, E>;
@@ -57,71 +38,84 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private SetChildren() {
         if(PreReq.Has(this.component)) {
             this.AddPreReqTemplate().then(() => 
-                this.AddTemplate()
+                this.AddTemplate(false)
             )
         }
         else
-            this.AddTemplate();
+            this.AddTemplate(true);
     }
 
     private AddPreReqTemplate() {
         return new Promise(resolve => {
+            var preNodes: Array<NodeRef> = null;
+            Schedule(() =>
+                Injector.Scope(this.Injector, () => 
+                    preNodes = PreReqTemplate.Get(this.component)
+                )
+            );
+
             Thread(() => {
                 if(this.Destroyed)
                     return;
+                
+                for(var x=0; x<preNodes.length; x++)
+                    this.AddChild(preNodes[x]);
 
-                var preNodes: Array<NodeRef> = null;
-                Injector.Scope(this.Injector, () => 
-                    preNodes = PreReqTemplate.Get(this.component)
-                );
+                PreReq.All(this.component).then(() => {
+                    NodeConfig.scheduleUpdate(() => {
+                        if(this.Destroyed)
+                            return;
 
-                NodeConfig.scheduleUpdate(() => {
-                    if(this.Destroyed)
-                        return;
-                    
-                    for(var x=0; x<preNodes.length; x++)
-                        this.AddChild(preNodes[x]);
+                        for(var x=0; x<preNodes.length; x++) {
+                            preNodes[x].Destroy();
+                            preNodes[x].Detach();
+                        }
 
-                    PreReq.All(this.component).then(() => {
-                        NodeConfig.scheduleUpdate(() => {
-                            if(this.Destroyed)
-                                return;
-
-                            for(var x=0; x<preNodes.length; x++) {
-                                preNodes[x].Destroy();
-                                preNodes[x].Detach();
-                            }
-
-                            resolve();
-                        });
+                        resolve();
                     });
                 });
             });
         });
     }
 
-    private AddTemplate() {
+    private AddTemplate(init: boolean) {
         Thread(() => {
             if(this.Destroyed)
                 return;
 
             var nodes: NodeRef[] = null;
-            Injector.Scope(this.Injector, () => {
-                nodes = this.component.Template() as NodeRef[];
+            Schedule(() => {
+                Injector.Scope(this.Injector, () => {
+                    nodes = this.component.Template() as NodeRef[];
+                });
+
+                if(!Array.isArray(nodes))
+                    nodes = [nodes];
             });
 
-            if(!Array.isArray(nodes))
-                nodes = [nodes];
-
-            NodeConfig.scheduleUpdate(() => {
+            Thread(() => {
                 if(this.Destroyed)
                     return;
-                
-                for(var x=0; x<nodes.length; x++)
-                    this.AddChild(nodes[x]);
 
-                setTimeout(() => this.component.Bound(), 0);
+                if(init)
+                    for(var x=0; x<nodes.length; x++)
+                        this.AddChild(nodes[x])
+                else
+                    NodeConfig.scheduleUpdate(() => {
+                        if(this.Destroyed)
+                            return;
+
+                        for(var x=0; x<nodes.length; x++)
+                            this.AddChild(nodes[x]);
+                    });
             });
+
+            if(this.component.Bound !== Component.prototype.Bound)
+                After(() => 
+                    NodeConfig.scheduleUpdate(() =>
+                        setTimeout(() => this.component.Bound(), 0)
+                    )
+                );
         });
     }
 
@@ -129,7 +123,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
 export namespace ComponentNode {
 
-    export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>) {
+    export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>): ComponentNodeFunction<D, T, E> {
         return (nodeDef: ComponentNodeFunctionParam<D, T, E>, templates?: T) => {
             var def = {
                 type: type,
@@ -145,7 +139,7 @@ export namespace ComponentNode {
             var comp = new ComponentNode<D, T, E>(def, constructor, templates);
             comp.Init();
             return comp;
-        }
+        };
     }
 
 }

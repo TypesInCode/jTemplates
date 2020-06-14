@@ -2,12 +2,37 @@ import { List, INode } from "../Utils/list";
 
 interface IThreadWorkerContext {
     running: boolean;
+    async: boolean;
     workEndNode: INode<{(): void}>;
     workList: List<{(): void}>;
     DoWork: {(): void};
 }
 
 const workTimeMs = 16;
+const setTimeoutQueue: List<{(): void}> = new List();
+var timeoutRunning = false;
+function ExecTimeouts() {
+    var startTime = Date.now();
+    var callback: {(): void};
+    while((Date.now() - startTime) < workTimeMs && (callback = setTimeoutQueue.Pop()))
+        callback();
+
+    if(setTimeoutQueue.Size === 0)
+        timeoutRunning = false;
+    else
+        setTimeout(ExecTimeouts, 0);
+}
+
+function SetTimeout(callback: {(): void}) {
+    setTimeoutQueue.Add(callback);
+
+    if(timeoutRunning)
+        return;
+
+    timeoutRunning = true;
+    setTimeout(ExecTimeouts, 0);
+}
+
 var threadWorkerContext: IThreadWorkerContext = null;
 
 function Invoke(ctx: IThreadWorkerContext, callback: {(): void}) {
@@ -17,7 +42,7 @@ function Invoke(ctx: IThreadWorkerContext, callback: {(): void}) {
     ctx.workEndNode = parent;
 }
 
-function DoWork(ctx: IThreadWorkerContext, startTime = Date.now()) {    
+function DoWork(ctx: IThreadWorkerContext, startTime = Date.now()) {
     var parentContext = threadWorkerContext;
     threadWorkerContext = ctx;
     
@@ -28,7 +53,7 @@ function DoWork(ctx: IThreadWorkerContext, startTime = Date.now()) {
     if(ctx.workList.Size === 0)
         ctx.running = false;
     else
-        setTimeout(ctx.DoWork, 0);
+        SetTimeout(ctx.DoWork);
 
     threadWorkerContext = parentContext;
 }
@@ -36,6 +61,7 @@ function DoWork(ctx: IThreadWorkerContext, startTime = Date.now()) {
 function CreateContext() {
     var ctx: IThreadWorkerContext = {
         running: true,
+        async: false,
         workEndNode: null,
         workList: new List(),
         DoWork: null
@@ -45,14 +71,22 @@ function CreateContext() {
 }
 
 var newThread = false;
-function ScheduleContext(callback: {(): void}) {
+function ScheduleContext(callback: {(): void}, async = false) {
     if(newThread && !threadWorkerContext)
         CreateContext();
 
     if(!threadWorkerContext)
         return callback();
     
+    threadWorkerContext.async = threadWorkerContext.async || async;
     threadWorkerContext.workList.AddBefore(threadWorkerContext.workEndNode, callback);
+}
+
+function ScheduleAfterContext(callback: {(): void}) {
+    if(!threadWorkerContext || !threadWorkerContext.running)
+        return callback();
+
+    threadWorkerContext.workList.Add(callback);
 }
 
 function NewThread(callback: {(): void}) {
@@ -63,20 +97,28 @@ function NewThread(callback: {(): void}) {
     callback();
     newThread = false;
     
-    if(threadWorkerContext)
-        DoWork(threadWorkerContext, startTime);
+    if(threadWorkerContext) {
+        if(threadWorkerContext.async)
+            SetTimeout(threadWorkerContext.DoWork);
+        else
+            DoWork(threadWorkerContext, startTime);
+    }
 
     threadWorkerContext = parent;
 }
 
 export function Schedule(callback: () => void) {
-    ScheduleContext(callback);
+    ScheduleContext(callback, true);
 }
 
 export function Callback<A = void, B = void, C = void, D = void>(callback: (a: A, b: B, c: C, d: D) => void) {
     return (a?: A, b?: B, c?: C, d?: D) => {        
-        ScheduleContext(() => callback(a, b, c, d));
+        ScheduleContext(() => callback(a, b, c, d), true);
     }
+}
+
+export function After(callback: () => void) {
+    ScheduleAfterContext(callback);
 }
 
 export function Thread(callback: {(): void}, forceNew = false) {

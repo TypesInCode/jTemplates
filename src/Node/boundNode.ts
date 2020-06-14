@@ -2,28 +2,7 @@ import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 import { Injector } from "../Utils/injector";
-
-export type FunctionOr<T> = {(...args: Array<any>): T | Promise<T> } | T;
-
-export type NodeRefEvents = {
-    [name: string]: {(...args: Array<any>): void}
-}
-
-export interface NodeDefinition<T = any, E = any> {
-    type: any;
-    namespace: string;
-    immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
-}
-
-export interface BoundNodeFunctionParam<T> {
-    immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
-}
+import { NodeDefinition, NodeRefEvents, BoundNodeFunctionParam } from "./boundNode.types";
 
 export class BoundNode extends NodeRef {
     private nodeDef: NodeDefinition;
@@ -56,7 +35,6 @@ export class BoundNode extends NodeRef {
 
     public Init() {
         super.Init();
-
         if(this.nodeDef.props) {
             this.propertiesScope = this.Injector.Get(this.nodeDef.props);
             if(!this.propertiesScope) {
