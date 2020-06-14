@@ -132,7 +132,7 @@ class RootComponent extends Component {
                 option({ props: { value: val } }, () => val || "None")
             ),
           	span({}, () => ` ${this.visibleData.length}`),
-            table({ data: () => [null, ...this.sortedData] }, (row) => {
+            table({ data: async () => await [null, ...this.sortedData] }, (row: IData) => {
                 if(!row)
                     return tr({ 
                       	data: this.Columns() 
