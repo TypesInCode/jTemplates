@@ -47,31 +47,33 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 
     private AddPreReqTemplate() {
         return new Promise(resolve => {
-            var preNodes: Array<NodeRef> = null;
-            Schedule(() =>
-                Injector.Scope(this.Injector, () => 
-                    preNodes = PreReqTemplate.Get(this.component)
-                )
-            );
-
             Thread(() => {
-                if(this.Destroyed)
-                    return;
-                
-                for(var x=0; x<preNodes.length; x++)
-                    this.AddChild(preNodes[x]);
+                var preNodes: Array<NodeRef> = null;
+                Schedule(() =>
+                    Injector.Scope(this.Injector, () => 
+                        preNodes = PreReqTemplate.Get(this.component)
+                    )
+                );
 
-                PreReq.All(this.component).then(() => {
-                    NodeConfig.scheduleUpdate(() => {
-                        if(this.Destroyed)
-                            return;
+                Thread(() => {
+                    if(this.Destroyed)
+                        return;
+                    
+                    for(var x=0; x<preNodes.length; x++)
+                        this.AddChild(preNodes[x]);
 
-                        for(var x=0; x<preNodes.length; x++) {
-                            preNodes[x].Destroy();
-                            preNodes[x].Detach();
-                        }
+                    PreReq.All(this.component).then(() => {
+                        NodeConfig.scheduleUpdate(() => {
+                            if(this.Destroyed)
+                                return;
 
-                        resolve();
+                            for(var x=0; x<preNodes.length; x++) {
+                                preNodes[x].Destroy();
+                                preNodes[x].Detach();
+                            }
+
+                            resolve();
+                        });
                     });
                 });
             });

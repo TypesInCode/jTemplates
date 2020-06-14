@@ -46,8 +46,9 @@ function DoWork(ctx: IThreadWorkerContext, startTime = Date.now()) {
     var parentContext = threadWorkerContext;
     threadWorkerContext = ctx;
     
+    var async = threadWorkerContext.async;
     var callback: {(): void};
-    while((Date.now() - startTime) < workTimeMs && (callback = ctx.workList.Pop()))
+    while(async === threadWorkerContext.async && (Date.now() - startTime) < workTimeMs && (callback = ctx.workList.Pop()))
         Invoke(ctx, callback);
 
     if(ctx.workList.Size === 0)

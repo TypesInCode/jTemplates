@@ -70,76 +70,78 @@ export class ElementNode<T> extends BoundNode {
     }
 
     private SetData(init = false) {
-        var newNodesMap = new Map();
-        var values: Array<T> = this.childrenFunc ? 
-            this.dataScope ? 
-                this.dataScope.Value : 
-                [true] : [];
-        
-        if(!values)
-            values = [];
-        else if(!Array.isArray(values))
-            values = [values];
-        
-        var newNodesArrays = values.map((value, index) => {
-            var nodeArrayList = this.nodesMap.get(value);
-            var nodes = nodeArrayList && nodeArrayList.Remove();
-            if(nodeArrayList && nodeArrayList.Size === 0)
-                this.nodesMap.delete(value);
-
-            var newNodeArrayList = newNodesMap.get(value);
-            if(!newNodeArrayList) {
-                newNodeArrayList = new List<NodeRef[]>();
-                newNodesMap.set(value, newNodeArrayList);
-            }
-
-            if(nodes)
-                newNodeArrayList.Push(nodes);
-            else {
-                Schedule(() => {
-                    if(this.Destroyed || newNodesMap.size === 0)
-                        return;
-
-                    var newNodes = this.CreateNodeArray(value);
-                    newNodesMap.get(value).Push(newNodes);
-                    if(newNodesArrays)
-                        newNodesArrays[index] = newNodes;
-                    else
-                        nodes = newNodes;
-                });
-            }
-
-            return nodes || null;
-        });
-
-        var detachNodes: Array<List<NodeRef[]>>;
-        if(!init) {
-            var ind = 0;
-            detachNodes = new Array(this.nodesMap.size);
-            this.nodesMap.forEach(nodeArrayList => {
-                var destroyNodes = detachNodes[ind++] = nodeArrayList;
-                destroyNodes.ForEach(nodes => {
-                    for(var x=0; x<nodes.length; x++)
-                        nodes[x].Destroy();
-                });
-            });
-        }
-
-        this.nodesMap.clear();
-        this.nodesMap = newNodesMap;
         Thread(() => {
-            if(this.Destroyed)
-                return;
+            var newNodesMap = new Map();
+            var values: Array<T> = this.childrenFunc ? 
+                this.dataScope ? 
+                    this.dataScope.Value : 
+                    [true] : [];
+            
+            if(!values)
+                values = [];
+            else if(!Array.isArray(values))
+                values = [values];
+            
+            var newNodesArrays = values.map((value, index) => {
+                var nodeArrayList = this.nodesMap.get(value);
+                var nodes = nodeArrayList && nodeArrayList.Remove();
+                if(nodeArrayList && nodeArrayList.Size === 0)
+                    this.nodesMap.delete(value);
 
-            if(init)
-                this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);                
-            else
-                NodeConfig.scheduleUpdate(() => {
-                    if(this.Destroyed)
-                        return;
-                    
-                    this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
+                var newNodeArrayList = newNodesMap.get(value);
+                if(!newNodeArrayList) {
+                    newNodeArrayList = new List<NodeRef[]>();
+                    newNodesMap.set(value, newNodeArrayList);
+                }
+
+                if(nodes)
+                    newNodeArrayList.Push(nodes);
+                else {
+                    Schedule(() => {
+                        if(this.Destroyed || newNodesMap.size === 0)
+                            return;
+
+                        var newNodes = this.CreateNodeArray(value);
+                        newNodesMap.get(value).Push(newNodes);
+                        if(newNodesArrays)
+                            newNodesArrays[index] = newNodes;
+                        else
+                            nodes = newNodes;
+                    });
+                }
+
+                return nodes || null;
+            });
+
+            var detachNodes: Array<List<NodeRef[]>>;
+            if(!init) {
+                var ind = 0;
+                detachNodes = new Array(this.nodesMap.size);
+                this.nodesMap.forEach(nodeArrayList => {
+                    var destroyNodes = detachNodes[ind++] = nodeArrayList;
+                    destroyNodes.ForEach(nodes => {
+                        for(var x=0; x<nodes.length; x++)
+                            nodes[x].Destroy();
+                    });
                 });
+            }
+
+            this.nodesMap.clear();
+            this.nodesMap = newNodesMap;
+            Thread(() => {
+                if(this.Destroyed)
+                    return;
+
+                if(init)
+                    this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);                
+                else
+                    NodeConfig.scheduleUpdate(() => {
+                        if(this.Destroyed)
+                            return;
+                        
+                        this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
+                    });
+            });
         });
     }
 
