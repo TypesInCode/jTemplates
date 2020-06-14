@@ -86,7 +86,7 @@ function CreateArrayProxy(node: ObservableNode) {
                         return node.EnsureChild(prop).Proxy;
 
                     var func = obj[prop];
-                    return func.bind(node.ProxyArray);
+                    return func && func.bind(node.ProxyArray);
             }
         },
         ownKeys: () => {
