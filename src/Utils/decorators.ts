@@ -1,8 +1,9 @@
 import { Store as StoreSync } from "../Store/Store/store";
-import { ObservableScope } from "../Store/Tree/observableScope";
 import { Component } from "../Node/component";
 import { NodeRef } from "..";
 import { StoreAsync } from "../Store";
+import { ObservableScope } from "../Store/Tree/observableScope";
+import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 
 export function State(): any {
     return StateDecorator;
@@ -67,7 +68,7 @@ function SharedScopeDecorator<T extends Component<any, any, any> & Record<K, {(.
             if(!this[funcKey]) {
                 var func = (descriptor.value as {(...args: Array<any>): {(): any}}).apply(this, args);
                 this[funcKey] = func;
-                var scope = new ObservableScope(func);
+                var scope = new ObservableScopeAsync(func);
                 (this as Component).Injector.Set(func, scope);
 
                 var scopeKey = `SharedScopeDecorator_${propertyKey}_${argsKey}`;
