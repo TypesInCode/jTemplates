@@ -92,6 +92,7 @@ export function DiffTreeScope(worker?: boolean) {
         public DiffPath(path: string, value: any) {
             var breakupMap = this.GetBreakUpMap(path, value);
             var resp = {
+                newPaths: [],
                 changedPaths: [],
                 deletedPaths: []
             } as IDiffResponse;
@@ -108,19 +109,23 @@ export function DiffTreeScope(worker?: boolean) {
             });
 
             resp.changedPaths.forEach(val => {
-                var parts = val.path.split(".");
-                if(parts.length === 1)
-                    this.rootStateMap.set(parts[0], val.value);
-                else {
-                    var curr = this.rootStateMap.get(parts[0]);
-                    for(var x=1; x<parts.length - 1; x++)
-                        curr = curr[parts[x]];
-
-                    curr[parts[parts.length - 1]] = val.value;
-                }                
+                this.SetPathValue(val.path, val.value);                
             });
 
             return resp;
+        }
+
+        private SetPathValue(path: string, value: any) {
+            var parts = path.split(".");
+            if(parts.length === 1)
+                this.rootStateMap.set(parts[0], value);
+            else {
+                var curr = this.rootStateMap.get(parts[0]);
+                for(var x=1; x<parts.length - 1; x++)
+                    curr = curr[parts[x]];
+
+                curr[parts[parts.length - 1]] = value;
+            }  
         }
 
         private GetBreakUpMap(path: string, value: any) {
@@ -134,16 +139,17 @@ export function DiffTreeScope(worker?: boolean) {
             var value = prop ? parent[prop] : parent;
             var isValue = IsValue(value);
 
-            var key = !isValue && this.keyFunc ? this.keyFunc(value) : null;
-            var keyRef = key && DiffTree.GetKeyRef(key);
-
-            if(!map)
-                map = new Map([[path, key && key !== path ? keyRef : value ]]);
+            if(!map && isValue)
+                return new Map([[path, value]]);
+            
+            map = map || new Map();
 
             if(isValue)
                 return map;
 
+            var key = this.keyFunc ? this.keyFunc(value) : null;
             if(key && key !== path) {
+                var keyRef = key && DiffTree.GetKeyRef(key);
                 if(prop)
                     parent[prop] = keyRef;
 
@@ -157,6 +163,9 @@ export function DiffTreeScope(worker?: boolean) {
                 }
             }
 
+            if(!prop)
+                map.set(path, value);
+            
             return map;
         }
 
@@ -168,6 +177,7 @@ export function DiffTreeScope(worker?: boolean) {
                 resp.changedPaths.push(path);
                 return;
             } */
+
             if(!oldValue && newValue) {
                 resp.changedPaths.push({
                     path: path,
@@ -198,10 +208,7 @@ export function DiffTreeScope(worker?: boolean) {
             for(var x=0; x<oldKeys.length; x++) {
                 var key = oldKeys[x];
                 var childPath = [path, key].join(".");
-                var deletedKey = !newKeys.has(key);
-                if(!deletedKey)
-                    newKeys.delete(key);
-                
+                var deletedKey = !newKeys.delete(key);
                 pathChanged = pathChanged || deletedKey;
                 if(deletedKey)
                     resp.deletedPaths.push(childPath);
