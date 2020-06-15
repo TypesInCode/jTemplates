@@ -148,12 +148,11 @@ export function DiffTreeScope(worker?: boolean) {
                 return map;
 
             var key = this.keyFunc ? this.keyFunc(value) : null;
+            var keyRef = key && DiffTree.GetKeyRef(key);
             if(key && key !== path) {
-                var keyRef = key && DiffTree.GetKeyRef(key);
                 if(prop)
                     parent[prop] = keyRef;
 
-                map.set(key, value);
                 this.BreakUpValue(key, value, null, map);
             }
             else {
@@ -164,20 +163,12 @@ export function DiffTreeScope(worker?: boolean) {
             }
 
             if(!prop)
-                map.set(path, value);
+                map.set(path, key === path ? value : keyRef || value);
             
             return map;
         }
 
         private DiffValues(path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
-            // if(oldValue === undefined)
-                // return;
-
-            /* if(oldValue === null && newValue !== null) {
-                resp.changedPaths.push(path);
-                return;
-            } */
-
             if(!oldValue && newValue) {
                 resp.changedPaths.push({
                     path: path,
@@ -216,7 +207,6 @@ export function DiffTreeScope(worker?: boolean) {
                     this.DiffValues(childPath, newValue && newValue[key], oldValue[key], resp);
             }
 
-            // if(oldValue !== undefined && pathChanged || newKeys.size > 0)
             if(pathChanged || newKeys.size > 0)
                 resp.changedPaths.push({
                     path: path,
