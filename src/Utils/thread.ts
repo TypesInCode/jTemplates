@@ -116,3 +116,12 @@ export function Thread(callback: {(): void}, forceNew = false) {
     else
         NewThread(callback);
 }
+
+export function ThreadAsync(callback: {(): void}, forceNew = false) {
+    return new Promise(resolve => 
+        Thread(() => {
+            callback();
+            Thread(resolve);
+        }, forceNew)
+    );
+}
