@@ -32,7 +32,19 @@ export class ObservableTree {
     }
 
     public GetNode(path: string): ObservableNode {
-        return this.GetObservableNode(path, true);
+        return path.split(".").reduce((pre: ObservableNode, curr: string, index) => {
+            if(index === 0) {
+                var ret = this.rootNodeMap.get(curr);
+                if(!ret) {
+                    ret = new ObservableNode(this, curr, null, this.valuePathResolver);
+                    this.rootNodeMap.set(curr, ret);
+                }
+
+                return ret;
+            }
+                
+            return pre.EnsureChild(curr);
+        }, null);
     }
 
     public Delete(path: string) {
@@ -51,25 +63,6 @@ export class ObservableTree {
             var node = this.GetNode(path);
             return func && func(node.Proxy) || node.Proxy;
         });
-    }
-
-    private GetObservableNode(path: string, ensure: boolean) {
-        return path.split(".").reduce((pre: ObservableNode, curr: string, index) => {            
-            if(index === 0) {
-                var ret = this.rootNodeMap.get(curr);
-                if(!ret && ensure) {
-                    ret = new ObservableNode(this, curr, null, this.valuePathResolver);
-                    this.rootNodeMap.set(curr, ret);
-                }
-
-                return ret || null;
-            }
-
-            if(!pre)
-                return null;
-                
-            return ensure ? pre.EnsureChild(curr) : pre.Children.get(curr);
-        }, null);
     }
 
     private WritePath(path: string, value: any) {
@@ -94,10 +87,7 @@ export class ObservableTree {
     }
 
     private UpdatePathNode(path: string) {
-        var node = this.GetObservableNode(path, false);
-        if(!node)
-            return;
-        
+        var node = this.GetNode(path);
         node.Update();
         if(node.Parent && node.Parent.Type === Type.Array)
             node.Parent.ArrayUpdate();
