@@ -65,9 +65,9 @@ function CreateContext() {
         async: false,
         workEndNode: null,
         workList: new List(),
-        DoWork: null
+        DoWork: () => DoWork(ctx)
     };
-    ctx.DoWork = () => DoWork(ctx);
+    
     return ctx;
 }
 
