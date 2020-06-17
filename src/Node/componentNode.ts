@@ -5,7 +5,7 @@ import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
-import { ComponentNodeDefinition, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.types";
+import { ComponentNodeDefinition, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.d";
 
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private component: Component<D, T, E>;
@@ -126,7 +126,7 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
 export namespace ComponentNode {
 
     export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>): ComponentNodeFunction<D, T, E> {
-        return (nodeDef: ComponentNodeFunctionParam<D, T, E>, templates?: T) => {
+        return (nodeDef: ComponentNodeFunctionParam<D, E>, templates?: T) => {
             var def = {
                 type: type,
                 namespace: namespace,
@@ -134,7 +134,6 @@ export namespace ComponentNode {
                 props: nodeDef.props,
                 attrs: nodeDef.attrs,
                 on: nodeDef.on,
-                static: nodeDef.static,
                 data: nodeDef.data
             } as ComponentNodeDefinition<D, E>;
 

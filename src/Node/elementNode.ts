@@ -5,7 +5,7 @@ import { Injector } from "../Utils/injector";
 import { List } from "../Utils/list";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 import { Schedule, Thread } from "../Utils/thread";
-import { ElementNodeDefinition, ElementNodeFunctionParam, ElementChildrenFunction } from "./elementNode.types";
+import { ElementNodeDefinition, ElementNodeFunctionParam, ElementChildrenFunction } from "./elementNode.d";
 
 export class ElementNode<T> extends BoundNode {
     private childrenFunc: {(data: T): string | NodeRef | NodeRef[]};

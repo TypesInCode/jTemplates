@@ -10,7 +10,7 @@
     "target": "ES2017",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    // "sourceMap": true,
+    "sourceMap": true,
     "types": [
       // add node as an option
       "node"

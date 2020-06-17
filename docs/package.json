@@ -5,6 +5,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "j-templates": "^4.0.74"
+    "j-templates": "^4.0.89"
   }
 }

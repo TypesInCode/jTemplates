@@ -2,7 +2,7 @@ import { NodeConfig } from "./nodeConfig";
 import { NodeRef } from "./nodeRef";
 import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 import { Injector } from "../Utils/injector";
-import { NodeDefinition, NodeRefEvents, BoundNodeFunctionParam } from "./boundNode.types";
+import { NodeDefinition, NodeRefEvents, BoundNodeFunctionParam } from "./boundNode.d";
 
 export class BoundNode extends NodeRef {
     private nodeDef: NodeDefinition;
