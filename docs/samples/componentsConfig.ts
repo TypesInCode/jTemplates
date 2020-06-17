@@ -10,7 +10,7 @@ interface ITemplates {
 }
 
 interface IEvents {
-    customClick: void
+    customClick: number
 }
 
 class ChildComponent extends Component<IData, ITemplates, IEvents>  {
@@ -19,7 +19,7 @@ class ChildComponent extends Component<IData, ITemplates, IEvents>  {
         return [
             div({}, () => this.Templates.header()),
             div({
-                on: { click: () => this.Fire("customClick") }
+                on: { click: () => this.Fire("customClick", Date.now()) }
             }, () => this.Data.text)
         ]
     }
@@ -34,7 +34,7 @@ class RootComponent extends Component {
         return childComponent({
             data: () => ({ text: "From Parent" }),
             on: {
-                customClick: () => alert("customClick fired")
+                customClick: (data) => alert("customClick " + data)
             }
         }, {
             header: () =>
