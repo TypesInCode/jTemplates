@@ -12,7 +12,7 @@ import { div } from 'j-templates/DOM';
 class HelloWorld extends Component {
 
     public Template() {
-        return div({ text: "Hello world" });
+        return div({}, () => "Hello world");
     }
 
 }
