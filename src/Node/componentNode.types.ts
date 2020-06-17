@@ -1,4 +1,4 @@
-import { FunctionOr, NodeDefinition } from "./boundNode.d";
+import { FunctionOr, NodeDefinition } from "./boundNode.types";
 import { NodeRef } from "..";
 
 export type ComponentNodeEvents<E = void> = {

@@ -1,4 +1,4 @@
-import { NodeDefinition, FunctionOr, NodeRefEvents } from "./boundNode.d";
+import { NodeDefinition, FunctionOr, NodeRefEvents } from "./boundNode.types";
 import { NodeRef } from "..";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {

@@ -1,6 +1,6 @@
 import { ElementNode } from "../Node/elementNode";
 import { NodeRef } from "../Node/nodeRef";
-import { ElementNodeFunctionParam } from "../Node/elementNode.d";
+import { ElementNodeFunctionParam } from "../Node/elementNode.types";
 
 const svgNs = "http://www.w3.org/2000/svg";
 

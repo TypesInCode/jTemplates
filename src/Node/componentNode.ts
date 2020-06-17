@@ -5,7 +5,7 @@ import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
-import { ComponentNodeDefinition, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.d";
+import { ComponentNodeDefinition, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.types";
 
 export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private component: Component<D, T, E>;

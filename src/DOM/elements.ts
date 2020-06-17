@@ -1,5 +1,5 @@
 import { ElementNode } from "../Node/elementNode";
-import { ElementNodeFunctionParam, ElementChildrenFunction } from "../Node/elementNode.d";
+import { ElementNodeFunctionParam, ElementChildrenFunction } from "../Node/elementNode.types";
 
 export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
     return ElementNode.Create<T>("div", null, nodeDef, children);
