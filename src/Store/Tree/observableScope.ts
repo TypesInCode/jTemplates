@@ -1,5 +1,4 @@
 import { Emitter } from "../../Utils/emitter";
-import { AsyncQueue } from "../../Utils/asyncQueue";
 
 export class ObservableScope<T> {
     protected getFunction: {(): T};
