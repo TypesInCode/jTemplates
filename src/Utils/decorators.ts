@@ -11,18 +11,21 @@ export function State(): any {
 
 function StateDecorator<T extends Component<any, any, any> & Record<K, StoreSync<any>>, K extends string>(target: T, propertyKey: K) {
 
-    DestroyDecorator(target, `StoreDecorator_${propertyKey}`);
+    const propKey = `StoreDecorator_${propertyKey}`;
+    DestroyDecorator(target, propKey);
     return {
         configurable: false,
         enumerable: true,
         get: function () {
-            var store = this[`StoreDecorator_${propertyKey}`];
+            var map = (this as T).DecoratorMap;
+            var store = map.get(propKey) as StoreSync<any>;
             return store ? store.Root.Value : null;
         },
         set: function (val: any) {
-            var store = this[`StoreDecorator_${propertyKey}`];
+            var map = (this as T).DecoratorMap;
+            var store = map.get(propKey) as StoreSync<any>;
             if(!store)
-                this[`StoreDecorator_${propertyKey}`] = new StoreSync(val);
+                map.set(propKey, new StoreSync(val));
             else
                 store.Merge(val);
         }
@@ -40,14 +43,19 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(ta
     if(descriptor && descriptor.set)
         throw "Scope decorator does not support setters";
 
-    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, `ScopeDecorator_${propertyKey}`);
+    const propKey = `ScopeDecorator_${propertyKey}`;
+    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, propKey);
     return {
         configurable: false,
         enumerable: true,
         get: function() {
-            var scope = this[`ScopeDecorator_${propertyKey}`];
-            if(!scope)
-                scope = this[`ScopeDecorator_${propertyKey}`] = new ObservableScope(descriptor.get.bind(this));
+            var map = (this as T).DecoratorMap;
+            var scope = map.get(propKey) as ObservableScope<any>;
+            if(!scope) {
+                const getter = descriptor.get.bind(this);
+                scope = new ObservableScope(getter);
+                map.set(propKey, scope);
+            }
 
             return scope.Value;
         }
@@ -64,56 +72,111 @@ function SharedScopeDecorator<T extends Component<any, any, any> & Record<K, {(.
         enumerable: descriptor.enumerable,
         value: function(...args: Array<any>) {
             var argsKey = args.join();
-            var funcKey = `SharedScopeDecorator_Func_${propertyKey}_${argsKey}`;
-            if(!this[funcKey]) {
+            var map = (this as T).DecoratorMap;
+            const funcKey = `SharedScopeDecorator_Func_${propertyKey}_${argsKey}`;
+            if(!map.has(funcKey)) {
                 var func = (descriptor.value as {(...args: Array<any>): {(): any}}).apply(this, args);
-                this[funcKey] = func;
+                map.set(funcKey, func);
                 var scope = new ObservableScopeAsync(func);
-                (this as Component).Injector.Set(func, scope);
+                (this as T).Injector.Set(func, scope);
 
-                var scopeKey = `SharedScopeDecorator_${propertyKey}_${argsKey}`;
+                const scopeKey = `SharedScopeDecorator_${propertyKey}_${argsKey}`;
                 DestroyDecorator(target as T & Record<K, ObservableScope<any>>, scopeKey);
-                this[scopeKey] = scope;
+                map.set(scopeKey, scope);
             }
 
-            return this[funcKey];
+            return map.get(funcKey);
         }
     } as PropertyDescriptor;
 }
 
 export function Computed() {
-    return ComputedDecorator.bind(null, StoreSync) as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
+    return ComputedDecorator as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
 }
 
-export function ComputedAsync() {
-    return ComputedDecorator.bind(null, StoreAsync) as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
-}
-
-function ComputedDecorator<T extends Component<any, any, any>, K extends string>(storeConstructor: { new(init: any): StoreSync<any> }, target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+function ComputedDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     if(!(descriptor && descriptor.get))
         throw "Computed decorator requires a getter";
 
     if(descriptor && descriptor.set)
         throw "Computed decorator does not support setters";
 
-    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, `ComputedDecorator_Scope_${propertyKey}`);
-    DestroyDecorator(target as T & Record<K, StoreSync<any>>, `ComputedDecorator_Store_${propertyKey}`);
+    const scopeKey = `ComputedDecorator_Scope_${propertyKey}`;
+    const storeKey = `ComputedDecorator_Store_${propertyKey}`
+    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, scopeKey);
+    DestroyDecorator(target as T & Record<K, StoreSync<any>>, storeKey);
 
     return {
         configurable: false,
         enumerable: true,
         get: function () {
-            var store = this[`ComputedDecorator_Store_${propertyKey}`] as StoreSync<any>;
+            var map = (this as T).DecoratorMap;
+            var store = map.get(storeKey) as StoreSync<any>;
             if(!store) {
-                var scope = this[`ComputedDecorator_Scope_${propertyKey}`] = new ObservableScope(descriptor.get.bind(this));
-                store = this[`ComputedDecorator_Store_${propertyKey}`] = new storeConstructor(scope.Value);
+                const getter = descriptor.get.bind(this);
+                const scope = new ObservableScope(getter);
+                store = new StoreSync(scope.Value);
                 scope.Watch(scope => {
-                    if(!(this as Component).Destroyed)
+                    if(!(this as T).Destroyed)
                         store.Write(scope.Value);
                 });
+
+                map.set(scopeKey, scope);
+                map.set(storeKey, store);
             }
 
             return store.Root.Value;
+        }
+    } as PropertyDescriptor;
+}
+
+
+export function ComputedAsync() {
+    return ComputedAsyncDecorator as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
+}
+
+function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    if(!(descriptor && descriptor.get))
+        throw "ComputedAsync decorator requires a getter";
+
+    if(descriptor && descriptor.set)
+        throw "ComputedAsync decorator does not support setters";
+
+    const scopeKey = `ComputedDecorator_Scope_${propertyKey}`;
+    const storeKey = `ComputedDecorator_Store_${propertyKey}`;
+    const storeScopeKey = `ComputedDecorator_StoreScope_${propertyKey}`;
+    DestroyDecorator(target as T & Record<K, ObservableScope<any>>, scopeKey);
+    DestroyDecorator(target as T & Record<K, StoreSync<any>>, storeKey);
+    DestroyDecorator(target as T & Record<K, StoreSync<any>>, storeScopeKey);
+
+    return {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            var map = (this as T).DecoratorMap;
+            var storeScope = map.get(storeScopeKey) as ObservableScope<any>;
+            if(!storeScope) {
+                const getter = descriptor.get.bind(this);
+                const scope = new ObservableScope(() => {
+                    var value = getter();
+                    if(value && typeof value.toJSON === 'function')
+                        value = value.toJSON();
+
+                    return value;
+                });
+                const store = new StoreAsync((val: any) => val._id, { _id: "ROOT", data: scope.Value })
+                scope.Watch(scope => {
+                    if(!(this as T).Destroyed)                        
+                        store.Write({ _id: "ROOT", data: scope.Value });
+                });
+                storeScope = store.Scope("ROOT", (val: { _id: string, data: any }) => val.data);
+
+                map.set(storeScopeKey, storeScope);
+                map.set(scopeKey, scope);
+                map.set(storeKey, store);
+            }
+
+            return storeScope.Value;
         }
     } as PropertyDescriptor;
 }
@@ -123,19 +186,15 @@ export function Inject<I>(type: { new (): I }) {
 }
 
 function InjectorDecorator<I, F extends I, T extends Component<any, any, any> & Record<K, F>, K extends string>(type: { new (): I }, target: T, propertyKey: K, descriptor?: PropertyDescriptor): any {
-    var parentGet = descriptor && descriptor.get;
-    var parentSet = descriptor && descriptor.set;
 
     return {
         configurable: false,
         enumerable: true,
         get: function() {
-            parentGet && parentGet.apply(this);
-            return (this as Component).Injector.Get(type);
+            return (this as T).Injector.Get(type);
         },
         set: function(val: any) {
-            parentSet && parentSet.apply(this, [val]);
-            (this as Component).Injector.Set(type, val);
+            (this as T).Injector.Set(type, val);
         }
     }
 }
@@ -149,9 +208,9 @@ export namespace Destroy {
         return value && value.DestroyDecorator_Destroys || [];
     }
 
-    export function All(value: any) {
+    export function All(value: Component<any, any, any>) {
         var arr = Get(value);
-        arr.map(prop => value[prop] as { Destroy: {(): void} })
+        arr.map(prop => ((value as any)[prop] || value.DecoratorMap.get(prop)) as { Destroy: {(): void} })
             .filter(o => !!o)
             .forEach(o => o.Destroy());
     }

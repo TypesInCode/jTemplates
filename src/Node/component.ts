@@ -7,6 +7,7 @@ import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
 export class Component<D = void, T = void, E = void> {
     private scope: ObservableScopeAsync<D>;
     private templates: T;
+    private decoratorMap: Map<string, any>;
 
     public get Injector() {
         return this.injector;
@@ -14,6 +15,10 @@ export class Component<D = void, T = void, E = void> {
 
     public get Destroyed() {
         return this.nodeRef.Destroyed;
+    }
+
+    public get DecoratorMap() {
+        return this.decoratorMap;
     }
 
     protected get Scope() {
@@ -35,6 +40,7 @@ export class Component<D = void, T = void, E = void> {
     constructor(data: {(): D | Promise<D>} | D, templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
         this.scope = new ObservableScopeAsync(data);
         this.templates = templates || {} as T;
+        this.decoratorMap = new Map();
     }
 
     public Template(): NodeRef | NodeRef[] {
