@@ -1,8 +1,1 @@
-var glbl: Window = null;
-if(typeof window != "undefined") 
-    glbl = window;
-else {
-    glbl = (new (require("jsdom").JSDOM)("")).window;
-}
-
-export var wndw = glbl;
+export const wndw: Window = typeof window !== "undefined" ? window : (new (require("jsdom").JSDOM("")).window);
