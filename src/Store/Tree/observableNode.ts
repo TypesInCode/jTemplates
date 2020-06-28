@@ -56,7 +56,28 @@ export class ObservableNode {
 
     public get Proxy(): any {
         ObservableScope.Register(this.emitter);
+        return this.ProxyInternal;
+    }
 
+    public get ProxyArray() {
+        if(this.Type !== Type.Array)
+            return null;
+
+        if(!this.proxyArray)
+            this.proxyArray = (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).ProxyInternal);
+
+        return this.proxyArray;
+    }
+
+    public get Parent() {
+        return this.parent;
+    }
+
+    public get Children() {
+        return this.children;
+    }
+
+    private get ProxyInternal(): any {
         if(this.oldType !== undefined) {
             if(this.oldType !== this.Type)
                 this.proxy = undefined;
@@ -75,24 +96,6 @@ export class ObservableNode {
 
         this.proxy = ObservableProxy.CreateFrom(this, this.Type);
         return this.proxy;
-    }
-
-    public get ProxyArray() {
-        if(this.Type !== Type.Array)
-            return null;
-
-        if(!this.proxyArray)
-            this.proxyArray = (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).Proxy);
-
-        return this.proxyArray;
-    }
-
-    public get Parent() {
-        return this.parent;
-    }
-
-    public get Children() {
-        return this.children;
     }
 
     constructor(
