@@ -44,8 +44,8 @@ export namespace ObservableProxy {
         if(type === Type.Value)
             return value;
         
-        if((value as any as ObservableProxy).___storeProxy)
-            return (value as any as ObservableProxy).toJSON() as T;
+        if(typeof (value as any).toJSON === 'function')
+            return (value as any).toJSON();
 
         if(type === Type.Array)
             return (value as any as Array<any>).map(v => CopyValue(v)) as any as T;
