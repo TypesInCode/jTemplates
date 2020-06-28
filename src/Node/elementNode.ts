@@ -115,10 +115,10 @@ export class ElementNode<T> extends BoundNode {
 
             var detachNodes: Array<List<NodeRef[]>>;
             if(!init) {
-                detachNodes = []; //new Array(this.nodesMap.size);
+                detachNodes = [];
                 this.nodesMap.forEach(nodeArrayList => {
                     var destroyNodes = nodeArrayList;
-                    detachNodes.push(nodeArrayList); // detachNodes[ind++] = nodeArrayList;
+                    detachNodes.push(nodeArrayList);
                     destroyNodes.ForEach(nodes => {
                         for(var x=0; x<nodes.length; x++)
                             nodes[x].Destroy();
