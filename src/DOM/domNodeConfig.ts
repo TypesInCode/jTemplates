@@ -15,12 +15,10 @@ function processUpdates() {
     updateScheduled = false;
 }
 
+const htmlNs = "http://www.w3.org/1999/xhtml";
 export var DOMNodeConfig: INodeConfig = {
     createNode: function(type: string, namespace: string): Node {
-        if(namespace)
-            return wndw.document.createElementNS(namespace, type);
-
-        return type === "text" ? wndw.document.createTextNode("") : wndw.document.createElement(type);
+        return type !== "text" ? wndw.document.createElementNS(namespace || htmlNs, type) : wndw.document.createTextNode("");
     },
     scheduleUpdate: function(callback: () => void): void {
         pendingUpdates.Add(callback);
