@@ -52,14 +52,14 @@ export class Animation {
         this.type = type;
 
         this.frameCount = Math.ceil((duration/1000) * 60);
-        this.frameTimings = new Array(this.frameCount);
+        this.frameTimings = []; // new Array(this.frameCount);
 
         var frameTime = duration / this.frameCount;
         for(var x=0; x<this.frameCount; x++)
             this.frameTimings[x] = (x + 1)*frameTime;
         
         this.update = update;
-        this.animationTimeouts = new Array(this.frameCount);
+        this.animationTimeouts = []; // new Array(this.frameCount);
     }
 
     public Animate(start: number, end: number): Promise<void> {
