@@ -178,13 +178,14 @@ export class BoundNode extends NodeRef {
             var currentPath = path + key;
             var val = source[key];
             if(val && typeof val === 'object') {
-                if(!target[key])
-                    target[key] = {};
+                var targetChild = target[key];
+                if(!targetChild)
+                    targetChild = target[key] = {};
                 
-                this.SetPropertiesRecursive(target[key], lastValue && lastValue[key], val, currentPath + ".");
+                this.SetPropertiesRecursive(targetChild, lastValue && lastValue[key], val, currentPath + ".");
             }
-            else if(!lastValue || lastValue[key] !== val) {
-                if(NodeConfig.setPropertyOverrides[currentPath])
+            else if(!(lastValue && lastValue[key] === val)) {
+                if(Reflect.has(NodeConfig.setPropertyOverrides, currentPath))
                     NodeConfig.setPropertyOverrides[currentPath](target, val);
                 else
                     target[key] = val;
