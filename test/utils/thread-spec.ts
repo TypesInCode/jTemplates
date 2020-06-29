@@ -1,4 +1,4 @@
-import { ThreadAsync, Schedule, Callback } from "../../src/Utils/thread";
+import { ThreadAsync, Schedule, Callback, Thread, After } from "../../src/Utils/thread";
 
 import { expect } from "chai";
 
@@ -85,5 +85,22 @@ describe("Thread", () => {
         });
 
         expect(first && schedule && second && secondDone).to.be.true;
+    });
+    it("After", async () => {
+        var count = 0;
+        var countTo = 1000;
+        var countEquals = false;
+        await ThreadAsync(() => {
+            After(() => {
+                countEquals = count === countTo;
+            });
+
+            for(var x = 0; x < countTo; x++)
+                Schedule(() => {
+                    count++;
+                });
+        });
+
+        expect(countEquals).to.be.true;
     });
 });

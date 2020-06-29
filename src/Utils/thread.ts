@@ -61,7 +61,7 @@ function DoWork(ctx: IThreadWorkerContext) {
 }
 
 function CreateContext() {
-    var ctx: IThreadWorkerContext = threadWorkerContext = {
+    var ctx: IThreadWorkerContext = {
         async: false,
         workEndNode: null,
         workList: new List(),
@@ -89,11 +89,15 @@ function NewThread(callback: {(): void}) {
 }
 
 function ScheduleCallback(callback: {(): void}, before: boolean, async: boolean) {
-    var ctx = threadWorkerContext = threadWorkerContext || CreateContext();
-    ctx.async = ctx.async || async;
-    before ?
-        ctx.workList.AddBefore(ctx.workEndNode, callback) :
-        ctx.workList.AddAfter(ctx.workEndNode, callback);
+    threadWorkerContext = threadWorkerContext || CreateContext();
+    threadWorkerContext.async = threadWorkerContext.async || async;
+
+    if(before)
+        threadWorkerContext.workList.AddBefore(threadWorkerContext.workEndNode, callback);
+    else if(threadWorkerContext.workEndNode) 
+        threadWorkerContext.workList.AddAfter(threadWorkerContext.workEndNode, callback);
+    else
+        threadWorkerContext.workEndNode = threadWorkerContext.workList.Add(callback);
 }
 
 export function Schedule(callback: {(): void}) {
