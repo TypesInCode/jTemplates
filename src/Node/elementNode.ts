@@ -16,27 +16,19 @@ export class ElementNode<T> extends BoundNode {
     private destroyData: boolean;
 
     private dataScope: ObservableScopeAsync<any>;
-
-    protected get NodeDef(): ElementNodeDefinition<T> {
-        return super.NodeDef;
-    }
-
+    
     constructor(nodeDef: ElementNodeDefinition<T>) {
         super(nodeDef);
 
         this.setData = false;
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children;
-    }
 
-    public Init() {
-        super.Init();
-
-        if(this.NodeDef.data) {
-            this.dataScope = this.Injector.Get(this.NodeDef.data);
+        if(nodeDef.data) {
+            this.dataScope = this.Injector.Get(nodeDef.data);
             if(!this.dataScope) {
                 this.destroyData = true;
-                this.dataScope = new ObservableScopeAsync<any>(this.NodeDef.data);
+                this.dataScope = new ObservableScopeAsync<any>(nodeDef.data);
             }
             this.dataBound = this.ScheduleSetData.bind(this);
             this.dataScope.Watch(this.dataBound);
@@ -193,7 +185,6 @@ export namespace ElementNode {
         } as ElementNodeDefinition<any>;
 
         var elem = new ElementNode<T>(def);
-        elem.Init();
         return elem;
     }
 

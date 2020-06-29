@@ -27,10 +27,6 @@ export class NodeRef {
         this.injector = injector;
     }
 
-    public Init() {
-        
-    }
-
     public AddChild(nodeRef: NodeRef) {
         nodeRef.parent = this;
         this.childNodes.add(nodeRef);

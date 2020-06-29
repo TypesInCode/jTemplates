@@ -14,16 +14,13 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     constructor(nodeDef: ComponentNodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
         super(nodeDef, new Injector());
         this.component = new constructor(nodeDef.data, templates, this, this.Injector);
+
+        this.SetChildren();
     }
 
     public Fire<P extends keyof E>(event: P, data?: E[P]) {
         var eventCallback = this.componentEvents && this.componentEvents[event as string];
         eventCallback && eventCallback(data);
-    }
-
-    public Init() {
-        super.Init();
-        this.SetChildren();
     }
 
     public Destroy() {
@@ -138,7 +135,6 @@ export namespace ComponentNode {
             } as ComponentNodeDefinition<D, E>;
 
             var comp = new ComponentNode<D, T, E>(def, constructor, templates);
-            comp.Init();
             return comp;
         };
     }

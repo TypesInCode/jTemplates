@@ -5,7 +5,6 @@ import { Injector } from "../Utils/injector";
 import { NodeDefinition, NodeRefEvents, BoundNodeFunctionParam } from "./boundNode.types";
 
 export class BoundNode extends NodeRef {
-    private nodeDef: NodeDefinition;
     private lastProperties: any;
     private lastEvents: {[name: string]: any};
 
@@ -24,50 +23,42 @@ export class BoundNode extends NodeRef {
     private attributesScope: ObservableScopeAsync<{[name: string]: string}>;
     private eventsScope: ObservableScopeAsync<{[name: string]: (...args: Array<any>) => void}>;
 
-    protected get NodeDef() {
-        return this.nodeDef;
-    }
-
     constructor(nodeDef: NodeDefinition, injector = Injector.Current()) {
         super(NodeConfig.createNode(nodeDef.type, nodeDef.namespace), injector);
-        this.nodeDef = nodeDef;
-    }
 
-    public Init() {
-        super.Init();
-        if(this.nodeDef.props) {
-            this.propertiesScope = this.Injector.Get(this.nodeDef.props);
+        if(nodeDef.props) {
+            this.propertiesScope = this.Injector.Get(nodeDef.props);
             if(!this.propertiesScope) {
                 this.destroyProperties = true;
-                this.propertiesScope = new ObservableScopeAsync(this.nodeDef.props);
+                this.propertiesScope = new ObservableScopeAsync(nodeDef.props);
             }
-            this.setPropertiesBound = this.nodeDef.immediate ? 
+            this.setPropertiesBound = nodeDef.immediate ? 
                 (scope: ObservableScopeAsync<{ [name: string]: any }>) => this.SetProperties(scope.Value) : 
                 this.ScheduleSetProperties.bind(this);
             this.propertiesScope.Watch(this.setPropertiesBound);
             this.SetProperties(this.propertiesScope.Value);
         }
 
-        if(this.nodeDef.attrs) {
-            this.attributesScope = this.Injector.Get(this.nodeDef.attrs);
+        if(nodeDef.attrs) {
+            this.attributesScope = this.Injector.Get(nodeDef.attrs);
             if(!this.attributesScope) {
                 this.destroyAttributes = true;
-                this.attributesScope = new ObservableScopeAsync(this.nodeDef.attrs);
+                this.attributesScope = new ObservableScopeAsync(nodeDef.attrs);
             }
-            this.setAttributesBound = this.nodeDef.immediate ? 
+            this.setAttributesBound = nodeDef.immediate ? 
                 (scope: ObservableScopeAsync<{ [name: string]: string }>) => this.SetAttributes(scope.Value) : 
                 this.ScheduleSetAttributes.bind(this);
             this.attributesScope.Watch(this.setAttributesBound);
             this.SetAttributes(this.attributesScope.Value);
         }
 
-        if(this.nodeDef.on) {
-            this.eventsScope = this.Injector.Get(this.nodeDef.on);
+        if(nodeDef.on) {
+            this.eventsScope = this.Injector.Get(nodeDef.on);
             if(!this.eventsScope) {
                 this.destroyEvents = true;
-                this.eventsScope = new ObservableScopeAsync(this.nodeDef.on);
+                this.eventsScope = new ObservableScopeAsync(nodeDef.on);
             }
-            this.setEventsBound = this.nodeDef.immediate ? 
+            this.setEventsBound = nodeDef.immediate ? 
                 (scope: ObservableScopeAsync<NodeRefEvents>) => this.SetEvents(scope.Value) : 
                 this.ScheduleSetEvents.bind(this);
             this.eventsScope.Watch(this.setEventsBound);
@@ -207,7 +198,6 @@ export namespace BoundNode {
         } as NodeDefinition<any>;
 
         var elem = new BoundNode(def);
-        elem.Init();
         return elem;
     }
 }
