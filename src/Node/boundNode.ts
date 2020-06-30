@@ -15,9 +15,9 @@ export class BoundNode extends NodeRef {
     private setEvents = false;
     private destroyEvents = false;
 
-    private setPropertiesBound: {(): void};
-    private setEventsBound: {(): void};
-    private setAttributesBound: {(): void};
+    private setPropertiesBound: {(...args: any[]): void};
+    private setEventsBound: {(...args: any[]): void};
+    private setAttributesBound: {(...args: any[]): void};
 
     private propertiesScope: ObservableScopeAsync<{[name: string]: any}>;
     private attributesScope: ObservableScopeAsync<{[name: string]: string}>;
@@ -33,10 +33,10 @@ export class BoundNode extends NodeRef {
                 this.propertiesScope = new ObservableScopeAsync(nodeDef.props);
             }
             this.setPropertiesBound = nodeDef.immediate ? 
-                (scope: ObservableScopeAsync<{ [name: string]: any }>) => this.SetProperties(scope.Value) : 
-                this.ScheduleSetProperties.bind(this);
+                (scope: ObservableScopeAsync<{ [name: string]: any }>) => BoundNode.SetProperties(this, scope.Value) : 
+                () => BoundNode.ScheduleSetProperties(this);
             this.propertiesScope.Watch(this.setPropertiesBound);
-            this.SetProperties(this.propertiesScope.Value);
+            BoundNode.SetProperties(this, this.propertiesScope.Value);
         }
 
         if(nodeDef.attrs) {
@@ -46,10 +46,10 @@ export class BoundNode extends NodeRef {
                 this.attributesScope = new ObservableScopeAsync(nodeDef.attrs);
             }
             this.setAttributesBound = nodeDef.immediate ? 
-                (scope: ObservableScopeAsync<{ [name: string]: string }>) => this.SetAttributes(scope.Value) : 
-                this.ScheduleSetAttributes.bind(this);
+                (scope: ObservableScopeAsync<{ [name: string]: string }>) => BoundNode.SetAttributes(this, scope.Value) : 
+                () => BoundNode.ScheduleSetAttributes(this);
             this.attributesScope.Watch(this.setAttributesBound);
-            this.SetAttributes(this.attributesScope.Value);
+            BoundNode.SetAttributes(this, this.attributesScope.Value);
         }
 
         if(nodeDef.on) {
@@ -59,10 +59,10 @@ export class BoundNode extends NodeRef {
                 this.eventsScope = new ObservableScopeAsync(nodeDef.on);
             }
             this.setEventsBound = nodeDef.immediate ? 
-                (scope: ObservableScopeAsync<NodeRefEvents>) => this.SetEvents(scope.Value) : 
-                this.ScheduleSetEvents.bind(this);
+                (scope: ObservableScopeAsync<NodeRefEvents>) => BoundNode.SetEvents(this, scope.Value) : 
+                () => BoundNode.ScheduleSetEvents(this);
             this.eventsScope.Watch(this.setEventsBound);
-            this.SetEvents(this.eventsScope.Value);
+            BoundNode.SetEvents(this, this.eventsScope.Value);
         }
     }
 
@@ -90,100 +90,79 @@ export class BoundNode extends NodeRef {
         }
     }
 
-    protected ScheduleSetProperties() {
-        if(this.setProperties)
+    private static ScheduleSetProperties(node: BoundNode) {
+        if(node.setProperties)
             return;
 
-        this.setProperties = true;
+        node.setProperties = true;
         NodeConfig.scheduleUpdate(() => {
-            this.setProperties = false;
-            if(this.Destroyed)
+            node.setProperties = false;
+            if(node.Destroyed)
                 return;
             
-            this.SetProperties(this.propertiesScope.Value);
+            BoundNode.SetProperties(node, node.propertiesScope.Value);
         });
     }
 
-    protected SetProperties(properties: { [name: string]: any; }) {
+    private static SetProperties(node: BoundNode, properties: { [name: string]: any; }) {
         if(!properties)
             return;
 
-        this.SetPropertiesRecursive(this.Node, this.lastProperties, properties);
-        this.lastProperties = properties;
+        SetPropertiesRecursive(node.Node, node.lastProperties, properties);
+        node.lastProperties = properties;
     }
 
-    protected ScheduleSetAttributes() {
-        if(this.setAttributes)
+    private static ScheduleSetAttributes(node: BoundNode) {
+        if(node.setAttributes)
             return;
 
-        this.setAttributes = true;
+        node.setAttributes = true;
         NodeConfig.scheduleUpdate(() => {
-            this.setAttributes = false;
-            if(this.Destroyed)
+            node.setAttributes = false;
+            if(node.Destroyed)
                 return;
             
-            this.SetAttributes(this.attributesScope.Value);
+            BoundNode.SetAttributes(node, node.attributesScope.Value);
         });
     }
 
-    protected SetAttributes(attributes: { [name: string]: string; }) {
+    private static SetAttributes(node: BoundNode, attributes: { [name: string]: string; }) {
         if(!attributes)
             return;
         
         for(var key in attributes) {
-            var val = NodeConfig.getAttribute(this.Node, key);
+            var val = NodeConfig.getAttribute(node.Node, key);
             if(val !== attributes[key])
-                NodeConfig.setAttribute(this.Node, key, attributes[key]);
+                NodeConfig.setAttribute(node.Node, key, attributes[key]);
         }
     }
 
-    protected ScheduleSetEvents() {
-        if(this.setEvents)
+    private static ScheduleSetEvents(node: BoundNode) {
+        if(node.setEvents)
             return;
 
-        this.setEvents = true;
+        node.setEvents = true;
         NodeConfig.scheduleUpdate(() => {
-            this.setEvents = false;
-            if(this.Destroyed)
+            node.setEvents = false;
+            if(node.Destroyed)
                 return;
             
-            this.SetEvents(this.eventsScope.Value);
+            BoundNode.SetEvents(node, node.eventsScope.Value);
         });
     }
 
-    protected SetEvents(events: { [name: string]: (...args: any[]) => void; }) {
+    private static SetEvents(node: BoundNode, events: { [name: string]: (...args: any[]) => void; }) {
         if(!events)
             return;
 
-        for(var key in this.lastEvents)
-            NodeConfig.removeListener(this.Node, key, this.lastEvents[key]);
+        for(var key in node.lastEvents)
+            NodeConfig.removeListener(node.Node, key, node.lastEvents[key]);
 
         for(var key in events)
-            NodeConfig.addListener(this.Node, key, events[key]);
+            NodeConfig.addListener(node.Node, key, events[key]);
 
-        this.lastEvents = events;
+        node.lastEvents = events;
     }
-
-    private SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}, path = "") {
-        for(var key in source) {
-            var currentPath = path + key;
-            var val = source[key];
-            if(val && typeof val === 'object') {
-                var targetChild = target[key];
-                if(!targetChild)
-                    targetChild = target[key] = {};
-                
-                this.SetPropertiesRecursive(targetChild, lastValue && lastValue[key], val, currentPath + ".");
-            }
-            else if(!(lastValue && lastValue[key] === val)) {
-                if(Reflect.has(NodeConfig.setPropertyOverrides, currentPath))
-                    NodeConfig.setPropertyOverrides[currentPath](target, val);
-                else
-                    target[key] = val;
-            }
-        }
-    }
-
 }
 
 export namespace BoundNode {
@@ -199,5 +178,25 @@ export namespace BoundNode {
 
         var elem = new BoundNode(def);
         return elem;
+    }
+}
+
+function SetPropertiesRecursive(target: {[key: string]: any}, lastValue: {[key: string]: any}, source: {[key: string]: any}, path = "") {
+    for(var key in source) {
+        var currentPath = path + key;
+        var val = source[key];
+        if(val && typeof val === 'object') {
+            var targetChild = target[key];
+            if(!targetChild)
+                targetChild = target[key] = {};
+            
+            SetPropertiesRecursive(targetChild, lastValue && lastValue[key], val, currentPath + ".");
+        }
+        else if(!(lastValue && lastValue[key] === val)) {
+            if(Reflect.has(NodeConfig.setPropertyOverrides, currentPath))
+                NodeConfig.setPropertyOverrides[currentPath](target, val);
+            else
+                target[key] = val;
+        }
     }
 }

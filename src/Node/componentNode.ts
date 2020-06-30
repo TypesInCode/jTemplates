@@ -12,10 +12,16 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
     private componentEvents: {[name: string]: {(...args: Array<any>): void}};
 
     constructor(nodeDef: ComponentNodeDefinition<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
+        var events = nodeDef.on;
+        nodeDef.on = null;
+
         super(nodeDef, new Injector());
         this.component = new constructor(nodeDef.data, templates, this, this.Injector);
 
-        this.SetChildren();
+        if(events)
+            ComponentNode.SetComponentEvents(this, events);
+        
+        ComponentNode.SetChildren(this);
     }
 
     public Fire<P extends keyof E>(event: P, data?: E[P]) {
@@ -28,40 +34,40 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
         this.component.Destroy();
     }
 
-    protected SetEvents(events: { [name: string]: (...args: any[]) => void; }) {
-        this.componentEvents = events;
+    private static SetComponentEvents(node: ComponentNode<any, any, any>, events: { [name: string]: (...args: any[]) => void; }) {
+        node.componentEvents = events;
     }
 
-    private SetChildren() {
-        if(PreReq.Has(this.component)) {
-            this.AddPreReqTemplate().then(() => 
-                this.AddTemplate(false)
+    private static SetChildren(node: ComponentNode<any, any, any>) {
+        if(PreReq.Has(node.component)) {
+            ComponentNode.AddPreReqTemplate(node).then(() => 
+                this.AddTemplate(node, false)
             )
         }
         else
-            this.AddTemplate(true);
+            this.AddTemplate(node, true);
     }
 
-    private AddPreReqTemplate() {
+    private static AddPreReqTemplate(node: ComponentNode<any, any, any>) {
         return new Promise(resolve => {
             Thread(() => {
                 var preNodes: Array<NodeRef> = null;
                 Schedule(() =>
-                    Injector.Scope(this.Injector, () => 
-                        preNodes = PreReqTemplate.Get(this.component)
+                    Injector.Scope(node.Injector, () => 
+                        preNodes = PreReqTemplate.Get(node.component)
                     )
                 );
 
                 Thread(() => {
-                    if(this.Destroyed)
+                    if(node.Destroyed)
                         return;
                     
                     for(var x=0; x<preNodes.length; x++)
-                        this.AddChild(preNodes[x]);
+                        node.AddChild(preNodes[x]);
 
-                    PreReq.All(this.component).then(() => {
+                    PreReq.All(node.component).then(() => {
                         NodeConfig.scheduleUpdate(() => {
-                            if(this.Destroyed)
+                            if(node.Destroyed)
                                 return;
 
                             for(var x=0; x<preNodes.length; x++) {
@@ -77,15 +83,15 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
         });
     }
 
-    private AddTemplate(init: boolean) {
+    private static AddTemplate(node: ComponentNode<any, any, any>, init: boolean) {
         Thread(() => {
-            if(this.Destroyed)
+            if(node.Destroyed)
                 return;
 
             var nodes: NodeRef[] = null;
             Schedule(() => {
-                Injector.Scope(this.Injector, () => {
-                    nodes = this.component.Template() as NodeRef[];
+                Injector.Scope(node.Injector, () => {
+                    nodes = node.component.Template() as NodeRef[];
                 });
 
                 if(!Array.isArray(nodes))
@@ -93,26 +99,26 @@ export class ComponentNode<D = void, T = void, E = void> extends BoundNode {
             });
 
             Thread(() => {
-                if(this.Destroyed)
+                if(node.Destroyed)
                     return;
 
                 if(init)
                     for(var x=0; x<nodes.length; x++)
-                        this.AddChild(nodes[x])
+                        node.AddChild(nodes[x])
                 else
                     NodeConfig.scheduleUpdate(() => {
-                        if(this.Destroyed)
+                        if(node.Destroyed)
                             return;
 
                         for(var x=0; x<nodes.length; x++)
-                            this.AddChild(nodes[x]);
+                            node.AddChild(nodes[x]);
                     });
             });
 
-            if(this.component.Bound !== Component.prototype.Bound)
+            if(node.component.Bound !== Component.prototype.Bound)
                 After(() => 
                     NodeConfig.scheduleUpdate(() =>
-                        setTimeout(() => this.component.Bound(), 0)
+                        setTimeout(() => node.component.Bound(), 0)
                     )
                 );
         });

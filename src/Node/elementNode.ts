@@ -12,7 +12,7 @@ export class ElementNode<T> extends BoundNode {
     private nodesMap: Map<any, List<Array<NodeRef>>>;
 
     private setData: boolean;
-    private dataBound: {(): T[]};
+    private dataBound: {(): void};
     private destroyData: boolean;
 
     private dataScope: ObservableScopeAsync<any>;
@@ -30,11 +30,11 @@ export class ElementNode<T> extends BoundNode {
                 this.destroyData = true;
                 this.dataScope = new ObservableScopeAsync<any>(nodeDef.data);
             }
-            this.dataBound = this.ScheduleSetData.bind(this);
+            this.dataBound = () => ElementNode.ScheduleSetData(this);
             this.dataScope.Watch(this.dataBound);
         }
 
-        this.SetData(true);
+        ElementNode.SetData(this, true);
     }
 
     public Destroy() {
@@ -47,26 +47,26 @@ export class ElementNode<T> extends BoundNode {
         }
     }
 
-    private ScheduleSetData() {
-        if(this.setData)
+    private static ScheduleSetData<T>(node: ElementNode<T>) {
+        if(node.setData)
             return;
 
-        this.setData = true;
+        node.setData = true;
         NodeConfig.scheduleUpdate(() => {
-            this.setData = false;
-            if(this.Destroyed)
+            node.setData = false;
+            if(node.Destroyed)
                 return;
             
-            this.SetData();
+            ElementNode.SetData(node);
         });
     }
 
-    private SetData(init = false) {
+    private static SetData<T>(node: ElementNode<T>, init = false) {
         Thread(() => {
             var newNodesMap = new Map();
-            var values: Array<T> = this.childrenFunc ? 
-                this.dataScope ? 
-                    this.dataScope.Value : 
+            var values: Array<T> = node.childrenFunc ? 
+                node.dataScope ? 
+                    node.dataScope.Value : 
                     [true] : [];
             
             if(!values)
@@ -75,10 +75,10 @@ export class ElementNode<T> extends BoundNode {
                 values = [values];
             
             var newNodesArrays = values.map((value, index) => {
-                var nodeArrayList = this.nodesMap.get(value);
+                var nodeArrayList = node.nodesMap.get(value);
                 var nodes = nodeArrayList && nodeArrayList.Remove();
                 if(nodeArrayList && nodeArrayList.Size === 0)
-                    this.nodesMap.delete(value);
+                    node.nodesMap.delete(value);
 
                 var newNodeArrayList = newNodesMap.get(value);
                 if(!newNodeArrayList) {
@@ -90,10 +90,10 @@ export class ElementNode<T> extends BoundNode {
                     newNodeArrayList.Push(nodes);
                 else {
                     Schedule(() => {
-                        if(this.Destroyed || newNodesMap.size === 0)
+                        if(node.Destroyed || newNodesMap.size === 0)
                             return;
 
-                        var newNodes = this.CreateNodeArray(value);
+                        var newNodes = ElementNode.CreateNodeArray(node, value);
                         newNodesMap.get(value).Push(newNodes);
                         if(newNodesArrays)
                             newNodesArrays[index] = newNodes;
@@ -108,7 +108,7 @@ export class ElementNode<T> extends BoundNode {
             var detachNodes: Array<List<NodeRef[]>>;
             if(!init) {
                 detachNodes = [];
-                this.nodesMap.forEach(nodeArrayList => {
+                node.nodesMap.forEach(nodeArrayList => {
                     var destroyNodes = nodeArrayList;
                     detachNodes.push(nodeArrayList);
                     destroyNodes.ForEach(nodes => {
@@ -118,26 +118,26 @@ export class ElementNode<T> extends BoundNode {
                 });
             }
 
-            this.nodesMap.clear();
-            this.nodesMap = newNodesMap;
+            node.nodesMap.clear();
+            node.nodesMap = newNodesMap;
             Thread(() => {
-                if(this.Destroyed)
+                if(node.Destroyed)
                     return;
 
                 if(init)
-                    this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);                
+                    ElementNode.DetachAndAddNodes(node, detachNodes, newNodesMap.size > 0 && newNodesArrays);                
                 else
                     NodeConfig.scheduleUpdate(() => {
-                        if(this.Destroyed)
+                        if(node.Destroyed)
                             return;
                         
-                        this.DetachAndAddNodes(detachNodes, newNodesMap.size > 0 && newNodesArrays);
+                        ElementNode.DetachAndAddNodes(node, detachNodes, newNodesMap.size > 0 && newNodesArrays);
                     });
             });
         });
     }
 
-    private DetachAndAddNodes(detachNodes: Array<List<NodeRef[]>>, newNodes: Array<Array<NodeRef>>) {
+    private static DetachAndAddNodes(node: NodeRef, detachNodes: Array<List<NodeRef[]>>, newNodes: Array<Array<NodeRef>>) {
         for(var x=0; detachNodes && x<detachNodes.length; x++)
             detachNodes[x].ForEach(nodes => {
                 for(var x=0; x<nodes.length; x++)
@@ -147,18 +147,18 @@ export class ElementNode<T> extends BoundNode {
         var previousNode: NodeRef = null;
         for(var x=0; newNodes && x<newNodes.length; x++) {
             for(var y=0; y<newNodes[x].length; y++) {
-                this.AddChildAfter(previousNode, newNodes[x][y]);
+                node.AddChildAfter(previousNode, newNodes[x][y]);
                 previousNode = newNodes[x][y];
             }
         }
     }
 
-    private CreateNodeArray(value: any) {
+    private static CreateNodeArray<T>(node: ElementNode<T>, value: any) {
         var nodes: NodeRef[] = null;
-        Injector.Scope(this.Injector, () => {
-            var newNodes = this.childrenFunc(value);
+        Injector.Scope(node.Injector, () => {
+            var newNodes = node.childrenFunc(value);
             if(typeof newNodes === "string")
-                newNodes = [BoundNode.Create("text", null, { props: () => ({ nodeValue: this.childrenFunc(value) }) })];
+                newNodes = [BoundNode.Create("text", null, { props: () => ({ nodeValue: node.childrenFunc(value) }) })];
 
             nodes = newNodes as Array<NodeRef>;
             if(!Array.isArray(nodes))
@@ -167,7 +167,6 @@ export class ElementNode<T> extends BoundNode {
 
         return nodes;
     }
-
 }
 
 export namespace ElementNode {
