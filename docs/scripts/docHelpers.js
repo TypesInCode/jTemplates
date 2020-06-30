@@ -96,7 +96,6 @@ function ExecuteTsCode() {
     var code = document.getElementById("typescript-code").innerText;
     var js = ts.transpile(code, { target: "ES2017" });
     js = js.replace(/^import.*$/gm, "");
-    console.log(js);
     eval(js);
 }
 
