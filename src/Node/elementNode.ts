@@ -24,7 +24,7 @@ export class ElementNode<T> extends BoundNode {
         this.nodesMap = new Map();
         this.childrenFunc = nodeDef.children;
 
-        if(nodeDef.data) {
+        if(this.childrenFunc && nodeDef.data) {
             this.dataScope = this.Injector.Get(nodeDef.data);
             if(!this.dataScope) {
                 this.destroyData = true;
