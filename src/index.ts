@@ -1,7 +1,5 @@
-import { NodeRef } from "./Node/nodeRef";
-import { Component } from "./Node/component";
-
-export { Component, NodeRef };
+export { NodeRef } from "./Node/nodeRef";
+export { Component } from "./Node/component";
 
 /* import { div } from "./DOM/elements";
 
