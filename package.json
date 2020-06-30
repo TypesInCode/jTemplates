@@ -31,6 +31,7 @@
     "chai": "^3.5.0",
     "fs-extra": "^8.1.0",
     "jsdom": "^13.2.0",
+    "mkdocs": "0.0.1",
     "mocha": "^7.0.0",
     "nyc": "^15.1.0",
     "rimraf": "^2.5.4",
@@ -46,7 +47,11 @@
     "node": ">=4.0.0"
   },
   "nyc": {
-    "extension": [ ".ts" ],
-    "reporter": [ "html" ]
+    "extension": [
+      ".ts"
+    ],
+    "reporter": [
+      "html"
+    ]
   }
 }

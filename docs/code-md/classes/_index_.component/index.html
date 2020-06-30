@@ -1,0 +1,831 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="shortcut icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-5.3.0">
+    
+    
+      
+        <title>index .component - j-templates</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6e35a1a6.min.css">
+      
+      
+    
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../../scripts/styles/codemirror.css">
+    
+      <link rel="stylesheet" href="../../../scripts/styles/styles.css">
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#class-component-d-t-e" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href="../../.." title="j-templates" class="md-header-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      
+        <div class="md-header-nav__ellipsis">
+          <span class="md-header-nav__topic md-ellipsis">
+            j-templates
+          </span>
+          <span class="md-header-nav__topic md-ellipsis">
+            
+               index .component
+            
+          </span>
+        </div>
+      
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active">
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+        
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="j-templates" class="md-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    j-templates
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../helloWorld/" title="Hello World" class="md-nav__link">
+      Hello World
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../stateManagement/" title="State Management" class="md-nav__link">
+      State Management
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../components/" title="Components" class="md-nav__link">
+      Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../dynamic/" title="Dynamic Components" class="md-nav__link">
+      Dynamic Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../injectors/" title="Injector" class="md-nav__link">
+      Injector
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../duplicateArray/" title="Duplicate Array" class="md-nav__link">
+      Duplicate Array
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../animation/" title="Animation" class="md-nav__link">
+      Animation
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../tableTest/" title="Table Test" class="md-nav__link">
+      Table Test
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../globals/" title="Code" class="md-nav__link">
+      Code
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#type-parameters" class="md-nav__link">
+    Type parameters
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hierarchy" class="md-nav__link">
+    Hierarchy
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    Index
+  </a>
+  
+    <nav class="md-nav" aria-label="Index">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructors" class="md-nav__link">
+    Constructors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#properties" class="md-nav__link">
+    Properties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessors" class="md-nav__link">
+    Accessors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constructors_1" class="md-nav__link">
+    Constructors
+  </a>
+  
+    <nav class="md-nav" aria-label="Constructors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    constructor
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#properties_1" class="md-nav__link">
+    Properties
+  </a>
+  
+    <nav class="md-nav" aria-label="Properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-injector" class="md-nav__link">
+    Private injector
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-noderef" class="md-nav__link">
+    Private nodeRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-scope" class="md-nav__link">
+    Private scope
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-templates" class="md-nav__link">
+    Private templates
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accessors_1" class="md-nav__link">
+    Accessors
+  </a>
+  
+    <nav class="md-nav" aria-label="Accessors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protected-data" class="md-nav__link">
+    Protected Data
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#destroyed" class="md-nav__link">
+    Destroyed
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#injector" class="md-nav__link">
+    Injector
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-noderef" class="md-nav__link">
+    Protected NodeRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-scope" class="md-nav__link">
+    Protected Scope
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-templates" class="md-nav__link">
+    Protected Templates
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#methods_1" class="md-nav__link">
+    Methods
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bound" class="md-nav__link">
+    Bound
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#destroy" class="md-nav__link">
+    Destroy
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fire" class="md-nav__link">
+    Fire
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#template" class="md-nav__link">
+    Template
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-attach" class="md-nav__link">
+    Static Attach
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-tofunction" class="md-nav__link">
+    Static ToFunction
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                  
+                
+                
+                <p><a href="../../">j-templates</a> › <a href="../../globals/">Globals</a> › <a href="../../modules/_index_/">"index"</a> › <a href="./">Component</a></p>
+<h1 id="class-component-d-t-e">Class: Component ‹<strong>D, T, E</strong>›</h1>
+<p>Class used to define a component. Override the <a href="./#template">Component.Template</a> method.</p>
+<h2 id="type-parameters">Type parameters</h2>
+<p>▪ <strong>D</strong></p>
+<p>Parent data type. Available through <a href="./#protected-data">Component.Data</a>.</p>
+<p>▪ <strong>T</strong>: <em>ComponentTemplates | void</em></p>
+<p>Template data type. Available through <a href="./#protected-templates">Component.Templates</a>.</p>
+<p>▪ <strong>E</strong></p>
+<p>Events data type. Fire an event using <a href="./#fire">Component.Fire</a>.</p>
+<h2 id="hierarchy">Hierarchy</h2>
+<ul>
+<li><strong>Component</strong></li>
+</ul>
+<h2 id="index">Index</h2>
+<h3 id="constructors">Constructors</h3>
+<ul>
+<li><a href="./#constructor">constructor</a></li>
+</ul>
+<h3 id="properties">Properties</h3>
+<ul>
+<li><a href="./#private-injector">injector</a></li>
+<li><a href="./#private-noderef">nodeRef</a></li>
+<li><a href="./#private-scope">scope</a></li>
+<li><a href="./#private-templates">templates</a></li>
+</ul>
+<h3 id="accessors">Accessors</h3>
+<ul>
+<li><a href="./#protected-data">Data</a></li>
+<li><a href="./#destroyed">Destroyed</a></li>
+<li><a href="./#injector">Injector</a></li>
+<li><a href="./#protected-noderef">NodeRef</a></li>
+<li><a href="./#protected-scope">Scope</a></li>
+<li><a href="./#protected-templates">Templates</a></li>
+</ul>
+<h3 id="methods">Methods</h3>
+<ul>
+<li><a href="./#bound">Bound</a></li>
+<li><a href="./#destroy">Destroy</a></li>
+<li><a href="./#fire">Fire</a></li>
+<li><a href="./#template">Template</a></li>
+<li><a href="./#static-attach">Attach</a></li>
+<li><a href="./#static-tofunction">ToFunction</a></li>
+</ul>
+<h2 id="constructors_1">Constructors</h2>
+<h3 id="constructor">constructor</h3>
+<p>+ <strong>new Component</strong>(<code>data</code>: function | D, <code>templates</code>: T, <code>nodeRef</code>: ComponentNode‹D, T, E›, <code>injector</code>: Injector): <em><a href="./">Component</a></em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L41">Node/component.ts:41</a></em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td>function &#124; D</td>
+</tr>
+<tr>
+<td><code>templates</code></td>
+<td>T</td>
+</tr>
+<tr>
+<td><code>nodeRef</code></td>
+<td>ComponentNode‹D, T, E›</td>
+</tr>
+<tr>
+<td><code>injector</code></td>
+<td>Injector</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em><a href="./">Component</a></em></p>
+<h2 id="properties_1">Properties</h2>
+<h3 id="private-injector"><code>Private</code> injector</h3>
+<p>• <strong>injector</strong>: <em>Injector</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L43">Node/component.ts:43</a></em></p>
+<hr />
+<h3 id="private-noderef"><code>Private</code> nodeRef</h3>
+<p>• <strong>nodeRef</strong>: <em>ComponentNode‹D, T, E›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L43">Node/component.ts:43</a></em></p>
+<hr />
+<h3 id="private-scope"><code>Private</code> scope</h3>
+<p>• <strong>scope</strong>: <em>ObservableScopeAsync‹D›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L16">Node/component.ts:16</a></em></p>
+<hr />
+<h3 id="private-templates"><code>Private</code> templates</h3>
+<p>• <strong>templates</strong>: <em>T</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L17">Node/component.ts:17</a></em></p>
+<h2 id="accessors_1">Accessors</h2>
+<h3 id="protected-data"><code>Protected</code> Data</h3>
+<p>• <strong>get Data</strong>(): <em>D</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L31">Node/component.ts:31</a></em></p>
+<p><strong>Returns:</strong> <em>D</em></p>
+<hr />
+<h3 id="destroyed">Destroyed</h3>
+<p>• <strong>get Destroyed</strong>(): <em>boolean</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L23">Node/component.ts:23</a></em></p>
+<p><strong>Returns:</strong> <em>boolean</em></p>
+<hr />
+<h3 id="injector">Injector</h3>
+<p>• <strong>get Injector</strong>(): <em>Injector‹›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L19">Node/component.ts:19</a></em></p>
+<p><strong>Returns:</strong> <em>Injector‹›</em></p>
+<hr />
+<h3 id="protected-noderef"><code>Protected</code> NodeRef</h3>
+<p>• <strong>get NodeRef</strong>(): <em>ComponentNode‹D, T, E›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L35">Node/component.ts:35</a></em></p>
+<p><strong>Returns:</strong> <em>ComponentNode‹D, T, E›</em></p>
+<hr />
+<h3 id="protected-scope"><code>Protected</code> Scope</h3>
+<p>• <strong>get Scope</strong>(): <em>ObservableScopeAsync‹D›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L27">Node/component.ts:27</a></em></p>
+<p><strong>Returns:</strong> <em>ObservableScopeAsync‹D›</em></p>
+<hr />
+<h3 id="protected-templates"><code>Protected</code> Templates</h3>
+<p>• <strong>get Templates</strong>(): <em>T</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L39">Node/component.ts:39</a></em></p>
+<p><strong>Returns:</strong> <em>T</em></p>
+<h2 id="methods_1">Methods</h2>
+<h3 id="bound">Bound</h3>
+<p>▸ <strong>Bound</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L55">Node/component.ts:55</a></em></p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="destroy">Destroy</h3>
+<p>▸ <strong>Destroy</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L63">Node/component.ts:63</a></em></p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="fire">Fire</h3>
+<p>▸ <strong>Fire</strong>‹<strong>P</strong>›(<code>event</code>: P, <code>data?</code>: E[P]): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L59">Node/component.ts:59</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>P</strong>: <em>keyof E</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event</code></td>
+<td>P</td>
+</tr>
+<tr>
+<td><code>data?</code></td>
+<td>E[P]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="template">Template</h3>
+<p>▸ <strong>Template</strong>(): <em><a href="../_index_.noderef/">NodeRef</a> | <a href="../_index_.noderef/">NodeRef</a>[]</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L51">Node/component.ts:51</a></em></p>
+<p>Method defines the <a href="./#protected-noderef">NodeRef</a> template for this <a href="./">Component</a>.</p>
+<p><strong>Returns:</strong> <em><a href="../_index_.noderef/">NodeRef</a> | <a href="../_index_.noderef/">NodeRef</a>[]</em></p>
+<hr />
+<h3 id="static-attach"><code>Static</code> Attach</h3>
+<p>▸ <strong>Attach</strong>(<code>node</code>: Node, <code>nodeRef</code>: <a href="../_index_.noderef/">NodeRef</a>): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L74">Node/component.ts:74</a></em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node</code></td>
+<td>Node</td>
+</tr>
+<tr>
+<td><code>nodeRef</code></td>
+<td><a href="../_index_.noderef/">NodeRef</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="static-tofunction"><code>Static</code> ToFunction</h3>
+<p>▸ <strong>ToFunction</strong>‹<strong>D</strong>, <strong>T</strong>, <strong>E</strong>›(<code>type</code>: any, <code>namespace</code>: any, <code>constructor</code>: ComponentConstructor‹D, T, E›): <em>function</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Node/component.ts#L70">Node/component.ts:70</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>D</strong></p>
+<p>▪ <strong>T</strong>: <em>ComponentTemplates | void</em></p>
+<p>▪ <strong>E</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type</code></td>
+<td>any</td>
+</tr>
+<tr>
+<td><code>namespace</code></td>
+<td>any</td>
+</tr>
+<tr>
+<td><code>constructor</code></td>
+<td>ComponentConstructor‹D, T, E›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>function</em></p>
+<p>▸ (<code>nodeDef</code>: ComponentNodeFunctionParam‹D, E›, <code>templates?</code>: T): <em><a href="../_index_.noderef/">NodeRef</a></em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ComponentNodeFunctionParam‹D, E›</td>
+</tr>
+<tr>
+<td><code>templates?</code></td>
+<td>T</td>
+</tr>
+</tbody>
+</table>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../../assets/javascripts/vendor.d710d30a.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.a14cc5fd.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents"}</script>
+      
+      <script>
+        app = initialize({
+          base: "../../..",
+          features: [],
+          search: Object.assign({
+            worker: "../../../assets/javascripts/worker/search.7a2ea5ba.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+        <script src="../../../scripts/docHelpers.js"></script>
+      
+        <script src="../../../scripts/codemirror.js"></script>
+      
+        <script src="../../../scripts/javascript.js"></script>
+      
+    
+  </body>
+</html>

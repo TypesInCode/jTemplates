@@ -1,0 +1,23 @@
+site_name: j-templates
+nav:
+  - Home: index.md
+  - Hello World: helloWorld.md
+  - State Management: stateManagement.md
+  - Components: components.md
+  - Dynamic Components: dynamic.md
+  - Injector: injectors.md
+  - Duplicate Array: duplicateArray.md
+  - Animation: animation.md
+  - Table Test: tableTest.md
+  - Code: code-md/globals.md
+theme:
+  name: material
+extra_css:
+  - scripts/styles/codemirror.css
+  - scripts/styles/styles.css
+extra_javascript:
+  - scripts/docHelpers.js
+  - scripts/codemirror.js
+  - scripts/javascript.js
+docs_dir: docs_src
+site_dir: docs

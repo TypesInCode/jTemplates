@@ -1,0 +1,1332 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="shortcut icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-5.3.0">
+    
+    
+      
+        <title>dom index - j-templates</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6e35a1a6.min.css">
+      
+      
+    
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../../scripts/styles/codemirror.css">
+    
+      <link rel="stylesheet" href="../../../scripts/styles/styles.css">
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#module-domindex" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href="../../.." title="j-templates" class="md-header-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      
+        <div class="md-header-nav__ellipsis">
+          <span class="md-header-nav__topic md-ellipsis">
+            j-templates
+          </span>
+          <span class="md-header-nav__topic md-ellipsis">
+            
+               dom index 
+            
+          </span>
+        </div>
+      
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active">
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+        
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="j-templates" class="md-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    j-templates
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../helloWorld/" title="Hello World" class="md-nav__link">
+      Hello World
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../stateManagement/" title="State Management" class="md-nav__link">
+      State Management
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../components/" title="Components" class="md-nav__link">
+      Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../dynamic/" title="Dynamic Components" class="md-nav__link">
+      Dynamic Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../injectors/" title="Injector" class="md-nav__link">
+      Injector
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../duplicateArray/" title="Duplicate Array" class="md-nav__link">
+      Duplicate Array
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../animation/" title="Animation" class="md-nav__link">
+      Animation
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../tableTest/" title="Table Test" class="md-nav__link">
+      Table Test
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../globals/" title="Code" class="md-nav__link">
+      Code
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    Index
+  </a>
+  
+    <nav class="md-nav" aria-label="Index">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions_1" class="md-nav__link">
+    Functions
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setinputvalue" class="md-nav__link">
+    SetInputValue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a" class="md-nav__link">
+    a
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b" class="md-nav__link">
+    b
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#br" class="md-nav__link">
+    br
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#button" class="md-nav__link">
+    button
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#circle" class="md-nav__link">
+    circle
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#div" class="md-nav__link">
+    div
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#g" class="md-nav__link">
+    g
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#h1" class="md-nav__link">
+    h1
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#h2" class="md-nav__link">
+    h2
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#h3" class="md-nav__link">
+    h3
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#img" class="md-nav__link">
+    img
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input" class="md-nav__link">
+    input
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#li" class="md-nav__link">
+    li
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option" class="md-nav__link">
+    option
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p" class="md-nav__link">
+    p
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#select" class="md-nav__link">
+    select
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    source
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#span" class="md-nav__link">
+    span
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#style" class="md-nav__link">
+    style
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#svg" class="md-nav__link">
+    svg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table" class="md-nav__link">
+    table
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#td" class="md-nav__link">
+    td
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text" class="md-nav__link">
+    text
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#th" class="md-nav__link">
+    th
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tr" class="md-nav__link">
+    tr
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ul" class="md-nav__link">
+    ul
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video" class="md-nav__link">
+    video
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                  
+                
+                
+                <p><a href="../../">j-templates</a> › <a href="../../globals/">Globals</a> › <a href="./">"DOM/index"</a></p>
+<h1 id="module-domindex">Module: "DOM/index"</h1>
+<h2 id="index">Index</h2>
+<h3 id="functions">Functions</h3>
+<ul>
+<li><a href="./#setinputvalue">SetInputValue</a></li>
+<li><a href="./#a">a</a></li>
+<li><a href="./#b">b</a></li>
+<li><a href="./#br">br</a></li>
+<li><a href="./#button">button</a></li>
+<li><a href="./#circle">circle</a></li>
+<li><a href="./#div">div</a></li>
+<li><a href="./#g">g</a></li>
+<li><a href="./#h1">h1</a></li>
+<li><a href="./#h2">h2</a></li>
+<li><a href="./#h3">h3</a></li>
+<li><a href="./#img">img</a></li>
+<li><a href="./#input">input</a></li>
+<li><a href="./#li">li</a></li>
+<li><a href="./#option">option</a></li>
+<li><a href="./#p">p</a></li>
+<li><a href="./#select">select</a></li>
+<li><a href="./#source">source</a></li>
+<li><a href="./#span">span</a></li>
+<li><a href="./#style">style</a></li>
+<li><a href="./#svg">svg</a></li>
+<li><a href="./#table">table</a></li>
+<li><a href="./#td">td</a></li>
+<li><a href="./#text">text</a></li>
+<li><a href="./#th">th</a></li>
+<li><a href="./#tr">tr</a></li>
+<li><a href="./#ul">ul</a></li>
+<li><a href="./#video">video</a></li>
+</ul>
+<h2 id="functions_1">Functions</h2>
+<h3 id="setinputvalue">SetInputValue</h3>
+<p>▸ <strong>SetInputValue</strong>(<code>target</code>: HTMLInputElement, <code>value</code>: string): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/utils.ts#L1">DOM/utils.ts:1</a></em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>target</code></td>
+<td>HTMLInputElement</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>string</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="a">a</h3>
+<p>▸ <strong>a</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L8">DOM/elements.ts:8</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="b">b</h3>
+<p>▸ <strong>b</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L24">DOM/elements.ts:24</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="br">br</h3>
+<p>▸ <strong>br</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L20">DOM/elements.ts:20</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="button">button</h3>
+<p>▸ <strong>button</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L78">DOM/elements.ts:78</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="circle">circle</h3>
+<p>▸ <strong>circle</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: function): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/svgElements.ts#L15">DOM/svgElements.ts:15</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<p>▪ <strong>nodeDef</strong>: <em>ElementNodeFunctionParam‹T›</em></p>
+<p>▪<code>Optional</code>  <strong>children</strong>: <em>function</em></p>
+<p>▸ (<code>data?</code>: T): <em><a href="../../classes/_index_.noderef/">NodeRef</a> | <a href="../../classes/_index_.noderef/">NodeRef</a>[]</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data?</code></td>
+<td>T</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="div">div</h3>
+<p>▸ <strong>div</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L4">DOM/elements.ts:4</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="g">g</h3>
+<p>▸ <strong>g</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: function): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/svgElements.ts#L11">DOM/svgElements.ts:11</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<p>▪ <strong>nodeDef</strong>: <em>ElementNodeFunctionParam‹T›</em></p>
+<p>▪<code>Optional</code>  <strong>children</strong>: <em>function</em></p>
+<p>▸ (<code>data?</code>: T): <em><a href="../../classes/_index_.noderef/">NodeRef</a> | <a href="../../classes/_index_.noderef/">NodeRef</a>[]</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data?</code></td>
+<td>T</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="h1">h1</h3>
+<p>▸ <strong>h1</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L58">DOM/elements.ts:58</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="h2">h2</h3>
+<p>▸ <strong>h2</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L62">DOM/elements.ts:62</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="h3">h3</h3>
+<p>▸ <strong>h3</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L66">DOM/elements.ts:66</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="img">img</h3>
+<p>▸ <strong>img</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L32">DOM/elements.ts:32</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="input">input</h3>
+<p>▸ <strong>input</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L44">DOM/elements.ts:44</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="li">li</h3>
+<p>▸ <strong>li</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L16">DOM/elements.ts:16</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="option">option</h3>
+<p>▸ <strong>option</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L54">DOM/elements.ts:54</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="p">p</h3>
+<p>▸ <strong>p</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L70">DOM/elements.ts:70</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="select">select</h3>
+<p>▸ <strong>select</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L50">DOM/elements.ts:50</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="source">source</h3>
+<p>▸ <strong>source</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L40">DOM/elements.ts:40</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="span">span</h3>
+<p>▸ <strong>span</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L28">DOM/elements.ts:28</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="style">style</h3>
+<p>▸ <strong>style</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L74">DOM/elements.ts:74</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="svg">svg</h3>
+<p>▸ <strong>svg</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: function): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/svgElements.ts#L7">DOM/svgElements.ts:7</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<p>▪ <strong>nodeDef</strong>: <em>ElementNodeFunctionParam‹T›</em></p>
+<p>▪<code>Optional</code>  <strong>children</strong>: <em>function</em></p>
+<p>▸ (<code>data?</code>: T): <em><a href="../../classes/_index_.noderef/">NodeRef</a> | <a href="../../classes/_index_.noderef/">NodeRef</a>[]</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data?</code></td>
+<td>T</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="table">table</h3>
+<p>▸ <strong>table</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L82">DOM/elements.ts:82</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="td">td</h3>
+<p>▸ <strong>td</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L94">DOM/elements.ts:94</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="text">text</h3>
+<p>▸ <strong>text</strong>(<code>value</code>: string | function): <em>ElementNode‹unknown›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L98">DOM/elements.ts:98</a></em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>value</code></td>
+<td>string &#124; function</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹unknown›</em></p>
+<hr />
+<h3 id="th">th</h3>
+<p>▸ <strong>th</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L86">DOM/elements.ts:86</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="tr">tr</h3>
+<p>▸ <strong>tr</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L90">DOM/elements.ts:90</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="ul">ul</h3>
+<p>▸ <strong>ul</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L12">DOM/elements.ts:12</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+<hr />
+<h3 id="video">video</h3>
+<p>▸ <strong>video</strong>‹<strong>T</strong>›(<code>nodeDef</code>: ElementNodeFunctionParam‹T›, <code>children?</code>: ElementChildrenFunction‹T›): <em>ElementNode‹T›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/DOM/elements.ts#L36">DOM/elements.ts:36</a></em></p>
+<p><strong>Type parameters:</strong></p>
+<p>▪ <strong>T</strong></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeDef</code></td>
+<td>ElementNodeFunctionParam‹T›</td>
+</tr>
+<tr>
+<td><code>children?</code></td>
+<td>ElementChildrenFunction‹T›</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>ElementNode‹T›</em></p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../../assets/javascripts/vendor.d710d30a.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.a14cc5fd.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents"}</script>
+      
+      <script>
+        app = initialize({
+          base: "../../..",
+          features: [],
+          search: Object.assign({
+            worker: "../../../assets/javascripts/worker/search.7a2ea5ba.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+        <script src="../../../scripts/docHelpers.js"></script>
+      
+        <script src="../../../scripts/codemirror.js"></script>
+      
+        <script src="../../../scripts/javascript.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,832 @@
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="shortcut icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-5.3.0">
+    
+    
+      
+        <title>utils index .animation - j-templates</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6e35a1a6.min.css">
+      
+      
+    
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../../scripts/styles/codemirror.css">
+    
+      <link rel="stylesheet" href="../../../scripts/styles/styles.css">
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#class-animation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href="../../.." title="j-templates" class="md-header-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      
+        <div class="md-header-nav__ellipsis">
+          <span class="md-header-nav__topic md-ellipsis">
+            j-templates
+          </span>
+          <span class="md-header-nav__topic md-ellipsis">
+            
+               utils index .animation
+            
+          </span>
+        </div>
+      
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active">
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+        
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="j-templates" class="md-nav__button md-logo" aria-label="j-templates">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    j-templates
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../helloWorld/" title="Hello World" class="md-nav__link">
+      Hello World
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../stateManagement/" title="State Management" class="md-nav__link">
+      State Management
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../components/" title="Components" class="md-nav__link">
+      Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../dynamic/" title="Dynamic Components" class="md-nav__link">
+      Dynamic Components
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../injectors/" title="Injector" class="md-nav__link">
+      Injector
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../duplicateArray/" title="Duplicate Array" class="md-nav__link">
+      Duplicate Array
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../animation/" title="Animation" class="md-nav__link">
+      Animation
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../../tableTest/" title="Table Test" class="md-nav__link">
+      Table Test
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../globals/" title="Code" class="md-nav__link">
+      Code
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#hierarchy" class="md-nav__link">
+    Hierarchy
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    Index
+  </a>
+  
+    <nav class="md-nav" aria-label="Index">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructors" class="md-nav__link">
+    Constructors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#properties" class="md-nav__link">
+    Properties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessors" class="md-nav__link">
+    Accessors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    Methods
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constructors_1" class="md-nav__link">
+    Constructors
+  </a>
+  
+    <nav class="md-nav" aria-label="Constructors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor" class="md-nav__link">
+    constructor
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#properties_1" class="md-nav__link">
+    Properties
+  </a>
+  
+    <nav class="md-nav" aria-label="Properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-animationtimeouts" class="md-nav__link">
+    Private animationTimeouts
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-enabled" class="md-nav__link">
+    Private enabled
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-end" class="md-nav__link">
+    Private end
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-framecount" class="md-nav__link">
+    Private frameCount
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-frametimings" class="md-nav__link">
+    Private frameTimings
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-running" class="md-nav__link">
+    Private running
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-start" class="md-nav__link">
+    Private start
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-type" class="md-nav__link">
+    Private type
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-update" class="md-nav__link">
+    Private update
+  </a>
+  
+    <nav class="md-nav" aria-label="Private update">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-declaration" class="md-nav__link">
+    Type declaration:
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accessors_1" class="md-nav__link">
+    Accessors
+  </a>
+  
+    <nav class="md-nav" aria-label="Accessors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enabled" class="md-nav__link">
+    Enabled
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#end" class="md-nav__link">
+    End
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running" class="md-nav__link">
+    Running
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start" class="md-nav__link">
+    Start
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#methods_1" class="md-nav__link">
+    Methods
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#animate" class="md-nav__link">
+    Animate
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cancel" class="md-nav__link">
+    Cancel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#destroy" class="md-nav__link">
+    Destroy
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disable" class="md-nav__link">
+    Disable
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable" class="md-nav__link">
+    Enable
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#private-settimeout" class="md-nav__link">
+    Private SetTimeout
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                  
+                
+                
+                <p><a href="../../">j-templates</a> › <a href="../../globals/">Globals</a> › <a href="../../modules/_utils_index_/">"Utils/index"</a> › <a href="./">Animation</a></p>
+<h1 id="class-animation">Class: Animation</h1>
+<p>Provides the ability to interpolate and schedule events over a given range. Intended
+to help animate parts of a page not accessible through CSS such as the scroll bar.</p>
+<pre><code class="ts">var animation = new Animation(AnimationType.EaseIn, 500, (next) =&gt; {
+ this.state = { scrollTop: next };
+});
+animation.Animate(0, 100);
+</code></pre>
+
+<h2 id="hierarchy">Hierarchy</h2>
+<ul>
+<li><strong>Animation</strong></li>
+</ul>
+<h2 id="index">Index</h2>
+<h3 id="constructors">Constructors</h3>
+<ul>
+<li><a href="./#constructor">constructor</a></li>
+</ul>
+<h3 id="properties">Properties</h3>
+<ul>
+<li><a href="./#private-animationtimeouts">animationTimeouts</a></li>
+<li><a href="./#private-enabled">enabled</a></li>
+<li><a href="./#private-end">end</a></li>
+<li><a href="./#private-framecount">frameCount</a></li>
+<li><a href="./#private-frametimings">frameTimings</a></li>
+<li><a href="./#private-running">running</a></li>
+<li><a href="./#private-start">start</a></li>
+<li><a href="./#private-type">type</a></li>
+<li><a href="./#private-update">update</a></li>
+</ul>
+<h3 id="accessors">Accessors</h3>
+<ul>
+<li><a href="./#enabled">Enabled</a></li>
+<li><a href="./#end">End</a></li>
+<li><a href="./#running">Running</a></li>
+<li><a href="./#start">Start</a></li>
+</ul>
+<h3 id="methods">Methods</h3>
+<ul>
+<li><a href="./#animate">Animate</a></li>
+<li><a href="./#cancel">Cancel</a></li>
+<li><a href="./#destroy">Destroy</a></li>
+<li><a href="./#disable">Disable</a></li>
+<li><a href="./#enable">Enable</a></li>
+<li><a href="./#private-settimeout">SetTimeout</a></li>
+</ul>
+<h2 id="constructors_1">Constructors</h2>
+<h3 id="constructor">constructor</h3>
+<p>+ <strong>new Animation</strong>(<code>type</code>: <a href="../../enums/_utils_index_.animationtype/">AnimationType</a>, <code>duration</code>: number, <code>update</code>: function): <em><a href="./">Animation</a></em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L82">Utils/animation.ts:82</a></em></p>
+<p><strong>Parameters:</strong></p>
+<p>▪ <strong>type</strong>: <em><a href="../../enums/_utils_index_.animationtype/">AnimationType</a></em></p>
+<p>Interpolation function to use</p>
+<p>▪ <strong>duration</strong>: <em>number</em></p>
+<p>Time in MS to schedule animation events over</p>
+<p>▪ <strong>update</strong>: <em>function</em></p>
+<p>Callback used to emit the next value for the animation</p>
+<p>▸ (<code>next</code>: number): <em>void</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>next</code></td>
+<td>number</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em><a href="./">Animation</a></em></p>
+<h2 id="properties_1">Properties</h2>
+<h3 id="private-animationtimeouts"><code>Private</code> animationTimeouts</h3>
+<p>• <strong>animationTimeouts</strong>: <em>Array‹any›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L50">Utils/animation.ts:50</a></em></p>
+<hr />
+<h3 id="private-enabled"><code>Private</code> enabled</h3>
+<p>• <strong>enabled</strong>: <em>boolean</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L54">Utils/animation.ts:54</a></em></p>
+<hr />
+<h3 id="private-end"><code>Private</code> end</h3>
+<p>• <strong>end</strong>: <em>number</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L53">Utils/animation.ts:53</a></em></p>
+<hr />
+<h3 id="private-framecount"><code>Private</code> frameCount</h3>
+<p>• <strong>frameCount</strong>: <em>number</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L47">Utils/animation.ts:47</a></em></p>
+<hr />
+<h3 id="private-frametimings"><code>Private</code> frameTimings</h3>
+<p>• <strong>frameTimings</strong>: <em>Array‹number›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L48">Utils/animation.ts:48</a></em></p>
+<hr />
+<h3 id="private-running"><code>Private</code> running</h3>
+<p>• <strong>running</strong>: <em>boolean</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L51">Utils/animation.ts:51</a></em></p>
+<hr />
+<h3 id="private-start"><code>Private</code> start</h3>
+<p>• <strong>start</strong>: <em>number</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L52">Utils/animation.ts:52</a></em></p>
+<hr />
+<h3 id="private-type"><code>Private</code> type</h3>
+<p>• <strong>type</strong>: <em><a href="../../enums/_utils_index_.animationtype/">AnimationType</a></em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L46">Utils/animation.ts:46</a></em></p>
+<hr />
+<h3 id="private-update"><code>Private</code> update</h3>
+<p>• <strong>update</strong>: <em>function</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L49">Utils/animation.ts:49</a></em></p>
+<h4 id="type-declaration">Type declaration:</h4>
+<p>▸ (<code>next</code>: number): <em>void</em></p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>next</code></td>
+<td>number</td>
+</tr>
+</tbody>
+</table>
+<h2 id="accessors_1">Accessors</h2>
+<h3 id="enabled">Enabled</h3>
+<p>• <strong>get Enabled</strong>(): <em>boolean</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L80">Utils/animation.ts:80</a></em></p>
+<p>Whether or not the animation with run when Animate is called.</p>
+<p><strong>Returns:</strong> <em>boolean</em></p>
+<hr />
+<h3 id="end">End</h3>
+<p>• <strong>get End</strong>(): <em>number</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L73">Utils/animation.ts:73</a></em></p>
+<p>The end of the range of the current animation.</p>
+<p><strong>Returns:</strong> <em>number</em></p>
+<hr />
+<h3 id="running">Running</h3>
+<p>• <strong>get Running</strong>(): <em>boolean</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L59">Utils/animation.ts:59</a></em></p>
+<p>If an animation is currently running.</p>
+<p><strong>Returns:</strong> <em>boolean</em></p>
+<hr />
+<h3 id="start">Start</h3>
+<p>• <strong>get Start</strong>(): <em>number</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L66">Utils/animation.ts:66</a></em></p>
+<p>The start of the range of the current animation.</p>
+<p><strong>Returns:</strong> <em>number</em></p>
+<h2 id="methods_1">Methods</h2>
+<h3 id="animate">Animate</h3>
+<p>▸ <strong>Animate</strong>(<code>start</code>: number, <code>end</code>: number): <em>Promise‹void›</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L114">Utils/animation.ts:114</a></em></p>
+<p>Start a new animation. If an animation is running it is cancelled.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>start</code></td>
+<td>number</td>
+<td>Beginning of the range to interpolate over</td>
+</tr>
+<tr>
+<td><code>end</code></td>
+<td>number</td>
+<td>End of the range to interpolate over</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns:</strong> <em>Promise‹void›</em></p>
+<hr />
+<h3 id="cancel">Cancel</h3>
+<p>▸ <strong>Cancel</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L159">Utils/animation.ts:159</a></em></p>
+<p>Cancel the current animation.</p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="destroy">Destroy</h3>
+<p>▸ <strong>Destroy</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L171">Utils/animation.ts:171</a></em></p>
+<p>Destroy method cancels a running animation</p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="disable">Disable</h3>
+<p>▸ <strong>Disable</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L144">Utils/animation.ts:144</a></em></p>
+<p>Cancel a running animation and prevent new animations from starting</p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="enable">Enable</h3>
+<p>▸ <strong>Enable</strong>(): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L152">Utils/animation.ts:152</a></em></p>
+<p>Allow new animations to start.</p>
+<p><strong>Returns:</strong> <em>void</em></p>
+<hr />
+<h3 id="private-settimeout"><code>Private</code> SetTimeout</h3>
+<p>▸ <strong>SetTimeout</strong>(<code>index</code>: number, <code>value</code>: number, <code>resolve</code>: function): <em>void</em></p>
+<p><em>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/2f3395e/src/Utils/animation.ts#L175">Utils/animation.ts:175</a></em></p>
+<p><strong>Parameters:</strong></p>
+<p>▪ <strong>index</strong>: <em>number</em></p>
+<p>▪ <strong>value</strong>: <em>number</em></p>
+<p>▪ <strong>resolve</strong>: <em>function</em></p>
+<p>▸ (): <em>void</em></p>
+<p><strong>Returns:</strong> <em>void</em></p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../../assets/javascripts/vendor.d710d30a.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.a14cc5fd.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents"}</script>
+      
+      <script>
+        app = initialize({
+          base: "../../..",
+          features: [],
+          search: Object.assign({
+            worker: "../../../assets/javascripts/worker/search.7a2ea5ba.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+        <script src="../../../scripts/docHelpers.js"></script>
+      
+        <script src="../../../scripts/codemirror.js"></script>
+      
+        <script src="../../../scripts/javascript.js"></script>
+      
+    
+  </body>
+</html>
