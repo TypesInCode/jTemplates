@@ -9,7 +9,7 @@ nav:
   - Duplicate Array: duplicateArray.md
   - Animation: animation.md
   - Table Test: tableTest.md
-  - Code: code-md/globals.md
+  - Code: code
 theme:
   name: material
 extra_css:

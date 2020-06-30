@@ -17,11 +17,9 @@
     "clean": "rimraf lib",
     "build": "npm run buildquick && node ./tools/copy-package-json.js && webpack",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
+    "builddocs": "mkdocs build && typedoc --theme minimal --out docs/code src/index.ts src/DOM/index.ts src/Utils/index.ts",
     "test": "mocha --require ts-node/register --recursive test/**/*-spec.ts",
-    "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts",
-    "watch": "npm run build -- --watch",
-    "watch:test": "npm run test -- --watch",
-    "webbuild": "npm run clean && webpack --config webpack.dist.config.js"
+    "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts"
   },
   "dependencies": {},
   "devDependencies": {
@@ -38,6 +36,7 @@
     "source-map-support": "^0.5.19",
     "ts-loader": "^7.0.4",
     "ts-node": "^8.10.1",
+    "typedocs": "^0.6.7",
     "typescript": "^3.7.4",
     "uglifyjs-webpack-plugin": "^1.2.4",
     "webpack": "^4.43.0",

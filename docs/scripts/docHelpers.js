@@ -74,7 +74,6 @@ function AddDependencies(scriptFolder, callback) {
     // LoadScripts(["https://cdn.jsdelivr.net/gh/Microsoft/TypeScript@master/lib/typescriptServices.js"], onComplete);
     // LoadScripts(["https://unpkg.com/j-templates/jTemplates.js"], callback);
     LoadScripts([
-        "https://cdn.jsdelivr.net/gh/Microsoft/TypeScript@master/lib/typescriptServices.js",
         scriptFolder + "codemirror.js", 
         scriptFolder + "javascript.js",
         // scriptFolder + "show-hint.js",
