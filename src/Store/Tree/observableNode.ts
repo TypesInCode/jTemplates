@@ -6,7 +6,7 @@ import { ObservableScope } from "./observableScope";
 export class ObservableNode {
 
     private children = new Map<string, ObservableNode>();
-    private emitter = new Emitter();
+    private emitter = Emitter.Create();
 
     // Cached values
     private path: string = undefined;
@@ -125,80 +125,25 @@ export class ObservableNode {
         this.self = undefined;
         this.proxyArray = undefined;
 
-        /* if(oldType !== this.Type)
-            this.proxy = undefined; */
-
-        /* if(this.parent && this.parent.Type === Type.Array)
-            this.parent.ArrayUpdate(this.key); */
-
         this.children.forEach(node => node.Update());
         this.EmitSet();
-
-        // this.UpdateProxyArray();
-        // this.UpdateNodeArray();
-        // if(this.parent && this.parent.Type === Type.Array)
-            // this.parent.UpdateNodeArrayIndex(parseInt(this.key), this);
-            // this.parent.UpdateProxyArrayIndex(parseInt(this.key), this.Proxy);
     }
 
     public ArrayUpdate() {
         this.value = undefined;
         this.proxyArray = undefined;
         this.EnsureChild("length").Update();
-        // this.UpdateNodeArray();
         this.EmitSet();
     }
 
     public EmitSet() {
-        this.emitter.Emit("set");
+        Emitter.Emit(this.emitter, "set");
     }
-
-    /* public UpdateProxyArrayIndex(index: number, value: ObservableProxy) {
-        if(this.proxyArray)
-            this.proxyArray[index] = value;
-    } */
-
-    /* public UpdateNodeArrayIndex(index: number, value: ObservableNode) {
-        if(this.nodeArray)
-            this.nodeArray[index] = value;
-    } */
 
     public Destroy() {
         this.parent && this.parent.Children.delete(this.key);
-        this.emitter.Clear();
+        this.emitter.clear();
         this.children.forEach(c => c.Destroy())
     }
-
-    /* private UpdateProxyArray(force?: boolean) {
-        if(this.Type === Type.Array && (this.proxyArray || force)) {
-            var proxyArrayLength = this.proxyArray ? this.proxyArray.length : 0;
-            var array = this.Value as Array<any>;
-            this.proxyArray = this.proxyArray || new Array(array.length);
-            if(array.length > proxyArrayLength) {
-                for(var x=proxyArrayLength; x<array.length; x++)
-                    this.proxyArray[x] = this.EnsureChild(x.toString()).Proxy;
-            }
-            else if(array.length < proxyArrayLength)
-                this.proxyArray.splice(array.length);
-        }
-        else
-            this.proxyArray = null;
-    } */
-
-    /* private UpdateNodeArray() {
-        if(this.Type === Type.Array) {
-            var nodeArrayLength = this.nodeArray ? this.nodeArray.length : 0;
-            var array = this.Value as Array<any>;
-            this.nodeArray = this.nodeArray || new Array(array.length);
-            if(array.length > nodeArrayLength) {
-                for(var x=nodeArrayLength; x<array.length; x++)
-                    this.nodeArray[x] = this.EnsureChild(x.toString());
-            }
-            else if(array.length < nodeArrayLength)
-                this.nodeArray.splice(array.length);
-        }
-        else
-            this.nodeArray = null;
-    } */
 
 }

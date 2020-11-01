@@ -7,14 +7,12 @@ export type NodeRefEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
-    immediate?: boolean;
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
 }
 
-export interface BoundNodeFunctionParam<T> {
-    immediate?: boolean;
+export interface BoundNodeFunctionParam {
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;

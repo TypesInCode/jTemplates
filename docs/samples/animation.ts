@@ -1,5 +1,5 @@
 import { Component } from 'j-templates';
-import { div, text } from 'j-templates/DOM';
+import { div } from 'j-templates/DOM';
 import { Animation, State, AnimationType, Destroy } from 'j-templates/Utils';
 
 class AnimationComponent extends Component {

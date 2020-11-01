@@ -1,18 +1,14 @@
-import { NodeDefinition, FunctionOr, NodeRefEvents } from "./boundNode.types";
-import { NodeRef } from "..";
+import { NodeDefinition, BoundNodeFunctionParam } from "./boundNode.types";
+import { INodeRef } from "./nodeRef";
 
 export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     data?: {(): T | Array<T> | Promise<Array<T>> | Promise<T> };
-    children?: {(data?: T): string | NodeRef | NodeRef[]};
+    children?: {(data?: T): string | INodeRef | INodeRef[]};
 }
 
-export interface ElementNodeFunctionParam<T> {
-    immediate?: boolean;
-    props?: FunctionOr<{[name: string]: any}>;
-    attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
+export interface ElementNodeFunctionParam<T> extends BoundNodeFunctionParam {
     data?: {(): T | Array<T> | Promise<Array<T>> | Promise<T> };
 }
 
-export type ElementChildrenFunction<T> = {(data?: T): string | NodeRef | NodeRef[]};
-export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): NodeRef}
+export type ElementChildrenFunction<T> = {(data?: T): string | INodeRef | INodeRef[]};
+export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): INodeRef}

@@ -5,7 +5,7 @@ import { ObservableScope } from "./observableScope";
 export class ObservableTree {
 
     private rootStateMap = new Map<string, any>();
-    private rootNodeMap = new Map<string, ObservableNode>(); // update any to be tree node type
+    private rootNodeMap = new Map<string, ObservableNode>();
 
     constructor(private valuePathResolver?: { (value: string): string }) { }
 

@@ -1,20 +1,20 @@
-import { NodeRef } from "./nodeRef";
+import { INodeRef, NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
-import { Injector } from "../Utils/injector";
 import { Destroy } from "../Utils/decorators";
-import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
+import { ComponentNodeEvents } from "./componentNode.types";
+import { ObservableScope } from "../Store/Tree/observableScope";
 
 export class Component<D = void, T = void, E = void> {
-    private scope: ObservableScopeAsync<D>;
+    private scope: ObservableScope<D>;
     private templates: T;
     private decoratorMap: Map<string, any>;
 
     public get Injector() {
-        return this.injector;
+        return this.nodeRef.injector;
     }
 
     public get Destroyed() {
-        return this.nodeRef.Destroyed;
+        return this.nodeRef.destroyed;
     }
 
     public get DecoratorMap() {
@@ -37,13 +37,13 @@ export class Component<D = void, T = void, E = void> {
         return this.templates;
     }
 
-    constructor(data: {(): D | Promise<D>} | D, templates: T, private nodeRef: ComponentNode<D, T, E>, private injector: Injector) {
-        this.scope = new ObservableScopeAsync(data);
+    constructor(data: D | {(): D | Promise<D>}, templates: T, private nodeRef: INodeRef, private componentEvents: ComponentNodeEvents<E>) {
+        this.scope = new ObservableScope<D>(data);
         this.templates = templates || {} as T;
         this.decoratorMap = new Map();
     }
 
-    public Template(): NodeRef | NodeRef[] {
+    public Template(): INodeRef | INodeRef[] {
         return [];
     }
 
@@ -52,7 +52,8 @@ export class Component<D = void, T = void, E = void> {
     }
 
     public Fire<P extends keyof E>(event: P, data?: E[P]) {
-        this.NodeRef.Fire(event as any, data);
+        var eventCallback = this.componentEvents && this.componentEvents[event];
+        eventCallback && eventCallback(data);
     }
 
     public Destroy() {
@@ -66,11 +67,11 @@ export namespace Component {
         return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
     }
 
-    export function Attach(node: Node, nodeRef: NodeRef) {
-        var rootRef = new NodeRef(node);
-        rootRef.AddChild(nodeRef);
+    export function Attach(node: Node, nodeRef: INodeRef) {
+        var rootRef = NodeRef.Create(node);
+        NodeRef.AddChild(rootRef, nodeRef);
     }
 
 }
 
-export type ComponentConstructor<D, T, E> = { new (data: {(): D | Promise<D>}, templates: T, nodeRef: NodeRef, injector: Injector): Component<D, T, E> };
+export type ComponentConstructor<D, T, E> = { new (data: {(): D | Promise<D>}, templates: T, nodeRef: INodeRef, componentEvents: ComponentNodeEvents<E>): Component<D, T, E> };

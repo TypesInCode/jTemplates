@@ -1,6 +1,6 @@
 import { Component } from 'j-templates';
 import { table, tr, th, td, select, option, span, div, button, style } from 'j-templates/DOM';
-import { State, Scope, SharedScope } from 'j-templates/Utils';
+import { State, Scope } from 'j-templates/Utils';
 
 const data = [
     "ABAMPERES",
@@ -102,12 +102,10 @@ class RootComponent extends Component {
       	return data;
     }
   
-  	@SharedScope()
   	Columns() {
       	return () => Reflect.ownKeys(headers);
     }
   
-  	@SharedScope()
   	Hidden(key: string) {
       	return () => ({ className: this.hiddenColumns.has(key) ? 'hidden' : '' });
     }

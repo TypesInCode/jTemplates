@@ -1,7 +1,7 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
-import { SetInputValue } from './utils';
+import { SetProperties } from './utils';
 import { Thread } from '../Utils/thread';
 
 var pendingUpdates = new List<{(): void}>();
@@ -17,10 +17,10 @@ function processUpdates() {
 
 const htmlNs = "http://www.w3.org/1999/xhtml";
 export var DOMNodeConfig: INodeConfig = {
-    createNode: function(type: string, namespace: string): Node {
+    createNode(type: string, namespace: string): Node {
         return type !== "text" ? wndw.document.createElementNS(namespace || htmlNs, type) : wndw.document.createTextNode("");
     },
-    scheduleUpdate: function(callback: () => void): void {
+    scheduleUpdate(callback: () => void): void {
         pendingUpdates.Add(callback);
     
         if(!updateScheduled) {
@@ -28,19 +28,19 @@ export var DOMNodeConfig: INodeConfig = {
             wndw.requestAnimationFrame(processUpdates);
         }
     },
-    addListener: function(target: Node, type: string, callback: {():void}) {
+    addListener(target: Node, type: string, callback: {():void}) {
         target.addEventListener(type, callback);
     },
-    removeListener: function(target: Node, type: string, callback: {():void}) {
+    removeListener(target: Node, type: string, callback: {():void}) {
         target.removeEventListener(type, callback);
     },
-    addChild: function(root: Node, child: Node) {
+    addChild(root: Node, child: Node) {
         root.appendChild(child);
     },
-    addChildFirst: function(root: Node, child: Node) {
+    addChildFirst(root: Node, child: Node) {
         DOMNodeConfig.addChildBefore(root, root.firstChild, child);
     },
-    addChildBefore: function(root: Node, sibling: Node, child: Node) {
+    addChildBefore(root: Node, sibling: Node, child: Node) {
         if(!sibling) {
             DOMNodeConfig.addChild(root, child);
             return;
@@ -49,7 +49,7 @@ export var DOMNodeConfig: INodeConfig = {
         if(child !== sibling)
             root.insertBefore(child, sibling);
     },
-    addChildAfter: function(root: Node, sibling: Node, child: Node) {
+    addChildAfter(root: Node, sibling: Node, child: Node) {
         if(!sibling) {
             DOMNodeConfig.addChildFirst(root, child);
             return;
@@ -57,13 +57,13 @@ export var DOMNodeConfig: INodeConfig = {
 
         DOMNodeConfig.addChildBefore(root, sibling.nextSibling, child);
     },
-    removeChild: function(root: Node, child: Node) {
+    removeChild(root: Node, child: Node) {
         root.removeChild(child);
     },
-    remove: function(target: Node) {
+    remove(target: Node) {
         target && target.parentNode && target.parentNode.removeChild(target);
     },
-    setText: function(target: Node, text: string) {
+    setText(target: Node, text: string) {
         target.textContent = text;
     },
     getAttribute(target: HTMLElement, attribute: string) {
@@ -76,7 +76,5 @@ export var DOMNodeConfig: INodeConfig = {
         var cEvent = new CustomEvent(event, data);
         target.dispatchEvent(cEvent);
     },
-    setPropertyOverrides: {
-        ["value"]: SetInputValue
-    }
+    setProperties: SetProperties
 }

@@ -1,69 +1,59 @@
 import { NodeConfig } from "./nodeConfig";
 import { Injector } from "../Utils/injector";
+import { IDestroyable } from "../Utils/utils.types";
 
-export class NodeRef {
-    private node: any;
-    private parent: NodeRef;
-    private childNodes: Set<NodeRef>;
-    private destroyed: boolean;
-    private injector: Injector;
+export interface INodeRef {
+    node: any;
+    injector: Injector;
+    parent: INodeRef;
+    childNodes: Set<INodeRef>;
+    destroyed: boolean;
+    destroyables: IDestroyable[];
+}
 
-    public get Destroyed() {
-        return this.destroyed;
+export namespace NodeRef {
+
+    export function Create(node: any): INodeRef {
+        return {
+            node: node,
+            injector: Injector.Current() || new Injector(),
+            parent: null,
+            childNodes: new Set<INodeRef>(),
+            destroyed: false,
+            destroyables: []
+        };
     }
 
-    public get Node() {
-        return this.node;
+    export function AddChild(node: INodeRef, child: INodeRef) {
+        child.parent = node;
+        node.childNodes.add(child);
+        NodeConfig.addChild(node.node, child.node);
     }
 
-    public get Injector() {
-        return this.injector;
-    }
-
-    constructor(node: any, injector = Injector.Current()) {
-        this.node = node;
-        this.destroyed = false;
-        this.childNodes = new Set();
-        this.injector = injector;
-    }
-
-    public AddChild(nodeRef: NodeRef) {
-        nodeRef.parent = this;
-        this.childNodes.add(nodeRef);
-        NodeConfig.addChild(this.Node, nodeRef.Node);
-    }
-
-    public AddChildAfter(currentChild: NodeRef, newChild: NodeRef) {
-        if(currentChild && !this.childNodes.has(currentChild))
+    export function AddChildAfter(node: INodeRef, currentChild: INodeRef, newChild: INodeRef) {
+        if(currentChild && !node.childNodes.has(currentChild))
             throw "currentChild is not valid";
-        
-        newChild.parent = this;
-        this.childNodes.add(newChild);
-        NodeConfig.addChildAfter(this.Node, currentChild && currentChild.Node, newChild.Node);
+
+        newChild.parent = node;
+        node.childNodes.add(newChild);
+        NodeConfig.addChildAfter(node.node, currentChild && currentChild.node, newChild.node);
     }
 
-    public DetachChild(nodeRef: NodeRef) {
-        if(this.childNodes.has(nodeRef)) {
-            this.childNodes.delete(nodeRef);
-            NodeConfig.removeChild(this.Node, nodeRef.Node);
-            nodeRef.parent = null;
+    export function DetachChild(node: INodeRef, child: INodeRef) {
+        if(node.childNodes.has(child)) {
+            node.childNodes.delete(child);
+            NodeConfig.removeChild(node.node, child.node);
+            child.parent = null;
         }
     }
 
-    public Detach() {
-        if(this.parent)
-            this.parent.DetachChild(this);
-    }
-
-    public Destroy() {
-        if(this.destroyed)
+    export function Destroy(node: INodeRef) {
+        if(node.destroyed)
             return;
-        
-        this.destroyed = true;
-        this.DestroyChildren();
+
+        node.destroyed = true;
+        node.childNodes.forEach(Destroy);
+        node.destroyables.forEach(d => d && d.Destroy());
     }
 
-    protected DestroyChildren() {
-        this.childNodes.forEach(node => node.Destroy());
-    }
 }

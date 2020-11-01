@@ -42,8 +42,6 @@ export function source<T>(nodeDef: ElementNodeFunctionParam<T>) {
 }
 
 export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
-    nodeDef = nodeDef || {};
-    (nodeDef as any).immediate = true;
     return ElementNode.Create<T>("input", null, nodeDef, null);
 }
 
@@ -95,7 +93,7 @@ export function td<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementCh
     return ElementNode.Create<T>("td", null, nodeDef, children);
 }
 
-export function text(value: string | {(): string}) {
+/* export function text(value: string | {(): string}) {
     var valueFunc: {(): string} = null;
     if(typeof value === 'string')
         valueFunc = () => value;
@@ -103,4 +101,4 @@ export function text(value: string | {(): string}) {
         valueFunc = value;
 
     return ElementNode.Create("text", null, { props: () => ({ nodeValue: valueFunc() }) });
-}
+} */

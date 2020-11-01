@@ -65,7 +65,7 @@ function CreateContext() {
         async: false,
         workEndNode: null,
         workList: new List(),
-        DoWork: () => DoWork(ctx)
+        DoWork: function() { DoWork(ctx); }
     };
     
     return ctx;
@@ -110,7 +110,7 @@ export function After(callback: {(): void}) {
 
 export function Callback<A = void, B = void, C = void, D = void>(callback: (a: A, b: B, c: C, d: D) => void) {
     return (a?: A, b?: B, c?: C, d?: D) => {        
-        Schedule(() => callback(a, b, c, d));
+        Schedule(function() { callback(a, b, c, d); });
     }
 }
 
@@ -123,7 +123,7 @@ export function Thread(callback: {(): void}, forceNew = false) {
 
 export function ThreadAsync(callback: {(): void}, forceNew = false) {
     return new Promise(resolve => 
-        Thread(() => {
+        Thread(function() {
             callback();
             Thread(resolve);
         }, forceNew)

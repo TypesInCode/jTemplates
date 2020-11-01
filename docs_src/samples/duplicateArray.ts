@@ -1,7 +1,7 @@
 import { Component } from "j-templates";
 import { StoreAsync } from "j-templates/Store";
 import { Computed, Destroy } from "j-templates/Utils";
-import { div, br, text } from "j-templates/DOM";
+import { div, br } from "j-templates/DOM";
 
 interface State {
     _id: string;
@@ -39,7 +39,7 @@ class DuplicateArray extends Component {
                             await writer.Push(val.targetArray, obj);
                         })
                     }
-                } }, () => text(() => data.value))
+                } }, () => `${data.value}`)
             ),
             br({}),
             div({}, () => "Target:"),
@@ -50,7 +50,7 @@ class DuplicateArray extends Component {
                             await writer.Splice(root.targetArray, data.index, 1);
                         });
                     }
-                } }, () => text(() => data.value))
+                } }, () => `${data.value}`)
             )
         ]
     }

@@ -1,33 +1,32 @@
-export class Emitter {
-    
-    private events: Map<string, Set<{(): void}>> = new Map();
+export type EmitterCallback = {(...args: any[]): void};
+export type Emitter = Map<string, Set<{(...args: any[]): void}>>;
 
-    public On(event: string, callback: {(): void}) {
-        var callbacks = this.events.get(event);
+export namespace Emitter {
+
+    export function Create() {
+        return new Map() as Emitter;
+    }
+
+    export function On(emitter: Emitter, event: string, callback: EmitterCallback) {
+        var callbacks = emitter.get(event);
         if(!callbacks) {
             callbacks = new Set([callback]);
-            this.events.set(event, callbacks);
+            emitter.set(event, callbacks);
         }
         else
             callbacks.add(callback);
     }
 
-    public Emit(event: string) {
-        var callbacks = this.events.get(event);
+    export function Emit(emitter: Emitter, event: string, ...args: any[]) {
+        var callbacks = emitter.get(event);
         if(callbacks)
-            callbacks.forEach(cb => cb());
+            callbacks.forEach(cb => cb(...args));
     }
 
-    public Remove(event: string, callback: {(): void}) {
-        var callbacks = this.events.get(event);
+    export function Remove(emitter: Emitter, event: string, callback: {(...args: Array<any>): void}) {
+        var callbacks = emitter.get(event);
         if(callbacks)
             callbacks.delete(callback);
     }
 
-    public Clear() {
-        this.events.clear();
-    }
-
 }
-
-export default Emitter;
