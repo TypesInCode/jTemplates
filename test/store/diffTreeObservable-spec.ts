@@ -17,7 +17,7 @@ describe("Diff Observable Test", () => {
 
         var scope = observable.Scope("root", (val: any) => val.value1);
         var fired = false;
-        scope.Emitter.On("set", () => {
+        scope.Watch(() => {
             fired = true;
         });
         expect(scope.Value).to.equal("test");
@@ -49,7 +49,7 @@ describe("Diff Observable Test", () => {
 
         var scope = observable.Scope("root", (val: Array<number>) => val.filter(n => n === 2));
         var fired = false;
-        scope.Emitter.On("set", () => {
+        scope.Watch(() => {
             fired = true;
         });
         expect(scope.Value.length).to.equal(1);
