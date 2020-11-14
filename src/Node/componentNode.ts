@@ -6,7 +6,7 @@ import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
 import { ComponentNodeFunction, ComponentNodeFunctionParam, IComponentNode, IComponentNodeBase } from "./componentNode.types";
-import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
+import { NodeRefTypes } from "./nodeRef.types";
 
 export namespace ComponentNode {
 
