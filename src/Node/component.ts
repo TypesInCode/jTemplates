@@ -1,8 +1,9 @@
-import { INodeRef, NodeRef } from "./nodeRef";
+import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Destroy } from "../Utils/decorators";
 import { ComponentNodeEvents } from "./componentNode.types";
 import { ObservableScope } from "../Store/Tree/observableScope";
+import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
 
 export class Component<D = void, T = void, E = void> {
     private scope: ObservableScope<D>;
@@ -37,13 +38,13 @@ export class Component<D = void, T = void, E = void> {
         return this.templates;
     }
 
-    constructor(data: D | {(): D | Promise<D>}, templates: T, private nodeRef: INodeRef, private componentEvents: ComponentNodeEvents<E>) {
+    constructor(data: D | {(): D | Promise<D>}, templates: T, private nodeRef: INodeRefBase, private componentEvents: ComponentNodeEvents<E>) {
         this.scope = new ObservableScope<D>(data);
         this.templates = templates || {} as T;
         this.decoratorMap = new Map();
     }
 
-    public Template(): INodeRef | INodeRef[] {
+    public Template(): NodeRefTypes | NodeRefTypes[] {
         return [];
     }
 
@@ -67,11 +68,12 @@ export namespace Component {
         return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
     }
 
-    export function Attach(node: Node, nodeRef: INodeRef) {
-        var rootRef = NodeRef.Create(node);
+    export function Attach(node: Node, nodeRef: NodeRefTypes) {
+        NodeRef.Init(nodeRef);
+        var rootRef = NodeRef.Wrap(node);
         NodeRef.AddChild(rootRef, nodeRef);
     }
 
 }
 
-export type ComponentConstructor<D, T, E> = { new (data: {(): D | Promise<D>}, templates: T, nodeRef: INodeRef, componentEvents: ComponentNodeEvents<E>): Component<D, T, E> };
+export type ComponentConstructor<D, T, E> = { new (data: {(): D | Promise<D>}, templates: T, nodeRef: INodeRefBase, componentEvents: ComponentNodeEvents<E>): Component<D, T, E> };

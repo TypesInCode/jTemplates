@@ -1,11 +1,9 @@
 import { Store as StoreSync } from "../Store/Store/store";
 import { Component } from "../Node/component";
-import { INodeRef } from "..";
 import { StoreAsync } from "../Store";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
-// import { ObservableScopeAsync } from "../Store/Tree/observableScopeAsync";
-// import { ObservableScopeDestroy } from "../Store/Tree/observableScopeDestroy";
+import { NodeRefTypes } from "../Node/nodeRef.types";
 
 export function State(): any {
     return StateDecorator;
@@ -236,14 +234,14 @@ function DestroyDecorator<T extends Component<any, any, any> & Record<K, IDestro
     proto.DestroyDecorator_Destroys.push(propertyKey);
 }
 
-export function PreReqTemplate(template: {(): INodeRef | INodeRef[]}) {
+export function PreReqTemplate(template: {(): NodeRefTypes | NodeRefTypes[]}) {
     return PreReqTemplateDecorator.bind(null, template) as <T extends Component<any, any, any>>(target: { new(...args: Array<any>): T }) => any;
 }
 
 export namespace PreReqTemplate {
-    export function Get(value: any): INodeRef[] {
+    export function Get(value: any): NodeRefTypes[] {
         var func = value && value.PreReqTemplateDecorator_Template;
-        var ret: INodeRef[] = func ? func() : [];
+        var ret: NodeRefTypes[] = func ? func() : [];
         if(!Array.isArray(ret))
             ret = [ret];
 
@@ -251,7 +249,7 @@ export namespace PreReqTemplate {
     }
 }
 
-function PreReqTemplateDecorator<T extends Component<any, any, any>>(template: {(): INodeRef | INodeRef[]}, target: { new(...args: Array<any>): T }) {
+function PreReqTemplateDecorator<T extends Component<any, any, any>>(template: {(): NodeRefTypes | NodeRefTypes[]}, target: { new(...args: Array<any>): T }) {
     var proto = target.prototype as any;
     proto.PreReqTemplateDecorator_Template = template;
 }

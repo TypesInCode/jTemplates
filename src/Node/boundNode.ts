@@ -1,46 +1,17 @@
 import { NodeConfig } from "./nodeConfig";
-import { INodeRef } from "./nodeRef";
-import { FunctionOr, NodeRefEvents} from "./boundNode.types";
+import { IBoundNodeBase } from "./boundNode.types";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
-import { Injector } from "../Utils/injector";
-
-export interface IBoundNode extends INodeRef {
-    lastProperties: any;
-    lastEvents: {[name: string]: any};
-
-    setProperties: boolean;
-    setAttributes: boolean;
-    setEvents: boolean;
-}
 
 export namespace BoundNode {
-
-    export function Create(type: any, namespace = "") {    
-        var boundNode: IBoundNode = {
-            node: NodeConfig.createNode(type, namespace),
-            injector: Injector.Current() || new Injector(),
-            parent: null,
-            childNodes: new Set<INodeRef>(),
-            destroyed: false,
-            lastProperties: null,
-            lastEvents: null,
     
-            setProperties: false,
-            setAttributes: false,
-            setEvents: false,
-            destroyables: []
-        };
-        
-        return boundNode;
-    }
-
-    export function Init(boundNode: IBoundNode, props: FunctionOr<{[name: string]: any}>, attrs: FunctionOr<{[name: string]: string}>, on: FunctionOr<NodeRefEvents>) {
-        var propertiesScope = props ? 
-            ObservableScope.Create(props) : null;
-        var attributesScope = attrs ?
-            ObservableScope.Create(attrs) : null;
-        var eventsScope = on ? 
-            ObservableScope.Create(on) : null;
+    export function Init(boundNode: IBoundNodeBase) {
+        var nodeDef = boundNode.nodeDef;
+        var propertiesScope = nodeDef.props ? 
+            ObservableScope.Create(nodeDef.props) : null;
+        var attributesScope = nodeDef.attrs ?
+            ObservableScope.Create(nodeDef.attrs) : null;
+        var eventsScope = nodeDef.on ? 
+            ObservableScope.Create(nodeDef.on) : null;
         
         ObservableScope.Watch(propertiesScope, function() { ScheduleSetProperties(boundNode, propertiesScope) });
         ObservableScope.Watch(attributesScope, function() { ScheduleSetAttributes(boundNode, attributesScope) });
@@ -60,7 +31,7 @@ export namespace BoundNode {
     }
 }
 
-function ScheduleSetProperties(node: IBoundNode, scope: IObservableScope<{[name: string]: any}>) {
+function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: any}>) {
     if(node.setProperties)
         return;
 
@@ -74,7 +45,7 @@ function ScheduleSetProperties(node: IBoundNode, scope: IObservableScope<{[name:
     });
 }
 
-function SetProperties(node: IBoundNode, properties: { [name: string]: any; }) {
+function SetProperties(node: IBoundNodeBase, properties: { [name: string]: any; }) {
     if(!properties)
         return;
 
@@ -82,7 +53,7 @@ function SetProperties(node: IBoundNode, properties: { [name: string]: any; }) {
     node.lastProperties = properties;
 }
 
-function ScheduleSetAttributes(node: IBoundNode, scope: IObservableScope<{[name: string]: string}>) {
+function ScheduleSetAttributes(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: string}>) {
     if(node.setAttributes)
         return;
 
@@ -96,7 +67,7 @@ function ScheduleSetAttributes(node: IBoundNode, scope: IObservableScope<{[name:
     });
 }
 
-function SetAttributes(node: IBoundNode, attributes: { [name: string]: string; }) {
+function SetAttributes(node: IBoundNodeBase, attributes: { [name: string]: string; }) {
     if(!attributes)
         return;
     
@@ -107,7 +78,7 @@ function SetAttributes(node: IBoundNode, attributes: { [name: string]: string; }
     }
 }
 
-function ScheduleSetEvents(node: IBoundNode, scope: IObservableScope<{[name: string]: (...args: Array<any>) => void}>) {
+function ScheduleSetEvents(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: (...args: Array<any>) => void}>) {
     if(node.setEvents)
         return;
 
@@ -121,7 +92,7 @@ function ScheduleSetEvents(node: IBoundNode, scope: IObservableScope<{[name: str
     });
 }
 
-function SetEvents(node: IBoundNode, events: { [name: string]: (...args: any[]) => void; }) {
+function SetEvents(node: IBoundNodeBase, events: { [name: string]: (...args: any[]) => void; }) {
     if(!events)
         return;
 

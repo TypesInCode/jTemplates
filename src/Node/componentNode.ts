@@ -1,17 +1,12 @@
-import { BoundNode, IBoundNode } from "./boundNode";
-import { INodeRef, NodeRef } from "./nodeRef";
+import { BoundNode } from "./boundNode";
+import { NodeRef, NodeRefType } from "./nodeRef";
 import { NodeConfig } from "./nodeConfig";
 import { Component, ComponentConstructor } from "./component";
 import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
-import { ComponentNodeEvents, ComponentNodeFunction, ComponentNodeFunctionParam } from "./componentNode.types";
-import { FunctionOr } from "./boundNode.types";
-
-export interface IComponentNode<D, T, E> extends IBoundNode {
-    component: Component<D, T, E>;
-    componentEvents: {[name: string]: {(...args: Array<any>): void}};
-}
+import { ComponentNodeFunction, ComponentNodeFunctionParam, IComponentNode, IComponentNodeBase } from "./componentNode.types";
+import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
 
 export namespace ComponentNode {
 
@@ -21,47 +16,34 @@ export namespace ComponentNode {
     }
 
     export function ToFunction<D = void, T = void, E = void>(type: any, namespace: string, constructor: ComponentConstructor<D, T, E>): ComponentNodeFunction<D, T, E> {
-        return (nodeDef: ComponentNodeFunctionParam<D, E>, templates?: T) => {
-            var compNode = Create(type, namespace);
-            var component = new constructor(nodeDef.data, templates, compNode, nodeDef.on as ComponentNodeEvents<E>);
-            Init(compNode, component, nodeDef.props, nodeDef.attrs);
-            return compNode;
+        return function(nodeDef: ComponentNodeFunctionParam<D, E>, templates?: T) {
+            return Create(type, namespace, nodeDef, constructor, templates);
         };
     }
 
-}
+    export function Init(componentNode: IComponentNodeBase<any, any, any>) {
+        var nodeDef = componentNode.nodeDef;
+        var events = nodeDef.on;
+        nodeDef.on = null;
+        
+        BoundNode.Init(componentNode);
 
-function Create<D, T, E>(type: any, namespace: string) {
-    var componentNode: IComponentNode<D, T, E> = {
-        node: NodeConfig.createNode(type, namespace),
-        injector: Injector.Current() || new Injector(),
-        parent: null,
-        childNodes: new Set<INodeRef>(),
-        destroyed: false,
-        lastProperties: null,
-        lastEvents: null,
-
-        setProperties: false,
-        setAttributes: false,
-        setEvents: false,
-
-        component: null,
-        componentEvents: null,
-
-        destroyables: []
+        componentNode.component = new componentNode.constructor(nodeDef.data, componentNode.templates, componentNode, events);
+        SetChildren(componentNode);
+        componentNode.destroyables.push(componentNode.component);
     }
-    
-    return componentNode;
+
 }
 
-function Init<D, T, E>(componentNode: IComponentNode<D, T, E>, component: Component<D, T, E>, props: FunctionOr<{[name: string]: any}>, attrs: FunctionOr<{[name: string]: string}>) {
-    BoundNode.Init(componentNode, props, attrs, null);
-    componentNode.component = component;
-    SetChildren(componentNode);
-    componentNode.destroyables.push(component);
+function Create<D, T, E>(type: any, namespace: string, nodeDef: ComponentNodeFunctionParam<D, E>, constructor: ComponentConstructor<D, T, E>, templates: T) {
+    var compNode = NodeRef.Create(type, namespace, NodeRefType.ComponentNode) as IComponentNode<D, T, E>;
+    compNode.nodeDef = nodeDef;
+    compNode.constructor = constructor;
+    compNode.templates = templates;
+    return compNode;
 }
 
-function SetChildren(node: IComponentNode<any, any, any>) {
+function SetChildren(node: IComponentNodeBase<any, any, any>) {
     if(PreReq.Has(node.component)) {
         AddPreReqTemplate(node).then(function() {
             AddTemplate(node, false);
@@ -71,14 +53,18 @@ function SetChildren(node: IComponentNode<any, any, any>) {
         AddTemplate(node, true);
 }
 
-function AddPreReqTemplate(node: IComponentNode<any, any, any>) {
+function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
     return new Promise(resolve => {
         Thread(function() {
-            var preNodes: Array<INodeRef> = null;
+            var preNodes: Array<NodeRefTypes>;
+            Injector.Scope(node.injector, () => 
+                preNodes = PreReqTemplate.Get(node.component)
+            );
             Schedule(function() {
-                Injector.Scope(node.injector, () => 
-                    preNodes = PreReqTemplate.Get(node.component)
-                )
+                if(node.destroyed)
+                    return;
+
+                NodeRef.InitAll(preNodes);
             });
 
             Thread(function() {
@@ -89,6 +75,9 @@ function AddPreReqTemplate(node: IComponentNode<any, any, any>) {
                     NodeRef.AddChild(node, preNodes[x]);
 
                 PreReq.All(node.component).then(function() {
+                    if(node.destroyed)
+                        return;
+                    
                     for(var x=0; x<preNodes.length; x++)
                         NodeRef.Destroy(preNodes[x]);
                     
@@ -107,19 +96,20 @@ function AddPreReqTemplate(node: IComponentNode<any, any, any>) {
     });
 }
 
-function AddTemplate(node: IComponentNode<any, any, any>, init: boolean) {
+function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
     Thread(function() {
         if(node.destroyed)
             return;
 
-        var nodes: INodeRef[] = null;
+        var nodes: NodeRefTypes[];
+        Injector.Scope(node.injector, function() {
+            nodes = node.component.Template() as NodeRefTypes[];
+        });
+        if(!Array.isArray(nodes))
+            nodes = [nodes];
+        
         Schedule(function() {
-            Injector.Scope(node.injector, function() {
-                nodes = node.component.Template() as INodeRef[];
-            });
-
-            if(!Array.isArray(nodes))
-                nodes = [nodes];
+            NodeRef.InitAll(nodes);
         });
 
         Thread(function() {
