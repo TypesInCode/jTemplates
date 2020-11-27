@@ -49,7 +49,7 @@ function SetProperties(node: IBoundNodeBase, properties: { [name: string]: any; 
     if(!properties)
         return;
 
-    NodeConfig.setProperties(node.node, properties);
+    NodeConfig.setProperties(node.node, node.lastProperties, properties);
     node.lastProperties = properties;
 }
 
