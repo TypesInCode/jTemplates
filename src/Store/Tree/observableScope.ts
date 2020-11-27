@@ -16,7 +16,7 @@ export class ObservableScopeWrapper<T> extends ObservableScopeValue<T> implement
         super(scope);
         if(scope.emitter) {
             this.scopeEmitter = Emitter.Create();
-            Emitter.On(scope.emitter, "set", () => Emitter.Emit(this.scopeEmitter, "set", this));
+            Emitter.On(scope.emitter, () => Emitter.Emit(this.scopeEmitter, this));
         }
     }
 
@@ -28,14 +28,14 @@ export class ObservableScopeWrapper<T> extends ObservableScopeValue<T> implement
         if(!this.scopeEmitter)
             return;
 
-        Emitter.On(this.scopeEmitter, "set", callback);
+        Emitter.On(this.scopeEmitter, callback);
     }
 
     public Unwatch(callback: {(scope: ObservableScopeValue<T>): void}) {
         if(!this.scopeEmitter)
             return;
 
-        Emitter.Remove(this.scopeEmitter, "set", callback);
+        Emitter.Remove(this.scopeEmitter, callback);
     }
 
     public Destroy() {
@@ -124,14 +124,14 @@ export namespace ObservableScope {
         if(!scope || !scope.emitter)
             return;
 
-        Emitter.On(scope.emitter, "set", callback);
+        Emitter.On(scope.emitter, callback);
     }
 
     export function Unwatch<T>(scope: IObservableScope<T>, callback: {(scope: IObservableScope<T> | ObservableScopeValue<T>): void}) {
         if(!scope || !scope.emitter)
             return;
         
-        Emitter.Remove(scope.emitter, "set", callback);
+        Emitter.Remove(scope.emitter, callback);
     }
 
     export function Destroy<T>(scope: IObservableScope<T>) {
@@ -148,7 +148,7 @@ function OnSet(scope: IObservableScope<any>) {
     if(scope.async)
         UpdateValue(scope);
     else
-        Emitter.Emit(scope.emitter, "set", scope);
+        Emitter.Emit(scope.emitter, scope);
 }
 
 function UpdateValue<T>(scope: IObservableScope<T>) {
@@ -166,7 +166,7 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
     if(scope.async)
         Promise.resolve(value).then(val => {
             scope.value = val;
-            Emitter.Emit(scope.emitter, "set", scope);
+            Emitter.Emit(scope.emitter, scope);
         });
     else
         scope.value = value;
@@ -177,7 +177,7 @@ function DestroyScope(scope: IObservableScope<any>) {
         return;
     
     scope.emitters && scope.emitters.forEach(e => 
-        Emitter.Remove(e, "set", scope.setCallback)
+        Emitter.Remove(e, scope.setCallback)
     );
     
     scope.emitters && scope.emitters.clear();
@@ -189,11 +189,11 @@ function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters: Set<Emitter>
     if(newEmitters)
         newEmitters.forEach(e => {
             if(!scope.emitters || !scope.emitters.delete(e))
-                Emitter.On(e, "set", scope.setCallback);
+                Emitter.On(e, scope.setCallback);
         });
 
     if(scope.emitters)
-        scope.emitters.forEach(e => Emitter.Remove(e, "set", scope.setCallback));
+        scope.emitters.forEach(e => Emitter.Remove(e, scope.setCallback));
 
     scope.emitters = newEmitters;
 }
