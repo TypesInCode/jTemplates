@@ -15,7 +15,7 @@ export interface INodeConfig {
     removeChild(root: any, child: any): void;
     remove(target: any): void;
     fireEvent(target: any, event: string, data: any): void;
-    setProperties(target: any, properties: any): void;
+    setProperties(target: any, lastProperties: any, properties: any): void;
 }
 
 export const NodeConfig = DOMNodeConfig as INodeConfig;
