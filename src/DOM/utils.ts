@@ -11,35 +11,35 @@ function SetValue(target: HTMLInputElement, value: string) {
     }
 }
 
-function SetStyle(target: HTMLElement, styleDef: {[prop: string]: string}) {
+function SetStyle(target: HTMLElement, styleDef: {[prop: string]: string}, lastStyleDef: {[prop: string]: string}) {
     for(var key in styleDef)
-        (target.style as any)[key] = styleDef[key];
+        if(!lastStyleDef || lastStyleDef[key] !== styleDef[key])
+            (target.style as any)[key] = styleDef[key];
 }
 
-function SetRootProperties(target: HTMLElement, properties: any) {
-    for(var key in properties) {
-        switch(key) {
-            case "value":
-                SetValue(target as HTMLInputElement, properties.value);
-                break;
-            case "style":
-                SetStyle(target, properties.style);
-                break;
-            case "className":
-                target.className = properties.className;
-                break;
-            default:
-                (target as any)[key] = properties[key];
-                break;            
-        }
-    }
-}
-
-export function SetProperties(target: HTMLElement, properties: any) {
-    switch(target.nodeType) {
-        case Node.TEXT_NODE:
-            target.nodeValue = properties ? properties.nodeValue : "";
+function SetRootProperty(target: HTMLElement, prop: string, value: any, lastValue: any) {
+    switch(prop) {
+        case "value":
+            SetValue(target as HTMLInputElement, value);
+            break;
+        case "style":
+            SetStyle(target, value, lastValue);
+            break;
         default:
-            SetRootProperties(target, properties);
+            (target as any)[prop] = value;
     }
+}
+
+function SetChangedProperties(target: HTMLElement, lastProperties: any, properties: any) {
+    for(var key in properties) {
+        (!lastProperties || lastProperties[key] !== properties[key]) &&
+            SetRootProperty(target, key, properties[key], lastProperties && lastProperties[key]);
+    }
+}
+
+export function SetProperties(target: HTMLElement, lastProperties: any, properties: any) {
+    if(!lastProperties && target.nodeType === Node.TEXT_NODE)
+        target.nodeValue = properties.nodeValue;
+    else
+        SetChangedProperties(target, lastProperties, properties);
 }
