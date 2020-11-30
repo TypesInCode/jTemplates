@@ -2365,11 +2365,14 @@ img {
 </header>
 <nav class="tsd-navigation secondary">
 	<ul>
+		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+			<a href="_dom_utils_.html#setchangedproperties" class="tsd-kind-icon">Set<wbr>Changed<wbr>Properties</a>
+		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external">
 			<a href="_dom_utils_.html#setproperties" class="tsd-kind-icon">Set<wbr>Properties</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-			<a href="_dom_utils_.html#setrootproperties" class="tsd-kind-icon">Set<wbr>Root<wbr>Properties</a>
+			<a href="_dom_utils_.html#setrootproperty" class="tsd-kind-icon">Set<wbr>Root<wbr>Property</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
 			<a href="_dom_utils_.html#setstyle" class="tsd-kind-icon">Set<wbr>Style</a>
@@ -2388,8 +2391,9 @@ img {
 					<section class="tsd-index-section tsd-is-external">
 						<h3>Functions</h3>
 						<ul class="tsd-index-list">
+							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_dom_utils_.html#setchangedproperties" class="tsd-kind-icon">Set<wbr>Changed<wbr>Properties</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external"><a href="_dom_utils_.html#setproperties" class="tsd-kind-icon">Set<wbr>Properties</a></li>
-							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_dom_utils_.html#setrootproperties" class="tsd-kind-icon">Set<wbr>Root<wbr>Properties</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_dom_utils_.html#setrootproperty" class="tsd-kind-icon">Set<wbr>Root<wbr>Property</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_dom_utils_.html#setstyle" class="tsd-kind-icon">Set<wbr>Style</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_dom_utils_.html#setvalue" class="tsd-kind-icon">Set<wbr>Value</a></li>
 						</ul>
@@ -2399,23 +2403,55 @@ img {
 		</section>
 		<section class="tsd-panel-group tsd-member-group tsd-is-external">
 			<h2>Functions</h2>
-			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external">
-				<a name="setproperties" class="tsd-anchor"></a>
-				<h3>Set<wbr>Properties</h3>
-				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Set<wbr>Properties<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, properties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+				<a name="setchangedproperties" class="tsd-anchor"></a>
+				<h3>Set<wbr>Changed<wbr>Properties</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+					<li class="tsd-signature tsd-kind-icon">Set<wbr>Changed<wbr>Properties<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, lastProperties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span>, properties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/DOM/utils.ts#L38">DOM/utils.ts:38</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/DOM/utils.ts#L33">DOM/utils.ts:33</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
 								<h5>target: <span class="tsd-signature-type">HTMLElement</span></h5>
+							</li>
+							<li>
+								<h5>lastProperties: <span class="tsd-signature-type">any</span></h5>
+							</li>
+							<li>
+								<h5>properties: <span class="tsd-signature-type">any</span></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external">
+				<a name="setproperties" class="tsd-anchor"></a>
+				<h3>Set<wbr>Properties</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external">
+					<li class="tsd-signature tsd-kind-icon">Set<wbr>Properties<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, lastProperties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span>, properties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/DOM/utils.ts#L40">DOM/utils.ts:40</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>target: <span class="tsd-signature-type">HTMLElement</span></h5>
+							</li>
+							<li>
+								<h5>lastProperties: <span class="tsd-signature-type">any</span></h5>
 							</li>
 							<li>
 								<h5>properties: <span class="tsd-signature-type">any</span></h5>
@@ -2426,16 +2462,16 @@ img {
 				</ul>
 			</section>
 			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-				<a name="setrootproperties" class="tsd-anchor"></a>
-				<h3>Set<wbr>Root<wbr>Properties</h3>
+				<a name="setrootproperty" class="tsd-anchor"></a>
+				<h3>Set<wbr>Root<wbr>Property</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-					<li class="tsd-signature tsd-kind-icon">Set<wbr>Root<wbr>Properties<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, properties<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Set<wbr>Root<wbr>Property<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, prop<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, value<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span>, lastValue<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/DOM/utils.ts#L19">DOM/utils.ts:19</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/DOM/utils.ts#L20">DOM/utils.ts:20</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2444,7 +2480,13 @@ img {
 								<h5>target: <span class="tsd-signature-type">HTMLElement</span></h5>
 							</li>
 							<li>
-								<h5>properties: <span class="tsd-signature-type">any</span></h5>
+								<h5>prop: <span class="tsd-signature-type">string</span></h5>
+							</li>
+							<li>
+								<h5>value: <span class="tsd-signature-type">any</span></h5>
+							</li>
+							<li>
+								<h5>lastValue: <span class="tsd-signature-type">any</span></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -2455,13 +2497,13 @@ img {
 				<a name="setstyle" class="tsd-anchor"></a>
 				<h3>Set<wbr>Style</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-					<li class="tsd-signature tsd-kind-icon">Set<wbr>Style<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, styleDef<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Set<wbr>Style<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">HTMLElement</span>, styleDef<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{}</span>, lastStyleDef<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/DOM/utils.ts#L14">DOM/utils.ts:14</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/DOM/utils.ts#L14">DOM/utils.ts:14</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2471,6 +2513,14 @@ img {
 							</li>
 							<li>
 								<h5>styleDef: <span class="tsd-signature-symbol">{}</span></h5>
+								<ul class="tsd-parameters">
+									<li class="tsd-parameter-index-signature">
+										<h5><span class="tsd-signature-symbol">[</span>prop: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">string</span></h5>
+									</li>
+								</ul>
+							</li>
+							<li>
+								<h5>lastStyleDef: <span class="tsd-signature-symbol">{}</span></h5>
 								<ul class="tsd-parameters">
 									<li class="tsd-parameter-index-signature">
 										<h5><span class="tsd-signature-symbol">[</span>prop: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">string</span></h5>
@@ -2492,7 +2542,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/DOM/utils.ts#L1">DOM/utils.ts:1</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/DOM/utils.ts#L1">DOM/utils.ts:1</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>

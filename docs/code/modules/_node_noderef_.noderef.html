@@ -2378,7 +2378,19 @@ img {
 			<a href="_node_noderef_.noderef.html#destroy" class="tsd-kind-icon">Destroy</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+			<a href="_node_noderef_.noderef.html#destroyall" class="tsd-kind-icon">Destroy<wbr>All</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
 			<a href="_node_noderef_.noderef.html#detachchild" class="tsd-kind-icon">Detach<wbr>Child</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+			<a href="_node_noderef_.noderef.html#init" class="tsd-kind-icon">Init</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+			<a href="_node_noderef_.noderef.html#initall" class="tsd-kind-icon">Init<wbr>All</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+			<a href="_node_noderef_.noderef.html#wrap" class="tsd-kind-icon">Wrap</a>
 		</li>
 	</ul>
 </nav>
@@ -2395,7 +2407,11 @@ img {
 							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#addchildafter" class="tsd-kind-icon">Add<wbr>Child<wbr>After</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#create" class="tsd-kind-icon">Create</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#destroy" class="tsd-kind-icon">Destroy</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#destroyall" class="tsd-kind-icon">Destroy<wbr>All</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#detachchild" class="tsd-kind-icon">Detach<wbr>Child</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#init" class="tsd-kind-icon">Init</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#initall" class="tsd-kind-icon">Init<wbr>All</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-namespace tsd-is-external"><a href="_node_noderef_.noderef.html#wrap" class="tsd-kind-icon">Wrap</a></li>
 						</ul>
 					</section>
 				</div>
@@ -2407,22 +2423,22 @@ img {
 				<a name="addchild" class="tsd-anchor"></a>
 				<h3>Add<wbr>Child</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Add<wbr>Child<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a>, child<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Add<wbr>Child<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a>, child<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Node/nodeRef.ts#L27">Node/nodeRef.ts:27</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L125">Node/nodeRef.ts:125</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>node: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>node: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 							<li>
-								<h5>child: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>child: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -2433,25 +2449,25 @@ img {
 				<a name="addchildafter" class="tsd-anchor"></a>
 				<h3>Add<wbr>Child<wbr>After</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Add<wbr>Child<wbr>After<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a>, currentChild<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a>, newChild<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Add<wbr>Child<wbr>After<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a>, currentChild<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a>, newChild<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Node/nodeRef.ts#L33">Node/nodeRef.ts:33</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L131">Node/nodeRef.ts:131</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>node: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>node: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 							<li>
-								<h5>currentChild: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>currentChild: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 							<li>
-								<h5>newChild: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>newChild: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -2462,22 +2478,28 @@ img {
 				<a name="create" class="tsd-anchor"></a>
 				<h3>Create</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Create<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></li>
+					<li class="tsd-signature tsd-kind-icon">Create<span class="tsd-signature-symbol">(</span>nodeType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span>, namespace<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, type<span class="tsd-signature-symbol">: </span><a href="../enums/_node_noderef_.nodereftype.html" class="tsd-signature-type">NodeRefType</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_boundnode_types_.iboundnode.html" class="tsd-signature-type">IBoundNode</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_elementnode_types_.ielementnode.html" class="tsd-signature-type">IElementNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_componentnode_types_.icomponentnode.html" class="tsd-signature-type">IComponentNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Node/nodeRef.ts#L16">Node/nodeRef.ts:16</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L27">Node/nodeRef.ts:27</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>node: <span class="tsd-signature-type">any</span></h5>
+								<h5>nodeType: <span class="tsd-signature-type">any</span></h5>
+							</li>
+							<li>
+								<h5>namespace: <span class="tsd-signature-type">string</span></h5>
+							</li>
+							<li>
+								<h5>type: <a href="../enums/_node_noderef_.nodereftype.html" class="tsd-signature-type">NodeRefType</a></h5>
 							</li>
 						</ul>
-						<h4 class="tsd-returns-title">Returns <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h4>
+						<h4 class="tsd-returns-title">Returns <a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_boundnode_types_.iboundnode.html" class="tsd-signature-type">IBoundNode</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_elementnode_types_.ielementnode.html" class="tsd-signature-type">IElementNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_componentnode_types_.icomponentnode.html" class="tsd-signature-type">IComponentNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h4>
 					</li>
 				</ul>
 			</section>
@@ -2485,19 +2507,42 @@ img {
 				<a name="destroy" class="tsd-anchor"></a>
 				<h3>Destroy</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Destroy<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Destroy<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Node/nodeRef.ts#L50">Node/nodeRef.ts:50</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L148">Node/nodeRef.ts:148</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>node: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>node: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+				<a name="destroyall" class="tsd-anchor"></a>
+				<h3>Destroy<wbr>All</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+					<li class="tsd-signature tsd-kind-icon">Destroy<wbr>All<span class="tsd-signature-symbol">(</span>nodes<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L157">Node/nodeRef.ts:157</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>nodes: <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">&gt;</span></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -2508,25 +2553,94 @@ img {
 				<a name="detachchild" class="tsd-anchor"></a>
 				<h3>Detach<wbr>Child</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
-					<li class="tsd-signature tsd-kind-icon">Detach<wbr>Child<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a>, child<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Detach<wbr>Child<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a>, child<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Node/nodeRef.ts#L42">Node/nodeRef.ts:42</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L140">Node/nodeRef.ts:140</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>node: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>node: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 							<li>
-								<h5>child: <a href="../interfaces/_node_noderef_.inoderef.html" class="tsd-signature-type">INodeRef</a></h5>
+								<h5>child: <a href="../interfaces/_node_noderef_types_.inoderefbase.html" class="tsd-signature-type">INodeRefBase</a></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+				<a name="init" class="tsd-anchor"></a>
+				<h3>Init</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+					<li class="tsd-signature tsd-kind-icon">Init<span class="tsd-signature-symbol">(</span>nodeRef<span class="tsd-signature-symbol">: </span><a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L100">Node/nodeRef.ts:100</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>nodeRef: <a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+				<a name="initall" class="tsd-anchor"></a>
+				<h3>Init<wbr>All</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+					<li class="tsd-signature tsd-kind-icon">Init<wbr>All<span class="tsd-signature-symbol">(</span>nodeRefs<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L120">Node/nodeRef.ts:120</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>nodeRefs: <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a><span class="tsd-signature-symbol">&gt;</span></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+				<a name="wrap" class="tsd-anchor"></a>
+				<h3>Wrap</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-namespace tsd-is-external">
+					<li class="tsd-signature tsd-kind-icon">Wrap<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Node/nodeRef.ts#L20">Node/nodeRef.ts:20</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>node: <span class="tsd-signature-type">any</span></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a></h4>
 					</li>
 				</ul>
 			</section>

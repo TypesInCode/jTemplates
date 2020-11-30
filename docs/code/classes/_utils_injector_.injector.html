@@ -2398,6 +2398,13 @@ img {
 </nav>
 <div class="container container-main">
 	<div class="content-wrap">
+		<section class="tsd-panel tsd-comment">
+			<div class="tsd-comment tsd-typography">
+				<div class="lead">
+					<p>Simple scoped dependency injection class. Manages types/instances as key/value pairs.</p>
+				</div>
+			</div>
+		</section>
 		<section class="tsd-panel tsd-hierarchy">
 			<h3>Hierarchy</h3>
 			<ul class="tsd-hierarchy">
@@ -2448,7 +2455,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L4">Utils/injector.ts:4</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L7">Utils/injector.ts:7</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-returns-title">Returns <a href="_utils_injector_.injector.html" class="tsd-signature-type">Injector</a></h4>
@@ -2464,7 +2471,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">parent<span class="tsd-signature-symbol">:</span> <a href="_utils_injector_.injector.html" class="tsd-signature-type">Injector</a></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L3">Utils/injector.ts:3</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L6">Utils/injector.ts:6</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2474,7 +2481,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">type<wbr>Map<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L4">Utils/injector.ts:4</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L7">Utils/injector.ts:7</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2484,7 +2491,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">scope<span class="tsd-signature-symbol">:</span> <a href="_utils_injector_.injector.html" class="tsd-signature-type">Injector</a><span class="tsd-signature-symbol"> = null</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L30">Utils/injector.ts:30</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L45">Utils/injector.ts:45</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2501,9 +2508,15 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L11">Utils/injector.ts:11</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L20">Utils/injector.ts:20</a></li>
 							</ul>
 						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Get instance/value based on a key type. Searches for a match
+								through all parent Injectors.</p>
+							</div>
+						</div>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
 						<ul class="tsd-type-parameters">
 							<li>
@@ -2514,6 +2527,9 @@ img {
 						<ul class="tsd-parameters">
 							<li>
 								<h5>type: <span class="tsd-signature-type">any</span></h5>
+								<div class="tsd-comment tsd-typography">
+									<p>Key to retrieve from the Injector map</p>
+								</div>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">T</span></h4>
@@ -2530,9 +2546,14 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L23">Utils/injector.ts:23</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L38">Utils/injector.ts:38</a></li>
 							</ul>
 						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Set instance/value based on a key type at this scope.</p>
+							</div>
+						</div>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
 						<ul class="tsd-type-parameters">
 							<li>
@@ -2543,9 +2564,15 @@ img {
 						<ul class="tsd-parameters">
 							<li>
 								<h5>type: <span class="tsd-signature-type">any</span></h5>
+								<div class="tsd-comment tsd-typography">
+									<p>Type key</p>
+								</div>
 							</li>
 							<li>
 								<h5>instance: <span class="tsd-signature-type">T</span></h5>
+								<div class="tsd-comment tsd-typography">
+									<p>Value instance for this type key</p>
+								</div>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -2562,9 +2589,14 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L31">Utils/injector.ts:31</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L50">Utils/injector.ts:50</a></li>
 							</ul>
 						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Get the current Injector scope.</p>
+							</div>
+						</div>
 						<h4 class="tsd-returns-title">Returns <a href="_utils_injector_.injector.html" class="tsd-signature-type">Injector</a></h4>
 					</li>
 				</ul>
@@ -2579,16 +2611,27 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/fa2cfc7/src/Utils/injector.ts#L35">Utils/injector.ts:35</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9281c58/src/Utils/injector.ts#L60">Utils/injector.ts:60</a></li>
 							</ul>
 						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Creates a child scope with the passed Injector instance.</p>
+							</div>
+						</div>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
 								<h5>injector: <a href="_utils_injector_.injector.html" class="tsd-signature-type">Injector</a></h5>
+								<div class="tsd-comment tsd-typography">
+									<p>Injector instance for this scope</p>
+								</div>
 							</li>
 							<li>
 								<h5>action: <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span></h5>
+								<div class="tsd-comment tsd-typography">
+									<p>Callback to invoke for this scope</p>
+								</div>
 								<ul class="tsd-parameters">
 									<li class="tsd-parameter-signature">
 										<ul class="tsd-signatures tsd-kind-type-literal">
