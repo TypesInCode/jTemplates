@@ -22,10 +22,8 @@ export abstract class Router<T extends {}> {
     constructor(private store: Store<T>) {
         this.initPromise = new Promise(async (resolve, reject) => {
             try{
-                // this.routeScope = new ObservableScope(() => this.CreateRoutePart());
                 this.routeScope = ObservableScope.Create(() => this.CreateRoutePart());
                 await Router.Register(this);
-                // this.routeScope.Watch(() => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
                 ObservableScope.Watch(this.routeScope, () => this.ReplaceHistory ? Router.ReplaceRoute() : Router.PushRoute());
                 resolve();
             }
@@ -42,7 +40,6 @@ export abstract class Router<T extends {}> {
     public async abstract Read(routePart: string): Promise<void>;
 
     public Route() {
-        // return this.routeScope.Value;
         return ObservableScope.Value(this.routeScope);
     }
 

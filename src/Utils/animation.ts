@@ -1,3 +1,5 @@
+import { IDestroyable } from "./utils.types";
+
 namespace StepFunctions {
     export function* EaseIn(count: number) {
         var diff = 1 / count;
@@ -12,12 +14,18 @@ namespace StepFunctions {
     }
 }
 
+/**
+ * Supported animation functions.
+ */
 export enum AnimationType {
     Linear,
     EaseIn
 }
 
-export class Animation {
+/**
+ * Class for handling interpolation for basic animations.
+ */
+export class Animation implements IDestroyable {
     private type: AnimationType;
     private frameCount: number;
     private frameTimings: Array<number>;
@@ -28,22 +36,39 @@ export class Animation {
     private end: number;
     private enabled: boolean;
 
+    /**
+     * Is the animation currently running.
+     */
     public get Running() {
         return this.running;
     }
 
+    /**
+     * The starting value of the current animation.
+     */
     public get Start() {
         return this.start;
     }
 
+    /**
+     * The ending value of the current animation.
+     */
     public get End() {
         return this.end;
     }
 
+    /**
+     * Is this animation enabled.
+     */
     public get Enabled() {
         return this.enabled;
     }
 
+    /**
+     * @param type Interpolation function
+     * @param duration The duration of the Animation
+     * @param update Callback invoked during the animation with the next value
+     */
     constructor(type: AnimationType, duration: number, update: {(next: number): void}) {
         this.running = false;
         this.start = null;
@@ -62,6 +87,14 @@ export class Animation {
         this.animationTimeouts = [];
     }
 
+    /**
+     * Start an animation. Calls the passed `update` callback for each animation frame
+     * with interpolated values based on the passed `AnimationType`.
+     * 
+     * @param start initial animation value
+     * @param end ending animation value
+     * @returns Promise<void> that resolves once the animation is complete
+     */
     public Animate(start: number, end: number): Promise<void> {
         if(!this.enabled)
             return;
@@ -89,15 +122,24 @@ export class Animation {
         });
     }
 
+    /**
+     * Disables the Animation. Cancels the animation if it is running.
+     */
     public Disable() {
         this.Cancel();
         this.enabled = false;
     }
 
+    /**
+     * Enables the Animation.
+     */
     public Enable() {
         this.enabled = true;
     }
 
+    /**
+     * Cancels the Animation if it is running by clearing any sheduled timeout events.
+     */
     public Cancel() {
         for(var x=0; x<this.animationTimeouts.length; x++)
             clearTimeout(this.animationTimeouts[x]);
@@ -107,11 +149,21 @@ export class Animation {
         this.end = null;
     }
 
+    /**
+     * IDestroyable. Cancels the animation.
+     */
     public Destroy() {
         this.Cancel();
     }
 
-    private SetTimeout(index: number, value: number, resolve: {(): void}) {
+    /**
+     * Sets an animation timeout for the provided index.
+     * 
+     * @param index Index of the animation being set
+     * @param value Value to pass to the update callback
+     * @param resolve Optional resolve callback to signal the end of the animation
+     */
+    private SetTimeout(index: number, value: number, resolve?: {(): void}) {
         this.animationTimeouts[index] = setTimeout(() => {
             this.update(value);
             resolve && resolve();
