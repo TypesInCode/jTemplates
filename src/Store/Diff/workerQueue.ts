@@ -1,41 +1,36 @@
-// import { PromiseQueue } from "../../Promise/promiseQueue";
-import { AsyncQueue } from "../../Utils/asyncQueue";
+import { List } from "../../Utils/list";
 
 export class WorkerQueue<S, R> {
 
-    private asyncQueue: AsyncQueue<void>;
+    private callbacks: List<{(data: any, err?: any): void}>;
     private worker: Worker;
 
     constructor(worker: Worker) {
         this.worker = worker;
-        this.asyncQueue = new AsyncQueue();
+        this.callbacks = new List();
+        this.worker.onerror = (err: any) => {
+            var cb = this.callbacks.Pop();
+            cb && cb(null, err);
+        };
+        this.worker.onmessage = (message: MessageEvent) => {
+            var cb = this.callbacks.Pop();
+            cb && cb(message.data);
+        };
     }
 
-    // public Push(getMessage: {(): S}): Promise<R> {
     public Push(message: S): Promise<R> {
         return new Promise((resolve, reject) => {
-            this.asyncQueue.Add(next => {
-                this.worker.onmessage = (message: any) => {
-                    resolve(message.data);
-                    next();
-                };
-                this.worker.onerror = (event) => {
-                    reject(event);
-                    next();
-                };
-                // this.worker.postMessage(getMessage());
-                this.worker.postMessage(message);
+            this.callbacks.Add(function(data, err){
+                if(err)
+                    reject(err);
+                else
+                    resolve(data);
             });
-            this.asyncQueue.Start();
+            this.worker.postMessage(message);
         });
     }
 
-    public Stop() {
-        this.asyncQueue.Stop();
-    }
-
     public Destroy() {
-        this.asyncQueue.Stop();
         this.worker.terminate();
     }
 
