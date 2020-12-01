@@ -1,7 +1,8 @@
 const webpack = require('webpack');
 const path = require('path');
 
-module.exports = {  
+module.exports = {
+  // mode: 'development',
   entry: './src/web',
   output: {
     filename: 'jTemplates.js',
