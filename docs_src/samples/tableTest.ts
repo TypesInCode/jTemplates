@@ -102,12 +102,8 @@ class RootComponent extends Component {
       	return data;
     }
   
-  	Columns() {
-      	return () => Reflect.ownKeys(headers);
-    }
-  
-  	Hidden(key: string) {
-      	return () => ({ className: this.hiddenColumns.has(key) ? 'hidden' : '' });
+  	VisibleColumns() {
+      	return () => Reflect.ownKeys(headers).filter((key: string) => !this.hiddenColumns.has(key));
     }
 
     public Template() {
@@ -133,20 +129,17 @@ class RootComponent extends Component {
             table({ data: async () => await [null, ...this.sortedData] }, (row: IData) => {
                 if(!row)
                     return tr({ 
-                      	data: this.Columns() 
+                      	data: this.VisibleColumns() 
                     }, (key: string) => 
                         th({
-                      		props: this.Hidden(key),
                       		on: { click: () => this.SortBy(key) }
                         }, () => headers[key])
 					);
 
                 return tr({ 
-                  data: this.Columns()
+                  data: this.VisibleColumns()
                 }, (key: string) => 
-					td({
-                  		props: this.Hidden(key)
-                	}, () => row[key])
+					td({ }, () => row[key])
 				);
             })
         ];
