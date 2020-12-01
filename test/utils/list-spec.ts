@@ -1,7 +1,7 @@
 /// <reference path="../../node_modules/@types/mocha/index.d.ts" />
 
 // import { ObjectDiff } from "../src/ObjectStore/objectDiff";
-import * as chai from "chai";
+/* import * as chai from "chai";
 import { List } from "../../src/Utils/list";
 const expect = chai.expect;
 
@@ -70,4 +70,4 @@ describe("List", () => {
     });
     expect(count).to.equal(3);
   });
-});
+}); */

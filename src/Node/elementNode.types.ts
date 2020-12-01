@@ -1,4 +1,4 @@
-import { List } from "../Utils/list";
+import { IList } from "../Utils/list";
 import { NodeDefinition, BoundNodeFunctionParam, IBoundNodeBase } from "./boundNode.types";
 import { NodeRefType } from "./nodeRef";
 import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
@@ -18,7 +18,7 @@ export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, chi
 export interface IElementNodeBase<T> extends IBoundNodeBase {
     nodeDef: ElementNodeFunctionParam<T>;
     childrenFunc: {(data: T): string | NodeRefTypes | NodeRefTypes[]};
-    nodesMap: Map<T, List<Array<NodeRefTypes>>>;
+    nodesMap: Map<T, IList<Array<NodeRefTypes>>>;
     setData: boolean;
 }
 
