@@ -1,8 +1,8 @@
 import { BoundNode } from "./boundNode";
 import { NodeConfig } from "./nodeConfig";
 import { Injector } from "../Utils/injector";
-import { List } from "../Utils/list";
-import { Schedule, Thread } from "../Utils/thread";
+import { IList, List } from "../Utils/list";
+import { Schedule, Synch, Thread } from "../Utils/thread";
 import { ElementNodeFunctionParam, ElementChildrenFunction, IElementNode, IElementNodeBase } from "./elementNode.types";
 import { NodeRef, NodeRefType } from "./nodeRef";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
@@ -55,34 +55,31 @@ function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<a
         return;
 
     node.setData = true;
-    setTimeout(function() {
+    NodeConfig.scheduleUpdate(function() {
         node.setData = false;
         if(node.destroyed)
             return;
         
         SetData(node, GetValue(node.childrenFunc, scope));
-    }, 0);
+    });
 }
 
 function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
-    Thread(function() {
-        if(node.destroyed)
-            return;
-        
-        var newNodesMap = new Map();
+    Synch(function () {
+        var newNodesMap = new Map<T, IList<Array<NodeRefTypes>>>();
         var values = value || valueDefault;
         if(!Array.isArray(values))
             values = [values];
         
         var newNodesArrays = values.map(function(value) {
             var nodeArrayList = node.nodesMap.get(value);
-            var nodes = nodeArrayList && nodeArrayList.Remove();
-            if(nodeArrayList && nodeArrayList.Size === 0)
+            var nodes = nodeArrayList && List.Remove(nodeArrayList);
+            if(nodeArrayList && nodeArrayList.size === 0)
                 node.nodesMap.delete(value);
 
             var newNodeArrayList = newNodesMap.get(value);
             if(!newNodeArrayList) {
-                newNodeArrayList = new List<INodeRefBase[]>();
+                newNodeArrayList = List.Create<Array<NodeRefTypes>>();
                 newNodesMap.set(value, newNodeArrayList);
             }
 
@@ -95,19 +92,22 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
                         return;
 
                     NodeRef.InitAll(nodes);
+                    List.Push(newNodeArrayList, nodes);
                 });
             }
-            newNodeArrayList.Push(nodes);
+            else
+                List.Push(newNodeArrayList, nodes);
+            
             return nodes;
         });
 
-        var detachNodes: Array<List<INodeRefBase[]>>;
+        var detachNodes: Array<IList<INodeRefBase[]>>;
         if(!init) {
             detachNodes = [];
             node.nodesMap.forEach(function(nodeArrayList) {
                 var destroyNodes = nodeArrayList;
                 detachNodes.push(nodeArrayList);
-                destroyNodes.ForEach(NodeRef.DestroyAll);
+                List.ForEach(destroyNodes, NodeRef.DestroyAll);
             });
         }
 
@@ -130,9 +130,9 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
     });
 }
 
-function DetachAndAddNodes(node: INodeRefBase, detachNodes: Array<List<INodeRefBase[]>>, newNodes: Array<Array<INodeRefBase>>) {
+function DetachAndAddNodes(node: INodeRefBase, detachNodes: Array<IList<INodeRefBase[]>>, newNodes: Array<Array<INodeRefBase>>) {
     for(var x=0; detachNodes && x<detachNodes.length; x++)
-        detachNodes[x].ForEach(function(nodes) {
+        List.ForEach(detachNodes[x], function(nodes) {
             for(var x=0; x<nodes.length; x++)
                 NodeRef.DetachChild(node, nodes[x]);
         });

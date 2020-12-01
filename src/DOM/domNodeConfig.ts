@@ -2,16 +2,18 @@ import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 import { SetProperties } from './utils';
-import { Thread } from '../Utils/thread';
+import { Synch } from '../Utils/thread';
 
-var pendingUpdates = new List<{(): void}>();
+var pendingUpdates = List.Create<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
-    var callback: {(): void};
-    while((callback = pendingUpdates.Pop()))
-        Thread(callback, true);
-
+    Synch(function() {
+        var callback: {(): void};
+        while((callback = List.Pop(pendingUpdates)))
+            callback();
+    });
+    
     updateScheduled = false;
 }
 
@@ -21,7 +23,7 @@ export var DOMNodeConfig: INodeConfig = {
         return type !== "text" ? wndw.document.createElementNS(namespace || htmlNs, type) : wndw.document.createTextNode("");
     },
     scheduleUpdate(callback: () => void): void {
-        pendingUpdates.Add(callback);
+        List.Add(pendingUpdates, callback);
     
         if(!updateScheduled) {
             updateScheduled = true;
