@@ -8,11 +8,9 @@ var pendingUpdates = List.Create<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
-    Synch(function() {
-        var callback: {(): void};
-        while((callback = List.Pop(pendingUpdates)))
-            callback();
-    });
+    var callback: {(): void};
+    while((callback = List.Pop(pendingUpdates)))
+        Synch(callback);
     
     updateScheduled = false;
 }
