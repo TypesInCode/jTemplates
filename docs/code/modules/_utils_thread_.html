@@ -2369,7 +2369,10 @@ img {
 			<a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-kind-icon">IThread<wbr>Context</a>
 		</li>
 		<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-			<a href="_utils_thread_.html#settimeoutqueue" class="tsd-kind-icon">set<wbr>Timeout<wbr>Queue</a>
+			<a href="_utils_thread_.html#contextqueue" class="tsd-kind-icon">context<wbr>Queue</a>
+		</li>
+		<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+			<a href="_utils_thread_.html#insynchcallback" class="tsd-kind-icon">in<wbr>Synch<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
 			<a href="_utils_thread_.html#threadcontext" class="tsd-kind-icon">thread<wbr>Context</a>
@@ -2393,10 +2396,10 @@ img {
 			<a href="_utils_thread_.html#dowork" class="tsd-kind-icon">Do<wbr>Work</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-			<a href="_utils_thread_.html#exectimeouts" class="tsd-kind-icon">Exec<wbr>Timeouts</a>
+			<a href="_utils_thread_.html#invoke" class="tsd-kind-icon">Invoke</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-			<a href="_utils_thread_.html#invoke" class="tsd-kind-icon">Invoke</a>
+			<a href="_utils_thread_.html#processqueue" class="tsd-kind-icon">Process<wbr>Queue</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external">
 			<a href="_utils_thread_.html#schedule" class="tsd-kind-icon">Schedule</a>
@@ -2436,7 +2439,8 @@ img {
 					<section class="tsd-index-section tsd-is-external tsd-is-not-exported">
 						<h3>Variables</h3>
 						<ul class="tsd-index-list">
-							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#settimeoutqueue" class="tsd-kind-icon">set<wbr>Timeout<wbr>Queue</a></li>
+							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#contextqueue" class="tsd-kind-icon">context<wbr>Queue</a></li>
+							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#insynchcallback" class="tsd-kind-icon">in<wbr>Synch<wbr>Callback</a></li>
 							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#threadcontext" class="tsd-kind-icon">thread<wbr>Context</a></li>
 							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#timeoutrunning" class="tsd-kind-icon">timeout<wbr>Running</a></li>
 							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#worktimems" class="tsd-kind-icon">work<wbr>Time<wbr>Ms</a></li>
@@ -2449,8 +2453,8 @@ img {
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external"><a href="_utils_thread_.html#callback" class="tsd-kind-icon">Callback</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#createcontext" class="tsd-kind-icon">Create<wbr>Context</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#dowork" class="tsd-kind-icon">Do<wbr>Work</a></li>
-							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#exectimeouts" class="tsd-kind-icon">Exec<wbr>Timeouts</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#invoke" class="tsd-kind-icon">Invoke</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#processqueue" class="tsd-kind-icon">Process<wbr>Queue</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external"><a href="_utils_thread_.html#schedule" class="tsd-kind-icon">Schedule</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#schedulecallback" class="tsd-kind-icon">Schedule<wbr>Callback</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_utils_thread_.html#schedulework" class="tsd-kind-icon">Schedule<wbr>Work</a></li>
@@ -2466,12 +2470,22 @@ img {
 		<section class="tsd-panel-group tsd-member-group tsd-is-external tsd-is-not-exported">
 			<h2>Variables</h2>
 			<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-				<a name="settimeoutqueue" class="tsd-anchor"></a>
-				<h3><span class="tsd-flag ts-flagConst">Const</span> set<wbr>Timeout<wbr>Queue</h3>
-				<div class="tsd-signature tsd-kind-icon">set<wbr>Timeout<wbr>Queue<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = List.Create()</span></div>
+				<a name="contextqueue" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagConst">Const</span> context<wbr>Queue</h3>
+				<div class="tsd-signature tsd-kind-icon">context<wbr>Queue<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = List.Create()</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L10">Utils/thread.ts:10</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L10">Utils/thread.ts:10</a></li>
+					</ul>
+				</aside>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+				<a name="insynchcallback" class="tsd-anchor"></a>
+				<h3>in<wbr>Synch<wbr>Callback</h3>
+				<div class="tsd-signature tsd-kind-icon">in<wbr>Synch<wbr>Callback<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L106">Utils/thread.ts:106</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2481,7 +2495,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">thread<wbr>Context<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a><span class="tsd-signature-symbol"> = null</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L12">Utils/thread.ts:12</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L12">Utils/thread.ts:12</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2491,7 +2505,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">timeout<wbr>Running<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L13">Utils/thread.ts:13</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L13">Utils/thread.ts:13</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2501,7 +2515,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">work<wbr>Time<wbr>Ms<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">16</span><span class="tsd-signature-symbol"> = 16</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L9">Utils/thread.ts:9</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L9">Utils/thread.ts:9</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2518,7 +2532,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L97">Utils/thread.ts:97</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L96">Utils/thread.ts:96</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2553,7 +2567,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L101">Utils/thread.ts:101</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L100">Utils/thread.ts:100</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2618,7 +2632,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L60">Utils/thread.ts:60</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L60">Utils/thread.ts:60</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-returns-title">Returns <a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a></h4>
@@ -2629,13 +2643,13 @@ img {
 				<a name="dowork" class="tsd-anchor"></a>
 				<h3>Do<wbr>Work</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-					<li class="tsd-signature tsd-kind-icon">Do<wbr>Work<span class="tsd-signature-symbol">(</span>ctx<span class="tsd-signature-symbol">: </span><a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<li class="tsd-signature tsd-kind-icon">Do<wbr>Work<span class="tsd-signature-symbol">(</span>ctx<span class="tsd-signature-symbol">: </span><a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a>, workStartTime<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L44">Utils/thread.ts:44</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L45">Utils/thread.ts:45</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2643,24 +2657,10 @@ img {
 							<li>
 								<h5>ctx: <a href="../interfaces/_utils_thread_.ithreadcontext.html" class="tsd-signature-type">IThreadContext</a></h5>
 							</li>
+							<li>
+								<h5><span class="tsd-flag ts-flagDefault value">Default value</span> workStartTime: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = Date.now()</span></h5>
+							</li>
 						</ul>
-						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-					</li>
-				</ul>
-			</section>
-			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-				<a name="exectimeouts" class="tsd-anchor"></a>
-				<h3>Exec<wbr>Timeouts</h3>
-				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-					<li class="tsd-signature tsd-kind-icon">Exec<wbr>Timeouts<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
-				</ul>
-				<ul class="tsd-descriptions">
-					<li class="tsd-description">
-						<aside class="tsd-sources">
-							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L15">Utils/thread.ts:15</a></li>
-							</ul>
-						</aside>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 					</li>
 				</ul>
@@ -2675,7 +2675,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L37">Utils/thread.ts:37</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L38">Utils/thread.ts:38</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2703,6 +2703,23 @@ img {
 					</li>
 				</ul>
 			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+				<a name="processqueue" class="tsd-anchor"></a>
+				<h3>Process<wbr>Queue</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+					<li class="tsd-signature tsd-kind-icon">Process<wbr>Queue<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L15">Utils/thread.ts:15</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external">
 				<a name="schedule" class="tsd-anchor"></a>
 				<h3>Schedule</h3>
@@ -2713,7 +2730,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L93">Utils/thread.ts:93</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L92">Utils/thread.ts:92</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2748,7 +2765,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L70">Utils/thread.ts:70</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L68">Utils/thread.ts:68</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2789,7 +2806,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L27">Utils/thread.ts:27</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L28">Utils/thread.ts:28</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2812,7 +2829,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L107">Utils/thread.ts:107</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L107">Utils/thread.ts:107</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2847,7 +2864,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L82">Utils/thread.ts:82</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L80">Utils/thread.ts:80</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2882,7 +2899,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L114">Utils/thread.ts:114</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L117">Utils/thread.ts:117</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2917,7 +2934,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/9d8997f/src/Utils/thread.ts#L121">Utils/thread.ts:121</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/f68ab6e/src/Utils/thread.ts#L124">Utils/thread.ts:124</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
