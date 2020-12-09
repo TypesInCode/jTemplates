@@ -8,11 +8,16 @@ var pendingUpdates = List.Create<{(): void}>();
 var updateScheduled = false;
 
 function processUpdates() {
+    List.Add(pendingUpdates, null);
+
     var callback: {(): void};
     while((callback = List.Pop(pendingUpdates)))
         Synch(callback);
     
-    updateScheduled = false;
+    if(pendingUpdates.size === 0)
+        updateScheduled = false;
+    else
+        wndw.requestAnimationFrame(processUpdates);
 }
 
 const htmlNs = "http://www.w3.org/1999/xhtml";
