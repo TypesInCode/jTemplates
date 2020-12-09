@@ -111,6 +111,7 @@ class RootComponent extends Component {
           	style({
               props: { type: "text/css" }
             }, () => ".hidden { display: none; }"),
+            button({ on: { click: () => this.RefreshData() } }, () => "Refresh data"),
           	div({ data: () => Reflect.ownKeys(headers) }, (key: string) =>
                 button({ on: { click: () => this.ToggleColumn(key) } }, () => `${key} `)
             ),
@@ -143,6 +144,10 @@ class RootComponent extends Component {
 				);
             })
         ];
+    }
+
+    private RefreshData() {
+        this.state = { data: GenerateData() };
     }
     
     private ToggleColumn(prop: string) {

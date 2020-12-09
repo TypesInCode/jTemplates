@@ -30,13 +30,7 @@ interface IData {
 const headers = {
   col1: "Col 1",
   col2: "Col 2",
-  col3: "Col 3",
-  col4: "Col 4",
-  col5: "Col 5",
-  col6: "Col 6",
-  col7: "Col 7",
-  col8: "Col 8",
-  col9: "Col 9"
+  col3: "Col 3"
 } as IData;
 
 function GenerateData() {
@@ -45,13 +39,19 @@ function GenerateData() {
         ret[x] = {
             col1: data[Math.floor(Math.random() * data.length)],
             col2: data[Math.floor(Math.random() * data.length)],
-            col3: data[Math.floor(Math.random() * data.length)],
-            col4: data[Math.floor(Math.random() * data.length)],
-            col5: data[Math.floor(Math.random() * data.length)],
-            col6: data[Math.floor(Math.random() * data.length)],
-            col7: data[Math.floor(Math.random() * data.length)],
-            col8: data[Math.floor(Math.random() * data.length)],
-            col9: data[Math.floor(Math.random() * data.length)],
+            col3: data[Math.floor(Math.random() * data.length)]
+        }
+    }
+    return ret as Array<IData>;
+}
+
+function GenerateData2() {
+    var ret = [];
+    for(var x=0; x<50; x++) {
+        ret[x] = {
+            col1: data[Math.floor(Math.random() * data.length)],
+            col2: data[Math.floor(Math.random() * data.length)],
+            col3: data[Math.floor(Math.random() * data.length)]
         }
     }
     return ret as Array<IData>;
@@ -60,11 +60,12 @@ function GenerateData() {
 class RootComponent extends Component {
 
     @State()
-    state: Partial<{ filter: string, sort: string, data: Array<IData>, hidden: Array<string> }> = { 
+    state: Partial<{ filter: string, sort: string, data: Array<IData>, data2: Array<IData>, hidden: Array<string> }> = { 
         filter: null,
       	sort: null,
       	hidden: [],
-        data: GenerateData() 
+        data: GenerateData(),
+        data2: GenerateData2()
     };
   
   	@Scope()
@@ -110,23 +111,28 @@ class RootComponent extends Component {
         return [
           	style({
               props: { type: "text/css" }
-            }, () => ".hidden { display: none; }"),
-            button({ on: { click: () => this.RefreshData() } }, () => "Refresh data"),
-          	div({ data: () => Reflect.ownKeys(headers) }, (key: string) =>
-                button({ on: { click: () => this.ToggleColumn(key) } }, () => `${key} `)
-            ),
-            select({ 
-                on: { 
-                    change: (e: any) => {
-                        this.state = { filter: e.target.value };
-                    }
-                },
-                props: () => ({ value: this.state.filter }),
-                data: () => [null, ...data, "Clear"]
-            }, (val) => 
-                option({ props: { value: val } }, () => val || "None")
-            ),
-          	span({}, () => ` ${this.visibleData.length}`),
+            }, () => `
+            table { 
+                width: 50%;
+                float: left;
+            }`),
+            div({}, () => [
+                div({ data: () => Reflect.ownKeys(headers) }, (key: string) =>
+                    button({ on: { click: () => this.ToggleColumn(key) } }, () => `${key} `)
+                ),
+                select({ 
+                    on: { 
+                        change: (e: any) => {
+                            this.state = { filter: e.target.value };
+                        }
+                    },
+                    props: () => ({ value: this.state.filter }),
+                    data: () => [null, ...data, "Clear"]
+                }, (val) => 
+                    option({ props: { value: val } }, () => val || "None")
+                ),
+                span({}, () => ` ${this.visibleData.length}`),
+            ]),
             table({ data: async () => await [null, ...this.sortedData] }, (row: IData) => {
                 if(!row)
                     return tr({ 
@@ -142,12 +148,23 @@ class RootComponent extends Component {
                 }, (key: string) => 
 					td({ }, () => row[key])
 				);
+            }),
+            table({ data: async () => await [null, ...this.state.data2] }, (row: IData) => {
+                if(!row)
+                    return tr({ 
+                      	data: this.VisibleColumns() 
+                    }, (key: string) => 
+                        th({
+                        }, () => headers[key])
+					);
+
+                return tr({ 
+                  data: this.VisibleColumns()
+                }, (key: string) => 
+					td({ }, () => row[key])
+				);
             })
         ];
-    }
-
-    private RefreshData() {
-        this.state = { data: GenerateData() };
     }
     
     private ToggleColumn(prop: string) {
