@@ -75,27 +75,33 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         public DiffBatch(data: Array<{path: string, value: any }>) {
-            var resp: IDiffResponse = null;
-            for(var x=0; x<data.length; x++) {
-                var r = this.DiffPath(data[x].path, data[x].value);
-                if(!resp)
-                    resp = r;
-                else {
-                    resp.changedPaths = [...resp.changedPaths, ...r.changedPaths];
-                    resp.deletedPaths = [...resp.deletedPaths, ...r.deletedPaths];
-                }
-            }
+            var resp: IDiffResponse = {
+                changedPaths: [],
+                deletedPaths: []
+            };
+;
+            for(var x=0; x<data.length; x++)
+                this.RunDiff(data[x].path, data[x].value, resp);
 
             return resp;
         }
 
         public DiffPath(path: string, value: any) {
-            var breakupMap = this.GetBreakUpMap(path, value);
-            var resp = {
-                newPaths: [],
+            var resp: IDiffResponse = {
                 changedPaths: [],
                 deletedPaths: []
-            } as IDiffResponse;
+            };
+
+            this.RunDiff(path, value, resp);
+            return resp;
+        }
+
+        private RunDiff(path: string, value: any, diffResp: IDiffResponse) {
+            var breakupMap = this.GetBreakUpMap(path, value);
+            var resp: IDiffResponse = diffResp || {
+                changedPaths: [],
+                deletedPaths: []
+            };
 
             breakupMap.forEach((value, key) => {
                 var currentValue = key.split(".").reduce((pre: any, curr: string, index) => {
@@ -111,8 +117,6 @@ export function DiffTreeScope(worker?: boolean) {
             resp.changedPaths.forEach(val => {
                 this.SetPathValue(val.path, val.value);                
             });
-
-            return resp;
         }
 
         private SetPathValue(path: string, value: any) {
@@ -157,7 +161,7 @@ export function DiffTreeScope(worker?: boolean) {
             }
             else {
                 for(var subProp in value) {
-                    var childPath = [path, subProp].join(".");
+                    var childPath = `${path}.${subProp}`; //[path, subProp].join(".");
                     this.BreakUpValue(childPath, value, subProp, map);
                 }
             }
@@ -169,16 +173,61 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         private DiffValues(path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
-            if(!oldValue && newValue) {
+            var oldIsValue = IsValue(oldValue);
+            // if((oldValue === undefined) && newValue) {
+            if(oldIsValue) {
+                if(oldValue !== newValue) {
+                    resp.changedPaths.push({
+                        path: path,
+                        value: newValue
+                    });
+                }
+                return;
+            }
+
+            var oldKeys = Array.isArray(oldValue) ? null : Object.keys(oldValue);
+            var newIsValue = IsValue(newValue);
+            if(newIsValue) {
                 resp.changedPaths.push({
                     path: path,
                     value: newValue
                 });
+
+                for(var x=0; x<(oldKeys || oldValue).length; x++)
+                    resp.deletedPaths.push(`${path}.${oldKeys ? oldKeys[x] : x}`);
+
                 return;
             }
+
+            var changed = false;
+            var newKeys = new Set(Object.keys(newValue));
+            for(var x=0; x<(oldKeys || oldValue).length; x++) {
+                var oldKey: string = oldKeys ? oldKeys[x] : x.toString();
+                var childPath = `${path}.${oldKey}`;
+                var stays = newKeys.delete(oldKey);
+                if(stays)
+                    this.DiffValues(childPath, newValue[oldKey], oldValue[oldKey], resp);
+                else {
+                    changed = true;
+                    resp.deletedPaths.push(childPath);
+                }
+            }
+
+            if(changed || newKeys.size > 0)
+                resp.changedPaths.push({
+                    path: path,
+                    value: newValue
+                });
             
-            var newIsObject = !IsValue(newValue);
+            /* var newIsObject = !IsValue(newValue);
+            var newKeys: Set<string>;
+            if(newIsObject)
+                newKeys = new Set(Object.keys(newValue));
+            
             var oldIsObject = !IsValue(oldValue);
+
+
+
 
             if(!newIsObject && !oldIsObject && newValue !== oldValue) {
                 resp.changedPaths.push({
@@ -211,7 +260,7 @@ export function DiffTreeScope(worker?: boolean) {
                 resp.changedPaths.push({
                     path: path,
                     value: newValue
-                });
+                }); */
         }
 
     }
