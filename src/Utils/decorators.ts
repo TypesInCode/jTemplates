@@ -1,6 +1,6 @@
-import { Store as StoreSync } from "../Store/Store/store";
+import { Store as StoreClass } from "../Store/Store/store";
 import { Component } from "../Node/component";
-import { StoreAsync } from "../Store";
+import { StoreAsync, StoreSync } from "../Store";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
 import { NodeRefTypes } from "../Node/nodeRef.types";
@@ -9,7 +9,7 @@ export function State(): any {
     return StateDecorator;
 }
 
-function StateDecorator<T extends Component<any, any, any> & Record<K, StoreSync<any>>, K extends string>(target: T, propertyKey: K) {
+function StateDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
 
     const propKey = `StoreDecorator_${propertyKey}`;
     DestroyDecorator(target, propKey);
@@ -18,16 +18,48 @@ function StateDecorator<T extends Component<any, any, any> & Record<K, StoreSync
         enumerable: true,
         get: function () {
             var map = (this as T).DecoratorMap;
-            var store = map.get(propKey) as StoreSync<any>;
+            var store = map.get(propKey) as StoreClass<any>;
             return store ? store.Root.Value : null;
         },
         set: function (val: any) {
             var map = (this as T).DecoratorMap;
-            var store = map.get(propKey) as StoreSync<any>;
+            var store = map.get(propKey) as StoreClass<any>;
             if(!store)
-                map.set(propKey, new StoreSync(val));
+                map.set(propKey, new StoreClass(val));
             else
                 store.Merge(val);
+        }
+    } as PropertyDescriptor;
+}
+
+export function StateAsync(): any {
+    return StateAsyncDecorator;
+}
+
+function StateAsyncDecorator<T extends Component<any, any, any> & Record<K, StoreAsync>, K extends string>(target: T, propertyKey: K) {
+
+    const propKey = `StoreAsyncDecorator_${propertyKey}`;
+    const scopeKey = `StoreAsyncDecorator_Scope_${propertyKey}`;
+    DestroyDecorator(target, propKey);
+    DestroyDecorator(target, scopeKey);
+    return {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            var map = (this as T).DecoratorMap;
+            var scope = map.get(scopeKey) as ObservableScope<any>;
+            return scope ? scope.Value : null;
+        },
+        set: function (val: any) {
+            var map = (this as T).DecoratorMap;
+            var store = map.get(propKey) as StoreAsync;
+            if(!store) {
+                store = new StoreAsync((val) => val.___id, { ___id: "ROOT", data: val });
+                map.set(propKey, store);
+                map.set(scopeKey, store.Scope<{ ___id: string, data: any }, any>("ROOT", val => val.data))
+            }
+            else
+                store.Action<{ ___id: string, data: any }>("ROOT", async (root, writer) => await writer.Merge(root.data, val));
         }
     } as PropertyDescriptor;
 }
@@ -157,8 +189,8 @@ function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends st
     const storeKey = `ComputedDecorator_Store_${propertyKey}`;
     const storeScopeKey = `ComputedDecorator_StoreScope_${propertyKey}`;
     DestroyDecorator(target as T & Record<K, IObservableScope<any>>, scopeKey);
-    DestroyDecorator(target as T & Record<K, StoreSync<any>>, storeKey);
-    DestroyDecorator(target as T & Record<K, StoreSync<any>>, storeScopeKey);
+    DestroyDecorator(target as T & Record<K, StoreClass<any>>, storeKey);
+    DestroyDecorator(target as T & Record<K, StoreClass<any>>, storeScopeKey);
 
     return {
         configurable: false,
