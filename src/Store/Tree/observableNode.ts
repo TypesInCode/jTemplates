@@ -125,7 +125,8 @@ export class ObservableNode {
         this.self = undefined;
         this.proxyArray = undefined;
 
-        this.children.forEach(node => node.Update());
+        this.children.clear();
+        // this.children.forEach(node => node.Update());
         this.EmitSet();
     }
 
