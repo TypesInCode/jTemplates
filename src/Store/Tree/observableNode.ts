@@ -63,10 +63,12 @@ export class ObservableNode {
         if(this.Type !== Type.Array)
             return null;
 
-        if(!this.proxyArray)
+        /* if(!this.proxyArray)
             this.proxyArray = (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).ProxyInternal);
 
-        return this.proxyArray;
+        return this.proxyArray; */
+
+        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).ProxyInternal);
     }
 
     public get Parent() {
@@ -77,7 +79,7 @@ export class ObservableNode {
         return this.children;
     }
 
-    private get ProxyInternal(): any {
+    public get ProxyInternal(): any {
         if(this.oldType !== undefined) {
             if(this.oldType !== this.Type)
                 this.proxy = undefined;
@@ -104,6 +106,16 @@ export class ObservableNode {
         private parent: ObservableNode, 
         private valuePathResolver: { (value: string): string }
     ) { }
+
+    public UpdateKey(newKey: string) {
+        if(!this.parent)
+            return;
+
+        this.parent.children.delete(this.key);
+        this.parent.children.set(newKey, this);
+        this.key = newKey;
+        this.path = undefined;
+    }
 
     public EnsureChild(key: string) {
         var child = this.children.get(key);
@@ -138,13 +150,66 @@ export class ObservableNode {
     }
 
     public EmitSet() {
-        Emitter.Emit(this.emitter, "set");
+        Emitter.Emit(this.emitter);
     }
 
     public Destroy() {
         this.parent && this.parent.Children.delete(this.key);
         this.emitter.clear();
         this.children.forEach(c => c.Destroy())
+    }
+
+    public Push(data: any) {
+        var array = this.Value;
+        if(!Array.isArray(array))
+            throw new Error("Node value is not an array.");
+
+        var ret = array.push(data);
+        this.ArrayUpdate();
+        return ret;
+    }
+
+    public Splice(start: number, deleteCount?: number, ...items: Array<any>) {
+        deleteCount = deleteCount || 0;
+        var array = this.Value;
+        if(!Array.isArray(array))
+            throw new Error("Node value is not an array.");
+
+        var startLength = array.length;
+        var ret = array.splice(start, deleteCount, ...items);
+        var x = start;
+        var key: string = null;
+        var newKey: string = null;
+        var child: ObservableNode = null;
+
+        for(; x<(start + deleteCount); x++) {
+            key = x.toString();
+            child = this.Children.get(key);
+            if(child)
+                child.Destroy();
+        }
+
+        if(startLength < array.length)
+            for(var y=startLength - 1; y >= x; y--) {
+                key = y.toString();
+                child = this.Children.get(key);
+                if(child) {
+                    newKey = (y - deleteCount + items.length).toString();
+                    child.UpdateKey(newKey);
+                }
+            }
+        else
+            for(; x<startLength; x++) {
+                key = x.toString();
+                child = this.Children.get(key);
+                if(child) {
+                    newKey = (x - deleteCount + items.length).toString();
+                    child.UpdateKey(newKey);
+                }
+            }
+
+        this.ArrayUpdate();
+        return ret;
     }
 
 }
