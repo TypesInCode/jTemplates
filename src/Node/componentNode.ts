@@ -25,12 +25,12 @@ export namespace ComponentNode {
         var nodeDef = componentNode.nodeDef;
         var events = nodeDef.on;
         nodeDef.on = null;
-        
-        BoundNode.Init(componentNode);
 
         componentNode.component = new componentNode.constructor(nodeDef.data, componentNode.templates, componentNode, events);
         SetChildren(componentNode);
         componentNode.destroyables.push(componentNode.component);
+
+        BoundNode.Init(componentNode);
     }
 
 }

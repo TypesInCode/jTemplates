@@ -19,8 +19,6 @@ export namespace ElementNode {
     }
 
     export function Init<T>(elementNode: IElementNodeBase<T>) {
-        BoundNode.Init(elementNode);
-
         elementNode.nodesMap = new Map();
         var nodeDef = elementNode.nodeDef;
         var childrenFunc = elementNode.childrenFunc;
@@ -38,6 +36,8 @@ export namespace ElementNode {
                 ObservableScope.Destroy(dataScope);
             }
         });
+
+        BoundNode.Init(elementNode);
     }
 
 }
