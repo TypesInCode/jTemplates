@@ -1,5 +1,5 @@
 export interface IDiffMethod {
-    method: "create" | "diffpath" | "diffbatch";
+    method: "create" | "diffpath" | "diffbatch" | "updatepath";
     arguments: Array<any>;
 }
 
@@ -11,6 +11,7 @@ export interface IDiffResponse {
 export interface IDiffTree {
     DiffBatch(data: Array<{path: string, value: any }>): IDiffResponse;
     DiffPath(path: string, value: any): IDiffResponse;
+    UpdatePath(path: string, value: any): void;
 }
 
 export interface IDiffTreeConstructor {
@@ -40,6 +41,10 @@ export function DiffTreeScope(worker?: boolean) {
                 case "diffbatch":
                     var diff = diffTree.DiffBatch(data.arguments[0]);
                     ctx.postMessage(diff);
+                    break;
+                case "updatepath":
+                    diffTree.UpdatePath(data.arguments[0], data.arguments[1]);
+                    ctx.postMessage(null);
                     break;
             }
         }
@@ -94,6 +99,10 @@ export function DiffTreeScope(worker?: boolean) {
 
             this.RunDiff(path, value, resp);
             return resp;
+        }
+
+        public UpdatePath(path: string, value: any) {
+            this.SetPathValue(path, value);
         }
 
         private RunDiff(path: string, value: any, diffResp: IDiffResponse) {

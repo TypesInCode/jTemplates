@@ -28,6 +28,10 @@ export class DiffAsync {
         return await this.workerQueue.Push({ method: "diffbatch", arguments: [data] });
     }
 
+    public async UpdatePath(path: string, value: any) {
+        await this.workerQueue.Push({ method: "updatepath", arguments: [path, value] });
+    }
+
     public Destroy() {
         this.workerQueue.Destroy();
     }

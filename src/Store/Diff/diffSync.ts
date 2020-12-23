@@ -25,4 +25,8 @@ export class DiffSync {
         return this.diffTree.DiffBatch(data);
     }
 
+    public UpdatePath(path: string, value: any) {
+        this.diffTree.UpdatePath(path, value);
+    }
+
 }
