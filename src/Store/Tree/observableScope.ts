@@ -29,6 +29,7 @@ export class ObservableScopeWrapper<T> extends ObservableScopeValue<T> implement
             return;
 
         Emitter.On(this.scopeEmitter, callback);
+        callback(this);
     }
 
     public Unwatch(callback: {(scope: ObservableScopeValue<T>): void}) {
