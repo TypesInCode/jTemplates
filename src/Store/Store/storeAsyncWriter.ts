@@ -40,8 +40,10 @@ export class StoreAsyncWriter {
         var rootPath = proxy.___node.Path;
         var length = array.length;
 
-        var diff = await this.diffAsync.DiffPath(`${rootPath}.${length}`, data);
-        this.ApplyChanges(diff);
+        await this.diffAsync.UpdatePath(`${rootPath}.${length}`, data);
+        proxy.___node.Push(data);
+        // var diff = await this.diffAsync.DiffPath(`${rootPath}.${length}`, data);
+        // this.ApplyChanges(diff);
     }
 
     public async Splice<T>(source: Array<T> | ObservableProxy, start: number, deleteCount?: number, ...items: Array<T>) {        
@@ -51,8 +53,11 @@ export class StoreAsyncWriter {
         var array = this.observableTree.Get<Array<T>>(rootPath);
         array = array.map(val => val);
         array.splice(start, deleteCount, ...items);
-        var diff = await this.diffAsync.DiffPath(rootPath, array);
-        this.ApplyChanges(diff);
+        
+        await this.diffAsync.UpdatePath(rootPath, array);
+        return proxy.___node.Splice(start, deleteCount, ...items);
+        // var diff = await this.diffAsync.DiffPath(rootPath, array);
+        // this.ApplyChanges(diff);
     }
 
     private ApplyChanges(diff: IDiffResponse) {

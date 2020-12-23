@@ -37,8 +37,10 @@ export class StoreSyncWriter {
         var rootPath = proxy.___node.Path;
         var length = array.length;
 
-        var diff = this.diffSync.DiffPath(`${rootPath}.${length}`, data);
-        this.ApplyChanges(diff);
+        this.diffSync.UpdatePath(`${rootPath}.${length}`, data);
+        proxy.___node.Push(data);
+        // var diff = this.diffSync.DiffPath(`${rootPath}.${length}`, data);
+        // this.ApplyChanges(diff);
         // this.observableTree.Write(`${rootPath}.${length}`, data);
     }
 
@@ -50,9 +52,11 @@ export class StoreSyncWriter {
         array = array.map(val => val);
         array.splice(start, deleteCount, ...items);
 
-        var diff = this.diffSync.DiffPath(rootPath, array);
-        this.ApplyChanges(diff);
-        //this.observableTree.Write(rootPath, array);
+        this.diffSync.UpdatePath(rootPath, array);
+        return proxy.___node.Splice(start, deleteCount, ...items);
+        // var diff = this.diffSync.DiffPath(rootPath, array);
+        // this.ApplyChanges(diff);
+        // this.observableTree.Write(rootPath, array);
     }
 
     private ApplyChanges(diff: IDiffResponse) {
