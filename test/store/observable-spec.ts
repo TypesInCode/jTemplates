@@ -65,7 +65,7 @@ describe("Observables Test", () => {
             if(val && val.match(/^[A-Z]{4}$/))
                 return val;
         });
-        tree.Write("ROOT", ["AAAA", "BBBB", "CCCC"]);
+        tree.Write("ROOT", ["AAAA"]); //, "BBBB", "CCCC"]);
         tree.Write("AAAA", { value: "First" });
         tree.Write("BBBB", { value: "Second" });
         tree.Write("CCCC", { value: "Third" });
@@ -74,11 +74,11 @@ describe("Observables Test", () => {
             return val.map(n => n.value).join(" ");
         });
 
-        expect(scope.Value).to.equal("First Second Third");
+        expect(scope.Value).to.equal("First"); // Second Third");
         tree.Write("AAAA", { value: "First 2" });
-        expect(scope.Value).to.equal("First 2 Second Third");
+        expect(scope.Value).to.equal("First 2"); // Second Third");
         tree.Write("AAAA", { value: "First 3" });
-        expect(scope.Value).to.equal("First 3 Second Third");
+        expect(scope.Value).to.equal("First 3"); // Second Third");
     });
     it('Write Error', () => {
         var tree = new ObservableTree();

@@ -15,26 +15,26 @@ describe("Diff Observable Test", () => {
             observable.Write(val.path, val.value);
         });
 
-        var scope = observable.Scope("root", (val: any) => val.value1);
-        var fired = false;
-        scope.Watch(() => {
-            fired = true;
+        var scope = observable.Scope("root", (val: any) => val.value2);
+        var value = null;
+        scope.Watch(scope => {
+            value = scope.Value;
         });
-        expect(scope.Value).to.equal("test");
+        expect(value).to.equal("test");
 
         resp = tree.DiffPath("root", { value1: "test", value2: "test2" });
         resp.changedPaths.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
-        expect(fired).to.be.false;
+        expect(value).to.equal("test2");
 
         resp = tree.DiffPath("root", { value1: "test2", value2: "test3" });
         resp.changedPaths.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
-        expect(fired).to.be.true;
+        expect(value).to.equal("test3");
     });
     it('Array Actions', () => {
         var observable = new ObservableTree();
