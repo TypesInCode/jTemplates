@@ -32,6 +32,33 @@ function StateDecorator<T extends Component<any, any, any> & Record<K, StoreClas
     } as PropertyDescriptor;
 }
 
+export function StateSync(): any {
+    return StateSyncDecorator;
+}
+
+function StateSyncDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
+
+    const propKey = `StoreSyncDecorator_${propertyKey}`;
+    DestroyDecorator(target, propKey);
+    return {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            var map = (this as T).DecoratorMap;
+            var store = map.get(propKey) as StoreClass<any>;
+            return store ? store.Root.Value : null;
+        },
+        set: function (val: any) {
+            var map = (this as T).DecoratorMap;
+            var store = map.get(propKey) as StoreClass<any>;
+            if(!store)
+                map.set(propKey, new StoreSync(val));
+            else
+                store.Merge(val);
+        }
+    } as PropertyDescriptor;
+}
+
 export function StateAsync(): any {
     return StateAsyncDecorator;
 }
