@@ -1,21 +1,33 @@
 import { ObservableTree } from "./observableTree";
-import { Emitter } from "../../Utils/emitter";
 import { Type, ObservableProxy } from "./observableProxy";
-import { ObservableScope } from "./observableScope";
+import { IObservableScope, ObservableScope } from "./observableScope";
 
 export class ObservableNode {
 
+    private destroyed = false;
     private children = new Map<string, ObservableNode>();
-    private emitter = Emitter.Create();
 
-    // Cached values
     private path: string = undefined;
-    private value: any = undefined;
-    private type: Type = undefined;
-    private oldType: Type = undefined;
-    private self: ObservableNode = undefined;
-    private proxy: ObservableProxy = undefined;
-    private proxyArray: Array<any> = undefined;
+    private scope: IObservableScope<{ value: any, type: Type, self: ObservableNode, proxy: ObservableProxy }> = ObservableScope.Create(() => {
+        var value = this.tree.Get(this.Path);
+        var type = ObservableProxy.TypeOf(value);
+        var resolvedPath = this.valuePathResolver && type === Type.Value && typeof value === 'string' ? this.valuePathResolver(value) || this.Path : this.Path;
+        var self = this.Path === resolvedPath ? this : this.tree.GetNode(resolvedPath);
+        var proxy = this === self ? 
+            type === Type.Value ? 
+                value : 
+                ObservableProxy.CreateFrom(this, type) : 
+            self.Proxy;
+
+        return {
+            value: value,
+            type: ObservableProxy.TypeOf(value),
+            self: self,
+            proxy: proxy
+        }
+    });
+
+    private arrayScope: IObservableScope<any[]>;
 
     public get Path() {
         if(this.path === undefined)
@@ -25,50 +37,33 @@ export class ObservableNode {
     }
 
     public get Value() {
-        if(this.value === undefined)
-            this.value = this.tree.Get(this.Path);
-
-        return this.value;
+        return ObservableScope.Value(this.scope).value;
     }
 
     public get Type() {
-        if(this.type === undefined)
-            this.type = ObservableProxy.TypeOf(this.Value);
-
-        return this.type;
+        return ObservableScope.Value(this.scope).type;
     }
 
     public get Self() {
-        var resolvedPath: string;
-        if( 
-            this.self === undefined         && 
-            this.Type === Type.Value        &&
-            this.valuePathResolver          && 
-            typeof this.Value === 'string'  && 
-            (resolvedPath = this.valuePathResolver(this.Value))
-        )
-            this.self = this.tree.GetNode(resolvedPath);
-        else if(this.self === undefined)
-            this.self = this;
-
-        return this.self;
+        return ObservableScope.Value(this.scope).self;
     }
 
     public get Proxy(): any {
-        ObservableScope.Register(this.emitter);
-        return this.ProxyInternal;
+        return ObservableScope.Value(this.scope).proxy;
     }
 
     public get ProxyArray() {
-        if(this.Type !== Type.Array)
+        if(this.Type !== Type.Array) {
+            this.arrayScope && this.arrayScope.Destroy();
+            this.arrayScope = null;
             return null;
+        }
 
-        /* if(!this.proxyArray)
-            this.proxyArray = (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).ProxyInternal);
+        this.arrayScope = this.arrayScope || ObservableScope.Create(() => 
+            (this.Value as any[]).map((c, i) => this.EnsureChild(i.toString()).Proxy)
+        );
 
-        return this.proxyArray; */
-
-        return (this.Value as Array<any>).map((c, i) => this.EnsureChild(i.toString()).ProxyInternal);
+        return ObservableScope.Value(this.arrayScope);
     }
 
     public get Parent() {
@@ -77,27 +72,6 @@ export class ObservableNode {
 
     public get Children() {
         return this.children;
-    }
-
-    public get ProxyInternal(): any {
-        if(this.oldType !== undefined) {
-            if(this.oldType !== this.Type)
-                this.proxy = undefined;
-
-            this.oldType = undefined;
-        }
-
-        if(this.proxy)
-            return this.proxy;
-        
-        if(this.Self !== this)
-            return this.Self.Proxy;
-
-        if(this.Type === Type.Value)
-            return this.Value;
-
-        this.proxy = ObservableProxy.CreateFrom(this, this.Type);
-        return this.proxy;
     }
 
     constructor(
@@ -128,35 +102,26 @@ export class ObservableNode {
     }
 
     public Update() {
-        if(this.oldType === undefined)
-            this.oldType = this.Type;
-
-        this.path = undefined;
-        this.value = undefined;
-        this.type = undefined;
-        this.self = undefined;
-        this.proxyArray = undefined;
-
         this.children.clear();
-        // this.children.forEach(node => node.Update());
-        this.EmitSet();
+        ObservableScope.Update(this.scope);
     }
 
     public ArrayUpdate() {
-        this.value = undefined;
-        this.proxyArray = undefined;
-        this.EnsureChild("length").Update();
-        this.EmitSet();
-    }
-
-    public EmitSet() {
-        Emitter.Emit(this.emitter);
+        ObservableScope.Update(this.arrayScope);
+        
+        var lengthNode = this.children.get('length');
+        if(lengthNode)
+            lengthNode.Update();
+        
+        ObservableScope.Emit(this.scope);
     }
 
     public Destroy() {
-        this.parent && this.parent.Children.delete(this.key);
-        this.emitter.clear();
-        this.children.forEach(c => c.Destroy())
+        this.destroyed = true;
+        this.parent && !this.parent.destroyed && this.parent.Children.delete(this.key);
+        this.children.forEach(c => c.Destroy());
+        ObservableScope.Destroy(this.scope);
+        ObservableScope.Destroy(this.arrayScope);
     }
 
     public Push(data: any) {
