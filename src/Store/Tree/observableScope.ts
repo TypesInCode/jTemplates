@@ -135,13 +135,21 @@ export namespace ObservableScope {
         Emitter.Remove(scope.emitter, callback);
     }
 
+    export function Update(scope: IObservableScope<any>) {
+        OnSet(scope);
+    }
+
+    export function Emit(scope: IObservableScope<any>) {
+        Emitter.Emit(scope.emitter);
+    }
+
     export function Destroy<T>(scope: IObservableScope<T>) {
         DestroyScope(scope);
     }
 }
 
 function OnSet(scope: IObservableScope<any>) {
-    if(scope.dirty)
+    if(!scope || scope.dirty)
         return;
 
     scope.dirty = true;

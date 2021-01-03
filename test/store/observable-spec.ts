@@ -1,7 +1,6 @@
 import { expect, assert } from 'chai';
 import 'mocha';
 import { ObservableTree } from '../../src/Store/Tree/observableTree';
-import { ObservableScope } from '../../src/Store/Tree/observableScope';
 
 describe("Observables Test", () => {
     it('Default Test', () => {
@@ -59,6 +58,18 @@ describe("Observables Test", () => {
 
         tree.Write(`ROOT.2`, 2);
         expect(scope.Value.length).to.equal(3);
+    });
+    it('Push Array', () => {
+        var tree = new ObservableTree();
+        tree.Write("ROOT", [1, 2, 3]);
+        
+        var scope = tree.Scope<Array<number>, number>("ROOT", val => {
+            return val.length;
+        });
+        expect(scope.Value).to.equal(3);
+
+        tree.Write("ROOT.3", 4);
+        expect(scope.Value).to.equal(4);
     });
     it('Reference Array', () => {
         var tree = new ObservableTree(val => {

@@ -83,7 +83,7 @@ function CreateArrayProxy(node: ObservableNode) {
                         return node.ProxyArray[prop as any];
                     
                     if(!isNaN(parseInt(prop)))
-                        return node.EnsureChild(prop).ProxyInternal;
+                        return node.EnsureChild(prop).Proxy;
 
                     var func = obj[prop];
                     return func && func.bind(node.ProxyArray);

@@ -47,7 +47,10 @@ describe("Diff Observable Test", () => {
             observable.Write(val.path, val.value);
         });
 
-        var scope = observable.Scope("root", (val: Array<number>) => val.filter(n => n === 2));
+        var scope = observable.Scope("root", (val: Array<number>) => {
+            var ret = val.filter(n => n === 2)
+            return ret;
+        });
         var fired = false;
         scope.Watch(() => {
             fired = true;
