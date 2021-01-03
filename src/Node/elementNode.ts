@@ -19,35 +19,64 @@ export namespace ElementNode {
     }
 
     export function Init<T>(elementNode: IElementNodeBase<T>) {
-        elementNode.nodesMap = new Map();
-        var nodeDef = elementNode.nodeDef;
-        var childrenFunc = elementNode.childrenFunc;
-        var dataScope = nodeDef.data && 
-            ObservableScope.Create(nodeDef.data);
+        // elementNode.nodesMap = new Map();
+        if(elementNode.childrenFunc) {
+            var nodeDef = elementNode.nodeDef;
+            // var childrenFunc = elementNode.childrenFunc;
+            // var dataScope = nodeDef.data && 
+            //    ObservableScope.Create(nodeDef.data);
+
+            if(nodeDef.data) {
+                const dataScope = ObservableScope.Create(nodeDef.data);
+                ObservableScope.Watch(dataScope, function() { 
+                    ScheduleSetData(elementNode, dataScope);
+                });
+
+                SetData(elementNode, GetValue(dataScope), true);
+
+                elementNode.destroyables.push({
+                    Destroy: function() {
+                        ObservableScope.Destroy(dataScope);
+                    }
+                });
+            }
+            else
+                SetDefaultData(elementNode);
+        }
         
-        ObservableScope.Watch(dataScope, function() { 
+        /* ObservableScope.Watch(dataScope, function() { 
             ScheduleSetData(elementNode, dataScope);
         });
 
-        SetData(elementNode, GetValue(childrenFunc, dataScope), true);
+        // var value = GetValue(childrenFunc, dataScope);
+        // value === valueDefaultTrue ?
+        dataScope ?
+            SetData(elementNode, GetValue(childrenFunc, dataScope), true) :
+            SetDefaultData(elementNode); */
 
-        elementNode.destroyables.push({
+        /* elementNode.destroyables.push({
             Destroy: function() {
                 ObservableScope.Destroy(dataScope);
             }
-        });
+        }); */
 
         BoundNode.Init(elementNode);
     }
 
 }
 
-const valueDefaultTrue = [true];
+// const valueDefaultTrue = [true];
+// const valueDefault = [] as Array<any>;
 const valueDefault = [] as Array<any>;
-function GetValue(childrenFunc: ElementChildrenFunction<any>, dataScope: IObservableScope<any>) {
-    return childrenFunc ? 
-        dataScope ? ObservableScope.Value(dataScope) || valueDefault : 
-            valueDefaultTrue : valueDefault;
+function GetValue(dataScope: IObservableScope<any>): any[] {
+    var value = ObservableScope.Value(dataScope);
+    if(!value)
+        return valueDefault;
+
+    if(!Array.isArray(value))
+        value = [value];
+
+    return value;
 }
 
 function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<any>) {
@@ -60,7 +89,32 @@ function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<a
         if(node.destroyed)
             return;
         
-        SetData(node, GetValue(node.childrenFunc, scope));
+        SetData(node, GetValue(scope));
+    });
+}
+
+function SetDefaultData<T>(node: IElementNodeBase<T>) {
+    Synch(function() {
+        var nodes: NodeRefTypes[];
+        Injector.Scope(node.injector, function() {
+            nodes = CreateNodeArray(node.childrenFunc, true);
+        });
+
+        if(nodes.length > 0) {
+            Schedule(function() {
+                if(node.destroyed)
+                    return;
+
+                NodeRef.InitAll(nodes); 
+            });
+
+            Thread(function() {
+                if(node.destroyed)
+                    return;
+
+                DetachAndAddNodes(node, [], [nodes]);
+            });
+        }
     });
 }
 
@@ -72,10 +126,11 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
             values = [values];
         
         var newNodesArrays = values.map(function(value) {
-            var nodeArrayList = node.nodesMap.get(value);
-            var nodes = nodeArrayList && List.Remove(nodeArrayList);
-            if(nodeArrayList && nodeArrayList.size === 0)
-                node.nodesMap.delete(value);
+            var nodes: NodeRefTypes[];
+            if(node.nodesMap) {
+                var nodeArrayList = node.nodesMap.get(value);
+                nodes = nodeArrayList && List.Remove(nodeArrayList);
+            }
 
             var newNodeArrayList = newNodesMap.get(value);
             if(!newNodeArrayList) {
@@ -101,17 +156,14 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
             return nodes;
         });
 
-        var detachNodes: Array<IList<INodeRefBase[]>>;
-        if(!init) {
-            detachNodes = [];
-            node.nodesMap.forEach(function(nodeArrayList) {
-                var destroyNodes = nodeArrayList;
-                detachNodes.push(nodeArrayList);
-                List.ForEach(destroyNodes, NodeRef.DestroyAll);
-            });
+        var detachNodes: Array<IList<INodeRefBase[]>> = [];
+        if(node.nodesMap) {
+            for(var nodeArrayList of node.nodesMap.values())
+                nodeArrayList.size > 0 && detachNodes.push(DestroyNodeArrayList(nodeArrayList));
+                
+            node.nodesMap.clear();
         }
 
-        node.nodesMap.clear();
         node.nodesMap = newNodesMap;
         Thread(function() {
             if(node.destroyed)
@@ -131,7 +183,7 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
 }
 
 function DetachAndAddNodes(node: INodeRefBase, detachNodes: Array<IList<INodeRefBase[]>>, newNodes: Array<Array<INodeRefBase>>) {
-    for(var x=0; detachNodes && x<detachNodes.length; x++)
+    for(var x=0; x<detachNodes.length; x++)
         List.ForEach(detachNodes[x], function(nodes) {
             for(var x=0; x<nodes.length; x++)
                 NodeRef.DetachChild(node, nodes[x]);
@@ -162,4 +214,9 @@ function CreateNodeArray<T>(childrenFunc: {(data: T): string | NodeRefTypes | No
         return newNodes;
 
     return [newNodes];
+}
+
+function DestroyNodeArrayList(nodeArrayList: IList<NodeRefTypes[]>) {
+    List.ForEach(nodeArrayList, NodeRef.DestroyAll);
+    return nodeArrayList;
 }
