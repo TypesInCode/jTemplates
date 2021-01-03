@@ -2368,11 +2368,11 @@ img {
 		<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
 			<a href="_node_elementnode_.html#valuedefault" class="tsd-kind-icon">value<wbr>Default</a>
 		</li>
-		<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-			<a href="_node_elementnode_.html#valuedefaulttrue" class="tsd-kind-icon">value<wbr>Default<wbr>True</a>
-		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported">
 			<a href="_node_elementnode_.html#createnodearray" class="tsd-kind-icon">Create<wbr>Node<wbr>Array</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+			<a href="_node_elementnode_.html#destroynodearraylist" class="tsd-kind-icon">Destroy<wbr>Node<wbr>Array<wbr>List</a>
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
 			<a href="_node_elementnode_.html#detachandaddnodes" class="tsd-kind-icon">Detach<wbr>And<wbr>Add<wbr>Nodes</a>
@@ -2385,6 +2385,9 @@ img {
 		</li>
 		<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported">
 			<a href="_node_elementnode_.html#setdata" class="tsd-kind-icon">Set<wbr>Data</a>
+		</li>
+		<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported">
+			<a href="_node_elementnode_.html#setdefaultdata" class="tsd-kind-icon">Set<wbr>Default<wbr>Data</a>
 		</li>
 	</ul>
 </nav>
@@ -2404,17 +2407,18 @@ img {
 						<h3>Variables</h3>
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#valuedefault" class="tsd-kind-icon">value<wbr>Default</a></li>
-							<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#valuedefaulttrue" class="tsd-kind-icon">value<wbr>Default<wbr>True</a></li>
 						</ul>
 					</section>
 					<section class="tsd-index-section tsd-is-external tsd-is-not-exported">
 						<h3>Functions</h3>
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#createnodearray" class="tsd-kind-icon">Create<wbr>Node<wbr>Array</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#destroynodearraylist" class="tsd-kind-icon">Destroy<wbr>Node<wbr>Array<wbr>List</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#detachandaddnodes" class="tsd-kind-icon">Detach<wbr>And<wbr>Add<wbr>Nodes</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#getvalue" class="tsd-kind-icon">Get<wbr>Value</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#schedulesetdata" class="tsd-kind-icon">Schedule<wbr>Set<wbr>Data</a></li>
 							<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#setdata" class="tsd-kind-icon">Set<wbr>Data</a></li>
+							<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported"><a href="_node_elementnode_.html#setdefaultdata" class="tsd-kind-icon">Set<wbr>Default<wbr>Data</a></li>
 						</ul>
 					</section>
 				</div>
@@ -2428,17 +2432,7 @@ img {
 				<div class="tsd-signature tsd-kind-icon">value<wbr>Default<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = [] as Array&lt;any&gt;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L46">Node/elementNode.ts:46</a></li>
-					</ul>
-				</aside>
-			</section>
-			<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-				<a name="valuedefaulttrue" class="tsd-anchor"></a>
-				<h3><span class="tsd-flag ts-flagConst">Const</span> value<wbr>Default<wbr>True</h3>
-				<div class="tsd-signature tsd-kind-icon">value<wbr>Default<wbr>True<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = [true]</span></div>
-				<aside class="tsd-sources">
-					<ul>
-						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L45">Node/elementNode.ts:45</a></li>
+						<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L70">Node/elementNode.ts:70</a></li>
 					</ul>
 				</aside>
 			</section>
@@ -2455,7 +2449,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L149">Node/elementNode.ts:149</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L201">Node/elementNode.ts:201</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2496,6 +2490,29 @@ img {
 				</ul>
 			</section>
 			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+				<a name="destroynodearraylist" class="tsd-anchor"></a>
+				<h3>Destroy<wbr>Node<wbr>Array<wbr>List</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
+					<li class="tsd-signature tsd-kind-icon">Destroy<wbr>Node<wbr>Array<wbr>List<span class="tsd-signature-symbol">(</span>nodeArrayList<span class="tsd-signature-symbol">: </span><a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">(</span><a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_boundnode_types_.iboundnode.html" class="tsd-signature-type">IBoundNode</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_elementnode_types_.ielementnode.html" class="tsd-signature-type">IElementNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_componentnode_types_.icomponentnode.html" class="tsd-signature-type">IComponentNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L219">Node/elementNode.ts:219</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>nodeArrayList: <a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><a href="_node_noderef_types_.html#nodereftypes" class="tsd-signature-type">NodeRefTypes</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <a href="../interfaces/_utils_list_.ilist.html" class="tsd-signature-type">IList</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">(</span><a href="../interfaces/_node_noderef_types_.inoderef.html" class="tsd-signature-type">INodeRef</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_boundnode_types_.iboundnode.html" class="tsd-signature-type">IBoundNode</a><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_elementnode_types_.ielementnode.html" class="tsd-signature-type">IElementNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><a href="../interfaces/_node_componentnode_types_.icomponentnode.html" class="tsd-signature-type">IComponentNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
 				<a name="detachandaddnodes" class="tsd-anchor"></a>
 				<h3>Detach<wbr>And<wbr>Add<wbr>Nodes</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
@@ -2505,7 +2522,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L133">Node/elementNode.ts:133</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L185">Node/elementNode.ts:185</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2528,25 +2545,22 @@ img {
 				<a name="getvalue" class="tsd-anchor"></a>
 				<h3>Get<wbr>Value</h3>
 				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-external tsd-is-not-exported">
-					<li class="tsd-signature tsd-kind-icon">Get<wbr>Value<span class="tsd-signature-symbol">(</span>childrenFunc<span class="tsd-signature-symbol">: </span><a href="_node_elementnode_types_.html#elementchildrenfunction" class="tsd-signature-type">ElementChildrenFunction</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span>, dataScope<span class="tsd-signature-symbol">: </span><a href="../interfaces/_store_tree_observablescope_.iobservablescope.html" class="tsd-signature-type">IObservableScope</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span></li>
+					<li class="tsd-signature tsd-kind-icon">Get<wbr>Value<span class="tsd-signature-symbol">(</span>dataScope<span class="tsd-signature-symbol">: </span><a href="../interfaces/_store_tree_observablescope_.iobservablescope.html" class="tsd-signature-type">IObservableScope</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">[]</span></li>
 				</ul>
 				<ul class="tsd-descriptions">
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L47">Node/elementNode.ts:47</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L71">Node/elementNode.ts:71</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5>childrenFunc: <a href="_node_elementnode_types_.html#elementchildrenfunction" class="tsd-signature-type">ElementChildrenFunction</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h5>
-							</li>
-							<li>
 								<h5>dataScope: <a href="../interfaces/_store_tree_observablescope_.iobservablescope.html" class="tsd-signature-type">IObservableScope</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h5>
 							</li>
 						</ul>
-						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span></h4>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">[]</span></h4>
 					</li>
 				</ul>
 			</section>
@@ -2560,7 +2574,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L53">Node/elementNode.ts:53</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L82">Node/elementNode.ts:82</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2592,7 +2606,7 @@ img {
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/b1f7e54/src/Node/elementNode.ts#L67">Node/elementNode.ts:67</a></li>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L121">Node/elementNode.ts:121</a></li>
 							</ul>
 						</aside>
 						<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2611,6 +2625,35 @@ img {
 							</li>
 							<li>
 								<h5><span class="tsd-flag ts-flagDefault value">Default value</span> init: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></h5>
+							</li>
+						</ul>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported">
+				<a name="setdefaultdata" class="tsd-anchor"></a>
+				<h3>Set<wbr>Default<wbr>Data</h3>
+				<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-external tsd-is-not-exported">
+					<li class="tsd-signature tsd-kind-icon">Set<wbr>Default<wbr>Data&lt;T&gt;<span class="tsd-signature-symbol">(</span>node<span class="tsd-signature-symbol">: </span><a href="../interfaces/_node_elementnode_types_.ielementnodebase.html" class="tsd-signature-type">IElementNodeBase</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/TypesInCode/jTemplates/blob/73e6098/src/Node/elementNode.ts#L96">Node/elementNode.ts:96</a></li>
+							</ul>
+						</aside>
+						<h4 class="tsd-type-parameters-title">Type parameters</h4>
+						<ul class="tsd-type-parameters">
+							<li>
+								<h4>T</h4>
+							</li>
+						</ul>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>node: <a href="../interfaces/_node_elementnode_types_.ielementnodebase.html" class="tsd-signature-type">IElementNodeBase</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
