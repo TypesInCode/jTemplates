@@ -182,6 +182,7 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         private DiffValues(path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
+            var changedPathLength = resp.changedPaths.length;
             var oldIsValue = IsValue(oldValue);
             // if((oldValue === undefined) && newValue) {
             if(oldIsValue) {
@@ -222,54 +223,13 @@ export function DiffTreeScope(worker?: boolean) {
                 }
             }
 
-            if(changed || newKeys.size > 0)
+            if(changed || newKeys.size > 0) {
+                resp.changedPaths.splice(changedPathLength);
                 resp.changedPaths.push({
                     path: path,
                     value: newValue
                 });
-            
-            /* var newIsObject = !IsValue(newValue);
-            var newKeys: Set<string>;
-            if(newIsObject)
-                newKeys = new Set(Object.keys(newValue));
-            
-            var oldIsObject = !IsValue(oldValue);
-
-
-
-
-            if(!newIsObject && !oldIsObject && newValue !== oldValue) {
-                resp.changedPaths.push({
-                    path: path,
-                    value: newValue
-                });
-                return;
             }
-
-            var newKeys: Set<string>;
-            var oldKeys = oldIsObject ? Object.keys(oldValue) : [];
-            if(newIsObject)
-                newKeys = new Set(Object.keys(newValue));
-            else
-                newKeys = new Set();
-
-            var pathChanged = false;
-            for(var x=0; x<oldKeys.length; x++) {
-                var key = oldKeys[x];
-                var childPath = [path, key].join(".");
-                var deletedKey = !newKeys.delete(key);
-                pathChanged = pathChanged || deletedKey;
-                if(deletedKey)
-                    resp.deletedPaths.push(childPath);
-                else
-                    this.DiffValues(childPath, newValue && newValue[key], oldValue[key], resp);
-            }
-
-            if(pathChanged || newKeys.size > 0)
-                resp.changedPaths.push({
-                    path: path,
-                    value: newValue
-                }); */
         }
 
     }
