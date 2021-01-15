@@ -4,7 +4,8 @@ function SetValue(target: HTMLInputElement, value: string) {
             var start = target.selectionStart;
             var end = target.selectionEnd;
             target.value = value;
-            target.setSelectionRange(start, end);
+            if(target.ownerDocument.activeElement === target)
+                target.setSelectionRange(start, end);
             break;
         default:
             target.value = value;
