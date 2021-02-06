@@ -146,7 +146,7 @@ function DestroyScopeDecorator<T extends Component<any, any, any> & Record<K, ID
                 const getter = descriptor.get.bind(this);
                 scope = new ObservableScope(getter);
                 map.set(propKey, scope);
-                map.set(valKey, scope.Value);
+                // map.set(valKey, scope.Value);
                 scope.Watch(scope => {
                     var lastValue = map.get(valKey);
                     lastValue && lastValue.Destroy();
@@ -201,11 +201,11 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends string>
 }
 
 
-export function ComputedAsync() {
-    return ComputedAsyncDecorator as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
+export function ComputedAsync(idFunc?: {(val: any): string}) {
+    return ComputedAsyncDecorator.bind(null, idFunc) as <T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) => any;
 }
 
-function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends string>(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends string>(idFunc: {(val: any): string}, target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     if(!(descriptor && descriptor.get))
         throw "ComputedAsync decorator requires a getter";
 
