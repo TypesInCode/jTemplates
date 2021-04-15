@@ -55,4 +55,10 @@ describe("Diff Test", () => {
         var resp = tree.DiffPath('root.2', 3);
         expect(resp.changedPaths.length).to.equal(1);
     });
+    it('Overwrite Array', () => {
+        var tree = new DiffSync();
+        tree.DiffPath("root", [1, 2]);
+        var resp = tree.DiffPath('root', [1, 2, 3]);
+        expect(resp.changedPaths.length).to.equal(1);
+    });
 });

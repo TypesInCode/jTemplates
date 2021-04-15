@@ -154,9 +154,9 @@ function OnSet(scope: IObservableScope<any>) {
 
     scope.dirty = true;
 
-    if(scope.async)
+    /* if(scope.async)
         UpdateValue(scope);
-    else
+    else */
         Emitter.Emit(scope.emitter, scope);
 }
 

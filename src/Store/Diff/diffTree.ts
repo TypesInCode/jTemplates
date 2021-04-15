@@ -55,7 +55,7 @@ export function DiffTreeScope(worker?: boolean) {
         if(!value)
             return true;
         
-        return !(Array.isArray(value) || jsonConstructor === value.constructor);
+        return !(jsonConstructor === value.constructor || Array.isArray(value));
     }
 
     class DiffTree implements IDiffTree {
@@ -124,7 +124,7 @@ export function DiffTreeScope(worker?: boolean) {
             });
 
             resp.changedPaths.forEach(val => {
-                this.SetPathValue(val.path, val.value);                
+                this.SetPathValue(val.path, val.value);
             });
         }
 
@@ -184,15 +184,16 @@ export function DiffTreeScope(worker?: boolean) {
         private DiffValues(path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
             var changedPathLength = resp.changedPaths.length;
             var oldIsValue = IsValue(oldValue);
-            // if((oldValue === undefined) && newValue) {
+            
             if(oldIsValue) {
                 if(oldValue !== newValue) {
                     resp.changedPaths.push({
                         path: path,
                         value: newValue
                     });
+                    return true;
                 }
-                return;
+                return false;
             }
 
             var oldKeys = Array.isArray(oldValue) ? null : Object.keys(oldValue);
@@ -206,30 +207,43 @@ export function DiffTreeScope(worker?: boolean) {
                 for(var x=0; x<(oldKeys || oldValue).length; x++)
                     resp.deletedPaths.push(`${path}.${oldKeys ? oldKeys[x] : x}`);
 
-                return;
+                return true;
             }
 
-            var changed = false;
-            var newKeys = new Set(Object.keys(newValue));
+            var deleted = false;
+            var allChanged = true;
+            var newKeys = Object.keys(newValue);
+            var newKeysSet = new Set(newKeys);
             for(var x=0; x<(oldKeys || oldValue).length; x++) {
                 var oldKey: string = oldKeys ? oldKeys[x] : x.toString();
                 var childPath = `${path}.${oldKey}`;
-                var stays = newKeys.delete(oldKey);
+                var stays = newKeysSet.delete(oldKey);
                 if(stays)
-                    this.DiffValues(childPath, newValue[oldKey], oldValue[oldKey], resp);
+                    allChanged = this.DiffValues(childPath, newValue[oldKey], oldValue[oldKey], resp) && allChanged;
                 else {
-                    changed = true;
+                    deleted = true;
                     resp.deletedPaths.push(childPath);
                 }
             }
 
-            if(changed || newKeys.size > 0) {
+            if(allChanged || deleted) { // || newKeys.size > 0) {
                 resp.changedPaths.splice(changedPathLength);
                 resp.changedPaths.push({
                     path: path,
                     value: newValue
                 });
+                return true;
             }
+            else if(newKeysSet.size > 0) {
+                newKeysSet.forEach(function(key) {
+                    resp.changedPaths.push({
+                        path: `${path}.${key}`,
+                        value: newValue[key]
+                    });
+                });
+            }
+
+            return false;
         }
 
     }
