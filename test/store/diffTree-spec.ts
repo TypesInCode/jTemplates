@@ -25,8 +25,8 @@ describe("Diff Test", () => {
         tree.DiffPath("root", { value: "test" });
         var resp = tree.DiffPath("root", { value: "changed" });
         expect(resp.changedPaths.length).to.equal(1);
-        expect(resp.changedPaths[0].path).to.equal("root.value");
-        expect(resp.changedPaths[0].value).to.equal("changed");
+        expect(resp.changedPaths[0].path).to.equal("root");
+        expect(resp.changedPaths[0].value.value).to.equal("changed");
     });
     it('Basic Key Ref', () => {
         var treeCnstrctr = DiffTreeScope();
