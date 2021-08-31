@@ -68,6 +68,22 @@ export namespace Component {
         return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
     }
 
+    export function Register<D = void, T = void, E = void>(name: string, constructor: ComponentConstructor<D, T, E>) {
+        const componentFunction = ToFunction(`${name}-component`, undefined, constructor);
+
+        class WebComponent extends HTMLElement {
+            constructor() {
+                super();
+
+                const shadowRoot = this.attachShadow({ mode: 'open' });
+                const node = componentFunction({});
+                Attach(shadowRoot, node);
+            }
+        }
+
+        customElements.define(name, WebComponent);
+    }
+
     export function Attach(node: Node, nodeRef: NodeRefTypes) {
         NodeRef.Init(nodeRef);
         var rootRef = NodeRef.Wrap(node);
