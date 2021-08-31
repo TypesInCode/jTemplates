@@ -13,7 +13,6 @@ export class StoreSyncWriter {
 
         var diff = this.diffSync.DiffPath(rootPath, data);
         this.ApplyChanges(diff);
-        // this.observableTree.Write(rootPath, data);
     }
 
     public Merge<T>(source: T | ObservableProxy, data: Partial<T>) {
@@ -24,11 +23,6 @@ export class StoreSyncWriter {
         var message = keys.map(key => ({ path: `${rootPath}.${key}`, value: (data as any)[key] }));
         var diff = this.diffSync.DiffBatch(message);
         this.ApplyChanges(diff);
-        /* if(ObservableProxy.TypeOf(data) === Type.Value)
-            this.observableTree.Write(rootPath, data);
-        else
-            for(var key in data)
-                this.observableTree.Write(`${rootPath}.${key}`, data[key]); */
     }
 
     public Push<T>(source: Array<T> | ObservableProxy, data: T) {
@@ -39,9 +33,6 @@ export class StoreSyncWriter {
 
         this.diffSync.UpdatePath(`${rootPath}.${length}`, data);
         proxy.___node.Push(data);
-        // var diff = this.diffSync.DiffPath(`${rootPath}.${length}`, data);
-        // this.ApplyChanges(diff);
-        // this.observableTree.Write(`${rootPath}.${length}`, data);
     }
 
     public Splice<T>(source: Array<T> | ObservableProxy, start: number, deleteCount?: number, ...items: Array<T>) {        
@@ -54,15 +45,9 @@ export class StoreSyncWriter {
 
         this.diffSync.UpdatePath(rootPath, array);
         return proxy.___node.Splice(start, deleteCount, ...items);
-        // var diff = this.diffSync.DiffPath(rootPath, array);
-        // this.ApplyChanges(diff);
-        // this.observableTree.Write(rootPath, array);
     }
 
     private ApplyChanges(diff: IDiffResponse) {
-        for(var x=0; x<diff.deletedPaths.length; x++)
-            this.observableTree.Delete(diff.deletedPaths[x]);
-
-        this.observableTree.WriteAll(diff.changedPaths);
+        this.observableTree.WriteAll(diff);
     }
 }

@@ -35,13 +35,11 @@ export class StoreAsyncWriter {
     }
 
     public async Push<T>(source: Array<T> | ObservableProxy, data: T) {
-        var array = source as Array<T>;
         var proxy = source as ObservableProxy;
         var rootPath = proxy.___node.Path;
-        var length = array.length;
-
-        /* await this.diffAsync.UpdatePath(`${rootPath}.${length}`, data);
-        proxy.___node.Push(data); */
+        var lengthPath = `${rootPath}.length`;
+        
+        var length = await this.diffAsync.GetPath(lengthPath);
         var diff = await this.diffAsync.DiffPath(`${rootPath}.${length}`, data);
         this.ApplyChanges(diff);
     }
@@ -50,21 +48,16 @@ export class StoreAsyncWriter {
         var proxy = source as ObservableProxy;
         var rootPath = proxy.___node.Path;
 
-        var array = this.observableTree.Get<Array<T>>(rootPath);
+        var array: Array<T> = await this.diffAsync.GetPath(rootPath); // this.observableTree.Get<Array<T>>(rootPath);
         array = array.slice();
         array.splice(start, deleteCount, ...items);
         
-        // await this.diffAsync.UpdatePath(rootPath, array);
-        // return proxy.___node.Splice(start, deleteCount, ...items);
         var diff = await this.diffAsync.DiffPath(rootPath, array);
         this.ApplyChanges(diff);
     }
 
     private ApplyChanges(diff: IDiffResponse) {
-        for(var x=0; x<diff.deletedPaths.length; x++)
-            this.observableTree.Delete(diff.deletedPaths[x]);
-
-        this.observableTree.WriteAll(diff.changedPaths);
+        this.observableTree.WriteAll(diff);
     }
 
 }
