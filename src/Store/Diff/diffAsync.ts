@@ -32,6 +32,10 @@ export class DiffAsync {
         await this.workerQueue.Push({ method: "updatepath", arguments: [path, value] });
     }
 
+    public async GetPath(path: string) {
+        return await this.workerQueue.Push({ method: "getpath", arguments: [path] }) as any;
+    }
+
     public Destroy() {
         this.workerQueue.Destroy();
     }
