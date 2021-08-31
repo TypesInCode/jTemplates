@@ -29,6 +29,10 @@ export class ObservableNode {
 
     private arrayScope: IObservableScope<any[]>;
 
+    public get Key() {
+        return this.key;
+    }
+
     public get Path() {
         if(this.path === undefined)
             this.path = (this.parent ? this.parent.Path + "." : "") + this.key;
