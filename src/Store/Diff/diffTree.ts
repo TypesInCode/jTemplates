@@ -1,12 +1,9 @@
 export interface IDiffMethod {
-    method: "create" | "diffpath" | "diffbatch" | "updatepath";
+    method: "create" | "diffpath" | "diffbatch" | "updatepath" | "getpath";
     arguments: Array<any>;
 }
 
-export interface IDiffResponse {
-    changedPaths: Array<{ path: string, value: any }>;
-    deletedPaths: Array<string>;
-}
+export type IDiffResponse = { path: string, value: any }[];
 
 export interface IDiffTree {
     DiffBatch(data: Array<{path: string, value: any }>): IDiffResponse;
@@ -46,6 +43,10 @@ export function DiffTreeScope(worker?: boolean) {
                     diffTree.UpdatePath(data.arguments[0], data.arguments[1]);
                     ctx.postMessage(null);
                     break;
+                case "getpath":
+                    var ret = diffTree.GetPath(data.arguments[0]);
+                    ctx.postMessage(ret);
+                    break;
             }
         }
     }
@@ -80,10 +81,7 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         public DiffBatch(data: Array<{path: string, value: any }>) {
-            var resp: IDiffResponse = {
-                changedPaths: [],
-                deletedPaths: []
-            };
+            var resp: IDiffResponse = [];
 ;
             for(var x=0; x<data.length; x++)
                 this.RunDiff(data[x].path, data[x].value, resp);
@@ -92,10 +90,7 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         public DiffPath(path: string, value: any) {
-            var resp: IDiffResponse = {
-                changedPaths: [],
-                deletedPaths: []
-            };
+            var resp: IDiffResponse = [];
 
             this.RunDiff(path, value, resp);
             return resp;
@@ -105,12 +100,13 @@ export function DiffTreeScope(worker?: boolean) {
             this.SetPathValue(path, value);
         }
 
+        public GetPath(path: string) {
+            return this.GetPathValue(path);
+        }
+
         private RunDiff(path: string, value: any, diffResp: IDiffResponse) {
             var breakupMap = this.GetBreakUpMap(path, value);
-            var resp: IDiffResponse = diffResp || {
-                changedPaths: [],
-                deletedPaths: []
-            };
+            var resp: IDiffResponse = diffResp || [];
 
             breakupMap.forEach((value, key) => {
                 var currentValue = key.split(".").reduce((pre: any, curr: string, index) => {
@@ -120,12 +116,20 @@ export function DiffTreeScope(worker?: boolean) {
                     return pre && pre[curr];
                 }, null);
 
-                this.DiffValues(key, value, currentValue, resp);
+                this.DiffJson(key, value, currentValue, resp);
             });
 
-            resp.changedPaths.forEach(val => {
-                this.SetPathValue(val.path, val.value);
-            });
+            for(var x=0; x<resp.length; x++)
+                this.SetPathValue(resp[x].path, resp[x].value);
+        }
+
+        private GetPathValue(path: string) {
+            var parts = path.split(".");
+            var curr = this.rootStateMap.get(parts[0]);
+            for(var x=1; x<parts.length; x++)
+                curr = curr && curr[parts[x]];
+
+            return curr;
         }
 
         private SetPathValue(path: string, value: any) {
@@ -170,7 +174,7 @@ export function DiffTreeScope(worker?: boolean) {
             }
             else {
                 for(var subProp in value) {
-                    var childPath = `${path}.${subProp}`; //[path, subProp].join(".");
+                    var childPath = `${path}.${subProp}`;
                     this.BreakUpValue(childPath, value, subProp, map);
                 }
             }
@@ -181,14 +185,14 @@ export function DiffTreeScope(worker?: boolean) {
             return map;
         }
 
-        private DiffValues(path: string, newValue: any, oldValue: any, resp: IDiffResponse) {
-            var changedPathLength = resp.changedPaths.length;
-            var oldIsValue = IsValue(oldValue);
-            
-            if(oldIsValue) {
-                if(oldValue !== newValue) {
-                    resp.changedPaths.push({
-                        path: path,
+        private DiffJson(path: string, newValue: any, oldValue: any, resp: IDiffResponse): boolean {
+            const oldIsValue = IsValue(oldValue);
+            const newIsValue = IsValue(newValue);
+
+            if (oldIsValue || newIsValue) {
+                if (oldValue !== newValue) {
+                    resp.push({
+                        path,
                         value: newValue
                     });
                     return true;
@@ -196,56 +200,77 @@ export function DiffTreeScope(worker?: boolean) {
                 return false;
             }
 
-            var oldKeys = Array.isArray(oldValue) ? null : Object.keys(oldValue);
-            var newIsValue = IsValue(newValue);
-            if(newIsValue) {
-                resp.changedPaths.push({
-                    path: path,
+            let allChildrenChanged = true;
+            let childDeleted = false;
+            const oldIsArray = Array.isArray(oldValue);
+            const newIsArray = Array.isArray(newValue);
+            if (oldIsArray !== newIsArray) {
+                resp.push({
+                    path,
                     value: newValue
                 });
-
-                for(var x=0; x<(oldKeys || oldValue).length; x++)
-                    resp.deletedPaths.push(`${path}.${oldKeys ? oldKeys[x] : x}`);
-
                 return true;
             }
 
-            var deleted = false;
-            var allChanged = true;
-            var newKeys = Object.keys(newValue);
-            var newKeysSet = new Set(newKeys);
-            for(var x=0; x<(oldKeys || oldValue).length; x++) {
-                var oldKey: string = oldKeys ? oldKeys[x] : x.toString();
-                var childPath = `${path}.${oldKey}`;
-                var stays = newKeysSet.delete(oldKey);
-                if(stays)
-                    allChanged = this.DiffValues(childPath, newValue[oldKey], oldValue[oldKey], resp) && allChanged;
-                else {
-                    deleted = true;
-                    resp.deletedPaths.push(childPath);
+            const changedPathLength = resp.length;
+            if (oldIsArray && newIsArray) {
+                if (oldValue.length === 0 && newValue.length === 0)
+                    return false;
+
+                // tslint:disable-next-line: prefer-for-of
+                for (let y = 0; y < newValue.length; y++) {
+                    const arrayPath = path ? `${path}.${y}` : `${y}`;
+                    allChildrenChanged = this.DiffJson(arrayPath, newValue[y], oldValue[y], resp) && allChildrenChanged;
                 }
+                if (!allChildrenChanged && newValue.length < oldValue.length)
+                    resp.push({
+                        path: path ? `${path}.length` : 'length',
+                        value: newValue.length
+                    });
             }
+            else {
+                const oldKeys = Reflect.ownKeys(oldValue) as string[];
+                const newKeys = Reflect.ownKeys(newValue) as string[];
+                if (oldKeys && oldKeys.length === 0 && newKeys.length === 0)
+                    return false;
 
-            if(allChanged || deleted) { // || newKeys.size > 0) {
-                resp.changedPaths.splice(changedPathLength);
-                resp.changedPaths.push({
-                    path: path,
-                    value: newValue
-                });
-                return true;
-            }
-            else if(newKeysSet.size > 0) {
-                newKeysSet.forEach(function(key) {
-                    resp.changedPaths.push({
-                        path: `${path}.${key}`,
+                const newKeysSet = new Set(newKeys);
+                // tslint:disable-next-line: prefer-for-of
+                for (let x = 0; x < oldKeys.length && !childDeleted; x++) {
+                    const oldKey: string = oldKeys[x];
+                    const childPath = path ? `${path}.${oldKey}` : `${oldKey}`;
+
+                    if (newKeysSet.delete(oldKey))
+                        allChildrenChanged = this.DiffJson(childPath, newValue[oldKey], oldValue[oldKey], resp) && allChildrenChanged;
+                    else if (path)
+                        childDeleted = true;
+                    else
+                        resp.push({
+                            path: childPath,
+                            value: undefined
+                        });
+                }
+
+                newKeysSet.forEach(key => {
+                    const childPath = path ? `${path}.${key}` : `${key}`;
+                    resp.push({
+                        path: childPath,
                         value: newValue[key]
                     });
                 });
             }
 
+            if (path && (allChildrenChanged || childDeleted)) {
+                resp.splice(changedPathLength);
+                resp.push({
+                    path,
+                    value: newValue
+                });
+                return true;
+            }
+
             return false;
         }
-
     }
 
     return DiffTree as IDiffTreeConstructor;
