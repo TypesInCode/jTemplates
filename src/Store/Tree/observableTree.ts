@@ -58,7 +58,7 @@ export class ObservableTree {
         this.rootNodeMap.clear();
     }
 
-    public Scope<O, R>(path: string, func?: {(val: O): R}): ObservableScope<R> {
+    public Scope<O, R = O>(path: string, func?: {(val: O): R}): ObservableScope<R> {
         return new ObservableScope(() => {
             var node = this.GetNode(path);
             return func && func(node.Proxy) || node.Proxy;
@@ -89,8 +89,19 @@ export class ObservableTree {
     private UpdatePathNode(path: string) {
         var node = this.GetNode(path);
         node.Update();
-        if(node.Parent && node.Parent.Type === Type.Array)
+        if(node.Parent && node.Parent.Type === Type.Array) {
             node.Parent.ArrayUpdate();
+            
+            if(node.Key === 'length') {
+                var index = node.Value as number;
+                var childNode = node.Parent.Children.get(index.toString());
+                while(childNode) {
+                    childNode.Destroy();
+                    index++;
+                    childNode = node.Parent.Children.get(index.toString());
+                }
+            }
+        }
     }
 
 }
