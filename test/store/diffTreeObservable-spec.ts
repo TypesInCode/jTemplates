@@ -11,7 +11,7 @@ describe("Diff Observable Test", () => {
         var tree = new treeCnstrctr();
 
         var resp = tree.DiffPath("root", { value1: "test", value2: "test" });
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
@@ -23,14 +23,14 @@ describe("Diff Observable Test", () => {
         expect(value).to.equal("test");
 
         resp = tree.DiffPath("root", { value1: "test", value2: "test2" });
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
         expect(value).to.equal("test2");
 
         resp = tree.DiffPath("root", { value1: "test2", value2: "test3" });
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
@@ -43,7 +43,7 @@ describe("Diff Observable Test", () => {
         var tree = new treeCnstrctr();
 
         var resp = tree.DiffPath("root", [1, 2]);
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
 
@@ -58,24 +58,31 @@ describe("Diff Observable Test", () => {
         expect(scope.Value.length).to.equal(1);
 
         resp = tree.DiffPath("root", [1, 2, 2]);
-        observable.WriteAll(resp.changedPaths);
+        observable.WriteAll(resp);
 
         expect(fired).to.be.true;
         expect(scope.Value.length).to.equal(2);
 
         resp = tree.DiffPath("root", [1, 2, 3]);
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
         expect(scope.Value.length).to.equal(1);
 
         resp = tree.DiffPath("root", [1, 3]);
-        resp.changedPaths.forEach(val => {
+        resp.forEach(val => {
             observable.Write(val.path, val.value);
         });
-        resp.deletedPaths.forEach(path => {
-            observable.Delete(path);
-        });
         expect(scope.Value.length).to.equal(0);
+    });
+    it('Modifying Length', () => {
+        var observable = new ObservableTree();
+        observable.Write("root", [1, 2, 3, 4]);
+        var rootScope = observable.Scope<number[]>("root");
+        expect(rootScope.Value[3]).to.equal(4);
+        expect(rootScope.Value.length).to.equal(4);
+        observable.Write("root.length", 3);
+        expect(rootScope.Value.length).to.equal(3);
+        expect(rootScope.Value[3]).to.equal(undefined);
     });
 });
