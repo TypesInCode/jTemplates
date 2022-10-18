@@ -6,7 +6,7 @@ export class AsyncQueue {
     private queue = List.Create<() => Promise<void>>();
 
     Next<T>(callback: () => Promise<T>) {
-        const ret = new Promise<T>(async function(resolve, reject) {
+        const ret = new Promise<T>((resolve, reject) => {
             List.Add(this.queue, async function() {
                 try {
                     const ret = await callback();
