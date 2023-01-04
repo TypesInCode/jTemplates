@@ -122,7 +122,7 @@ export function Thread(callback: {(): void}) {
 }
 
 export function ThreadAsync(callback: {(): void}) {
-    return new Promise(resolve => 
+    return new Promise<void>(resolve => 
         Thread(function() {
             callback();
             Thread(resolve);

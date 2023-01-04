@@ -54,7 +54,7 @@ function SetChildren(node: IComponentNodeBase<any, any, any>) {
 }
 
 function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
-    return new Promise(resolve => {
+    return new Promise<void>(resolve => {
         Thread(function() {
             var preNodes: Array<NodeRefTypes>;
             Injector.Scope(node.injector, () => 

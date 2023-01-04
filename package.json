@@ -17,7 +17,7 @@
     "clean": "rimraf lib",
     "build": "npm run buildquick && node ./tools/copy-package-json.js && webpack",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
-    "builddocs": "mkdocs build && typedoc --theme minimal --out docs/code src/index.ts src/DOM/index.ts src/Utils/index.ts && touch docs/.nojekyll",
+    "builddocs": "mkdocs build && typedoc --out docs/code src/index.ts src/DOM/index.ts src/Utils/index.ts && touch docs/.nojekyll",
     "test": "mocha --require ts-node/register --recursive test/**/*-spec.ts",
     "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts"
   },

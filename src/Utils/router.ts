@@ -37,7 +37,7 @@ export abstract class Router<T extends {}> {
 
     public abstract GetRoutePart(route: string): string;
 
-    public async abstract Read(routePart: string): Promise<void>;
+    public abstract Read(routePart: string): Promise<void>;
 
     public Route() {
         return ObservableScope.Value(this.routeScope);

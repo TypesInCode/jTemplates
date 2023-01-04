@@ -1,7 +1,6 @@
 import { ObservableTree } from "../Tree/observableTree";
 import { DiffAsync } from "../Diff/diffAsync";
 import { StoreAsyncWriter } from "./storeAsyncWriter";
-import { ObservableNode } from "../Tree/observableNode";
 import { AsyncQueue } from "../../Utils/asyncQueue";
 
 export class StoreAsync {
@@ -31,11 +30,7 @@ export class StoreAsync {
 
     public async Action<T>(id: string, action: {(val: T, writer: StoreAsyncWriter): Promise<void>}) {
         await this.asyncQueue.Next(async () => {
-            var node: ObservableNode;
-            if(id)
-                node = this.observableTree.GetNode(id);
-            
-            await action(node && node.Proxy, this.asyncWriter);
+            await action(id && this.observableTree.Get<T>(id), this.asyncWriter)
         });
     }
 
@@ -54,7 +49,7 @@ export class StoreAsync {
     public Destroy() {
         this.asyncQueue.Stop();
         this.diffAsync.Destroy();
-        this.observableTree.Destroy();
+        // this.observableTree.Destroy();
     }
 
 }

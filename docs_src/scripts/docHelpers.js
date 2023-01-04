@@ -121,7 +121,7 @@ function ExecuteTs(id, code, scriptFolder, outputHeight) {
             '</script>',
             '<script type="text/javascript" src="https://unpkg.com/j-templates@latest/jTemplates.js">',
             '</script>',
-            '<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/Microsoft/TypeScript@master/lib/typescriptServices.js">',
+            '<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typescript@4.9.4/lib/typescript.min.js">',
             '</script>',
         '</', 'head>', 
         '<body>',

@@ -19,8 +19,8 @@ export class StoreSync<T> {
     }
 
     public Action(action: {(root: T, writer: StoreSyncWriter): void}) {
-        var node = this.observableTree.GetNode("ROOT");
-        action(node.Proxy, this.storeWriter);
+        var proxy = this.observableTree.Get<T>("ROOT");
+        action(proxy, this.storeWriter);
     }
     
     public Write(data: T) {
@@ -37,7 +37,7 @@ export class StoreSync<T> {
 
     public Destroy() {
         this.rootScope.Destroy();
-        this.observableTree.Destroy();
+        // this.observableTree.Destroy();
     }
 
 }

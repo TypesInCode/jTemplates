@@ -107,7 +107,7 @@ export class Animation implements IDestroyable {
         this.running = true;
         this.start = start;
         this.end = end;
-        return new Promise(resolve => {
+        return new Promise<void>(resolve => {
             var stepFunc = (StepFunctions as any)[AnimationType[this.type]] as {(count: number): Generator<number>};
             var index = 0;
             for(var step of stepFunc(this.frameCount)) {

@@ -153,11 +153,7 @@ function OnSet(scope: IObservableScope<any>) {
         return;
 
     scope.dirty = true;
-
-    /* if(scope.async)
-        UpdateValue(scope);
-    else */
-        Emitter.Emit(scope.emitter, scope);
+    Emitter.Emit(scope.emitter, scope);
 }
 
 function UpdateValue<T>(scope: IObservableScope<T>) {
@@ -166,11 +162,9 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 
     scope.dirty = false;
     var value: T = null;
-    var emitters = WatchAction(() =>
+    var emitters = scope.getFunction && WatchAction(() =>
         value = scope.getFunction()
     );
-
-    UpdateEmitters(scope, emitters);
     
     if(scope.async)
         Promise.resolve(value).then(val => {
@@ -179,6 +173,8 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
         });
     else
         scope.value = value;
+
+    UpdateEmitters(scope, emitters);
 }
 
 function DestroyScope(scope: IObservableScope<any>) {
@@ -194,7 +190,7 @@ function DestroyScope(scope: IObservableScope<any>) {
     scope.destroyed = true;
 }
 
-function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters: Set<Emitter>) {    
+function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters?: Set<Emitter>) {    
     if(newEmitters)
         newEmitters.forEach(e => {
             if(!scope.emitters || !scope.emitters.delete(e))
