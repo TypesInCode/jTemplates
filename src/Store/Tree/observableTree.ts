@@ -81,18 +81,9 @@ export class ObservableTree {
     }
 
     private GetParentScope(value: any): IObservableScope<any> {
-        const type = TypeOf(value);
-        if(type === Type.Value) {
-            if(this.valuePathResolver && typeof value === 'string') {
-                const path = this.valuePathResolver(value);
-                if(path) {
-                    const val = this.rootStateMap.get(path);
-                    return this.GetParentScope(val);
-                }
-            }
-            return value === undefined ? this.undefinedScope : ObservableScope.Create(value);
-        }
-
+        if(value === undefined)
+            return this.undefinedScope;
+        
         let scope = this.scopeCache.get(value);
         if(!scope) {
             scope = ObservableScope.Create(() => this.GetValueProxy(value));
