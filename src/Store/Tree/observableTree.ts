@@ -237,6 +237,7 @@ export class ObservableTree {
             throw new Error("Unable to write path: " + path + ". Falsey value found at: " + pathParts.slice(0, x).join("."));
 
         const prop = pathParts[x];
+        const exists = Object.hasOwn(parentValue, prop);
         const oldValue = parentValue[prop];
         const oldType = TypeOf(oldValue);
         parentValue[prop] = value;
@@ -245,7 +246,7 @@ export class ObservableTree {
             return this.scopeCache.get(oldValue) || 
                 this.scopeCache.get(parentValue);
 
-        const leafScopes = Object.hasOwn(parentValue, prop) && this.leafScopeCache.get(parentValue);
+        const leafScopes = exists && this.leafScopeCache.get(parentValue);
         return leafScopes && leafScopes[prop] || this.scopeCache.get(parentValue);
     }
 
