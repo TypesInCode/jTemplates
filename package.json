@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "5.0.38",
+  "version": "5.0.39",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -34,12 +34,12 @@
     "nyc": "^15.1.0",
     "rimraf": "^2.5.4",
     "source-map-support": "^0.5.19",
-    "ts-loader": "^7.0.4",
+    "ts-loader": "^9.4.2",
     "ts-node": "^8.10.1",
     "typedocs": "^0.6.7",
-    "typescript": "^3.7.4",
+    "typescript": "^4.9.4",
     "uglifyjs-webpack-plugin": "^1.2.4",
-    "webpack": "^4.43.0",
+    "webpack": "^5.75.0",
     "webpack-cli": "^3.3.11"
   },
   "engines": {
