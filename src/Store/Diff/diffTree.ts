@@ -59,6 +59,25 @@ export function DiffTreeScope(worker?: boolean) {
         return !(jsonConstructor === value.constructor || Array.isArray(value));
     }
 
+    enum Type {
+        Value,
+        Object,
+        Array
+    }
+
+    function TypeOf(value: any): Type {
+        if(!value)
+            return Type.Value;
+
+        if(jsonConstructor === value.constructor)
+            return Type.Object;
+
+        if(Array.isArray(value))
+            return Type.Array;
+
+        return Type.Value;
+    }
+
     class DiffTree implements IDiffTree {
 
         private rootStateMap = new Map<string, any>();
@@ -186,25 +205,10 @@ export function DiffTreeScope(worker?: boolean) {
         }
 
         private DiffJson(path: string, newValue: any, oldValue: any, resp: IDiffResponse): boolean {
-            const oldIsValue = IsValue(oldValue);
-            const newIsValue = IsValue(newValue);
+            const newType = TypeOf(newValue);
+            const oldType = TypeOf(oldValue);
 
-            if (oldIsValue || newIsValue) {
-                if (oldValue !== newValue) {
-                    resp.push({
-                        path,
-                        value: newValue
-                    });
-                    return true;
-                }
-                return false;
-            }
-
-            let allChildrenChanged = true;
-            let childDeleted = false;
-            const oldIsArray = Array.isArray(oldValue);
-            const newIsArray = Array.isArray(newValue);
-            if (oldIsArray !== newIsArray) {
+            if(newType !== oldType) {
                 resp.push({
                     path,
                     value: newValue
@@ -212,55 +216,58 @@ export function DiffTreeScope(worker?: boolean) {
                 return true;
             }
 
-            const changedPathLength = resp.length;
-            if (oldIsArray && newIsArray) {
-                if (oldValue.length === 0 && newValue.length === 0)
-                    return false;
-
-                // tslint:disable-next-line: prefer-for-of
-                for (let y = 0; y < newValue.length; y++) {
-                    const arrayPath = path ? `${path}.${y}` : `${y}`;
-                    allChildrenChanged = this.DiffJson(arrayPath, newValue[y], oldValue[y], resp) && allChildrenChanged;
+            if(newType === Type.Value || oldType === Type.Value) {
+                if(newValue !== oldValue) {
+                    resp.push({
+                        path,
+                        value: newValue
+                    });
+                    return true;
                 }
-                if (!allChildrenChanged && newValue.length < oldValue.length)
+
+                return false;
+            }
+
+            const changedPathLength = resp.length;
+            let allChildrenChanged = true;
+            if(newType === Type.Array) {
+                if(newValue.length !== oldValue.length)
                     resp.push({
                         path: path ? `${path}.length` : 'length',
                         value: newValue.length
                     });
-            }
-            else {
-                const oldKeys = Reflect.ownKeys(oldValue) as string[];
-                const newKeys = Reflect.ownKeys(newValue) as string[];
-                if (oldKeys && oldKeys.length === 0 && newKeys.length === 0)
-                    return false;
 
-                const newKeysSet = new Set(newKeys);
-                // tslint:disable-next-line: prefer-for-of
-                for (let x = 0; x < oldKeys.length && !childDeleted; x++) {
-                    const oldKey: string = oldKeys[x];
-                    const childPath = path ? `${path}.${oldKey}` : `${oldKey}`;
-
-                    if (newKeysSet.delete(oldKey))
-                        allChildrenChanged = this.DiffJson(childPath, newValue[oldKey], oldValue[oldKey], resp) && allChildrenChanged;
-                    else if (path)
-                        childDeleted = true;
-                    else
-                        resp.push({
-                            path: childPath,
-                            value: undefined
-                        });
+                for (let y = 0; y < newValue.length; y++) {
+                    const arrayPath = path ? `${path}.${y}` : `${y}`;
+                    allChildrenChanged = this.DiffJson(arrayPath, newValue[y], oldValue[y], resp) && allChildrenChanged;
                 }
+            }
+            else if(newType === Type.Object) {
+                const newKeys = Object.keys(newValue).sort();
+                const oldKeys = Object.keys(oldValue).sort();
 
-                newKeysSet.forEach(key => {
-                    const childPath = path ? `${path}.${key}` : `${key}`;
-                    resp.push({
-                        path: childPath,
-                        value: newValue[key]
-                    });
-                });
+                if(newKeys.length >= oldKeys.length) {
+                    let newKeyIndex = 0;
+                    let oldKeyIndex = 0;
+                    while(newKeyIndex < newKeys.length) {
+                        const childPath = path ? `${path}.${newKeys[newKeyIndex]}` : newKeys[newKeyIndex];
+                        if(oldKeyIndex < oldKeys.length && newKeys[newKeyIndex] === oldKeys[oldKeyIndex]) {
+                            allChildrenChanged = this.DiffJson(childPath, newValue[newKeys[newKeyIndex]], oldValue[oldKeys[oldKeyIndex]], resp) && allChildrenChanged;
+                            oldKeyIndex++;
+                        }
+                        else {
+                            resp.push({
+                                path: childPath,
+                                value: newValue[newKeys[newKeyIndex]]
+                            });
+                        }
+
+                        newKeyIndex++;
+                    }
+                }
             }
 
-            if (path && (allChildrenChanged || childDeleted)) {
+            if (path && allChildrenChanged) {
                 resp.splice(changedPathLength);
                 resp.push({
                     path,

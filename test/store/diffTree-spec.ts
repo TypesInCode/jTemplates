@@ -28,6 +28,23 @@ describe("Diff Test", () => {
         expect(resp[0].path).to.equal("root");
         expect(resp[0].value.value).to.equal("changed");
     });
+    it('Add property', () => {
+        var treeCnstrctr = DiffTreeScope();
+        var tree = new treeCnstrctr();
+        tree.DiffPath("root", { value: "test" });
+        var resp = tree.DiffPath("root", { value: "test", newProp: "here" });
+        expect(resp.length).to.equal(1);
+        expect(resp[0].path).to.equal("root.newProp");
+        expect(resp[0].value).to.equal("here");
+    }),
+    it('Swapped properties', () => {
+        var treeCnstrctr = DiffTreeScope();
+        var tree = new treeCnstrctr();
+        tree.DiffPath("root", { value: "test", oldProp: "not here" });
+        var resp = tree.DiffPath("root", { value: "test", newProp: "here" });
+        expect(resp.length).to.equal(1);
+        expect(resp[0].path).to.equal("root");
+    }),
     it('Basic Key Ref', () => {
         var treeCnstrctr = DiffTreeScope();
         var tree = new treeCnstrctr((val) => val && val._id);
@@ -59,6 +76,6 @@ describe("Diff Test", () => {
         var tree = new DiffSync();
         tree.DiffPath("root", [1, 2]);
         var resp = tree.DiffPath('root', [1, 2, 3]);
-        expect(resp.length).to.equal(1);
+        expect(resp.length).to.equal(2);
     });
 });
