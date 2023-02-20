@@ -13,21 +13,29 @@ export namespace BoundNode {
         var eventsScope = nodeDef.on ? 
             ObservableScope.Create(nodeDef.on) : null;
         
-        ObservableScope.Watch(propertiesScope, function() { ScheduleSetProperties(boundNode, propertiesScope) });
-        ObservableScope.Watch(attributesScope, function() { ScheduleSetAttributes(boundNode, attributesScope) });
-        ObservableScope.Watch(eventsScope, function() { ScheduleSetEvents(boundNode, eventsScope) });
+        if(propertiesScope) {
+            ObservableScope.Watch(propertiesScope, function(scope) { ScheduleSetProperties(boundNode, scope) });
+            SetProperties(boundNode, ObservableScope.Value(propertiesScope));
+        }
 
-        SetProperties(boundNode, ObservableScope.Value(propertiesScope));
-        SetAttributes(boundNode, ObservableScope.Value(attributesScope));
-        SetEvents(boundNode, ObservableScope.Value(eventsScope));
+        if(attributesScope) {
+            ObservableScope.Watch(attributesScope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
+            SetAttributes(boundNode, ObservableScope.Value(attributesScope));
+        }
 
-        boundNode.destroyables.push({
-            Destroy: function() {
-                ObservableScope.Destroy(propertiesScope);
-                ObservableScope.Destroy(attributesScope);
-                ObservableScope.Destroy(eventsScope);
-            }
-        });
+        if(eventsScope) {
+            ObservableScope.Watch(eventsScope, function(scope) { ScheduleSetEvents(boundNode, scope) });
+            SetEvents(boundNode, ObservableScope.Value(eventsScope));
+        }
+
+        if(propertiesScope || attributesScope || eventsScope)
+            boundNode.destroyables.push({
+                Destroy: function() {
+                    ObservableScope.Destroy(propertiesScope);
+                    ObservableScope.Destroy(attributesScope);
+                    ObservableScope.Destroy(eventsScope);
+                }
+            });
     }
 }
 

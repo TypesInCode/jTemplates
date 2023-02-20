@@ -20,10 +20,13 @@ function processUpdates() {
         wndw.requestAnimationFrame(processUpdates);
 }
 
-const htmlNs = "http://www.w3.org/1999/xhtml";
 export var DOMNodeConfig: INodeConfig = {
-    createNode(type: string, namespace: string): Node {
-        return type !== "text" ? wndw.document.createElementNS(namespace || htmlNs, type) : wndw.document.createTextNode("");
+    createNode(type: string, namespace?: string): Node {
+        return type !== "text" ? 
+            namespace ? 
+                wndw.document.createElementNS(namespace, type) : 
+                wndw.document.createElement(type) : 
+            wndw.document.createTextNode("");
     },
     scheduleUpdate(callback: () => void): void {
         List.Add(pendingUpdates, callback);

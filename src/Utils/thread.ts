@@ -13,11 +13,11 @@ var threadContext: IThreadContext = null;
 var timeoutRunning = false;
 
 function ProcessQueue() {
-    var workStartTime = Date.now();
+    var workEndTime = Date.now() + workTimeMs;
 
     var ctx: IThreadContext;
-    while((Date.now() - workStartTime) < workTimeMs && (ctx = List.Pop(contextQueue)))
-        DoWork(ctx, workStartTime);
+    while(Date.now() < workEndTime && (ctx = List.Pop(contextQueue)))
+        DoWork(ctx, workEndTime);
 
     if(contextQueue.size > 0)
         setTimeout(ProcessQueue);
@@ -42,13 +42,13 @@ function Invoke(ctx: IThreadContext, callback: {(): void}) {
     ctx.workEndNode = parent;
 }
 
-function DoWork(ctx: IThreadContext, workStartTime = Date.now()) {
+function DoWork(ctx: IThreadContext, workEndTime = Date.now() + workTimeMs) {
     var parentContext = threadContext;
     threadContext = ctx;
 
     var async = ctx.async;
     var callback: {(): void};
-    while(async === ctx.async && (Date.now() - workStartTime) < workTimeMs && (callback = List.Pop(ctx.workList)))
+    while(async === ctx.async && Date.now() < workEndTime && (callback = List.Pop(ctx.workList)))
         Invoke(ctx, callback);
 
     if(ctx.workList.size > 0)
@@ -78,13 +78,13 @@ function ScheduleCallback(callback: {(): void}, before: boolean, async: boolean)
 }
 
 function SynchWithoutThread(callback: {(): void}) {
-    var workStartTime = Date.now();
+    var workEndTime = Date.now() + workTimeMs;
     callback();
     if(threadContext)
         if(threadContext.async)
             ScheduleWork(threadContext);
         else
-            DoWork(threadContext, workStartTime);
+            DoWork(threadContext, workEndTime);
 
     threadContext = null;
 }

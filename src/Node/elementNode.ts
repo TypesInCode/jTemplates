@@ -101,12 +101,7 @@ function SetDefaultData<T>(node: IElementNodeBase<T>) {
         });
 
         if(nodes.length > 0) {
-            Schedule(function() {
-                if(node.destroyed)
-                    return;
-
-                NodeRef.InitAll(nodes); 
-            });
+            NodeRef.InitAll(nodes);
 
             Thread(function() {
                 if(node.destroyed)

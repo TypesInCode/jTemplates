@@ -32,9 +32,10 @@ function SetRootProperty(target: HTMLElement, prop: string, value: any, lastValu
 }
 
 function SetChangedProperties(target: HTMLElement, lastProperties: any, properties: any) {
-    for(var key in properties) {
-        (!lastProperties || lastProperties[key] !== properties[key]) &&
-            SetRootProperty(target, key, properties[key], lastProperties && lastProperties[key]);
+    const keys = Object.keys(properties);
+    for(let x=0; x<keys.length; x++) {
+        if(!lastProperties || lastProperties[keys[x]] !== properties[keys[x]])
+            SetRootProperty(target, keys[x], properties[keys[x]], lastProperties && lastProperties[keys[x]]);
     }
 }
 
