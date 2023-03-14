@@ -1,3 +1,4 @@
+import { NodeRef } from "../Node/nodeRef";
 import { IList, INode, List } from "./list";
 
 interface IThreadContext {

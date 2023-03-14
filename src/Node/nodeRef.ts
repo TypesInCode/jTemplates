@@ -151,7 +151,8 @@ export namespace NodeRef {
 
         node.destroyed = true;
         node.childNodes.forEach(Destroy);
-        node.destroyables.forEach(d => d && d.Destroy());
+        for(let x=0; x<node.destroyables.length; x++)
+            node.destroyables[x]?.Destroy();
     }
 
     export function DestroyAll(nodes: Array<INodeRefBase>) {

@@ -6,7 +6,6 @@ import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
 import { ComponentNodeFunction, ComponentNodeFunctionParam, IComponentNode, IComponentNodeBase } from "./componentNode.types";
-import { NodeRefTypes } from "./nodeRef.types";
 
 export namespace ComponentNode {
 
@@ -56,10 +55,7 @@ function SetChildren(node: IComponentNodeBase<any, any, any>) {
 function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
     return new Promise<void>(resolve => {
         Thread(function() {
-            var preNodes: Array<NodeRefTypes>;
-            Injector.Scope(node.injector, () => 
-                preNodes = PreReqTemplate.Get(node.component)
-            );
+            const preNodes = Injector.Scope(node.injector, PreReqTemplate.Get, node.component);
             Schedule(function() {
                 if(node.destroyed)
                     return;
@@ -96,17 +92,20 @@ function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
     });
 }
 
+function InvokeNodeTemplate(node: IComponentNodeBase<any, any, any>) {
+    const nodes = node.component.Template();
+    if(!Array.isArray(nodes))
+        return [nodes];
+
+    return nodes;
+}
+
 function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
     Thread(function() {
         if(node.destroyed)
             return;
 
-        var nodes: NodeRefTypes[];
-        Injector.Scope(node.injector, function() {
-            nodes = node.component.Template() as NodeRefTypes[];
-        });
-        if(!Array.isArray(nodes))
-            nodes = [nodes];
+        const nodes = Injector.Scope(node.injector, InvokeNodeTemplate, node);
         
         Schedule(function() {
             NodeRef.InitAll(nodes);

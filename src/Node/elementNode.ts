@@ -95,10 +95,7 @@ function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<a
 
 function SetDefaultData<T>(node: IElementNodeBase<T>) {
     Synch(function() {
-        var nodes: NodeRefTypes[];
-        Injector.Scope(node.injector, function() {
-            nodes = CreateNodeArray(node.childrenFunc, true);
-        });
+        const nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, true);
 
         if(nodes.length > 0) {
             NodeRef.InitAll(nodes);
@@ -134,9 +131,10 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
             }
 
             if(!nodes) {
-                Injector.Scope(node.injector, function() {
+                /* Injector.Scope(node.injector, function() {
                     nodes = CreateNodeArray(node.childrenFunc, value);
-                });
+                }); */
+                nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, value);
                 Schedule(function() {
                     if(node.destroyed || newNodesMap.size === 0)
                         return;

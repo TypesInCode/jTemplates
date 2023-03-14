@@ -5,38 +5,39 @@ import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope
 export namespace BoundNode {
     
     export function Init(boundNode: IBoundNodeBase) {
-        var nodeDef = boundNode.nodeDef;
-        var propertiesScope = nodeDef.props ? 
-            ObservableScope.Create(nodeDef.props) : null;
-        var attributesScope = nodeDef.attrs ?
-            ObservableScope.Create(nodeDef.attrs) : null;
-        var eventsScope = nodeDef.on ? 
-            ObservableScope.Create(nodeDef.on) : null;
-        
-        if(propertiesScope) {
-            ObservableScope.Watch(propertiesScope, function(scope) { ScheduleSetProperties(boundNode, scope) });
-            SetProperties(boundNode, ObservableScope.Value(propertiesScope));
+        const nodeDef = boundNode.nodeDef;
+        if(nodeDef.props) {
+            const scope = ObservableScope.Create(nodeDef.props);
+            boundNode.destroyables.push(CreateScopeDestroyable(scope));
+
+            ObservableScope.Watch(scope, function(scope) { ScheduleSetProperties(boundNode, scope) });
+            SetProperties(boundNode, ObservableScope.Value(scope));
         }
 
-        if(attributesScope) {
-            ObservableScope.Watch(attributesScope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
-            SetAttributes(boundNode, ObservableScope.Value(attributesScope));
+        if(nodeDef.attrs) {
+            const scope = ObservableScope.Create(nodeDef.attrs);
+            boundNode.destroyables.push(CreateScopeDestroyable(scope));
+
+            ObservableScope.Watch(scope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
+            SetAttributes(boundNode, ObservableScope.Value(scope));
         }
 
-        if(eventsScope) {
-            ObservableScope.Watch(eventsScope, function(scope) { ScheduleSetEvents(boundNode, scope) });
-            SetEvents(boundNode, ObservableScope.Value(eventsScope));
-        }
+        if(nodeDef.on) {
+            const scope = ObservableScope.Create(nodeDef.on);
+            boundNode.destroyables.push(CreateScopeDestroyable(scope));
 
-        if(propertiesScope || attributesScope || eventsScope)
-            boundNode.destroyables.push({
-                Destroy: function() {
-                    ObservableScope.Destroy(propertiesScope);
-                    ObservableScope.Destroy(attributesScope);
-                    ObservableScope.Destroy(eventsScope);
-                }
-            });
+            ObservableScope.Watch(scope, function(scope) { ScheduleSetEvents(boundNode, scope) });
+            SetEvents(boundNode, ObservableScope.Value(scope));
+        }
     }
+}
+
+function CreateScopeDestroyable(scope: IObservableScope<unknown>) {
+    return {
+        Destroy() {
+            ObservableScope.Destroy(scope);
+        }
+    };
 }
 
 function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: any}>) {

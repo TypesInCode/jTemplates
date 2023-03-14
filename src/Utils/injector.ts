@@ -57,10 +57,11 @@ export namespace Injector {
      * @param injector Injector instance for this scope
      * @param action Callback to invoke for this scope
      */
-    export function Scope(injector: Injector, action: {(): void}) {
+    export function Scope<R = void, P extends any[] = []>(injector: Injector, action: {(...args: P): R}, ...args: P) {
         var parent = Current();
         scope = injector;
-        action();
+        const ret = action(...args);
         scope = parent;
+        return ret;
     }
 }
