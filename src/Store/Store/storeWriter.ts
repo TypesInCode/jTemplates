@@ -18,7 +18,7 @@ export class StoreWriter {
 
     public Push<T>(source: Array<T>, data: T) {
         const rootPath = this.observableTree.GetPathOf(source);
-        this.observableTree.Write(`${rootPath}.${length}`, data);
+        this.observableTree.Write(`${rootPath}.${source.length}`, data);
     }
 
     public Splice<T>(source: Array<T>, start: number, deleteCount?: number, ...items: Array<T>) {
