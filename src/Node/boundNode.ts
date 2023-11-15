@@ -25,6 +25,11 @@ export namespace BoundNode {
         if(nodeDef.on) {
             const scope = ObservableScope.Create(nodeDef.on);
             boundNode.destroyables.push(CreateScopeDestroyable(scope));
+            boundNode.destroyables.push({
+                Destroy() {
+                    SetEvents(boundNode, {})
+                }
+            });
 
             ObservableScope.Watch(scope, function(scope) { ScheduleSetEvents(boundNode, scope) });
             SetEvents(boundNode, ObservableScope.Value(scope));
