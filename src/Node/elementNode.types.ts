@@ -12,7 +12,7 @@ export interface ElementNodeFunctionParam<T> extends BoundNodeFunctionParam {
     data?: {(): T | Array<T> | Promise<Array<T>> | Promise<T> };
 }
 
-export type ElementChildrenFunction<T> = {(data?: T): string | NodeRefTypes | NodeRefTypes[]};
+export type ElementChildrenFunction<T> = {(data: T): string | NodeRefTypes | NodeRefTypes[]};
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): INodeRefBase}
 
 export interface IElementNodeBase<T> extends IBoundNodeBase {
