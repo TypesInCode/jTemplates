@@ -78,6 +78,142 @@ export function DiffTreeScope(worker?: boolean) {
         return Type.Value;
     }
 
+    function JsonDiffRecursive(
+        path: string,
+        newValue: any,
+        oldValue: any,
+        resp: IDiffResponse
+      ): boolean {
+        if (newValue === oldValue) return false;
+      
+        const newType = TypeOf(newValue);
+        const oldType = TypeOf(oldValue);
+      
+        const changedPathLength = resp.length;
+        let allChildrenChanged = true;
+      
+        if (newType === oldType)
+          switch (newType) {
+            case Type.Array: {
+              allChildrenChanged = JsonDiffArrays(path, newValue, oldValue, resp);
+              break;
+            }
+            case Type.Object: {
+              allChildrenChanged = JsonDiffObjects(path, newValue, oldValue, resp);
+              break;
+            }
+          }
+      
+        if (allChildrenChanged) {
+          resp.splice(changedPathLength);
+          resp.push({
+            path,
+            value: newValue
+          });
+          return true;
+        }
+      
+        return false;
+      }
+      
+      function JsonDiffArrays(
+        path: string,
+        newValue: any[],
+        oldValue: any[],
+        resp: IDiffResponse
+      ) {
+        let allChildrenChanged = true;
+      
+        if (newValue.length !== oldValue.length)
+          resp.push({
+            path: path ? `${path}.length` : 'length',
+            value: newValue.length
+          });
+      
+        if (newValue.length > 0 || oldValue.length > 0) {
+          for (let y = 0; y < newValue.length; y++) {
+            const arrayPath = path ? `${path}.${y}` : `${y}`;
+            allChildrenChanged = JsonDiffRecursive(arrayPath, newValue[y], oldValue[y], resp) && allChildrenChanged;
+          }
+        } else allChildrenChanged = false;
+      
+        return allChildrenChanged;
+      }
+      
+      function JsonDiffObjects(
+        path: string,
+        newValue: { [key: string]: any },
+        oldValue: { [key: string]: any },
+        resp: IDiffResponse
+      ) {
+        let allChildrenChanged = true;
+        const newKeys = Object.keys(newValue);
+        const oldKeys = Object.keys(oldValue);
+      
+        if (newKeys.length === 0 && oldKeys.length === 0) {
+          return false;
+        }
+      
+        if (newKeys.length >= oldKeys.length) {
+          let newKeyIndex = 0;
+          let oldKeyIndex = 0;
+          while (newKeyIndex < newKeys.length) {
+            const childPath = path ? `${path}.${newKeys[newKeyIndex]}` : newKeys[newKeyIndex];
+            if (oldKeyIndex < oldKeys.length && newKeys[newKeyIndex] === oldKeys[oldKeyIndex]) {
+              allChildrenChanged =
+                JsonDiffRecursive(childPath, newValue[newKeys[newKeyIndex]], oldValue[oldKeys[oldKeyIndex]], resp) &&
+                allChildrenChanged;
+              oldKeyIndex++;
+            } else if (newValue[newKeys[newKeyIndex]] !== undefined) {
+              resp.push({
+                path: childPath,
+                value: newValue[newKeys[newKeyIndex]]
+              });
+            }
+      
+            newKeyIndex++;
+          }
+      
+          // newValue is missing a property in oldValue
+          if (oldKeyIndex < oldKeys.length) allChildrenChanged = true;
+        }
+      
+        return allChildrenChanged;
+      }
+
+      function BreakUpValue(path: string, parent: any, keyFunc?: (val: any) => string, prop?: string, map?: Map<string, any>): Map<string, any> {
+        const value = prop ? parent[prop] : parent;
+        const isValue = IsValue(value);
+
+        if(!map && isValue)
+            return new Map([[path, value]]);
+        
+        map = map || new Map();
+
+        if(isValue)
+            return map;
+
+        const key = keyFunc ? keyFunc(value) : null;
+        const keyRef = key && DiffTree.GetKeyRef(key);
+        if(key && key !== path) {
+            if(prop)
+                parent[prop] = keyRef;
+
+            BreakUpValue(key, value, keyFunc, null, map);
+        }
+        else {
+            for(const subProp in value) {
+                const childPath = `${path}.${subProp}`;
+                BreakUpValue(childPath, value, keyFunc, subProp, map);
+            }
+        }
+
+        if(!prop)
+            map.set(path, key === path ? value : keyRef || value);
+        
+        return map;
+    }
+
     class DiffTree implements IDiffTree {
 
         private rootStateMap = new Map<string, any>();
@@ -135,7 +271,7 @@ export function DiffTreeScope(worker?: boolean) {
                     return pre && pre[curr];
                 }, null);
 
-                this.DiffJson(key, value, currentValue, resp);
+                JsonDiffRecursive(key, value, currentValue, resp);
             });
 
             for(var x=0; x<resp.length; x++)
@@ -168,115 +304,7 @@ export function DiffTreeScope(worker?: boolean) {
             if(!this.keyFunc)
                 return new Map([[path, value]]);
             
-            return this.BreakUpValue(path, value);
-        }
-    
-        private BreakUpValue(path: string, parent: any, prop?: string, map?: Map<string, any>): Map<string, any> {
-            var value = prop ? parent[prop] : parent;
-            var isValue = IsValue(value);
-
-            if(!map && isValue)
-                return new Map([[path, value]]);
-            
-            map = map || new Map();
-
-            if(isValue)
-                return map;
-
-            var key = this.keyFunc ? this.keyFunc(value) : null;
-            var keyRef = key && DiffTree.GetKeyRef(key);
-            if(key && key !== path) {
-                if(prop)
-                    parent[prop] = keyRef;
-
-                this.BreakUpValue(key, value, null, map);
-            }
-            else {
-                for(var subProp in value) {
-                    var childPath = `${path}.${subProp}`;
-                    this.BreakUpValue(childPath, value, subProp, map);
-                }
-            }
-
-            if(!prop)
-                map.set(path, key === path ? value : keyRef || value);
-            
-            return map;
-        }
-
-        private DiffJson(path: string, newValue: any, oldValue: any, resp: IDiffResponse): boolean {
-            const newType = TypeOf(newValue);
-            const oldType = TypeOf(oldValue);
-
-            if(newType !== oldType) {
-                resp.push({
-                    path,
-                    value: newValue
-                });
-                return true;
-            }
-
-            if(newType === Type.Value || oldType === Type.Value) {
-                if(newValue !== oldValue) {
-                    resp.push({
-                        path,
-                        value: newValue
-                    });
-                    return true;
-                }
-
-                return false;
-            }
-
-            const changedPathLength = resp.length;
-            let allChildrenChanged = true;
-            if(newType === Type.Array) {
-                if(newValue.length !== oldValue.length)
-                    resp.push({
-                        path: path ? `${path}.length` : 'length',
-                        value: newValue.length
-                    });
-
-                for (let y = 0; y < newValue.length; y++) {
-                    const arrayPath = path ? `${path}.${y}` : `${y}`;
-                    allChildrenChanged = this.DiffJson(arrayPath, newValue[y], oldValue[y], resp) && allChildrenChanged;
-                }
-            }
-            else if(newType === Type.Object) {
-                const newKeys = Object.keys(newValue).sort();
-                const oldKeys = Object.keys(oldValue).sort();
-
-                if(newKeys.length >= oldKeys.length) {
-                    let newKeyIndex = 0;
-                    let oldKeyIndex = 0;
-                    while(newKeyIndex < newKeys.length) {
-                        const childPath = path ? `${path}.${newKeys[newKeyIndex]}` : newKeys[newKeyIndex];
-                        if(oldKeyIndex < oldKeys.length && newKeys[newKeyIndex] === oldKeys[oldKeyIndex]) {
-                            allChildrenChanged = this.DiffJson(childPath, newValue[newKeys[newKeyIndex]], oldValue[oldKeys[oldKeyIndex]], resp) && allChildrenChanged;
-                            oldKeyIndex++;
-                        }
-                        else {
-                            resp.push({
-                                path: childPath,
-                                value: newValue[newKeys[newKeyIndex]]
-                            });
-                        }
-
-                        newKeyIndex++;
-                    }
-                }
-            }
-
-            if (path && allChildrenChanged) {
-                resp.splice(changedPathLength);
-                resp.push({
-                    path,
-                    value: newValue
-                });
-                return true;
-            }
-
-            return false;
+            return BreakUpValue(path, value, this.keyFunc);
         }
     }
 
