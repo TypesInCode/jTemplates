@@ -19,12 +19,8 @@ export namespace ElementNode {
     }
 
     export function Init<T>(elementNode: IElementNodeBase<T>) {
-        // elementNode.nodesMap = new Map();
         if(elementNode.childrenFunc) {
             var nodeDef = elementNode.nodeDef;
-            // var childrenFunc = elementNode.childrenFunc;
-            // var dataScope = nodeDef.data && 
-            //    ObservableScope.Create(nodeDef.data);
 
             if(nodeDef.data) {
                 const dataScope = ObservableScope.Create(nodeDef.data);
@@ -43,30 +39,12 @@ export namespace ElementNode {
             else
                 SetDefaultData(elementNode);
         }
-        
-        /* ObservableScope.Watch(dataScope, function() { 
-            ScheduleSetData(elementNode, dataScope);
-        });
-
-        // var value = GetValue(childrenFunc, dataScope);
-        // value === valueDefaultTrue ?
-        dataScope ?
-            SetData(elementNode, GetValue(childrenFunc, dataScope), true) :
-            SetDefaultData(elementNode); */
-
-        /* elementNode.destroyables.push({
-            Destroy: function() {
-                ObservableScope.Destroy(dataScope);
-            }
-        }); */
 
         BoundNode.Init(elementNode);
     }
 
 }
 
-// const valueDefaultTrue = [true];
-// const valueDefault = [] as Array<any>;
 const valueDefault = [] as Array<any>;
 function GetValue(dataScope: IObservableScope<any>): any[] {
     var value = ObservableScope.Value(dataScope);
@@ -110,30 +88,25 @@ function SetDefaultData<T>(node: IElementNodeBase<T>) {
     });
 }
 
-function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
+function SetData<T>(node: IElementNodeBase<T>, values: T[], init = false) {
     Synch(function () {
-        var newNodesMap = new Map<T, IList<Array<NodeRefTypes>>>();
-        var values = value || valueDefault;
-        if(!Array.isArray(values))
-            values = [values];
-        
-        var newNodesArrays = values.map(function(value) {
-            var nodes: NodeRefTypes[];
+        const newNodesMap = new Map<T, IList<Array<NodeRefTypes>>>();
+        const newNodesArrays: NodeRefTypes[][] = new Array(values.length);
+        for(let x=0; x<values.length; x++) {
+            const value = values[x];
+            let nodes: NodeRefTypes[];
             if(node.nodesMap) {
-                var nodeArrayList = node.nodesMap.get(value);
+                let nodeArrayList = node.nodesMap.get(value);
                 nodes = nodeArrayList && List.Remove(nodeArrayList);
             }
 
-            var newNodeArrayList = newNodesMap.get(value);
+            let newNodeArrayList = newNodesMap.get(value);
             if(!newNodeArrayList) {
                 newNodeArrayList = List.Create<Array<NodeRefTypes>>();
                 newNodesMap.set(value, newNodeArrayList);
             }
 
             if(!nodes) {
-                /* Injector.Scope(node.injector, function() {
-                    nodes = CreateNodeArray(node.childrenFunc, value);
-                }); */
                 nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, value);
                 Schedule(function() {
                     if(node.destroyed || newNodesMap.size === 0)
@@ -146,8 +119,8 @@ function SetData<T>(node: IElementNodeBase<T>, value: T | T[], init = false) {
             else
                 List.Push(newNodeArrayList, nodes);
             
-            return nodes;
-        });
+            newNodesArrays[x] = nodes;
+        }
 
         var detachNodes: Array<IList<INodeRefBase[]>> = [];
         if(node.nodesMap) {
