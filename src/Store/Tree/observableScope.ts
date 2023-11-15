@@ -121,6 +121,10 @@ export namespace ObservableScope {
         return scope.value;
     }
 
+    export function Watching() {
+        return watching;
+    }
+
     export function Watch<T>(scope: IObservableScope<T>, callback: {(scope: IObservableScope<T>): void}) {
         if(!scope || !scope.emitter)
             return;

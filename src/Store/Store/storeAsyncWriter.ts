@@ -41,7 +41,7 @@ export class StoreAsyncWriter {
         this.ApplyChanges(diff);
     }
 
-    public async Splice<T>(source: Array<T>, start: number, deleteCount?: number, ...items: Array<T>) {        
+    public async Splice<T>(source: Array<T>, start: number, deleteCount?: number, ...items: Array<T>) { 
         var rootPath = this.observableTree.GetPathOf(source); // proxy.___node.Path;
 
         var array: Array<T> = await this.diffAsync.GetPath(rootPath);

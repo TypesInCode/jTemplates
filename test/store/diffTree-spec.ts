@@ -78,4 +78,14 @@ describe("Diff Test", () => {
         var resp = tree.DiffPath('root', [1, 2, 3]);
         expect(resp.length).to.equal(2);
     });
+    it('DiffBatch Array', () => {
+        const tree = new DiffSync();
+        tree.DiffPath("root", [1, 2]);
+        const resp = tree.DiffBatch([
+            { path: "root.2", value: 3 },
+            { path: "root.3", value: 4 }
+        ]);
+
+        expect(resp.length).to.equal(2);
+    });
 });

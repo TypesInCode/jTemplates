@@ -1,5 +1,4 @@
 import { ObservableTree } from "../Tree/observableTree";
-// import { ObservableProxy, Type } from "../Tree/observableProxy";
 import { DiffSync } from "../Diff/diffSync";
 import { IDiffResponse } from "../Diff/diffTree";
 
@@ -31,7 +30,7 @@ export class StoreSyncWriter {
         this.observableTree.Write(`${rootPath}.${length}`, data);
     }
 
-    public Splice<T>(source: Array<T>, start: number, deleteCount?: number, ...items: Array<T>) {        
+    public Splice<T>(source: Array<T>, start: number, deleteCount?: number, ...items: Array<T>) {      
         var rootPath = this.observableTree.GetPathOf(source);
 
         var proxy = this.observableTree.Get<Array<T>>(rootPath);

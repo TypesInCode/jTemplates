@@ -4,6 +4,7 @@ import { StoreAsync, StoreSync } from "../Store";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
 import { NodeRefTypes } from "../Node/nodeRef.types";
+import { ObservableTree } from "../Store/Tree/observableTree";
 
 export function State(): any {
     return StateDecorator;
@@ -19,7 +20,11 @@ function StateDecorator<T extends Component<any, any, any> & Record<K, StoreClas
         get: function () {
             var map = (this as T).DecoratorMap;
             var store = map.get(propKey) as StoreClass<any>;
-            return store ? store.Root.Value : null;
+            const value = store && store.Root.Value;
+            if(ObservableScope.Watching())
+                return value;
+
+            return ObservableTree.UnwrapProxyValues(value);
         },
         set: function (val: any) {
             var map = (this as T).DecoratorMap;
@@ -46,7 +51,11 @@ function StateSyncDecorator<T extends Component<any, any, any> & Record<K, Store
         get: function () {
             var map = (this as T).DecoratorMap;
             var store = map.get(propKey) as StoreClass<any>;
-            return store ? store.Root.Value : null;
+            const value = store && store.Root.Value;
+            if(ObservableScope.Watching())
+                return value;
+
+            return ObservableTree.UnwrapProxyValues(value);
         },
         set: function (val: any) {
             var map = (this as T).DecoratorMap;
@@ -75,7 +84,11 @@ function StateAsyncDecorator<T extends Component<any, any, any> & Record<K, Stor
         get: function () {
             var map = (this as T).DecoratorMap;
             var scope = map.get(scopeKey) as ObservableScope<any>;
-            return scope ? scope.Value : null;
+            const value = scope && scope.Value;
+            if(ObservableScope.Watching())
+                return value;
+
+            return ObservableTree.UnwrapProxyValues(value);
         },
         set: function (val: any) {
             var map = (this as T).DecoratorMap;

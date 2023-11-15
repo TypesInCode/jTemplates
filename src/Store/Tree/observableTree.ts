@@ -33,6 +33,28 @@ export class ObservableTree {
     constructor(private valuePathResolver?: { (value: string): string | undefined }) 
     { }
 
+    static UnwrapProxyValues(value: any) {
+        if(value?.toJSON && typeof value.toJSON === 'function')
+            return value.toJSON();
+    
+        const type = TypeOf(value);
+        if(type === Type.Value)
+            return value;
+    
+        if(type === Type.Array) {
+            const arr = value as any[];
+            for(let x=0; x<arr.length; x++)
+                arr[x] = ObservableTree.UnwrapProxyValues(arr[x]);
+        }
+        else {
+            const keys = Object.keys(value);
+            for(let x=0; x<keys.length; x++)
+                value[keys[x]] = ObservableTree.UnwrapProxyValues(value[keys[x]]);
+        }
+    
+        return value;
+    }
+
     public Get<O>(path: string) {
         const val = path.split(".").reduce((pre: any, curr: string, index) => {
             if(index === 0) {
