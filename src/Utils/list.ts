@@ -60,7 +60,11 @@ export namespace List {
     }
 
     export function Add<T>(list: IList<T>, data: T) {
-        var node: INode<T> = { previous: null, next: null, data: data };
+        const node: INode<T> = { previous: null, next: null, data: data };
+        return AddNode(list, node);
+    }
+
+    export function AddNode<T>(list: IList<T>, node: INode<T>) {
         if(list.size === 0) {
             list.head = node;
             list.tail = node;
@@ -134,11 +138,47 @@ export namespace List {
         return node.data;
     }
 
+    export function RemoveNode<T>(list: IList<T>, node: INode<T>) {
+        if(list.head === node) {
+            list.head = node.next;
+        }
+        else if(list.tail === node) {
+            list.tail = node.previous;
+        }
+        else {
+            const prev = node.previous;
+            const next = node.next;
+            prev.next = next;
+            next.previous = prev;
+        }
+
+        node.next = node.previous = null;
+        list.size--;
+        if(list.size > 0)
+            list.head.previous = list.tail.next = null;
+    }
+
     export function ForEach<T>(list: IList<T>, callback: {(value: T): void}) {
         var node = list.head;
         while(node) {
             callback(node.data);
             node = node.next;
         }
+    }
+
+    export function ToNodeMap<T>(list: IList<T>, keyCallback: (data: T) => unknown) {
+        const map = new Map<any, INode<T>[]>();
+        let node = list.head;
+        while(node) {
+            const key = keyCallback(node.data);
+            const nodes = map.get(key) || [node];
+            if(nodes[0] !== node)
+                nodes.push(node);
+            else
+                map.set(key, nodes);
+            node = node.next;
+        }
+
+        return map;
     }
 }

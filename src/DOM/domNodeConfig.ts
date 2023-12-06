@@ -84,5 +84,14 @@ export var DOMNodeConfig: INodeConfig = {
         var cEvent = new CustomEvent(event, data);
         target.dispatchEvent(cEvent);
     },
-    setProperties: SetProperties
+    setProperties: SetProperties,
+    getFirstChild(target: HTMLElement) {
+        return target.firstChild;
+    },
+    getNextSibling(target: HTMLElement) {
+        return target.nextSibling;
+    },
+    replaceChildren(target: HTMLElement, children: HTMLElement[]) {
+        target.replaceChildren(...children);
+    },
 }

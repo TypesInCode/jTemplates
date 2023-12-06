@@ -15,10 +15,16 @@ export interface ElementNodeFunctionParam<T> extends BoundNodeFunctionParam {
 export type ElementChildrenFunction<T> = {(data: T): string | NodeRefTypes | NodeRefTypes[]};
 export type ElementNodeFunction<T> = {(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>): INodeRefBase}
 
+export interface IElementDataNode<T> {
+    value: T,
+    init: boolean;
+    nodes: NodeRefTypes[] | null
+}
+
 export interface IElementNodeBase<T> extends IBoundNodeBase {
     nodeDef: ElementNodeFunctionParam<T>;
     childrenFunc: {(data: T): string | NodeRefTypes | NodeRefTypes[]};
-    nodesMap: Map<T, IList<Array<NodeRefTypes>>>;
+    nodeList: IList<IElementDataNode<T>> | null;
     setData: boolean;
 }
 

@@ -2,11 +2,12 @@ import { NodeConfig } from "./nodeConfig";
 import { Injector } from "../Utils/injector";
 import { INodeRef, INodeRefBase, NodeRefTypes } from "./nodeRef.types";
 import { IBoundNode } from "./boundNode.types";
-import { IElementNode } from "./elementNode.types";
+import { IElementDataNode, IElementNode } from "./elementNode.types";
 import { IComponentNode } from "./componentNode.types";
 import { BoundNode } from "./boundNode";
 import { ElementNode } from "./elementNode";
 import { ComponentNode } from "./componentNode";
+import { IList } from "../Utils/list";
 
 export enum NodeRefType {
     NodeRef,
@@ -72,7 +73,8 @@ export namespace NodeRef {
                     setAttributes: false,
                     setEvents: false,
                     childrenFunc: null,
-                    nodesMap: null,
+                    // nodesMap: null,
+                    nodeList: null,
                     setData: false
                 } as IElementNode<any>;
             case NodeRefType.ComponentNode:
@@ -117,9 +119,12 @@ export namespace NodeRef {
         }
     }
 
-    export function InitAll(nodeRefs: Array<NodeRefTypes>) {
-        for(var x=0; x<nodeRefs.length; x++)
+    export function InitAll(parentNode: NodeRefTypes, nodeRefs: Array<NodeRefTypes>) {
+        for(var x=0; x<nodeRefs.length; x++) {
+            nodeRefs[x].parent = parentNode;
+            parentNode.childNodes.add(nodeRefs[x]);
             Init(nodeRefs[x]);
+        }
     }
 
     export function AddChild(node: INodeRefBase, child: INodeRefBase) {
@@ -129,7 +134,7 @@ export namespace NodeRef {
     }
 
     export function AddChildAfter(node: INodeRefBase, currentChild: INodeRefBase, newChild: INodeRefBase) {
-        if(currentChild && !node.childNodes.has(currentChild))
+        if(currentChild && currentChild.parent !== node)
             throw "currentChild is not valid";
 
         newChild.parent = node;
@@ -137,9 +142,41 @@ export namespace NodeRef {
         NodeConfig.addChildAfter(node.node, currentChild && currentChild.node, newChild.node);
     }
 
+    export function ReconcileChildren(node: INodeRefBase, nextChildren: IList<IElementDataNode<unknown>>) {
+        const rootNode = node.node;
+
+        if(nextChildren.size === 0) {
+            NodeConfig.replaceChildren(rootNode, []);
+            return;
+        }
+
+        let priorNode: any;
+        let curDataNode = nextChildren?.head;
+        while(curDataNode) {
+            for(let x=0; x<curDataNode.data.nodes.length; x++) {
+                const actualNode = priorNode ? NodeConfig.getNextSibling(priorNode) : NodeConfig.getFirstChild(rootNode);
+                const virtualNode = curDataNode.data.nodes[x];
+                const expectedNode = virtualNode.node;
+
+                if(actualNode !== expectedNode) {
+                    NodeConfig.addChildBefore(rootNode, actualNode, expectedNode);
+                }
+
+                priorNode = expectedNode;
+            }
+
+            curDataNode = curDataNode.next;
+        }
+        
+        let remainingSibling = priorNode && NodeConfig.getNextSibling(priorNode);
+        while(remainingSibling) {
+            NodeConfig.removeChild(rootNode, remainingSibling);
+            remainingSibling = NodeConfig.getNextSibling(priorNode);
+        }
+    }
+
     export function DetachChild(node: INodeRefBase, child: INodeRefBase) {
-        if(node.childNodes.has(child)) {
-            node.childNodes.delete(child);
+        if(node.childNodes.delete(child)) {
             NodeConfig.removeChild(node.node, child.node);
             child.parent = null;
         }
@@ -150,7 +187,7 @@ export namespace NodeRef {
             return;
 
         node.destroyed = true;
-        node.childNodes.forEach(Destroy);
+        node.childNodes?.forEach(Destroy);
         for(let x=0; x<node.destroyables.length; x++)
             node.destroyables[x]?.Destroy();
     }

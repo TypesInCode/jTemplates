@@ -1,13 +1,13 @@
-import { BoundNode } from "./boundNode";
-import { NodeConfig } from "./nodeConfig";
+import { IObservableScope, ObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
-import { IList, List } from "../Utils/list";
+import { IList, INode, List } from "../Utils/list";
 import { Schedule, Synch, Thread } from "../Utils/thread";
-import { ElementNodeFunctionParam, ElementChildrenFunction, IElementNode, IElementNodeBase } from "./elementNode.types";
-import { NodeRef, NodeRefType } from "./nodeRef";
-import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
-import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
+import { BoundNode } from "./boundNode";
 import { IBoundNode } from "./boundNode.types";
+import { ElementChildrenFunction, ElementNodeFunctionParam, IElementDataNode, IElementNode, IElementNodeBase } from "./elementNode.types";
+import { NodeConfig } from "./nodeConfig";
+import { NodeRef, NodeRefType } from "./nodeRef";
+import { NodeRefTypes } from "./nodeRef.types";
 
 export namespace ElementNode {
     
@@ -76,92 +76,121 @@ function SetDefaultData<T>(node: IElementNodeBase<T>) {
         const nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, true);
 
         if(nodes.length > 0) {
-            NodeRef.InitAll(nodes);
+            NodeRef.InitAll(node as IElementNode<T>, nodes);
 
             Thread(function() {
                 if(node.destroyed)
                     return;
 
-                DetachAndAddNodes(node, [], [nodes]);
+                const defaultNodeList = List.Create<IElementDataNode<T>>();
+                List.Add(defaultNodeList, {
+                    value: null,
+                    init: true,
+                    nodes
+                });
+                NodeRef.ReconcileChildren(node, defaultNodeList);
             });
         }
     });
 }
 
-function SetData<T>(node: IElementNodeBase<T>, values: T[], init = false) {
-    Synch(function () {
-        const newNodesMap = new Map<T, IList<Array<NodeRefTypes>>>();
-        const newNodesArrays: NodeRefTypes[][] = new Array(values.length);
-        for(let x=0; x<values.length; x++) {
-            const value = values[x];
-            let nodes: NodeRefTypes[];
-            if(node.nodesMap) {
-                let nodeArrayList = node.nodesMap.get(value);
-                nodes = nodeArrayList && List.Remove(nodeArrayList);
-            }
+function GetDataValue<T>(data: IElementDataNode<T>) {
+    return data.value;
+}
 
-            let newNodeArrayList = newNodesMap.get(value);
-            if(!newNodeArrayList) {
-                newNodeArrayList = List.Create<Array<NodeRefTypes>>();
-                newNodesMap.set(value, newNodeArrayList);
-            }
+function ReconcileNodeData<T>(node: IElementNodeBase<T>, values: T[]) {
+    const nextNodeList = List.Create<IElementDataNode<T>>();
+    const initNodeList = List.Create<IElementDataNode<T>>();
+    const currentNodeList = node.nodeList;
+    const nodeMap = currentNodeList && List.ToNodeMap(currentNodeList, GetDataValue);
 
-            if(!nodes) {
-                nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, value);
-                Schedule(function() {
-                    if(node.destroyed || newNodesMap.size === 0)
-                        return;
+    for(let x=0; x<values.length; x++) {
+        let curNode: INode<IElementDataNode<T>>;
 
-                    NodeRef.InitAll(nodes);
-                    List.Push(newNodeArrayList, nodes);
-                });
+        if(nodeMap) {
+            const nodeArr = nodeMap.get(values[x]);
+            if(nodeArr) {
+                let y=nodeArr.length - 1;
+                for(; y >= 0 && !curNode; y--) {
+                    curNode = nodeArr[y];
+                    nodeArr[y] = null;
+                }
             }
-            else
-                List.Push(newNodeArrayList, nodes);
+        }
+
+        if(curNode) {
+            List.RemoveNode(currentNodeList, curNode);
+            List.AddNode(nextNodeList, curNode);
+            if(!curNode.data.init)
+                List.Add(initNodeList, curNode.data);
+        }
+        else {
+            curNode = List.Add(nextNodeList, {
+                value: values[x],
+                init: false,
+                nodes: Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, values[x])
+            });
+            List.Add(initNodeList, curNode.data);
+        }
+    }
+
+    let curNode = initNodeList.head;
+    while(curNode) {
+        const data = curNode.data;
+        Schedule(function() {
+            if(node.destroyed || nextNodeList.size === 0)
+                return;
             
-            newNodesArrays[x] = nodes;
-        }
+            NodeRef.InitAll(node as IElementNode<T>, data.nodes);
+            data.init = true;
+        });
+        curNode = curNode.next;
+    }
 
-        var detachNodes: Array<IList<INodeRefBase[]>> = [];
-        if(node.nodesMap) {
-            for(var nodeArrayList of node.nodesMap.values())
-                nodeArrayList.size > 0 && detachNodes.push(DestroyNodeArrayList(nodeArrayList));
-                
-            node.nodesMap.clear();
-        }
+    if(currentNodeList) {
+        let curDetach = currentNodeList.head;
+        while(curDetach) {
+            NodeRef.DestroyAll(curDetach.data.nodes);
+            for(let x=0; x<curDetach.data.nodes.length; x++)
+                node.childNodes.delete(curDetach.data.nodes[x]);
 
-        node.nodesMap = newNodesMap;
+            curDetach = curDetach.next;
+        }
+        List.Clear(currentNodeList);
+    }
+
+    /* let curAttach = nextNodeList.head;
+    while(curAttach) {
+        for(let x=0; x<curAttach.data.nodes.length; x++)
+            node.childNodes.add(curAttach.data.nodes[x]);
+
+        curAttach = curAttach.next;
+    } */
+
+    node.nodeList = nextNodeList;
+}
+
+function SetData<T>(node: IElementNodeBase<T>, values: T[], init = false) {
+    Synch(function() {
+        ReconcileNodeData(node, values);
+
+        const attachNodes = node.nodeList;
+        const startSize = attachNodes.size;
         Thread(function() {
             if(node.destroyed)
                 return;
 
             if(init)
-                DetachAndAddNodes(node, detachNodes, newNodesMap.size > 0 && newNodesArrays);                
+                NodeRef.ReconcileChildren(node, attachNodes);              
             else
                 NodeConfig.scheduleUpdate(function() {
-                    if(node.destroyed)
+                    if(node.destroyed || attachNodes.size !== startSize)
                         return;
                     
-                    DetachAndAddNodes(node, detachNodes, newNodesMap.size > 0 && newNodesArrays);
+                    NodeRef.ReconcileChildren(node, attachNodes);
                 });
         });
     });
-}
-
-function DetachAndAddNodes(node: INodeRefBase, detachNodes: Array<IList<INodeRefBase[]>>, newNodes: Array<Array<INodeRefBase>>) {
-    for(var x=0; x<detachNodes.length; x++)
-        List.ForEach(detachNodes[x], function(nodes) {
-            for(var x=0; x<nodes.length; x++)
-                NodeRef.DetachChild(node, nodes[x]);
-        });
-    
-    var previousNode: INodeRefBase = null;
-    for(var x=0; newNodes && x<newNodes.length; x++) {
-        for(var y=0; y<newNodes[x].length; y++) {
-            NodeRef.AddChildAfter(node, previousNode, newNodes[x][y]);
-            previousNode = newNodes[x][y];
-        }
-    }
 }
 
 function CreateNodeArray<T>(childrenFunc: {(data: T): string | NodeRefTypes | NodeRefTypes[]}, value: any): NodeRefTypes[] {
@@ -180,9 +209,4 @@ function CreateNodeArray<T>(childrenFunc: {(data: T): string | NodeRefTypes | No
         return newNodes;
 
     return [newNodes];
-}
-
-function DestroyNodeArrayList(nodeArrayList: IList<NodeRefTypes[]>) {
-    List.ForEach(nodeArrayList, NodeRef.DestroyAll);
-    return nodeArrayList;
 }

@@ -6,6 +6,8 @@ import { Injector } from "../Utils/injector";
 import { PreReq, PreReqTemplate } from "../Utils/decorators";
 import { Thread, Schedule, After } from "../Utils/thread";
 import { ComponentNodeFunction, ComponentNodeFunctionParam, IComponentNode, IComponentNodeBase } from "./componentNode.types";
+import { List } from "../Utils/list";
+import { IElementDataNode } from "./elementNode.types";
 
 export namespace ComponentNode {
 
@@ -60,7 +62,7 @@ function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
                 if(node.destroyed)
                     return;
 
-                NodeRef.InitAll(preNodes);
+                NodeRef.InitAll(node as IComponentNode<any, any, any>, preNodes);
             });
 
             Thread(function() {
@@ -108,23 +110,33 @@ function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
         const nodes = Injector.Scope(node.injector, InvokeNodeTemplate, node);
         
         Schedule(function() {
-            NodeRef.InitAll(nodes);
+            NodeRef.InitAll(node as IComponentNode<any, any, any>, nodes);
         });
 
         Thread(function() {
             if(node.destroyed)
                 return;
 
+            const list = List.Create<IElementDataNode<unknown>>();
+            List.Add(list, {
+                value: undefined,
+                init: true,
+                nodes
+            });
+
             if(init)
-                for(var x=0; x<nodes.length; x++)
-                    NodeRef.AddChild(node, nodes[x]);
+                NodeRef.ReconcileChildren(node, list);
+                /* for(var x=0; x<nodes.length; x++)
+                    NodeRef.AddChild(node, nodes[x]); */
             else
                 NodeConfig.scheduleUpdate(function() {
                     if(node.destroyed)
                         return;
 
-                    for(var x=0; x<nodes.length; x++)
-                        NodeRef.AddChild(node, nodes[x]);
+                    NodeRef.ReconcileChildren(node, list);
+
+                    /* for(var x=0; x<nodes.length; x++)
+                        NodeRef.AddChild(node, nodes[x]); */
                 });
         });
 
