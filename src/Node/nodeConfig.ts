@@ -2,6 +2,7 @@ import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export interface INodeConfig {
     createNode(type: any, namespace: string): any;
+    createTextNode(value?: string): any;
     scheduleUpdate(callback: () => void): void;
     setText(target: any, text: string): void;
     getAttribute(target: any, attribute: string): string;
@@ -15,8 +16,9 @@ export interface INodeConfig {
     removeChild(root: any, child: any): void;
     remove(target: any): void;
     fireEvent(target: any, event: string, data: any): void;
-    setProperties(target: any, lastProperties: any, properties: any): void;
+    createPropertyAssignment(target: any): {(next: any): void};
     getFirstChild(target: any): any;
+    getLastChild(target: any): any;
     getNextSibling(target: any): any;
     replaceChildren(target: any, children: any[]): void;
 }

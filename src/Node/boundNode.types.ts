@@ -1,3 +1,4 @@
+import { IObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
 import { IDestroyable } from "../Utils/utils.types";
 import { NodeRefType } from "./nodeRef";
@@ -25,10 +26,11 @@ export interface BoundNodeFunctionParam {
 
 export interface IBoundNodeBase extends INodeRefBase {
     nodeDef: BoundNodeFunctionParam;
-    lastProperties: any;
     lastEvents: {[name: string]: any};
 
+    scopes: IObservableScope<unknown>[];
     setProperties: boolean;
+    assignProperties: {(next: any): void};
     setAttributes: boolean;
     setEvents: boolean;
 }

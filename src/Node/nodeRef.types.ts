@@ -14,11 +14,11 @@ export interface INodeRefBase {
     parent: INodeRefBase;
     childNodes: Set<INodeRefBase>;
     destroyed: boolean;
-    destroyables: IDestroyable[];
+    // destroyables: IDestroyable[];
 }
 
 export interface INodeRef extends INodeRefBase {
     type: NodeRefType.NodeRef;
 }
 
-export type NodeRefTypes = INodeRef | IBoundNode | IElementNode<any> | IComponentNode<any, any, any>;
+export type NodeRefTypes = INodeRef | IBoundNode | IElementNode<unknown> | IComponentNode<unknown, unknown, unknown>;

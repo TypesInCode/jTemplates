@@ -58,6 +58,7 @@ export class Component<D = void, T = void, E = void> {
     }
 
     public Destroy() {
+        this.scope.Destroy();
         Destroy.All(this);
     }
 }

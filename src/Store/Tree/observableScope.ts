@@ -89,7 +89,7 @@ export namespace ObservableScope {
                 destroyed: false
             } as IObservableScope<T>;
         
-        var scope = {
+        const scope = {
             getFunction: valueFunction,
             async: (valueFunction as any)[Symbol.toStringTag] === 'AsyncFunction',
             value: null,
@@ -125,6 +125,10 @@ export namespace ObservableScope {
         return watching;
     }
 
+    export function Touch<T>(scope: IObservableScope<T>) {
+        Register(scope.emitter);
+    }
+
     export function Watch<T>(scope: IObservableScope<T>, callback: {(scope: IObservableScope<T>): void}) {
         if(!scope || !scope.emitter)
             return;
@@ -153,7 +157,7 @@ export namespace ObservableScope {
 }
 
 function OnSet(scope: IObservableScope<any>) {
-    if(!scope || scope.dirty)
+    if(!scope || scope.dirty || scope.destroyed)
         return;
 
     scope.dirty = true;

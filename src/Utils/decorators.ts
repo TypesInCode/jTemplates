@@ -5,6 +5,7 @@ import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope
 import { IDestroyable } from "./utils.types";
 import { NodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableTree } from "../Store/Tree/observableTree";
+import { CreateProxy, IObservableNode } from "../Store/Tree/observableNode";
 
 export function State(): any {
     return StateDecorator;
@@ -13,26 +14,38 @@ export function State(): any {
 function StateDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
 
     const propKey = `StoreDecorator_${propertyKey}`;
-    DestroyDecorator(target, propKey);
+    // DestroyDecorator(target, propKey);
     return {
         configurable: false,
         enumerable: true,
         get: function () {
-            var map = (this as T).DecoratorMap;
+            const map = (this as T).DecoratorMap;
+            const node = map.get(propKey) as IObservableNode<any>;
+            return node;
+            /* var map = (this as T).DecoratorMap;
             var store = map.get(propKey) as StoreClass<any>;
             const value = store && store.Root.Value;
             if(ObservableScope.Watching())
                 return value;
 
-            return ObservableTree.UnwrapProxyValues(value);
+            return ObservableTree.UnwrapProxyValues(value); */
         },
         set: function (val: any) {
-            var map = (this as T).DecoratorMap;
+            const map = (this as T).DecoratorMap;
+            const node = map.get(propKey) as IObservableNode<{[prop: string]: any}>;
+            if(!node)
+                map.set(propKey, CreateProxy(val));
+            else {
+                const keys = Object.keys(val);
+                for(let x=0; x<keys.length; x++)
+                    node[keys[x]] = val[keys[x]];
+            }
+            /* var map = (this as T).DecoratorMap;
             var store = map.get(propKey) as StoreClass<any>;
             if(!store)
                 map.set(propKey, new StoreClass(val));
             else
-                store.Merge(val);
+                store.Merge(val); */
         }
     } as PropertyDescriptor;
 }
@@ -44,7 +57,29 @@ export function StateSync(): any {
 function StateSyncDecorator<T extends Component<any, any, any> & Record<K, StoreClass<any>>, K extends string>(target: T, propertyKey: K) {
 
     const propKey = `StoreSyncDecorator_${propertyKey}`;
-    DestroyDecorator(target, propKey);
+    return {
+        configurable: false,
+        enumerable: true,
+        get: function () {
+            const map = (this as T).DecoratorMap;
+            const node = map.get(propKey) as IObservableNode<any>;
+            return node;
+        },
+        set: function (val: any) {
+            const map = (this as T).DecoratorMap;
+            const node = map.get(propKey) as IObservableNode<{[prop: string]: any}>;
+            if(!node)
+                map.set(propKey, CreateProxy(val));
+            else {
+                const keys = Object.keys(val);
+                for(let x=0; x<keys.length; x++)
+                    node[keys[x]] = val[keys[x]];
+
+                // node.Update();
+            }
+        }
+    } as PropertyDescriptor;
+    /* DestroyDecorator(target, propKey);
     return {
         configurable: false,
         enumerable: true,
@@ -65,7 +100,7 @@ function StateSyncDecorator<T extends Component<any, any, any> & Record<K, Store
             else
                 store.Merge(val);
         }
-    } as PropertyDescriptor;
+    } as PropertyDescriptor; */
 }
 
 export function StateAsync(): any {

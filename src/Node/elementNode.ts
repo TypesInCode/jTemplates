@@ -1,6 +1,6 @@
 import { IObservableScope, ObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
-import { IList, INode, List } from "../Utils/list";
+import { INode, List } from "../Utils/list";
 import { Schedule, Synch, Thread } from "../Utils/thread";
 import { BoundNode } from "./boundNode";
 import { IBoundNode } from "./boundNode.types";
@@ -24,17 +24,20 @@ export namespace ElementNode {
 
             if(nodeDef.data) {
                 const dataScope = ObservableScope.Create(nodeDef.data);
+                elementNode.scopes ??= [];
+                elementNode.scopes.push(dataScope);
+
                 ObservableScope.Watch(dataScope, function() { 
                     ScheduleSetData(elementNode, dataScope);
                 });
 
                 SetData(elementNode, GetValue(dataScope), true);
 
-                elementNode.destroyables.push({
+                /* elementNode.destroyables.push({
                     Destroy: function() {
                         ObservableScope.Destroy(dataScope);
                     }
-                });
+                }); */
             }
             else
                 SetDefaultData(elementNode);
@@ -194,9 +197,9 @@ function SetData<T>(node: IElementNodeBase<T>, values: T[], init = false) {
 }
 
 function CreateNodeArray<T>(childrenFunc: {(data: T): string | NodeRefTypes | NodeRefTypes[]}, value: any): NodeRefTypes[] {
-    var newNodes = childrenFunc(value);
-    if(typeof newNodes === "string") {
-        var textNode = NodeRef.Create("text", null, NodeRefType.BoundNode) as IBoundNode;
+    const newNodes = childrenFunc(value);
+    if(typeof newNodes === "string" || !newNodes) {
+        const textNode = NodeRef.Create("text", null, NodeRefType.BoundNode) as IBoundNode;
         textNode.nodeDef = { 
             props: function () { 
                 return { nodeValue: childrenFunc(value) };

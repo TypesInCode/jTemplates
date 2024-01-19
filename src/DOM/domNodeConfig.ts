@@ -1,32 +1,38 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
-import { SetProperties } from './utils';
-import { Synch } from '../Utils/thread';
+import { CreateAssignment, CreateNodeValueAssignment } from './utils';
+// import { Synch } from '../Utils/thread';
 
-var pendingUpdates = List.Create<{(): void}>();
-var updateScheduled = false;
+let pendingUpdates = List.Create<{(): void}>();
+let updateScheduled = false;
 
+const updateMs = 16;
 function processUpdates() {
     List.Add(pendingUpdates, null);
+    const start = Date.now();
 
-    var callback: {(): void};
+    let callback: {(): void};
     while((callback = List.Pop(pendingUpdates)))
-        Synch(callback);
+        callback();
+        // Synch(callback);
     
     if(pendingUpdates.size === 0)
         updateScheduled = false;
+    else if(Date.now() - start < updateMs)
+        processUpdates();
     else
         wndw.requestAnimationFrame(processUpdates);
 }
 
-export var DOMNodeConfig: INodeConfig = {
+export const DOMNodeConfig: INodeConfig = {
     createNode(type: string, namespace?: string): Node {
-        return type !== "text" ? 
-            namespace ? 
-                wndw.document.createElementNS(namespace, type) : 
-                wndw.document.createElement(type) : 
-            wndw.document.createTextNode("");
+        return namespace ? 
+            wndw.document.createElementNS(namespace, type) : 
+            wndw.document.createElement(type)
+    },
+    createTextNode(value: string = '') {
+        return wndw.document.createTextNode(value);
     },
     scheduleUpdate(callback: () => void): void {
         List.Add(pendingUpdates, callback);
@@ -80,13 +86,21 @@ export var DOMNodeConfig: INodeConfig = {
     setAttribute(target: HTMLElement, attribute: string, value: string) {
         target.setAttribute(attribute, value);
     },
+    createPropertyAssignment(target: HTMLElement) {
+        if(target.nodeType === Node.TEXT_NODE)
+            return CreateNodeValueAssignment(target);
+
+        return CreateAssignment(target);
+    },
     fireEvent(target: HTMLElement, event: string, data: any) {
         var cEvent = new CustomEvent(event, data);
         target.dispatchEvent(cEvent);
     },
-    setProperties: SetProperties,
     getFirstChild(target: HTMLElement) {
         return target.firstChild;
+    },
+    getLastChild(target: HTMLElement) {
+        return target.lastChild;
     },
     getNextSibling(target: HTMLElement) {
         return target.nextSibling;

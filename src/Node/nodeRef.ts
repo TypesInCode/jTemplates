@@ -1,13 +1,14 @@
 import { NodeConfig } from "./nodeConfig";
 import { Injector } from "../Utils/injector";
 import { INodeRef, INodeRefBase, NodeRefTypes } from "./nodeRef.types";
-import { IBoundNode } from "./boundNode.types";
+import { IBoundNode, IBoundNodeBase } from "./boundNode.types";
 import { IElementDataNode, IElementNode } from "./elementNode.types";
 import { IComponentNode } from "./componentNode.types";
 import { BoundNode } from "./boundNode";
 import { ElementNode } from "./elementNode";
 import { ComponentNode } from "./componentNode";
 import { IList } from "../Utils/list";
+import { ObservableScope } from "../Store";
 
 export enum NodeRefType {
     NodeRef,
@@ -36,12 +37,13 @@ export namespace NodeRef {
                     injector: Injector.Current() || new Injector(),
                     parent: null,
                     childNodes: null,
-                    destroyed: false,
-                    destroyables: []
+                    destroyed: false
+                    // destroyables: []
                 } as INodeRef;
             case NodeRefType.BoundNode:
                 return {
                     node: null,
+                    nodeDef: null,
                     nodeType: nodeType,
                     nodeNamespace: namespace,
                     type: NodeRefType.BoundNode,
@@ -49,16 +51,18 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    destroyables: [],
-                    lastProperties: null,
+                    // destroyables: [],
                     lastEvents: null,
                     setProperties: false,
+                    assignProperties: null,
                     setAttributes: false,
-                    setEvents: false
+                    setEvents: false,
+                    scopes: null
                 } as IBoundNode;
             case NodeRefType.ElementNode:
                 return {
                     node: null,
+                    nodeDef: null,
                     nodeType: nodeType,
                     nodeNamespace: namespace,
                     type: NodeRefType.ElementNode,
@@ -66,20 +70,21 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    destroyables: [],
-                    lastProperties: null,
+                    // destroyables: [],
                     lastEvents: null,
                     setProperties: false,
+                    assignProperties: null,
                     setAttributes: false,
                     setEvents: false,
                     childrenFunc: null,
-                    // nodesMap: null,
                     nodeList: null,
-                    setData: false
+                    setData: false,
+                    scopes: null
                 } as IElementNode<any>;
             case NodeRefType.ComponentNode:
                 return {
                     node: null,
+                    nodeDef: null,
                     nodeType: nodeType,
                     nodeNamespace: namespace,
                     type: NodeRefType.ComponentNode,
@@ -87,14 +92,15 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    destroyables: [],
-                    lastProperties: null,
+                    // destroyables: [],
                     lastEvents: null,
                     setProperties: false,
+                    assignProperties: null,
                     setAttributes: false,
                     setEvents: false,
                     component: null,
-                    componentEvents: null
+                    componentEvents: null,
+                    scopes: null
                 } as IComponentNode<any, any, any>;
         }
     }
@@ -103,7 +109,7 @@ export namespace NodeRef {
         if(nodeRef.node)
             return;
 
-        nodeRef.node = NodeConfig.createNode(nodeRef.nodeType, nodeRef.nodeNamespace);
+        nodeRef.node = nodeRef.nodeType === 'text' ? NodeConfig.createTextNode() : NodeConfig.createNode(nodeRef.nodeType, nodeRef.nodeNamespace);
         nodeRef.childNodes = new Set();
 
         switch(nodeRef.type) {
@@ -152,6 +158,8 @@ export namespace NodeRef {
 
         let priorNode: any;
         let curDataNode = nextChildren?.head;
+        let insert = false;
+        let remove = false;
         while(curDataNode) {
             for(let x=0; x<curDataNode.data.nodes.length; x++) {
                 const actualNode = priorNode ? NodeConfig.getNextSibling(priorNode) : NodeConfig.getFirstChild(rootNode);
@@ -160,6 +168,13 @@ export namespace NodeRef {
 
                 if(actualNode !== expectedNode) {
                     NodeConfig.addChildBefore(rootNode, actualNode, expectedNode);
+                    !remove && insert && actualNode && NodeConfig.removeChild(rootNode, actualNode);
+                    remove = insert;
+                    insert = true;
+                }
+                else {
+                    insert = false;
+                    remove = false;
                 }
 
                 priorNode = expectedNode;
@@ -167,12 +182,17 @@ export namespace NodeRef {
 
             curDataNode = curDataNode.next;
         }
-        
-        let remainingSibling = priorNode && NodeConfig.getNextSibling(priorNode);
+       
+        let lastChild = NodeConfig.getLastChild(rootNode);
+        while(priorNode && priorNode !== lastChild) {
+            NodeConfig.removeChild(rootNode, lastChild);
+            lastChild = NodeConfig.getLastChild(rootNode);
+        }
+        /* let remainingSibling = priorNode && NodeConfig.getNextSibling(priorNode);
         while(remainingSibling) {
             NodeConfig.removeChild(rootNode, remainingSibling);
             remainingSibling = NodeConfig.getNextSibling(priorNode);
-        }
+        } */
     }
 
     export function DetachChild(node: INodeRefBase, child: INodeRefBase) {
@@ -182,19 +202,24 @@ export namespace NodeRef {
         }
     }
 
-    export function Destroy(node: INodeRefBase) {
+    export function Destroy(node: NodeRefTypes) {
         if(node.destroyed)
             return;
 
         node.destroyed = true;
         node.childNodes?.forEach(Destroy);
-        for(let x=0; x<node.destroyables.length; x++)
-            node.destroyables[x]?.Destroy();
+        switch(node.type) {
+            case NodeRefType.ComponentNode:
+                node.component?.Destroy();
+            case NodeRefType.BoundNode:
+                for(let x=0; node.scopes && x<node.scopes.length; x++)
+                    ObservableScope.Destroy(node.scopes[x]);
+        }
     }
 
     export function DestroyAll(nodes: Array<INodeRefBase>) {
-        for(var x=0; x<nodes.length; x++)
-            Destroy(nodes[x]);
+        for(let x=0; x<nodes.length; x++)
+            Destroy(nodes[x] as INodeRef);
     }
 
 }
