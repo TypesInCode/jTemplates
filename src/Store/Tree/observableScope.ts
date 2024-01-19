@@ -97,9 +97,7 @@ export namespace ObservableScope {
             emitter: Emitter.Create(),
             emitters: null,
             destroyed: false,
-            setCallback: function() {
-                OnSet(scope);
-            }
+            setCallback: null
         } as IObservableScope<T>;
         return scope;
     }
@@ -169,8 +167,8 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
         return;
 
     scope.dirty = false;
-    var value: T = null;
-    var emitters = scope.getFunction && WatchAction(() =>
+    let value: T = null;
+    const emitters = scope.getFunction && WatchAction(() =>
         value = scope.getFunction()
     );
     
@@ -195,11 +193,17 @@ function DestroyScope(scope: IObservableScope<any>) {
     
     scope.emitters && scope.emitters.clear();
     scope.emitter && scope.emitter.clear();
+    scope.getFunction = null;
+    scope.setCallback = null;
     scope.destroyed = true;
 }
 
 function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters?: Set<Emitter>) {    
     if(newEmitters)
+        scope.setCallback ??= function() {
+            OnSet(scope);
+        };
+
         newEmitters.forEach(e => {
             if(!scope.emitters || !scope.emitters.delete(e))
                 Emitter.On(e, scope.setCallback);

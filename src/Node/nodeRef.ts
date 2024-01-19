@@ -211,10 +211,15 @@ export namespace NodeRef {
         switch(node.type) {
             case NodeRefType.ComponentNode:
                 node.component?.Destroy();
+            case NodeRefType.ElementNode:
+                for(let key in node.lastEvents)
+                    NodeConfig.removeListener(node.node, key, node.lastEvents[key]);
             case NodeRefType.BoundNode:
                 for(let x=0; node.scopes && x<node.scopes.length; x++)
                     ObservableScope.Destroy(node.scopes[x]);
         }
+
+        node.node = null;
     }
 
     export function DestroyAll(nodes: Array<INodeRefBase>) {
