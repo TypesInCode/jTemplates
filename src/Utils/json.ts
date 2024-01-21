@@ -67,15 +67,13 @@ function JsonDiffArrays(
 
   if (newValue.length !== oldValue.length)
     resp.push({
-      // path: (path ? `${path}.length` : 'length').split('.').filter(part => !!part),
-      path: [...path, 'length'],
+      path: path.concat('length'),
       value: newValue.length
     });
 
   if (newValue.length > 0 || oldValue.length > 0) {
     for (let y = 0; y < newValue.length; y++) {
-      // const arrayPath = path ? `${path}.${y}` : `${y}`;
-      const arrayPath = [...path, y];
+      const arrayPath = path.concat(y);
       const oldValueElem = oldValue[y];
       allChildrenChanged = JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) && allChildrenChanged;
     }
@@ -103,7 +101,7 @@ function JsonDiffObjects(
   let newKeyIndex = 0;
   let oldKeyIndex = 0;
   while (newKeyIndex < newKeys.length) {
-    const childPath = [...path, newKeys[newKeyIndex]];
+    const childPath = path.concat(newKeys[newKeyIndex]);
     if (oldKeyIndex < oldKeys.length && newKeys[newKeyIndex] === oldKeys[oldKeyIndex]) {
       JsonDiffRecursive(childPath, newValue[newKeys[newKeyIndex]], oldValue[oldKeys[oldKeyIndex]], resp);
       oldKeyIndex++;
