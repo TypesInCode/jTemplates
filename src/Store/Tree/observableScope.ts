@@ -199,7 +199,7 @@ function DestroyScope(scope: IObservableScope<any>) {
 }
 
 function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters?: Set<Emitter>) {    
-    if(newEmitters)
+    if(newEmitters) {
         scope.setCallback ??= function() {
             OnSet(scope);
         };
@@ -208,6 +208,7 @@ function UpdateEmitters<T>(scope: IObservableScope<T>, newEmitters?: Set<Emitter
             if(!scope.emitters || !scope.emitters.delete(e))
                 Emitter.On(e, scope.setCallback);
         });
+    }
 
     if(scope.emitters)
         scope.emitters.forEach(e => Emitter.Remove(e, scope.setCallback));
