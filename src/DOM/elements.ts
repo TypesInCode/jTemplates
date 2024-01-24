@@ -45,6 +45,10 @@ export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("input", null, nodeDef, null);
 }
 
+export function textarea<T>(nodeDef: ElementNodeFunctionParam<T>) {
+    return ElementNode.Create<T>("textarea", null, nodeDef, null);
+}
+
 export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
     return ElementNode.Create<T>("select", null, nodeDef, children);
 }

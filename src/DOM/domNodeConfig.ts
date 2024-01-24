@@ -15,7 +15,6 @@ function processUpdates() {
     let callback: {(): void};
     while((callback = List.Pop(pendingUpdates)))
         callback();
-        // Synch(callback);
     
     if(pendingUpdates.size === 0)
         updateScheduled = false;

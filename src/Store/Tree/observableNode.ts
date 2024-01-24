@@ -1,7 +1,7 @@
 import { JsonDiff, JsonType } from "../../Utils/json";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
-const proxyCache = new WeakMap<any, IObservableNode<unknown | unknown[]>>();
+const proxyCache = new WeakMap<any, unknown | unknown[]>();
 const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
 
 function getOwnPropertyDescriptor(target: any, prop: string | symbol) {
@@ -67,7 +67,7 @@ function CreateArrayProxy(value: any[]) {
         has: hasArray,
         ownKeys: ownKeysArray,
         getOwnPropertyDescriptor: getOwnPropertyDescriptorArray
-    }) as unknown as IObservableNode<unknown[]>;
+    }) as unknown[];
 
     scopeCache.set(value, scope);
     proxyCache.set(value, proxy);
@@ -83,7 +83,7 @@ function CreateObjectProxy(value: any) {
         has,
         ownKeys,
         getOwnPropertyDescriptor
-    }) as unknown as IObservableNode<unknown>;
+    }) as unknown;
 
     scopeCache.set(value, scope);
     proxyCache.set(value, proxy);
@@ -116,18 +116,25 @@ function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
 
             if(typeof arrayValue === 'function')
                 return function ArrayFunction(...args: any[]) {
-                    let result = (array as any)[prop as any](...args);
+                    const proxyArray = array.slice();
+                    for(let x=0; x<proxyArray.length; x++)
+                        proxyArray[x] = proxyCache.get(proxyArray[x]) ?? CreateProxy(proxyArray[x]);
+
+                    let result = (proxyArray as any)[prop as any](...args);
                     switch(prop) {
                         case 'push':
+                        case 'unshift':                            
+                        case 'splice':
                         case 'pop':
                         case 'shift':
-                        case 'unshift':
-                        case 'splice':
                         case 'sort':
-                        case 'reverse': {
+                        case 'reverse':
+                            array.length = proxyArray.length;
+                            for(let x=0; x<proxyArray.length; x++)
+                                array[x] = UnwrapProxy(proxyArray[x]);
+
                             ObservableScope.Update(scope);
                             break;
-                        }
                     }
             
                     return result;
@@ -142,18 +149,22 @@ function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
 let applyingDiff = false;
 function ObjectProxySetter(object: any, prop: string, value: any) {
     const scope = scopeCache.get(object) as IObservableScope<unknown>;
-    const proxy = proxyCache.get(object) as any;
     value = UnwrapProxy(value);
-    if(!applyingDiff) {
+
+    if(applyingDiff) {
+        object[prop] = value;
+        ObservableScope.Update(scope);
+    } else {
         applyingDiff = true;
+        const proxy = proxyCache.get(object) as any;
         const json = proxy.toJSON() as any;
         const diff = JsonDiff(value, json[prop]);
-        if(diff.length === 0 || (diff.length === 1 && diff[0].path.length === 0)) {
-            object[prop] = value;
-            ObservableScope.Update(scope);
-        }
-        else {
-            for(let x=0; x<diff.length; x++) {
+        
+        for(let x=0; x<diff.length; x++) {
+            if(diff[x].path.length === 0) {
+                proxy[prop] = diff[x].value;
+            }
+            else {
                 const path = diff[x].path;
                 let curr = proxy[prop];
                 let y=0;
@@ -164,10 +175,6 @@ function ObjectProxySetter(object: any, prop: string, value: any) {
             }
         }
         applyingDiff = false;
-    }
-    else {
-        object[prop] = value;
-        ObservableScope.Update(scope);
     }
 
     return true;
@@ -194,23 +201,26 @@ function ObjectProxyGetter(object: unknown, prop: string | symbol) {
     }
 }
 
-export type IObservableNode<T> = T extends string | number | boolean ? T : {
-    [P in keyof T]: IObservableNode<T[P]>
-} & { toJSON: () => T };
-
-export function CreateProxy<T>(value: T): IObservableNode<T> { 
+function CreateProxy<T>(value: T): T {
     const type = JsonType(value);
     switch(type) {
         case 'object': {
             const proxy = proxyCache.get(value) ?? CreateObjectProxy(value);
-            return proxy as IObservableNode<T>;
+            return proxy as T;
         }
         case 'array': {
             const proxy = proxyCache.get(value) ?? CreateArrayProxy(value as any[]);
             ObservableScope.Touch(scopeCache.get(value));
-            return proxy as IObservableNode<T>;
+            return proxy as T;
         }
         default:
             return value as any;
+    }
+}
+
+export namespace ObservableNode {
+    export function Create<T>(value: T): T {
+        value = UnwrapProxy(value);
+        return CreateProxy(value);
     }
 }

@@ -60,6 +60,7 @@ export interface IObservableScope<T> extends IDestroyable {
     emitters: Set<Emitter>;
     setCallback: {(): void};
     destroyed: boolean;
+    dependencies?: IObservableScope<unknown>[];
 }
 
 var currentSet: Set<Emitter> = null;
@@ -81,23 +82,18 @@ function WatchAction(action: {(): void}) {
 }
 
 export namespace ObservableScope {
-    export function Create<T>(valueFunction: {(): T | Promise<T>} | T) {
-        if(typeof valueFunction !== 'function')
-            return {
-                value: valueFunction,
-                dirty: false,
-                destroyed: false
-            } as IObservableScope<T>;
-        
+    export function Create<T>(valueFunction: {(): T | Promise<T>} | T, dependencies?: IObservableScope<unknown>[]) {        
+        const hasFunction = typeof valueFunction === 'function';
         const scope = {
-            getFunction: valueFunction,
-            async: (valueFunction as any)[Symbol.toStringTag] === 'AsyncFunction',
-            value: null,
-            dirty: true,
-            emitter: Emitter.Create(),
+            getFunction: hasFunction ? valueFunction : null,
+            value: hasFunction ? null : valueFunction,
+            async: hasFunction ? (valueFunction as any)[Symbol.toStringTag] === 'AsyncFunction' : false,
+            dirty: hasFunction,
+            emitter: null,
             emitters: null,
             destroyed: false,
-            setCallback: null
+            setCallback: null,
+            dependencies
         } as IObservableScope<T>;
         return scope;
     }
@@ -114,9 +110,18 @@ export namespace ObservableScope {
         if(!scope)
             return undefined;
         
+        scope.emitter ??= Emitter.Create();
         Register(scope.emitter);
         UpdateValue(scope);
         return scope.value;
+    }
+
+    export function SetValue<T>(scope: IObservableScope<T>, value: T) {
+        if(scope.getFunction)
+            throw "value cannot be set because the scope has a getFunction";
+        
+        scope.value = value;
+        ObservableScope.Update(scope);
     }
 
     export function Watching() {
@@ -124,13 +129,18 @@ export namespace ObservableScope {
     }
 
     export function Touch<T>(scope: IObservableScope<T>) {
+        if(!scope)
+            return;
+
+        scope.emitter ??= Emitter.Create();
         Register(scope.emitter);
     }
 
     export function Watch<T>(scope: IObservableScope<T>, callback: {(scope: IObservableScope<T>): void}) {
-        if(!scope || !scope.emitter)
+        if(!scope)
             return;
 
+        scope.emitter ??= Emitter.Create();
         Emitter.On(scope.emitter, callback);
     }
 
@@ -145,10 +155,6 @@ export namespace ObservableScope {
         OnSet(scope);
     }
 
-    export function Emit(scope: IObservableScope<any>) {
-        Emitter.Emit(scope.emitter);
-    }
-
     export function Destroy<T>(scope: IObservableScope<T>) {
         DestroyScope(scope);
     }
@@ -158,7 +164,7 @@ function OnSet(scope: IObservableScope<any>) {
     if(!scope || scope.dirty || scope.destroyed)
         return;
 
-    scope.dirty = true;
+    scope.dirty = !!scope.getFunction;
     Emitter.Emit(scope.emitter, scope);
 }
 
@@ -186,6 +192,10 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 function DestroyScope(scope: IObservableScope<any>) {
     if(!scope)
         return;
+
+    if(scope.dependencies !== undefined)
+        for(let x=0; x<scope.dependencies.length; x++)
+            DestroyScope(scope.dependencies[x]);
     
     scope.emitters && scope.emitters.forEach(e => 
         Emitter.Remove(e, scope.setCallback)
