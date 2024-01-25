@@ -9,18 +9,28 @@ interface IThreadContext {
 const workTimeMs = 16;
 const contextQueue: IList<IThreadContext> = List.Create();
 
-var threadContext: IThreadContext = null;
-var timeoutRunning = false;
+let threadContext: IThreadContext = null;
+let timeoutRunning = false;
+const scheduleCallback = typeof requestIdleCallback === 'undefined' ? setTimeout : requestIdleCallback;
 
-function ProcessQueue() {
-    var workEndTime = Date.now() + workTimeMs;
+function timeRemaining(this: { end: number }) {
+    return this.end - Date.now();
+}
 
-    var ctx: IThreadContext;
-    while(Date.now() < workEndTime && (ctx = List.Pop(contextQueue)))
-        DoWork(ctx, workEndTime);
+function createDeadline() {
+    return {
+        end: Date.now() + workTimeMs,
+        timeRemaining
+    } as unknown as IdleDeadline;
+}
+
+function ProcessQueue(deadline: IdleDeadline = createDeadline()) {
+    let ctx: IThreadContext;
+    while(deadline.timeRemaining() > 0 && (ctx = List.Pop(contextQueue)))
+        DoWork(ctx, deadline);
 
     if(contextQueue.size > 0)
-        setTimeout(ProcessQueue);
+        scheduleCallback(ProcessQueue);
     else
         timeoutRunning = false;
 }
@@ -32,7 +42,7 @@ function ScheduleWork(ctx: IThreadContext) {
         return;
 
     timeoutRunning = true;
-    setTimeout(ProcessQueue);
+    scheduleCallback(ProcessQueue);
 }
 
 function Invoke(ctx: IThreadContext, callback: {(): void}) {
@@ -42,13 +52,13 @@ function Invoke(ctx: IThreadContext, callback: {(): void}) {
     ctx.workEndNode = parent;
 }
 
-function DoWork(ctx: IThreadContext, workEndTime = Date.now() + workTimeMs) {
+function DoWork(ctx: IThreadContext, deadline = createDeadline()) {
     var parentContext = threadContext;
     threadContext = ctx;
 
     var async = ctx.async;
     var callback: {(): void};
-    while(async === ctx.async && Date.now() < workEndTime && (callback = List.Pop(ctx.workList)))
+    while(async === ctx.async && deadline.timeRemaining() > 0 && (callback = List.Pop(ctx.workList)))
         Invoke(ctx, callback);
 
     if(ctx.workList.size > 0)
@@ -78,13 +88,12 @@ function ScheduleCallback(callback: {(): void}, before: boolean, async: boolean)
 }
 
 function SynchWithoutThread(callback: {(): void}) {
-    var workEndTime = Date.now() + workTimeMs;
     callback();
     if(threadContext)
         if(threadContext.async)
             ScheduleWork(threadContext);
         else
-            DoWork(threadContext, workEndTime);
+            DoWork(threadContext);
 
     threadContext = null;
 }
