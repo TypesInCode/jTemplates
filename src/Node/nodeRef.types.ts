@@ -12,7 +12,7 @@ export interface INodeRefBase {
     nodeNamespace: string;
     injector: Injector;
     parent: INodeRefBase;
-    childNodes: Set<INodeRefBase>;
+    childNodes: INodeRefBase[] | Set<INodeRefBase>;
     destroyed: boolean;
     // destroyables: IDestroyable[];
 }

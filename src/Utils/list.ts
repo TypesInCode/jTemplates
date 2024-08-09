@@ -27,7 +27,7 @@ export namespace List {
     }
 
     export function Push<T>(list: IList<T>, data: T) {
-        var node: INode<T> = { previous: null, next: null, data: data };
+        const node: INode<T> = { previous: null, next: null, data: data };
         if(list.size === 0) {
             list.head = node;
             list.tail = node;
@@ -47,7 +47,7 @@ export namespace List {
         if(list.size === 0)
             return null;
 
-        var node = list.head;
+        const node = list.head;
         list.head = node.next;
         if(list.head)
             list.head.previous = null;
@@ -84,8 +84,8 @@ export namespace List {
         if(!node)
             return List.Add<T>(list, data);
 
-        var newNode: INode<T> = { previous: null, next: null, data: data };
-        var prevNode = node.previous;
+        const newNode: INode<T> = { previous: null, next: null, data: data };
+        const prevNode = node.previous;
         newNode.next = node;
         node.previous = newNode;
 
@@ -105,8 +105,8 @@ export namespace List {
         if(!node)
             return List.Push<T>(list, data);
         
-        var newNode: INode<T> = { previous: null, next: null, data: data };
-        var nextNode = node.next;
+        const newNode: INode<T> = { previous: null, next: null, data: data };
+        const nextNode = node.next;
         node.next = newNode;
         newNode.previous = node;
 
@@ -159,7 +159,7 @@ export namespace List {
     }
 
     export function ForEach<T>(list: IList<T>, callback: {(value: T): void}) {
-        var node = list.head;
+        let node = list.head;
         while(node) {
             callback(node.data);
             node = node.next;

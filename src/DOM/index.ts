@@ -1,3 +1,4 @@
 export * from "./elements";
 export * from "./svgElements";
-export * from "./utils";
+export * from "./createPropertyAssignment";
+export * from "./createEventAssignment";

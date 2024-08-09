@@ -47,12 +47,12 @@ function DefaultAssignment(target: any, writeTo: any, next: any, prop: string) {
     const value = next[prop];
     writeTo[prop] ??= JsonType(value) === 'value' ?
         AssignProp(target, prop) : 
-        CreateAssignment(target[prop], false);
+        CreatePropertyAssignment(target[prop], false);
 
     writeTo[prop](value);
 }
 
-export function CreateAssignment(target: any, root = true) {
+export function CreatePropertyAssignment(target: any, root = true) {
     const writeTo: any = {};
     return function AssignNext(next: any) {
         const keys = Object.keys(next);

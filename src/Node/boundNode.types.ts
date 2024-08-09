@@ -26,11 +26,10 @@ export interface BoundNodeFunctionParam {
 
 export interface IBoundNodeBase extends INodeRefBase {
     nodeDef: BoundNodeFunctionParam;
-    lastEvents: {[name: string]: any};
-
     scopes: IObservableScope<unknown>[];
     setProperties: boolean;
     assignProperties: {(next: any): void};
+    assignEvents: {(next: {[event: string]: (event: Event) => void }): void};
     setAttributes: boolean;
     setEvents: boolean;
 }

@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "5.0.51",
+  "version": "5.0.52",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -39,9 +39,9 @@
     "typedoc": "^0.25.3",
     "typedoc-plugin-markdown": "^3.17.1",
     "typedocs": "^0.6.7",
-    "typescript": "^5.2.2",
+    "typescript": "^5.5.3",
     "uglifyjs-webpack-plugin": "^1.2.4",
-    "webpack": "^5.75.0",
+    "webpack": "^5.92.1",
     "webpack-cli": "^3.3.11"
   },
   "engines": {

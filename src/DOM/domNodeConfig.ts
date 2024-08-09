@@ -1,8 +1,8 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
-import { CreateAssignment, CreateNodeValueAssignment } from './utils';
-// import { Synch } from '../Utils/thread';
+import { CreatePropertyAssignment, CreateNodeValueAssignment } from './createPropertyAssignment';
+import { CreateEventAssignment } from './createEventAssignment';
 
 let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
@@ -89,7 +89,10 @@ export const DOMNodeConfig: INodeConfig = {
         if(target.nodeType === Node.TEXT_NODE)
             return CreateNodeValueAssignment(target);
 
-        return CreateAssignment(target);
+        return CreatePropertyAssignment(target);
+    },
+    createEventAssignment(target: HTMLElement) {
+        return CreateEventAssignment(target);
     },
     fireEvent(target: HTMLElement, event: string, data: any) {
         var cEvent = new CustomEvent(event, data);

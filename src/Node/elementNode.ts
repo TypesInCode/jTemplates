@@ -24,6 +24,7 @@ export namespace ElementNode {
 
             if(nodeDef.data) {
                 const dataScope = ObservableScope.Create(nodeDef.data);
+                elementNode.childNodes = new Set();
                 elementNode.scopes ??= [];
                 elementNode.scopes.push(dataScope);
 
@@ -32,12 +33,6 @@ export namespace ElementNode {
                 });
 
                 SetData(elementNode, GetValue(dataScope), true);
-
-                /* elementNode.destroyables.push({
-                    Destroy: function() {
-                        ObservableScope.Destroy(dataScope);
-                    }
-                }); */
             }
             else
                 SetDefaultData(elementNode);
@@ -153,22 +148,16 @@ function ReconcileNodeData<T>(node: IElementNodeBase<T>, values: T[]) {
     if(currentNodeList) {
         let curDetach = currentNodeList.head;
         while(curDetach) {
-            NodeRef.DestroyAll(curDetach.data.nodes);
-            for(let x=0; x<curDetach.data.nodes.length; x++)
-                node.childNodes.delete(curDetach.data.nodes[x]);
-
+            const data = curDetach.data;
             curDetach = curDetach.next;
+
+            for(let x=0; x<data.nodes.length; x++)
+                (node.childNodes as Set<NodeRefTypes>).delete(data.nodes[x]);
+
+            NodeRef.DestroyAll(data.nodes);
         }
         List.Clear(currentNodeList);
     }
-
-    /* let curAttach = nextNodeList.head;
-    while(curAttach) {
-        for(let x=0; x<curAttach.data.nodes.length; x++)
-            node.childNodes.add(curAttach.data.nodes[x]);
-
-        curAttach = curAttach.next;
-    } */
 
     node.nodeList = nextNodeList;
 }
@@ -178,12 +167,12 @@ function SetData<T>(node: IElementNodeBase<T>, values: T[], init = false) {
         ReconcileNodeData(node, values);
 
         const attachNodes = node.nodeList;
-        const startSize = attachNodes.size;
-        Thread(function() {
+        const startSize = attachNodes.size;        
+        Thread(function(async) {
             if(node.destroyed)
                 return;
 
-            if(init)
+            if(init || !async)
                 NodeRef.ReconcileChildren(node, attachNodes);              
             else
                 NodeConfig.scheduleUpdate(function() {

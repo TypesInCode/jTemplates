@@ -189,8 +189,7 @@ function ObjectProxyGetter(object: unknown, prop: string | symbol) {
                 return object;
             }
         default: {
-            const data = ObservableScope.Value(scope) as any;
-            const proxyValue = data[prop];
+            const proxyValue = (object as any)[prop];
 
             if(typeof prop === 'symbol')
                 return proxyValue;

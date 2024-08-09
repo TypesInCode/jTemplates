@@ -10,7 +10,6 @@ export namespace BoundNode {
             const scope = ObservableScope.Create(nodeDef.props);
             boundNode.scopes ??= [];
             boundNode.scopes.push(scope);
-            // boundNode.destroyables.push(CreateScopeDestroyable(scope));
             boundNode.assignProperties = NodeConfig.createPropertyAssignment(boundNode.node);
             ObservableScope.Watch(scope, function(scope) { ScheduleSetProperties(boundNode, scope) });
             const next = ObservableScope.Value(scope);
@@ -19,7 +18,6 @@ export namespace BoundNode {
 
         if(nodeDef.attrs) {
             const scope = ObservableScope.Create(nodeDef.attrs);
-            // boundNode.destroyables.push(CreateScopeDestroyable(scope));
             boundNode.scopes ??= [];
             boundNode.scopes.push(scope);
 
@@ -29,31 +27,17 @@ export namespace BoundNode {
 
         if(nodeDef.on) {
             const scope = ObservableScope.Create(nodeDef.on);
-            // boundNode.destroyables.push(CreateScopeDestroyable(scope));
             boundNode.scopes ??= [];
             boundNode.scopes.push(scope);
 
-            ObservableScope.Watch(scope, function(scope) { ScheduleSetEvents(boundNode, scope) });
-            SetEvents(boundNode, ObservableScope.Value(scope));
-        }
+            boundNode.assignEvents = NodeConfig.createEventAssignment(boundNode.node);
 
-        /* if(scopes.length > 0)
-            boundNode.destroyables.push({
-                Destroy() {
-                    for(let x=0; x<scopes.length; x++)
-                        ObservableScope.Destroy(scopes[x]);
-                }
-            }) */
+            ObservableScope.Watch(scope, function(scope) { ScheduleSetEvents(boundNode, scope) });
+            const next = ObservableScope.Value(scope);
+            boundNode.assignEvents(next);
+        }
     }
 }
-
-/* function CreateScopeDestroyable(scope: IObservableScope<unknown>) {
-    return {
-        Destroy() {
-            ObservableScope.Destroy(scope);
-        }
-    };
-} */
 
 function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: any}>) {
     if(node.setProperties)
@@ -105,19 +89,7 @@ function ScheduleSetEvents(node: IBoundNodeBase, scope: IObservableScope<{[name:
         if(node.destroyed)
             return;
         
-        SetEvents(node, ObservableScope.Value(scope));
+        const next = ObservableScope.Value(scope);
+        node.assignEvents(next);
     });
-}
-
-function SetEvents(node: IBoundNodeBase, events: { [name: string]: (...args: any[]) => void; }) {
-    if(!events)
-        return;
-
-    for(var key in node.lastEvents)
-        NodeConfig.removeListener(node.node, key, node.lastEvents[key]);
-
-    for(var key in events)
-        NodeConfig.addListener(node.node, key, events[key]);
-
-    node.lastEvents = events;
 }

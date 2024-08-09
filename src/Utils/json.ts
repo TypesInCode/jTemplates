@@ -3,11 +3,11 @@ const jsonProto = Object.getPrototypeOf({});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function JsonType(value: any) {
-  if (!value) return 'value';
-
-  if (jsonProto === Object.getPrototypeOf(value)) return 'object';
+  if (value === null || value === undefined) return 'value';
 
   if (Array.isArray(value)) return 'array';
+
+  if (jsonProto === Object.getPrototypeOf(value)) return 'object';
 
   return 'value';
 }

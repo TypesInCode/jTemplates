@@ -38,7 +38,6 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false
-                    // destroyables: []
                 } as INodeRef;
             case NodeRefType.BoundNode:
                 return {
@@ -51,10 +50,10 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    // destroyables: [],
                     lastEvents: null,
                     setProperties: false,
                     assignProperties: null,
+                    assignEvents: null,
                     setAttributes: false,
                     setEvents: false,
                     scopes: null
@@ -70,10 +69,10 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    // destroyables: [],
                     lastEvents: null,
                     setProperties: false,
                     assignProperties: null,
+                    assignEvents: null,
                     setAttributes: false,
                     setEvents: false,
                     childrenFunc: null,
@@ -92,10 +91,9 @@ export namespace NodeRef {
                     parent: null,
                     childNodes: null,
                     destroyed: false,
-                    // destroyables: [],
-                    lastEvents: null,
                     setProperties: false,
                     assignProperties: null,
+                    assignEvents: null,
                     setAttributes: false,
                     setEvents: false,
                     component: null,
@@ -110,7 +108,7 @@ export namespace NodeRef {
             return;
 
         nodeRef.node = nodeRef.nodeType === 'text' ? NodeConfig.createTextNode() : NodeConfig.createNode(nodeRef.nodeType, nodeRef.nodeNamespace);
-        nodeRef.childNodes = new Set();
+        nodeRef.childNodes = nodeRef.nodeType !== 'text' ? [] : null;
 
         switch(nodeRef.type) {
             case NodeRefType.BoundNode:
@@ -125,17 +123,24 @@ export namespace NodeRef {
         }
     }
 
+    function AddChildToNode(parentNode: INodeRefBase, child: INodeRefBase) {
+        if(Array.isArray(parentNode.childNodes))
+            parentNode.childNodes.push(child);
+        else
+            parentNode.childNodes.add(child);
+    }
+
     export function InitAll(parentNode: NodeRefTypes, nodeRefs: Array<NodeRefTypes>) {
         for(var x=0; x<nodeRefs.length; x++) {
             nodeRefs[x].parent = parentNode;
-            parentNode.childNodes.add(nodeRefs[x]);
+            AddChildToNode(parentNode, nodeRefs[x]);
             Init(nodeRefs[x]);
         }
     }
 
     export function AddChild(node: INodeRefBase, child: INodeRefBase) {
         child.parent = node;
-        node.childNodes.add(child);
+        AddChildToNode(node, child);
         NodeConfig.addChild(node.node, child.node);
     }
 
@@ -144,7 +149,7 @@ export namespace NodeRef {
             throw "currentChild is not valid";
 
         newChild.parent = node;
-        node.childNodes.add(newChild);
+        AddChildToNode(node, newChild);
         NodeConfig.addChildAfter(node.node, currentChild && currentChild.node, newChild.node);
     }
 
@@ -160,6 +165,7 @@ export namespace NodeRef {
         let curDataNode = nextChildren?.head;
         let insert = false;
         let remove = false;
+
         while(curDataNode) {
             for(let x=0; x<curDataNode.data.nodes.length; x++) {
                 const actualNode = priorNode ? NodeConfig.getNextSibling(priorNode) : NodeConfig.getFirstChild(rootNode);
@@ -188,15 +194,10 @@ export namespace NodeRef {
             NodeConfig.removeChild(rootNode, lastChild);
             lastChild = NodeConfig.getLastChild(rootNode);
         }
-        /* let remainingSibling = priorNode && NodeConfig.getNextSibling(priorNode);
-        while(remainingSibling) {
-            NodeConfig.removeChild(rootNode, remainingSibling);
-            remainingSibling = NodeConfig.getNextSibling(priorNode);
-        } */
     }
 
     export function DetachChild(node: INodeRefBase, child: INodeRefBase) {
-        if(node.childNodes.delete(child)) {
+        if(!Array.isArray(node.childNodes) && node.childNodes.delete(child)) {
             NodeConfig.removeChild(node.node, child.node);
             child.parent = null;
         }
@@ -207,13 +208,17 @@ export namespace NodeRef {
             return;
 
         node.destroyed = true;
-        node.childNodes?.forEach(Destroy);
+        if(Array.isArray(node.childNodes))
+            for(let x=0; x<node.childNodes.length; x++)
+                Destroy(node.childNodes[x] as NodeRefTypes);
+        else
+            node.childNodes?.forEach(Destroy);
+
         switch(node.type) {
             case NodeRefType.ComponentNode:
                 node.component?.Destroy();
             case NodeRefType.ElementNode:
-                for(let key in node.lastEvents)
-                    NodeConfig.removeListener(node.node, key, node.lastEvents[key]);
+                node.assignEvents?.(null);
             case NodeRefType.BoundNode:
                 for(let x=0; node.scopes && x<node.scopes.length; x++)
                     ObservableScope.Destroy(node.scopes[x]);

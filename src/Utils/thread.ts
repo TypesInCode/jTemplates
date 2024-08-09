@@ -1,9 +1,11 @@
 import { IList, INode, List } from "./list";
 
+type ThreadCallback = {(async: boolean): void};
+
 interface IThreadContext {
     async: boolean;
-    workEndNode: INode<{(): void}>;
-    workList: IList<{(): void}>;
+    workEndNode: INode<ThreadCallback>;
+    workList: IList<ThreadCallback>;
 }
 
 const workTimeMs = 16;
@@ -11,7 +13,8 @@ const contextQueue: IList<IThreadContext> = List.Create();
 
 let threadContext: IThreadContext = null;
 let timeoutRunning = false;
-const scheduleCallback = typeof requestIdleCallback === 'undefined' ? setTimeout : requestIdleCallback;
+// const scheduleCallback = typeof requestIdleCallback === 'undefined' ? setTimeout : requestIdleCallback;
+const scheduleCallback = setTimeout;
 
 function timeRemaining(this: { end: number }) {
     return this.end - Date.now();
@@ -45,19 +48,19 @@ function ScheduleWork(ctx: IThreadContext) {
     scheduleCallback(ProcessQueue);
 }
 
-function Invoke(ctx: IThreadContext, callback: {(): void}) {
-    var parent = ctx.workEndNode;
+function Invoke(ctx: IThreadContext, callback: ThreadCallback) {
+    const parent = ctx.workEndNode;
     ctx.workEndNode = ctx.workList.head;
-    callback();
+    callback(true);
     ctx.workEndNode = parent;
 }
 
 function DoWork(ctx: IThreadContext, deadline = createDeadline()) {
-    var parentContext = threadContext;
+    const parentContext = threadContext;
     threadContext = ctx;
 
-    var async = ctx.async;
-    var callback: {(): void};
+    const async = ctx.async;
+    let callback: ThreadCallback;
     while(async === ctx.async && deadline.timeRemaining() > 0 && (callback = List.Pop(ctx.workList)))
         Invoke(ctx, callback);
 
@@ -75,7 +78,7 @@ function CreateContext(): IThreadContext {
     };
 }
 
-function ScheduleCallback(callback: {(): void}, before: boolean, async: boolean) {
+function ScheduleCallback(callback: ThreadCallback, before: boolean, async: boolean) {
     threadContext = threadContext || CreateContext();
     threadContext.async = threadContext.async || async;
 
@@ -87,8 +90,8 @@ function ScheduleCallback(callback: {(): void}, before: boolean, async: boolean)
         threadContext.workEndNode = List.Add(threadContext.workList, callback);
 }
 
-function SynchWithoutThread(callback: {(): void}) {
-    callback();
+function SynchWithoutThread(callback: ThreadCallback) {
+    callback(false);
     if(threadContext)
         if(threadContext.async)
             ScheduleWork(threadContext);
@@ -98,11 +101,11 @@ function SynchWithoutThread(callback: {(): void}) {
     threadContext = null;
 }
 
-export function Schedule(callback: {(): void}) {
+export function Schedule(callback: ThreadCallback) {
     ScheduleCallback(callback, true, true);
 }
 
-export function After(callback: {(): void}) {
+export function After(callback: ThreadCallback) {
     ScheduleCallback(callback, false, false);
 }
 
@@ -113,9 +116,9 @@ export function Callback<A = void, B = void, C = void, D = void>(callback: (a: A
 }
 
 var inSynchCallback = false;
-export function Synch(callback: {(): void}) {
+export function Synch(callback: ThreadCallback) {
     if(threadContext || inSynchCallback)
-        callback();
+        callback(false);
     else {
         inSynchCallback = true;
         SynchWithoutThread(callback);
@@ -123,17 +126,17 @@ export function Synch(callback: {(): void}) {
     }
 }
 
-export function Thread(callback: {(): void}) {
+export function Thread(callback: ThreadCallback) {
     if(threadContext)
         ScheduleCallback(callback, true, false);
     else
         Synch(callback);
 }
 
-export function ThreadAsync(callback: {(): void}) {
-    return new Promise<void>(resolve => 
-        Thread(function() {
-            callback();
+export function ThreadAsync(callback: ThreadCallback) {
+    return new Promise<boolean>(resolve => 
+        Thread(function(async) {
+            callback(async);
             Thread(resolve);
         })
     );
