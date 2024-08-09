@@ -39,7 +39,7 @@ function CreateValueAssignment(target: HTMLInputElement) {
 }
 
 function ValueAssignment(target: any, writeTo: any, next: any) {
-    writeTo.value ??= CreateValueAssignment(target);
+    writeTo.value ??= target.nodeName === 'INPUT' ? CreateValueAssignment(target) : AssignProp(target, 'value');
     writeTo.value(next.value);
 }
 
