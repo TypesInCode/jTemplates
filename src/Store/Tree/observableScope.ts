@@ -1,3 +1,4 @@
+import { RemoveNulls } from "../../Utils/array";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IDestroyable } from "../../Utils/utils.types";
 
@@ -58,7 +59,7 @@ export interface IObservableScope<T> extends IDestroyable {
   value: T;
   dirty: boolean;
   emitter: Emitter;
-  emitters: Set<Emitter>;
+  emitters: (Emitter | null)[];
   setCallback: EmitterCallback;
   destroyed: boolean;
   dependencies?: IObservableScope<unknown>[];
@@ -96,7 +97,7 @@ export namespace ObservableScope {
         : false,
       dirty: hasFunction,
       emitter: hasFunction ? Emitter.Create() : null,
-      emitters: null,
+      emitters: [],
       destroyed: false,
       setCallback: hasFunction
         ? function () {
@@ -197,7 +198,8 @@ function DestroyScope(scope: IObservableScope<any>) {
         Emitter.Remove(e, scope.setCallback)
     ); */
 
-  scope.emitters && scope.emitters.clear();
+  // scope.emitters && scope.emitters.clear();
+  scope.emitters = null;
   scope.emitter && Emitter.Clear(scope.emitter); //.clear();
   scope.getFunction = null;
   scope.setCallback = null;
@@ -206,15 +208,40 @@ function DestroyScope(scope: IObservableScope<any>) {
 
 function UpdateEmitters<T>(
   scope: IObservableScope<T>,
-  newEmitters?: Set<Emitter>,
+  newEmitters: Set<Emitter> | null,
 ) {
+  if (newEmitters === null) {
+    for (let x = 0; x < scope.emitters.length; x++)
+      Emitter.Remove(scope.emitters[x], scope.setCallback);
+
+    scope.emitters = [];
+    return;
+  }
+
+  let removed = false;
+  for (let x = 0; x < scope.emitters.length; x++) {
+    if (!newEmitters.delete(scope.emitters[x])) {
+      Emitter.Remove(scope.emitters[x], scope.setCallback);
+      scope.emitters[x] = null;
+      removed = true;
+    }
+  }
+
+  const initLength = scope.emitters.length;
+  scope.emitters.push(...newEmitters);
+  for (let x = initLength; x < scope.emitters.length; x++)
+    Emitter.On(scope.emitters[x], scope.setCallback);
+
+  removed && RemoveNulls(scope.emitters);
+  // removed && RemoveNulls(scope.emitters);
+
   /* const lastEmitters = scope.emitters && newEmitters ? scope.emitters.difference(newEmitters) : scope.emitters;
     lastEmitters?.forEach((e: Emitter) => Emitter.Remove(e, scope.setCallback));
 
     const nextEmitters = scope.emitters && newEmitters ? newEmitters.difference(scope.emitters) : newEmitters;
     nextEmitters?.forEach((e: Emitter) => Emitter.On(e, scope.setCallback)); */
 
-  if (newEmitters) {
+  /* if (newEmitters) {
     newEmitters.forEach((e) => {
       if (!scope.emitters?.delete(e)) Emitter.On(e, scope.setCallback);
     });
@@ -223,5 +250,5 @@ function UpdateEmitters<T>(
   if (scope.emitters)
     scope.emitters.forEach((e) => Emitter.Remove(e, scope.setCallback));
 
-  scope.emitters = newEmitters;
+    scope.emitters = newEmitters; */
 }
