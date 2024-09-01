@@ -3,15 +3,22 @@ export function RemoveNulls(array: (unknown | null)[], startIndex = 0) {
   for (; nullIndex < array.length && array[nullIndex] !== null; nullIndex++) {}
   let notNullIndex = nullIndex + 1;
 
+  for (
+    ;
+    notNullIndex < array.length && array[notNullIndex] === null;
+    notNullIndex++
+  ) {}
+
   while (notNullIndex < array.length) {
+    array[nullIndex] = array[notNullIndex];
+    nullIndex++;
+    notNullIndex++;
+
     for (
       ;
       notNullIndex < array.length && array[notNullIndex] === null;
       notNullIndex++
     ) {}
-    array[nullIndex] = array[notNullIndex];
-    nullIndex++;
-    notNullIndex++;
   }
 
   array.splice(nullIndex);
