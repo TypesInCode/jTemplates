@@ -1,32 +1,41 @@
-export type EmitterCallback<T extends readonly any[] = any[]> = (...args: T) => boolean | void;
-export type Emitter = Set<EmitterCallback>;
+import { RemoveNulls } from "./array";
+
+export type EmitterCallback<T extends readonly any[] = any[]> = (
+  ...args: T
+) => boolean | void;
+export type Emitter = Array<EmitterCallback>; // Set<EmitterCallback>;
 
 export namespace Emitter {
+  export function Create(): Emitter {
+    return [];
+  }
 
-    export function Create(): Emitter {
-        return new Set();
+  export function On(emitter: Emitter, callback: EmitterCallback) {
+    emitter.push(callback);
+  }
+
+  export function Emit(emitter: Emitter, ...args: any[]) {
+    let removed = false;
+    for (let x = 0; x < emitter.length; x++) {
+      const result = emitter[x]?.(...args);
+      if (result === true) {
+        removed = true;
+        emitter[x] = null;
+      }
     }
 
-    export function On(emitter: Emitter, callback: EmitterCallback) {
-        emitter.add(callback);
+    if (removed) RemoveNulls(emitter);
+  }
+
+  export function Remove(emitter: Emitter, callback: EmitterCallback) {
+    const index = emitter.indexOf(callback);
+    if (index >= 0) {
+      emitter[index] = null;
+      RemoveNulls(emitter, index);
     }
+  }
 
-    export function Emit(emitter: Emitter, ...args: any[]) {
-        let cleanup: EmitterCallback[];
-        emitter.forEach(function(cb) {
-            const result = cb(...args);
-            if(result === true) {
-                cleanup ??= [];
-                cleanup.push(cb);
-            }
-        });
-
-        for(let x=0; cleanup !== undefined && x<cleanup.length; x++)
-            Remove(emitter, cleanup[x]);
-    }
-
-    export function Remove(emitter: Emitter, callback: EmitterCallback) {
-        emitter.delete(callback);
-    }
-
+  export function Clear(emitter: Emitter) {
+    emitter.splice(0);
+  }
 }

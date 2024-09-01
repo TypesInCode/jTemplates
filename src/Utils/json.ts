@@ -1,140 +1,177 @@
-export type JsonDiffResult<T = unknown> = { path: (string | number)[]; value: unknown }[];
-const jsonProto = Object.getPrototypeOf({});
+export type JsonDiffResult<T = unknown> = {
+  path: (string | number)[];
+  value: unknown;
+}[];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function JsonType(value: any) {
-  if (value === null || value === undefined) return 'value';
+export type JsonDiffFactoryResult = ReturnType<typeof JsonDiffFactory>;
 
-  if (Array.isArray(value)) return 'array';
+export function ApplyDiff(root: any, diffResult: JsonDiffResult) {
+  const pathTuples: [string | number, unknown][] = [["", root]];
+  for (let x = 0; x < diffResult.length; x++) {
+    const { path, value } = diffResult[x];
 
-  if (jsonProto === Object.getPrototypeOf(value)) return 'object';
+    let y = 0;
+    for (; y < path.length - 1; y++) {
+      const property = path[y];
+      const value = pathTuples[y][1];
 
-  return 'value';
-}
+      const tupleIndex = y + 1;
+      if (pathTuples.length <= tupleIndex)
+        pathTuples.push([property, (value as any)[property]]);
+      else if (pathTuples[tupleIndex][0] !== property) {
+        pathTuples[tupleIndex][0] = property;
+        pathTuples[tupleIndex][1] = (value as any)[property];
 
-export function JsonDeepClone<T>(value: T): T {
-  const type = JsonType(value);
-  switch (type) {
-    case 'array':
-      return (value as unknown as unknown[]).map(JsonDeepClone) as unknown as T;
-    case 'object': {
-      const ret = {} as T;
-      const keys = Object.keys(value as unknown as object) as (keyof T)[];
-      for (let x = 0; x < keys.length; x++)
-        ret[keys[x]] = JsonDeepClone(value[keys[x]]);
-
-      return ret;
-    }
-    default:
-      return value;
-  }
-}
-
-export function JsonDiff<T>(newValue: T, oldValue: T): JsonDiffResult<T> {
-  const result: JsonDiffResult<T> = [];
-  JsonDiffRecursive([], newValue, oldValue, result);
-  return result;
-}
-
-function JsonDiffRecursive(
-  path: (string | number)[],
-  newValue: any,
-  oldValue: any,
-  resp: JsonDiffResult<unknown>
-): boolean {
-  if (newValue === oldValue) return false;
-
-  const newType = JsonType(newValue);
-  const oldType = JsonType(oldValue);
-
-  const changedPathLength = resp.length;
-  let allChildrenChanged = true;
-
-  if (newType === oldType)
-    switch (newType) {
-      case 'array': {
-        allChildrenChanged = JsonDiffArrays(path, newValue, oldValue, resp);
-        break;
-      }
-      case 'object': {
-        allChildrenChanged = JsonDiffObjects(path, newValue, oldValue, resp);
-        break;
+        const next = tupleIndex + 1;
+        if (next < pathTuples.length) pathTuples[next][0] = null;
       }
     }
 
-  if (allChildrenChanged) {
-    resp.splice(changedPathLength);
-    resp.push({
-      // path: path.split('.').filter(path => !!path),
-      path,
-      value: newValue
-    });
-    return true;
+    const assignValue = pathTuples[y][1];
+    (assignValue as any)[path[y]] = value;
+  }
+}
+
+export function JsonDiffFactory() {
+  const jsonProto = Object.getPrototypeOf({});
+
+  function JsonType(value: any) {
+    if (value === null || value === undefined) return "value";
+
+    if (Array.isArray(value)) return "array";
+
+    if (jsonProto === Object.getPrototypeOf(value)) return "object";
+
+    return "value";
   }
 
-  return false;
-}
+  function JsonDiff<T>(
+    newValue: T,
+    oldValue: T,
+    rootPath?: string,
+    initResult?: JsonDiffResult<T>,
+  ): JsonDiffResult<T> {
+    const result: JsonDiffResult<T> = initResult ?? [];
+    const startPath = rootPath ? rootPath.split(".") : [];
+    JsonDiffRecursive(startPath, newValue, oldValue, result);
+    return result;
+  }
 
-function JsonDiffArrays(
-  path: (string | number)[],
-  newValue: any[],
-  oldValue: any[],
-  resp: JsonDiffResult<unknown>
-) {
-  let allChildrenChanged = true;
+  function JsonDiffRecursive(
+    path: (string | number)[],
+    newValue: any,
+    oldValue: any,
+    resp: JsonDiffResult<unknown>,
+  ): boolean {
+    if (newValue === oldValue) return false;
 
-  if (newValue.length !== oldValue.length)
-    resp.push({
-      path: path.concat('length'),
-      value: newValue.length
-    });
+    const newType = JsonType(newValue);
+    const oldType = JsonType(oldValue);
 
-  if (newValue.length > 0 || oldValue.length > 0) {
-    for (let y = 0; y < newValue.length; y++) {
-      const arrayPath = path.concat(y);
-      const oldValueElem = oldValue[y];
-      allChildrenChanged = JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) && allChildrenChanged;
-    }
-  } else allChildrenChanged = false;
+    const changedPathLength = resp.length;
+    let allChildrenChanged = true;
 
-  return allChildrenChanged;
-}
+    if (newType === oldType)
+      switch (newType) {
+        case "array": {
+          allChildrenChanged = JsonDiffArrays(path, newValue, oldValue, resp);
+          break;
+        }
+        case "object": {
+          allChildrenChanged = JsonDiffObjects(path, newValue, oldValue, resp);
+          break;
+        }
+      }
 
-function JsonDiffObjects(
-  path: (string | number)[],
-  newValue: { [key: string]: any },
-  oldValue: { [key: string]: any },
-  resp: JsonDiffResult<unknown>
-) {
-  const newKeys = Object.keys(newValue).sort();
-  const oldKeys = Object.keys(oldValue).sort();
-
-  if (newKeys.length === 0 && oldKeys.length === 0)
-    return false;
-
-  if(newKeys.length < oldKeys.length)
-    return true;
-
-  
-  let newKeyIndex = 0;
-  let oldKeyIndex = 0;
-  while (newKeyIndex < newKeys.length) {
-    const childPath = path.concat(newKeys[newKeyIndex]);
-    if (oldKeyIndex < oldKeys.length && newKeys[newKeyIndex] === oldKeys[oldKeyIndex]) {
-      JsonDiffRecursive(childPath, newValue[newKeys[newKeyIndex]], oldValue[oldKeys[oldKeyIndex]], resp);
-      oldKeyIndex++;
-    } else if (newValue[newKeys[newKeyIndex]] !== undefined) {
+    if (allChildrenChanged) {
+      resp.splice(changedPathLength);
       resp.push({
-        path: childPath,
-        value: newValue[newKeys[newKeyIndex]]
+        // path: path.split('.').filter(path => !!path),
+        path,
+        value: newValue,
       });
+      return true;
     }
 
-    newKeyIndex++;
+    return false;
   }
 
-  if (oldKeyIndex < oldKeys.length) 
-    return true;
+  function JsonDiffArrays(
+    path: (string | number)[],
+    newValue: any[],
+    oldValue: any[],
+    resp: JsonDiffResult<unknown>,
+  ) {
+    let allChildrenChanged = true;
 
-  return false;
+    if (newValue.length !== oldValue.length)
+      resp.push({
+        path: path.concat("length"),
+        value: newValue.length,
+      });
+
+    if (newValue.length > 0 || oldValue.length > 0) {
+      for (let y = 0; y < newValue.length; y++) {
+        const arrayPath = path.concat(y);
+        const oldValueElem = oldValue[y];
+        allChildrenChanged =
+          JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) &&
+          allChildrenChanged;
+      }
+    } else allChildrenChanged = false;
+
+    return allChildrenChanged;
+  }
+
+  function JsonDiffObjects(
+    path: (string | number)[],
+    newValue: { [key: string]: any },
+    oldValue: { [key: string]: any },
+    resp: JsonDiffResult<unknown>,
+  ) {
+    const newKeys = Object.keys(newValue).sort();
+    const oldKeys = Object.keys(oldValue).sort();
+
+    if (newKeys.length === 0 && oldKeys.length === 0) return false;
+
+    if (newKeys.length < oldKeys.length) return true;
+
+    let newKeyIndex = 0;
+    let oldKeyIndex = 0;
+    while (newKeyIndex < newKeys.length) {
+      const childPath = path.concat(newKeys[newKeyIndex]);
+      if (
+        oldKeyIndex < oldKeys.length &&
+        newKeys[newKeyIndex] === oldKeys[oldKeyIndex]
+      ) {
+        JsonDiffRecursive(
+          childPath,
+          newValue[newKeys[newKeyIndex]],
+          oldValue[oldKeys[oldKeyIndex]],
+          resp,
+        );
+        oldKeyIndex++;
+      } else if (newValue[newKeys[newKeyIndex]] !== undefined) {
+        resp.push({
+          path: childPath,
+          value: newValue[newKeys[newKeyIndex]],
+        });
+      }
+
+      newKeyIndex++;
+    }
+
+    if (oldKeyIndex < oldKeys.length) return true;
+
+    return false;
+  }
+
+  return {
+    JsonType,
+    JsonDiff,
+  };
 }
+
+const defaultJsonDiff = JsonDiffFactory();
+export const JsonDiff = defaultJsonDiff.JsonDiff;
+export const JsonType = defaultJsonDiff.JsonType;
