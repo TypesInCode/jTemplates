@@ -96,7 +96,7 @@ export function StateAsync(defaultValue: any, keyFunc?: (val: any) => string) {
   return StateAsyncDecorator.bind(null, defaultValue, keyFunc ?? defaultKeyFunc);
 }
 
-export function StateAsyncDecorator<
+function StateAsyncDecorator<
   T extends Component<any, any, any>,
   K extends string,
 >(
