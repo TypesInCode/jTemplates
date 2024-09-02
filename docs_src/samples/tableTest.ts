@@ -1,6 +1,6 @@
 import { Component } from 'j-templates';
 import { table, tr, th, td, select, option, span, div, button, style } from 'j-templates/DOM';
-import { State, Scope } from 'j-templates/Utils';
+import { State, Scope, StateAsync, Value } from 'j-templates/Utils';
 
 const data = [
     "ABAMPERES",
@@ -59,26 +59,30 @@ function GenerateData() {
 
 class RootComponent extends Component {
 
-    @State()
-    state: Partial<{ filter: string, sort: string, data: Array<IData>, hidden: Array<string> }> = { 
-        filter: null,
-      	sort: null,
-      	hidden: [],
-        data: GenerateData() 
-    };
+    @StateAsync([])
+    data = GenerateData();
+
+    @Value()
+    filter: string | null = null;
+
+    @Value()
+    sort: string | null = null;
+
+    @Value()
+    hidden: string[] = [];
   
   	@Scope()
   	get hiddenColumns() {
-      	return new Set(this.state.hidden.slice());
+      	return new Set<string>(this.hidden);
     }
 
     @Scope()
     get visibleData() {
-        if(!this.state.filter || this.state.filter === "null")
-            return this.state.data;
+        if(!this.filter || this.filter === "null")
+            return this.data;
 
-        var filter = this.state.filter;
-        return this.state.data.filter(d => {
+        var filter = this.filter;
+        return this.data.filter(d => {
             var match = false;
             Reflect.ownKeys(d).forEach(key =>
                 match = match || d[key] === filter
@@ -90,11 +94,11 @@ class RootComponent extends Component {
   
   	@Scope()
   	get sortedData() {
-      	if(!this.state.sort)
+      	if(!this.sort)
           	return this.visibleData;
       
       	var data = this.visibleData.slice();
-      	var prop = this.state.sort;
+      	var prop = this.sort;
       	data.sort((a, b) => {
           	return a[prop] < b[prop] ? -1 : a[prop] === b[prop] ? 0 : 1;
         });
@@ -103,7 +107,7 @@ class RootComponent extends Component {
     }
   
   	VisibleColumns() {
-      	return () => Reflect.ownKeys(headers).filter((key: string) => !this.hiddenColumns.has(key));
+      	return () => Object.keys(headers).filter((key: string) => !this.hiddenColumns.has(key));
     }
 
     public Template() {
@@ -118,10 +122,10 @@ class RootComponent extends Component {
             select({ 
                 on: { 
                     change: (e: any) => {
-                        this.state = { filter: e.target.value };
+                        this.filter = e.target.value ;
                     }
                 },
-                props: () => ({ value: this.state.filter }),
+                props: () => ({ value: this.filter }),
                 data: () => [null, ...data, "Clear"]
             }, (val) => 
                 option({ props: { value: val } }, () => val || "None")
@@ -147,25 +151,27 @@ class RootComponent extends Component {
     }
 
     private RefreshData() {
-        this.state = { data: GenerateData() };
+        this.data = GenerateData();
     }
     
     private ToggleColumn(prop: string) {
+        var hidden = this.hidden;
       	if(this.hiddenColumns.has(prop)) {
-          	var hidden = this.state.hidden.slice();
           	var ind = hidden.indexOf(prop);
           	hidden.splice(ind, 1);
-          	this.state = { hidden: hidden };
+          	this.hidden = hidden;
         }
-      	else
-          	this.state = { hidden: [...this.state.hidden.slice(), prop] };
+      	else {
+            hidden.push(prop);
+          	this.hidden = hidden;
+        }
     }
   
   	private SortBy(prop: string) {
-      	if(this.state.sort === prop)
-          	this.state = { sort: null };
+      	if(this.sort === prop)
+          	this.sort = null;
       	else
-          	this.state = { sort: prop };
+          	this.sort = prop;
     }
 
 }
