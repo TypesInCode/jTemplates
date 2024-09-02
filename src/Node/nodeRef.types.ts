@@ -21,4 +21,4 @@ export interface INodeRef extends INodeRefBase {
     type: NodeRefType.NodeRef;
 }
 
-export type NodeRefTypes = INodeRef | IBoundNode | IElementNode<unknown> | IComponentNode<unknown, unknown, unknown>;
+export type NodeRefTypes = INodeRef | IBoundNode | IElementNode<any> | IComponentNode<any, any, any>;
