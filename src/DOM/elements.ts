@@ -85,6 +85,10 @@ export function table<T>(nodeDef: ElementNodeFunctionParam<T>, children?: Elemen
     return ElementNode.Create<T>("table", null, nodeDef, children);
 }
 
+export function tbody<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+    return ElementNode.Create<T>("tbody", null, nodeDef, children);
+}
+
 export function th<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
     return ElementNode.Create<T>("th", null, nodeDef, children);
 }
