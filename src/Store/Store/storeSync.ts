@@ -1,43 +1,61 @@
-// import { DiffSync } from "../Diff/diffSync";
-// import { ObservableTree } from "../Tree/observableTree";
-// import { StoreSyncWriter } from "./storeSyncWriter";
+import { JsonMerge } from "../../Utils/jsonMerge";
+import { DiffSync } from "../Diff/diffSync";
+import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
+import { Store } from "./store";
 
-// export class StoreSync<T> {
+export class StoreSync extends Store{
+  private diff: DiffSync;
 
-//     private diffSync: DiffSync = new DiffSync();
-//     private observableTree = new ObservableTree();
-//     private storeWriter = new StoreSyncWriter(this.diffSync, this.observableTree);
-//     private rootScope = this.observableTree.Scope<T, T>("ROOT", root => root);
+  constructor(keyFunc: (value: unknown) => string) {
+    super(keyFunc);
 
-//     public get Root() {
-//         return this.rootScope;
-//     }
+    this.diff = new DiffSync(keyFunc);
+  }
 
-//     constructor(init?: T) {
-//         if(init)
-//             this.Write(init);
-//     }
+  Write(data: unknown, key?: string) {
+    key = key || this.keyFunc(data);
 
-//     public Action(action: {(root: T, writer: StoreSyncWriter): void}) {
-//         var proxy = this.observableTree.Get<T>("ROOT");
-//         action(proxy, this.storeWriter);
-//     }
-    
-//     public Write(data: T) {
-//         this.Action((root, writer) => 
-//             writer.Write(root, data)
-//         );
-//     }
+    if(!key)
+      throw "No key provided for data";
 
-//     public Merge(data: Partial<T>) {
-//         this.Action((root, writer) => 
-//             writer.Merge(root, data)
-//         );
-//     }
+    const diffResult = this.diff.DiffPath(key, data);
 
-//     public Destroy() {
-//         this.rootScope.Destroy();
-//         // this.observableTree.Destroy();
-//     }
+    this.UpdateRootMap(diffResult);
+  }
 
-// }
+  Patch(key: string, patch: unknown) {
+    const value = this.Get(key);
+    if(value === undefined)
+      throw "Unable to patch undefined value";
+
+    const json = (value as any).toJSON();
+    const mergedJson = JsonMerge(json, patch);
+
+    const diffResult = this.diff.DiffPath(key, mergedJson);
+    this.UpdateRootMap(diffResult)
+  }
+
+  Push(key: string, ...data: unknown[]) {
+    const arr = this.Get(key) as any[];
+    const batch = data.map(function(d, i) {
+      return {
+        path: `${key}.${arr.length + i}`,
+        value: d
+      };
+    });
+
+    const diffResult = this.diff.DiffBatch(batch);
+    this.UpdateRootMap(diffResult);
+  }
+
+  Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]) {
+    const arr = this.Get(key) as any[];
+    const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
+    const arrCopy = arrValue.slice();
+
+    const spliceResult = arrCopy.splice(start, deleteCount, ...items);
+    const diffResult = this.diff.DiffPath(key, arrCopy);
+    this.UpdateRootMap(diffResult);
+    return spliceResult;
+  }
+}

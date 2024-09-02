@@ -1,4 +1,5 @@
 import { JsonDiffFactoryResult, JsonDiffResult } from "../../Utils/json";
+import { JsonType } from "../../Utils/jsonType";
 
 export interface IDiffMethod {
   method: "create" | "diffpath" | "diffbatch" | "updatepath" | "getpath";
@@ -169,7 +170,7 @@ export function DiffTreeFactory(
   }
 
   class DiffTree implements IDiffTree {
-    private rootState: { root: unknown } = { root: null };
+    private rootState: {} = {};
 
     constructor(private keyFunc?: { (val: any): string }) {}
 
@@ -181,12 +182,10 @@ export function DiffTreeFactory(
     }
 
     public DiffPath(path: string, value: any) {
-      path = (path && `root.${path}`) || "root";
       return UpdateSource(this.rootState, path, value, this.keyFunc);
     }
 
     public GetPath(path: string) {
-      path = (path && `root.${path}`) || "root";
       return GetPathValue(this.rootState, path);
     }
   }

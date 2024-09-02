@@ -1,55 +1,76 @@
-// import { ObservableTree } from "../Tree/observableTree";
-// import { DiffAsync } from "../Diff/diffAsync";
-// import { StoreAsyncWriter } from "./storeAsyncWriter";
-// import { AsyncQueue } from "../../Utils/asyncQueue";
+import { AsyncQueue } from "../../Utils/asyncQueue";
+import { JsonMerge } from "../../Utils/jsonMerge";
+import { DiffAsync } from "../Diff/diffAsync";
+import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
+import { Store } from "./store";
 
-// export class StoreAsync {
+export class StoreAsync extends Store {
+  private diff: DiffAsync;
+  private queue = new AsyncQueue();
 
-//     private idFunc: {(val: any): string};
-//     private diffAsync: DiffAsync;
-//     private observableTree: ObservableTree;
-//     private asyncWriter: StoreAsyncWriter;
-//     private asyncQueue: AsyncQueue;
+  constructor(keyFunc: (value: unknown) => string) {
+    super(keyFunc);
 
-//     constructor(idFunc: { (val: any): string }, init?: any) { 
-//         this.idFunc = idFunc;
-//         this.diffAsync = new DiffAsync(this.idFunc);
-//         this.observableTree = new ObservableTree(DiffAsync.ReadKeyRef);
-//         this.asyncWriter = new StoreAsyncWriter(this.idFunc, this.diffAsync, this.observableTree);
-//         this.asyncQueue = new AsyncQueue();
-//         if(init) {
-//             var id = this.idFunc(init);
-//             this.observableTree.Write(id, init);
-//             this.Write(init);
-//         }
-//     }
+    this.diff = new DiffAsync(keyFunc);
+  }
 
-//     public Scope<T, R>(id: string, func: {(val: T): R}) {
-//         return this.observableTree.Scope(id, func);
-//     }
+  async Write(data: unknown, key?: string) {
+    await this.queue.Next(async () => {
+      key = key || this.keyFunc(data);
 
-//     public async Action<T>(id: string, action: {(val: T, writer: StoreAsyncWriter): Promise<void>}) {
-//         await this.asyncQueue.Next(async () => {
-//             await action(id && this.observableTree.Get<T>(id), this.asyncWriter)
-//         });
-//     }
+      if(!key)
+        throw "No key provided for data";
 
-//     public async Write(data: any) {
-//         await this.Action(null, async (val, writer) => {
-//             await writer.Write(val, data);
-//         });
-//     }
+      const diffResult = await this.diff.DiffPath(key, data);
+      this.UpdateRootMap(diffResult);
+    });
+  }
 
-//     public async Merge(id: string, data: any) {
-//         await this.Action(id, async (val, writer) => {
-//             await writer.Merge(val, data);
-//         });
-//     }
+  async Patch(key: string, patch: unknown) {
+    await this.queue.Next(async () => {
+      const value = this.Get(key);
+      if(value === undefined)
+        throw "Unable to patch undefined value";
 
-//     public Destroy() {
-//         this.asyncQueue.Stop();
-//         this.diffAsync.Destroy();
-//         // this.observableTree.Destroy();
-//     }
+      const json = (value as any).toJSON();
+      const mergedJson = JsonMerge(json, patch);
 
-// }
+      const diffResult = await this.diff.DiffPath(key, mergedJson);
+      this.UpdateRootMap(diffResult)
+    });
+  }
+
+  async Push(key: string, ...data: unknown[]) {
+    await this.queue.Next(async () => {
+      const arr = this.Get(key) as any[];
+
+      const batch = data.map(function(d, i) {
+        return {
+          path: `${key}.${arr.length + i}`,
+          value: d
+        };
+      });
+      
+      const diffResult = await this.diff.DiffBatch(batch);
+      this.UpdateRootMap(diffResult);
+    });
+  }
+
+  async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]) {
+    return await this.queue.Next(async () => {
+      const arr = this.Get(key) as any[];
+      const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
+      const arrCopy = arrValue.slice();
+
+      const spliceResult = arrCopy.splice(start, deleteCount, ...items);
+      const diffResult = await this.diff.DiffPath(key, arrCopy);
+      this.UpdateRootMap(diffResult);
+      return spliceResult;
+    });
+  }
+
+  Destroy() {
+    this.queue.Stop();
+    this.diff.Destroy();
+  }
+}

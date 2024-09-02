@@ -1,4 +1,4 @@
-import { JsonType } from "../Utils/json";
+import { JsonType } from "../Utils/jsonType";
 
 function AssignProp(target: any, prop: string) {
     let lastValue = target[prop];

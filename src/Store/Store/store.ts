@@ -1,43 +1,67 @@
-// import { ObservableTree } from "../Tree/observableTree";
-// import { StoreWriter } from "./storeWriter";
+import { ApplyDiff, JsonDiffResult } from "../../Utils/json";
+import { GET_OBSERVABLE_VALUE, ObservableNode } from "../Tree/observableNode";
 
-// export class Store<T> {
+export class Store {
+  private rootMap = new Map<string | number, any>();
+  private createNode: <T>(data: T) => T;
 
-//     private observableTree = new ObservableTree();
-//     private storeWriter = new StoreWriter(this.observableTree);
-//     private rootScope = this.observableTree.Scope<T, T>("ROOT", root => root);
+  constructor(
+    protected keyFunc: (value: unknown) => string
+  ) {
+    const aliasFunc = (value: unknown) => {
+      const key = keyFunc(value);
+      if (key === undefined) return undefined;
 
-//     public get Root() {
-//         return this.rootScope;
-//     }
+      const rootObject = this.rootMap.get(key);
+      if (rootObject === undefined)
+        throw `No root object found for key: ${key}`;
 
-//     constructor(init?: T) {
-//         if(init)
-//             this.Write(init);
-//     }
+      const rootValue = rootObject[GET_OBSERVABLE_VALUE];
+      const alias = rootValue[key];
+      return alias;
+    };
 
-//     public Action(action: {(root: T, writer: StoreWriter): void}) {
-//         /* var node = this.observableTree.GetNode("ROOT");
-//         action(node.Proxy, this.storeWriter); */
-//         var proxy = this.observableTree.Get<T>("ROOT");
-//         action(proxy, this.storeWriter);
-//     }
-    
-//     public Write(data: T) {
-//         this.Action((root, writer) => 
-//             writer.Write(root, data)
-//         );
-//     }
+    this.createNode = ObservableNode.CreateFactory(aliasFunc);
+  }
 
-//     public Merge(data: Partial<T>) {
-//         this.Action((root, writer) => 
-//             writer.Merge(root, data)
-//         );
-//     }
+  Get<O>(id: string, defaultValue?: O): O | undefined {
+    let result = this.rootMap.get(id);
+    if(result === undefined) {
+      result = this.createNode({[id]: defaultValue });
+      this.rootMap.set(id, result);
+    }
 
-//     public Destroy() {
-//         this.rootScope.Destroy();
-//         // this.observableTree.Destroy();
-//     }
+    return result[id] as O;
+  }
 
-// }
+  protected UpdateRootMap(results: JsonDiffResult) {
+    for (let x = 0; x < results.length; ) {
+      const root = results[x].path[0];
+
+      const startIndex = x;
+      while (x < results.length && results[x].path[0] === root) x++;
+
+      const rootGroup = results.slice(startIndex, x);
+
+      this.UpdateRootObject(rootGroup[0].path[0], rootGroup);
+    }
+  }
+
+  private UpdateRootObject(rootPath: string | number, results: JsonDiffResult) {
+    const rootObject = this.rootMap.get(rootPath);
+
+    if (rootObject === undefined) {
+      if (results.length > 1 || results[0].path.length > 1)
+        throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
+
+      const newRootObject = this.createNode({ [rootPath]: results[0].value });
+      this.rootMap.set(rootPath, newRootObject);
+
+      return;
+    }
+
+    ObservableNode.EnableDiff(true);
+    ApplyDiff(rootObject, results);
+    ObservableNode.EnableDiff(false);
+  }
+}

@@ -33,15 +33,15 @@ export function ApplyDiff(root: any, diffResult: JsonDiffResult) {
 }
 
 export function JsonDiffFactory() {
+  
   const jsonProto = Object.getPrototypeOf({});
-
   function JsonType(value: any) {
     if (value === null || value === undefined) return "value";
-
+  
     if (Array.isArray(value)) return "array";
-
+  
     if (jsonProto === Object.getPrototypeOf(value)) return "object";
-
+  
     return "value";
   }
 
@@ -86,7 +86,6 @@ export function JsonDiffFactory() {
     if (allChildrenChanged) {
       resp.splice(changedPathLength);
       resp.push({
-        // path: path.split('.').filter(path => !!path),
         path,
         value: newValue,
       });
@@ -166,12 +165,7 @@ export function JsonDiffFactory() {
     return false;
   }
 
-  return {
-    JsonType,
-    JsonDiff,
-  };
+  return { JsonDiff, JsonType };
 }
 
-const defaultJsonDiff = JsonDiffFactory();
-export const JsonDiff = defaultJsonDiff.JsonDiff;
-export const JsonType = defaultJsonDiff.JsonType;
+export const { JsonDiff, JsonType } = JsonDiffFactory();

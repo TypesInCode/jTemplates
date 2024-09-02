@@ -40,4 +40,10 @@ describe("Array Remove Nulls", () => {
     expect(arr.length).to.eq(5);
     expect(arr[4]).to.eq(6);
   });
+  it("Ends with nulls", () => {
+    const arr = [1, 2, 3, null, null, null];
+    RemoveNulls(arr);
+    expect(arr.length).to.eq(3);
+    expect(arr[2]).to.eq(3);
+  });
 });

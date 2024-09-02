@@ -1,7 +1,10 @@
-import { JsonDiff, JsonDiffResult, JsonType } from "../../Utils/json";
+import { JsonDiff } from "../../Utils/json";
+import { JsonType } from "../../Utils/jsonType";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
-const IS_OBSERVABLE_NODE = "____observableNode";
+export const IS_OBSERVABLE_NODE = "____isObservableNode";
+export const GET_OBSERVABLE_VALUE = "____getObservableValue";
+export const GET_TO_JSON = "toJSON";
 
 const proxyCache = new WeakMap<any, unknown | unknown[]>();
 const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
@@ -42,7 +45,7 @@ function UnwrapProxy(value: any) {
   const type = JsonType(value);
   if (type === "value") return value;
 
-  if (value[IS_OBSERVABLE_NODE] === true) return value.toJSON();
+  if (value[IS_OBSERVABLE_NODE] === true) return value[GET_OBSERVABLE_VALUE];
 
   switch (type) {
     case "object": {
@@ -61,17 +64,24 @@ function UnwrapProxy(value: any) {
 let applyingDiff = false;
 
 function CreateProxyFactory(alias?: (value: any) => any | undefined) {
+  function CreateProxy<T>(value: T): T {
+    value = UnwrapProxy(value);
+    return CreateProxyFromValue(value);
+  }
+
   function ToJsonCopy(value: unknown): any {
     const type = JsonType(value);
     switch (type) {
       case "array": {
         const typedValue = value as any[];
-        return typedValue.map(ToJsonCopy);
+        const proxy = CreateProxy(typedValue);
+        return proxy.map(ToJsonCopy);
         break;
       }
       case "object": {
         const typedValue: { [prop: string]: unknown } = alias(value) ?? value;
-        const keys = Object.keys(typedValue);
+        const proxy = CreateProxy(typedValue);
+        const keys = Object.keys(proxy);
         const copy: { [prop: string]: unknown } = {};
         for (let x = 0; x < keys.length; x++)
           copy[keys[x]] = ToJsonCopy(typedValue[keys[x]]);
@@ -88,6 +98,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   const ToJson = alias !== undefined ? ToJsonCopy : ToJsonDefault;
+  const readOnly = alias !== undefined;
 
   function CreateArrayProxy(value: any[]) {
     const scope = ObservableScope.Create(() => value);
@@ -122,6 +133,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ArrayProxySetter(array: unknown[], prop: string, value: any) {
+    if (readOnly && !applyingDiff) throw `Object is readonly`;
+
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
@@ -136,13 +149,27 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
     if (prop === IS_OBSERVABLE_NODE) return true;
 
+    if (readOnly && !applyingDiff)
+      switch (prop) {
+        case "push":
+        case "unshift":
+        case "splice":
+        case "pop":
+        case "shift":
+        case "sort":
+        case "reverse":
+          if (readOnly && !applyingDiff) throw `Object is readonly`;
+      }
+
     const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
     array = ObservableScope.Value<unknown[]>(scope);
     switch (prop) {
-      case "toJSON":
+      case GET_TO_JSON:
         return function () {
           return ToJson(array);
         };
+      case GET_OBSERVABLE_VALUE:
+        return array;
       default: {
         const arrayValue = (array as any)[prop];
 
@@ -183,6 +210,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ObjectProxySetter(object: any, prop: string, value: any) {
+    if (readOnly && !applyingDiff) throw `Object is readonly`;
+
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
@@ -222,10 +251,12 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     const scope = scopeCache.get(object);
     object = ObservableScope.Value<unknown>(scope);
     switch (prop) {
-      case "toJSON":
+      case GET_TO_JSON:
         return function () {
           return ToJson(object);
         };
+      case GET_OBSERVABLE_VALUE:
+        return object;
       default: {
         const proxyValue = (object as any)[prop];
 
@@ -257,11 +288,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       default:
         return value as any;
     }
-  }
-
-  function CreateProxy<T>(value: T): T {
-    value = UnwrapProxy(value);
-    return CreateProxyFromValue(value);
   }
 
   return CreateProxy;

@@ -11,6 +11,7 @@ import { ObservableTree } from "../Store/Tree/observableTree";
 import { ObservableNode } from "../Store/Tree/observableNode";
 import { DiffAsync } from "../Store/Diff/diffAsync";
 import { ApplyDiff } from "./json";
+import { StoreAsync } from "../Store";
 
 const decoratorInstanceMap = new WeakMap<WeakKey, Map<string, unknown>>();
 const valueInstanceMap = new WeakMap<WeakKey, Map<string, unknown>>();
@@ -77,8 +78,6 @@ function ValueDecorator<T extends Component<any, any, any>, K extends string>(
     },
     set: function (this: T, val: any) {
       const valueMap = GetValueMapForInstance(this);
-      if (valueMap.get(propKey) === val) return;
-
       valueMap.set(propKey, val);
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
       let scope = map.get(propKey);
@@ -92,8 +91,9 @@ function ValueDecorator<T extends Component<any, any, any>, K extends string>(
   };
 }
 
+function defaultKeyFunc() {}
 export function StateAsync(defaultValue: any, keyFunc?: (val: any) => string) {
-  return StateAsyncDecorator.bind(null, defaultValue, keyFunc);
+  return StateAsyncDecorator.bind(null, defaultValue, keyFunc ?? defaultKeyFunc);
 }
 
 export function StateAsyncDecorator<
@@ -106,37 +106,25 @@ export function StateAsyncDecorator<
   propertyKey: K,
 ) {
   const propKey = `ValueDecorator_${propertyKey}`;
-  const treeKey = `ValueDecoratorTree_${propertyKey}`;
 
   return {
     configurable: false,
     enumerable: true,
     get: function (this: T) {
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
-      const node = map.get(propKey);
-      return node?.root;
+      const store = map.get(propKey) as StoreAsync;
+      return store?.Get('root', defaultValue) ?? defaultValue;
     },
     set: function (this: T, val: any) {
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
-      const node = map.get(propKey);
-      if (!node) {
-        const newNode = ObservableNode.Create({ root: defaultValue });
-        map.set(propKey, newNode);
-        const newTree = new DiffAsync(keyFunc);
-        map.set(treeKey, newTree);
-        newTree.DiffPath("", val).then((result) => {
-          ObservableNode.EnableDiff(false);
-          ApplyDiff(newNode, result);
-          ObservableNode.EnableDiff(true);
-        });
-      } else {
-        const tree = map.get(treeKey) as DiffAsync;
-        tree.DiffPath("", val).then((result) => {
-          ObservableNode.EnableDiff(false);
-          ApplyDiff(node, result);
-          ObservableNode.EnableDiff(true);
-        });
+      
+      let store = map.get(propKey) as StoreAsync;
+      if(store === undefined) {
+        store = new StoreAsync(keyFunc);
+        map.set(propKey, store);
       }
+
+      store.Write(val, "root");
     },
   };
 }

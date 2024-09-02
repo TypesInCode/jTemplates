@@ -1,4 +1,5 @@
-import { JsonType } from "./json";
+import { JsonType } from "./jsonType";
+
 
 export function JsonDeepClone<T>(value: T): T {
   const type = JsonType(value);
