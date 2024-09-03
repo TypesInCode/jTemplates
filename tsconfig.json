@@ -10,6 +10,7 @@
     "target": "ESNext",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
     // "sourceMap": true,
     "types": [
       // add node as an option
