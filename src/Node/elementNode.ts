@@ -9,6 +9,7 @@ import { NodeConfig } from "./nodeConfig";
 import { NodeRef, NodeRefType } from "./nodeRef";
 import { NodeRefTypes } from "./nodeRef.types";
 
+const valueDefault = [] as Array<any>;
 export namespace ElementNode {
     
     export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children: ElementChildrenFunction<T>) {
@@ -24,15 +25,25 @@ export namespace ElementNode {
 
             if(nodeDef.data) {
                 const dataScope = ObservableScope.Create(nodeDef.data);
+                const valueScope = ObservableScope.Create(function() {
+                    let value = ObservableScope.Value(dataScope);
+                    if(!value)
+                        return valueDefault;
+
+                    if(!Array.isArray(value))
+                        return [value];
+
+                    return value.slice();
+                });
                 elementNode.childNodes = new Set();
                 elementNode.scopes ??= [];
-                elementNode.scopes.push(dataScope);
+                elementNode.scopes.push(dataScope, valueScope);
 
                 ObservableScope.Watch(dataScope, function() { 
-                    ScheduleSetData(elementNode, dataScope);
+                    ScheduleSetData(elementNode, valueScope);
                 });
 
-                SetData(elementNode, GetValue(dataScope), true);
+                SetData(elementNode, ObservableScope.Value(valueScope), true);
             }
             else
                 SetDefaultData(elementNode);
@@ -43,8 +54,7 @@ export namespace ElementNode {
 
 }
 
-const valueDefault = [] as Array<any>;
-function GetValue(dataScope: IObservableScope<any>): any[] {
+/* function GetValue(dataScope: IObservableScope<any>): any[] {
     var value = ObservableScope.Value(dataScope);
     if(!value)
         return valueDefault;
@@ -53,7 +63,7 @@ function GetValue(dataScope: IObservableScope<any>): any[] {
         value = [value];
 
     return value;
-}
+} */
 
 function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<any>) {
     if(node.setData)
@@ -65,7 +75,7 @@ function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<a
         if(node.destroyed)
             return;
         
-        SetData(node, GetValue(scope));
+        SetData(node, ObservableScope.Value(scope));
     });
 }
 
