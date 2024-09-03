@@ -20,6 +20,57 @@ export function JsonDiffFactory() {
     return "value";
   }
 
+  function JsonMerge(source: unknown, patch: unknown) {
+    if(patch === undefined)
+        return source;
+
+    const sourceType = JsonType(source);
+    const patchType = JsonType(patch);
+  
+    if(sourceType !== patchType)
+      return patch;
+  
+    switch(sourceType) {
+      case "array": {
+        const typedSource = source as unknown[];
+        const typedPatch = patch as unknown[];
+        return typedSource.map(function(source, index): unknown {
+            return JsonMerge(source, typedPatch[index]);
+        });
+      }
+      case "object": {
+        const typedSource = source as {[prop: string]: unknown};
+        const typedPatch = patch as {[prop: string]: unknown};
+        const sourceKeys = Object.keys(typedSource);
+        const result = {} as {[prop: string]: unknown};
+        for(let x=0; x<sourceKeys.length; x++)
+            result[sourceKeys[x]] = JsonMerge(typedSource[sourceKeys[x]], typedPatch[sourceKeys[x]]);
+        
+        return result;
+      }
+      default:
+        return patch;
+    }
+  }
+
+  function JsonDeepClone<T>(value: T): T {
+    const type = JsonType(value);
+    switch (type) {
+      case "array":
+        return (value as unknown as unknown[]).map(JsonDeepClone) as unknown as T;
+      case "object": {
+        const ret = {} as T;
+        const keys = Object.keys(value as unknown as object) as (keyof T)[];
+        for (let x = 0; x < keys.length; x++)
+          ret[keys[x]] = JsonDeepClone(value[keys[x]]);
+  
+        return ret;
+      }
+      default:
+        return value;
+    }
+  }
+
   function JsonDiff<T>(
     newValue: T,
     oldValue: T,
@@ -140,7 +191,7 @@ export function JsonDiffFactory() {
     return false;
   }
 
-  return { JsonDiff, JsonType };
+  return { JsonDiff, JsonType, JsonDeepClone, JsonMerge };
 }
 
-export const { JsonDiff, JsonType } = JsonDiffFactory();
+export const { JsonDiff, JsonType, JsonDeepClone, JsonMerge } = JsonDiffFactory();
