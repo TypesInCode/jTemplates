@@ -2,7 +2,7 @@ import { JsonDiffFactory } from "../../Utils/json";
 import { JsonDeepClone } from "../../Utils/jsonDeepClone";
 import { DiffTreeFactory, IDiffTree } from "./diffTree";
 
-const diffCnstr = DiffTreeFactory(JsonDiffFactory);
+const diffCnstr = DiffTreeFactory(JsonDiffFactory, JsonDeepClone);
 export class DiffSync implements IDiffTree {
   private diffTree: IDiffTree;
 

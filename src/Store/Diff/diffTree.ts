@@ -1,4 +1,5 @@
 import { JsonDiffFactoryResult, JsonDiffResult } from "../../Utils/json";
+import { JsonDeepClone } from "../../Utils/jsonDeepClone";
 import { JsonType } from "../../Utils/jsonType";
 
 export interface IDiffMethod {
@@ -20,12 +21,13 @@ export interface IDiffTreeConstructor {
 
 export function DiffTreeFactory(
   jsonDiffFactory?: () => JsonDiffFactoryResult,
+  jsonDeepClone?: typeof JsonDeepClone,
   worker?: boolean,
 ) {
   const { JsonDiff, JsonType } = jsonDiffFactory();
 
   const ctx: Worker = this as any;
-  if (ctx && worker) {
+  if (worker && ctx) {
     let diffTree: DiffTree = null;
 
     ctx.onmessage = function (event: any) {
@@ -156,6 +158,7 @@ export function DiffTreeFactory(
     if (keyFunc) {
       let flattened: any = {};
       flattened = FlattenValue(flattened, value, keyFunc) as any;
+      flattened = jsonDeepClone(flattened);
       const keys = Object.keys(flattened);
       for (let x = 0; x < keys.length; x++)
         JsonDiff(flattened[keys[x]], source[keys[x]], keys[x], diffResult);

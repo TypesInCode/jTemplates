@@ -1,4 +1,5 @@
 import { JsonDiffFactory } from "../../Utils/json";
+import { JsonDeepClone } from "../../Utils/jsonDeepClone";
 import { DiffTreeFactory } from "./diffTree";
 
 export namespace DiffWorker {
@@ -7,7 +8,7 @@ export namespace DiffWorker {
   if (typeof Worker !== "undefined") {
     workerConstructor = Worker;
     workerParameter = URL.createObjectURL(
-      new Blob([`(${DiffTreeFactory}).call(this, (${JsonDiffFactory}), true)`]),
+      new Blob([`(${DiffTreeFactory}).call(this, (${JsonDiffFactory}), (${JsonDeepClone}) true)`]),
     );
   }
 

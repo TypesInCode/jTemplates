@@ -1,4 +1,4 @@
-import { ApplyDiff, JsonDiffResult } from "../../Utils/json";
+import { JsonDiffResult } from "../../Utils/json";
 import { GET_OBSERVABLE_VALUE, ObservableNode } from "../Tree/observableNode";
 
 export class Store {
@@ -60,8 +60,6 @@ export class Store {
       return;
     }
 
-    ObservableNode.EnableDiff(true);
-    ApplyDiff(rootObject, results);
-    ObservableNode.EnableDiff(false);
+    ObservableNode.ApplyDiff(rootObject, results);
   }
 }

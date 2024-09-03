@@ -1,4 +1,4 @@
-import { JsonDiff } from "../../Utils/json";
+import { JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/jsonType";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
@@ -298,8 +298,42 @@ export namespace ObservableNode {
     return DefaultCreateProxy(value);
   }
 
+  export function Touch(value: unknown) {
+    const scope = scopeCache.get(value);
+    ObservableScope.Update(scope);
+  }
+
   export function EnableDiff(value: boolean) {
     applyingDiff = value;
+  }
+
+  export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
+    const root = rootNode[GET_OBSERVABLE_VALUE]
+    const pathTuples: [string | number, unknown][] = [["", root]];
+    for (let x = 0; x < diffResult.length; x++) {
+      const { path, value } = diffResult[x];
+  
+      let y = 0;
+      for (; y < path.length - 1; y++) {
+        const property = path[y];
+        const value = pathTuples[y][1];
+  
+        const tupleIndex = y + 1;
+        if (pathTuples.length <= tupleIndex)
+          pathTuples.push([property, (value as any)[property]]);
+        else if (pathTuples[tupleIndex][0] !== property) {
+          pathTuples[tupleIndex][0] = property;
+          pathTuples[tupleIndex][1] = (value as any)[property];
+  
+          const next = tupleIndex + 1;
+          if (next < pathTuples.length) pathTuples[next][0] = null;
+        }
+      }
+  
+      const assignValue = pathTuples[y][1];
+      (assignValue as any)[path[y]] = value;
+      ObservableNode.Touch(assignValue);
+    }
   }
 
   export function CreateFactory(alias?: (value: any) => any | undefined) {

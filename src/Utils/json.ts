@@ -1,36 +1,11 @@
+import { ObservableNode } from "../Store/Tree/observableNode";
+
 export type JsonDiffResult<T = unknown> = {
   path: (string | number)[];
   value: unknown;
 }[];
 
 export type JsonDiffFactoryResult = ReturnType<typeof JsonDiffFactory>;
-
-export function ApplyDiff(root: any, diffResult: JsonDiffResult) {
-  const pathTuples: [string | number, unknown][] = [["", root]];
-  for (let x = 0; x < diffResult.length; x++) {
-    const { path, value } = diffResult[x];
-
-    let y = 0;
-    for (; y < path.length - 1; y++) {
-      const property = path[y];
-      const value = pathTuples[y][1];
-
-      const tupleIndex = y + 1;
-      if (pathTuples.length <= tupleIndex)
-        pathTuples.push([property, (value as any)[property]]);
-      else if (pathTuples[tupleIndex][0] !== property) {
-        pathTuples[tupleIndex][0] = property;
-        pathTuples[tupleIndex][1] = (value as any)[property];
-
-        const next = tupleIndex + 1;
-        if (next < pathTuples.length) pathTuples[next][0] = null;
-      }
-    }
-
-    const assignValue = pathTuples[y][1];
-    (assignValue as any)[path[y]] = value;
-  }
-}
 
 export function JsonDiffFactory() {
   
