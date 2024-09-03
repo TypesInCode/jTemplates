@@ -177,13 +177,11 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
 
         if (typeof arrayValue === "function")
           return function ArrayFunction(...args: any[]) {
-            const proxyArray = array.slice();
+            const proxyArray = prop === "slice" ? array.slice(...args) : array.slice();
             for (let x = 0; x < proxyArray.length; x++)
-              proxyArray[x] =
-                proxyCache.get(proxyArray[x]) ??
-                CreateProxyFromValue(proxyArray[x]);
+              proxyArray[x] = CreateProxyFromValue(proxyArray[x]);
 
-            let result = (proxyArray as any)[prop as any](...args);
+            let result = prop === "slice" ? proxyArray : (proxyArray as any)[prop as any](...args);
             switch (prop) {
               case "push":
               case "unshift":
