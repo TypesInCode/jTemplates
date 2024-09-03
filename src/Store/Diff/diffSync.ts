@@ -1,8 +1,7 @@
 import { JsonDiffFactory } from "../../Utils/json";
-import { JsonDeepClone } from "../../Utils/jsonDeepClone";
 import { DiffTreeFactory, IDiffTree } from "./diffTree";
 
-const diffCnstr = DiffTreeFactory(JsonDiffFactory, JsonDeepClone);
+const diffCnstr = DiffTreeFactory(JsonDiffFactory);
 export class DiffSync implements IDiffTree {
   private diffTree: IDiffTree;
 
@@ -19,13 +18,10 @@ export class DiffSync implements IDiffTree {
     } */
 
   public DiffPath(path: string, value: any) {
-    value = JsonDeepClone(value);
     return this.diffTree.DiffPath(path, value);
   }
 
   public DiffBatch(data: Array<{ path: string; value: any }>) {
-    data = JsonDeepClone(data);
-
     return this.diffTree.DiffBatch(data);
   }
 
