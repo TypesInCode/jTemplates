@@ -1,4 +1,4 @@
-import { JsonMerge } from "../../Utils/jsonMerge";
+import { JsonMerge, JsonDeepClone } from "../../Utils/json";
 import { DiffSync } from "../Diff/diffSync";
 import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
 import { Store } from "./store";
@@ -53,7 +53,7 @@ export class StoreSync extends Store{
     const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
     const arrCopy = arrValue.slice();
 
-    const spliceResult = arrCopy.splice(start, deleteCount, ...items);
+    const spliceResult = JsonDeepClone(arrCopy.splice(start, deleteCount, ...items));
     const diffResult = this.diff.DiffPath(key, arrCopy);
     this.UpdateRootMap(diffResult);
     return spliceResult;

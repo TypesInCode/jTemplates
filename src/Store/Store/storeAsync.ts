@@ -1,5 +1,5 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { JsonMerge } from "../../Utils/jsonMerge";
+import { JsonDeepClone, JsonMerge } from "../../Utils/json";
 import { DiffAsync } from "../Diff/diffAsync";
 import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
 import { Store } from "./store";
@@ -62,7 +62,7 @@ export class StoreAsync extends Store {
       const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
       const arrCopy = arrValue.slice();
 
-      const spliceResult = arrCopy.splice(start, deleteCount, ...items);
+      const spliceResult = JsonDeepClone(arrCopy.splice(start, deleteCount, ...items));
       const diffResult = await this.diff.DiffPath(key, arrCopy);
       this.UpdateRootMap(diffResult);
       return spliceResult;
