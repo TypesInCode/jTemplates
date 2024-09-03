@@ -39,7 +39,7 @@ export namespace ElementNode {
                 elementNode.scopes ??= [];
                 elementNode.scopes.push(dataScope, valueScope);
 
-                ObservableScope.Watch(dataScope, function() { 
+                ObservableScope.Watch(valueScope, function() { 
                     ScheduleSetData(elementNode, valueScope);
                 });
 
