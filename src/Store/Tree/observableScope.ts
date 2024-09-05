@@ -157,7 +157,7 @@ export namespace ObservableScope {
 }
 
 function OnSet(scope: IObservableScope<any>) {
-  if (!scope || scope.dirty || scope.destroyed) return scope.destroyed;
+  if (!scope || scope.dirty || scope.destroyed) return scope?.destroyed;
 
   scope.dirty = !!scope.getFunction;
   Emitter.Emit(scope.emitter, scope);
