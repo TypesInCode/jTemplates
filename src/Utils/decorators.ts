@@ -10,6 +10,7 @@ import { StoreAsync } from "../Store";
 
 const decoratorInstanceMap = new WeakMap<WeakKey, Map<string, unknown>>();
 const valueInstanceMap = new WeakMap<WeakKey, Map<string, unknown>>();
+const destroyPrototypeMap = new WeakMap<WeakKey, string[]>();
 
 function GetDecoratorMapForInstance(instance: WeakKey) {
   const map = decoratorInstanceMap.get(instance) ?? new Map();
@@ -23,6 +24,13 @@ function GetValueMapForInstance(instance: WeakKey) {
   valueInstanceMap.set(instance, map);
 
   return map;
+}
+
+function GetDestroyArrayForPrototype(prototype: WeakKey) {
+  const array = destroyPrototypeMap.get(prototype) ?? [];
+  destroyPrototypeMap.set(prototype, array);
+
+  return array;
 }
 
 export function State(): any {
@@ -68,27 +76,34 @@ function ValueDecorator<T extends Component<any, any, any>, K extends string>(
     enumerable: true,
     get: function (this: T) {
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
-      const scope = map.get(propKey);
+      let scope = map.get(propKey);
+      if (scope === undefined) {
+        const valueMap = GetValueMapForInstance(this);
+        scope = ObservableScope.Create(function () {
+          return valueMap.get(propKey);
+        });
+        map.set(propKey, scope);
+      }
+
       return ObservableScope.Value(scope);
     },
     set: function (this: T, val: any) {
       const valueMap = GetValueMapForInstance(this);
       valueMap.set(propKey, val);
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
-      let scope = map.get(propKey);
-      if (scope === undefined) {
-        scope = ObservableScope.Create(function () {
-          return valueMap.get(propKey);
-        });
-        map.set(propKey, scope);
-      } else ObservableScope.Update(scope);
+      const scope = map.get(propKey);
+      ObservableScope.Update(scope);
     },
   };
 }
 
 function defaultKeyFunc() {}
 export function StateAsync(defaultValue: any, keyFunc?: (val: any) => string) {
-  return StateAsyncDecorator.bind(null, defaultValue, keyFunc ?? defaultKeyFunc);
+  return StateAsyncDecorator.bind(
+    null,
+    defaultValue,
+    keyFunc ?? defaultKeyFunc,
+  );
 }
 
 function StateAsyncDecorator<
@@ -108,13 +123,13 @@ function StateAsyncDecorator<
     get: function (this: T) {
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
       const store = map.get(propKey) as StoreAsync;
-      return store?.Get('root', defaultValue) ?? defaultValue;
+      return store?.Get("root", defaultValue) ?? defaultValue;
     },
     set: function (this: T, val: any) {
       const map = GetDecoratorMapForInstance(this); // this.DecoratorMap;
-      
+
       let store = map.get(propKey) as StoreAsync;
-      if(store === undefined) {
+      if (store === undefined) {
         store = new StoreAsync(keyFunc);
         map.set(propKey, store);
       }
@@ -438,21 +453,9 @@ export function Destroy() {
 }
 
 export namespace Destroy {
-  function Get(value: any): Array<string> {
-    return (value && value.DestroyDecorator_Destroys) || [];
-  }
-
-  export function All(value: Component<any, any, any>) {
-    /* var arr = Get(value);
-    arr
-      .map(
-        (prop) =>
-          ((value as any)[prop] || value.DecoratorMap.get(prop)) as {
-            Destroy: { (): void };
-          },
-      )
-      .filter((o) => !!o)
-      .forEach((o) => o.Destroy()); */
+  export function All<T, K>(value: T) {
+    const array = GetDestroyArrayForPrototype(Object.getPrototypeOf(value));
+    for (let x = 0; x < array.length; x++) (value as any)[array[x]].Destroy();
   }
 }
 
@@ -460,9 +463,8 @@ function DestroyDecorator<
   T extends Component<any, any, any> & Record<K, IDestroyable>,
   K extends string,
 >(target: T, propertyKey: K): any {
-  var proto = target as any;
-  proto.DestroyDecorator_Destroys = proto.DestroyDecorator_Destroys || [];
-  proto.DestroyDecorator_Destroys.push(propertyKey);
+  const array = GetDestroyArrayForPrototype(target);
+  array.push(propertyKey);
 }
 
 export function PreReqTemplate(template: {
