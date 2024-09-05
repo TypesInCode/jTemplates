@@ -5,29 +5,31 @@ export class Store {
   private rootMap = new Map<string | number, any>();
   private createNode: <T>(data: T) => T;
 
-  constructor(
-    protected keyFunc: (value: unknown) => string
-  ) {
-    const aliasFunc = (value: unknown) => {
-      const key = keyFunc(value);
-      if (key === undefined) return undefined;
+  constructor(protected keyFunc?: (value: any) => string | undefined) {
+    const aliasFunc =
+      keyFunc &&
+      ((value: unknown) => {
+        const key = keyFunc(value);
+        if (key === undefined) return undefined;
 
-      const rootObject = this.rootMap.get(key);
-      if (rootObject === undefined)
-        throw `No root object found for key: ${key}`;
+        const rootObject = this.rootMap.get(key);
+        if (rootObject === undefined)
+          throw `No root object found for key: ${key}`;
 
-      const rootValue = rootObject[GET_OBSERVABLE_VALUE];
-      const alias = rootValue[key];
-      return alias;
-    };
+        const rootValue = rootObject[GET_OBSERVABLE_VALUE];
+        const alias = rootValue[key];
+        return alias;
+      });
 
-    this.createNode = ObservableNode.CreateFactory(aliasFunc);
+    this.createNode = aliasFunc
+      ? ObservableNode.CreateFactory(aliasFunc)
+      : ObservableNode.Create;
   }
 
   Get<O>(id: string, defaultValue?: O): O | undefined {
     let result = this.rootMap.get(id);
-    if(result === undefined) {
-      result = this.createNode({[id]: defaultValue });
+    if (result === undefined) {
+      result = this.createNode({ [id]: defaultValue });
       this.rootMap.set(id, result);
     }
 

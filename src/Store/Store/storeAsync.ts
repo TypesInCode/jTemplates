@@ -8,7 +8,7 @@ export class StoreAsync extends Store {
   private diff: DiffAsync;
   private queue = new AsyncQueue();
 
-  constructor(keyFunc: (value: unknown) => string) {
+  constructor(keyFunc?: (value: any) => string | undefined) {
     super(keyFunc);
 
     this.diff = new DiffAsync(keyFunc);
@@ -16,10 +16,9 @@ export class StoreAsync extends Store {
 
   async Write(data: unknown, key?: string) {
     await this.queue.Next(async () => {
-      key = key || this.keyFunc(data);
+      key = key || this.keyFunc?.(data);
 
-      if(!key)
-        throw "No key provided for data";
+      if (!key) throw "No key provided for data";
 
       const diffResult = await this.diff.DiffPath(key, data);
       this.UpdateRootMap(diffResult);
@@ -29,14 +28,13 @@ export class StoreAsync extends Store {
   async Patch(key: string, patch: unknown) {
     await this.queue.Next(async () => {
       const value = this.Get(key);
-      if(value === undefined)
-        throw "Unable to patch undefined value";
+      if (value === undefined) throw "Unable to patch undefined value";
 
       const json = (value as any).toJSON();
       const mergedJson = JsonMerge(json, patch);
 
       const diffResult = await this.diff.DiffPath(key, mergedJson);
-      this.UpdateRootMap(diffResult)
+      this.UpdateRootMap(diffResult);
     });
   }
 
@@ -44,25 +42,32 @@ export class StoreAsync extends Store {
     await this.queue.Next(async () => {
       const arr = this.Get(key) as any[];
 
-      const batch = data.map(function(d, i) {
+      const batch = data.map(function (d, i) {
         return {
           path: `${key}.${arr.length + i}`,
-          value: d
+          value: d,
         };
       });
-      
+
       const diffResult = await this.diff.DiffBatch(batch);
       this.UpdateRootMap(diffResult);
     });
   }
 
-  async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]) {
+  async Splice(
+    key: string,
+    start: number,
+    deleteCount?: number,
+    ...items: unknown[]
+  ) {
     return await this.queue.Next(async () => {
       const arr = this.Get(key) as any[];
       const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
       const arrCopy = arrValue.slice();
 
-      const spliceResult = JsonDeepClone(arrCopy.splice(start, deleteCount, ...items));
+      const spliceResult = JsonDeepClone(
+        arrCopy.splice(start, deleteCount, ...items),
+      );
       const diffResult = await this.diff.DiffPath(key, arrCopy);
       this.UpdateRootMap(diffResult);
       return spliceResult;
