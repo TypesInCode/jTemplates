@@ -16,6 +16,7 @@ export interface INodeConfig {
     removeChild(root: any, child: any): void;
     remove(target: any): void;
     fireEvent(target: any, event: string, data: any): void;
+    createTextAssignment(target: any): {(next: string): void};
     createPropertyAssignment(target: any): {(next: any): void};
     createEventAssignment(target: any): {(next: {[event: string]: (event: Event) => void }): void};
     getFirstChild(target: any): any;

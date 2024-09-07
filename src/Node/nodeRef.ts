@@ -54,8 +54,10 @@ export namespace NodeRef {
                     setProperties: false,
                     assignProperties: null,
                     assignEvents: null,
+                    assignText: null,
                     setAttributes: false,
                     setEvents: false,
+                    setText: false,
                     scopes: null
                 } as IBoundNode;
             case NodeRefType.ElementNode:
@@ -73,11 +75,13 @@ export namespace NodeRef {
                     setProperties: false,
                     assignProperties: null,
                     assignEvents: null,
+                    assignText: null,
                     setAttributes: false,
                     setEvents: false,
                     childrenFunc: null,
                     nodeList: null,
                     setData: false,
+                    setText: false,
                     scopes: null
                 } as IElementNode<any>;
             case NodeRefType.ComponentNode:
@@ -217,9 +221,9 @@ export namespace NodeRef {
         switch(node.type) {
             case NodeRefType.ComponentNode:
                 node.component?.Destroy();
-            case NodeRefType.ElementNode:
-                node.assignEvents?.(null);
             case NodeRefType.BoundNode:
+                // node.assignEvents?.(null);
+            case NodeRefType.ElementNode:
                 for(let x=0; node.scopes && x<node.scopes.length; x++)
                     ObservableScope.Destroy(node.scopes[x]);
         }
