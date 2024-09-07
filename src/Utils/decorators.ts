@@ -68,6 +68,12 @@ export function Value(): any {
   return ValueDecorator;
 }
 
+function CreateValueScope(tuple: [unknown, any]) {
+  return ObservableScope.Create(function () {
+    return tuple[1];
+  });
+}
+
 function ValueDecorator<T extends Component<any, any, any>, K extends string>(
   target: T,
   propertyKey: K,
@@ -77,12 +83,8 @@ function ValueDecorator<T extends Component<any, any, any>, K extends string>(
     enumerable: true,
     get: function (this: T) {
       const propertyMap = GetScopeMapForInstance(this);
-      propertyMap[propertyKey] ??= [null, undefined];
-      const tuple = propertyMap[propertyKey];
-      if (tuple[0] === null)
-        tuple[0] = ObservableScope.Create(function () {
-          return tuple[1];
-        });
+      const tuple: typeof propertyMap[typeof propertyKey] = propertyMap[propertyKey] ??= [null, undefined];
+      tuple[0] ??= CreateValueScope(tuple);
 
       return ObservableScope.Value(tuple[0]);
     },
@@ -111,6 +113,8 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(
   if (descriptor && descriptor.set)
     throw "Scope decorator does not support setters";
 
+  const getter = descriptor.get;
+
   return {
     configurable: false,
     enumerable: true,
@@ -119,9 +123,9 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(
       propertyMap[propertyKey] ??= [null, undefined];
       const tuple = propertyMap[propertyKey];
       if (tuple[0] === null)
-        tuple[0] = ObservableScope.Create(descriptor.get.bind(this));
+        tuple[0] = ObservableScope.Create(getter.bind(this));
 
-      return tuple[0];
+      return ObservableScope.Value(tuple[0]);
     },
   } as PropertyDescriptor;
 }
