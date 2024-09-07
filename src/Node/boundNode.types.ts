@@ -1,8 +1,6 @@
 import { IObservableScope } from "../Store/Tree/observableScope";
-import { Injector } from "../Utils/injector";
-import { IDestroyable } from "../Utils/utils.types";
 import { NodeRefType } from "./nodeRef";
-import { INodeRef, INodeRefBase } from "./nodeRef.types";
+import { INodeRefBase } from "./nodeRef.types";
 
 export type FunctionOr<T> = {(...args: Array<any>): T | Promise<T> } | T;
 
@@ -13,14 +11,14 @@ export type NodeRefEvents = {
 export interface NodeDefinition<T = any, E = any> {
     type: any;
     namespace: string;
-    props?: FunctionOr<{[name: string]: any}>;
+    props?: FunctionOr<{[name: string]: unknown}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
     text?: FunctionOr<string>;
 }
 
 export interface BoundNodeFunctionParam {
-    props?: FunctionOr<{[name: string]: any}>;
+    props?: FunctionOr<{[name: string]: unknown}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
     text?: FunctionOr<string>;

@@ -1,7 +1,6 @@
 import { NodeConfig } from "./nodeConfig";
 import { IBoundNodeBase, NodeRefEvents } from "./boundNode.types";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
-import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export namespace BoundNode {
 
@@ -25,9 +24,9 @@ export namespace BoundNode {
     export function Init(boundNode: IBoundNodeBase) {
         const nodeDef = boundNode.nodeDef;
         if(nodeDef.props) {
-            const scope = ObservableScope.Create(nodeDef.props);
             boundNode.assignProperties = NodeConfig.createPropertyAssignment(boundNode.node);
-            if(!scope.static) {
+            if(typeof nodeDef.props === 'function') {
+                const scope = ObservableScope.Create(nodeDef.props);
                 boundNode.scopes ??= [];
                 boundNode.scopes.push(scope);
                 ObservableScope.Watch(scope, function(scope) { ScheduleSetProperties(boundNode, scope) });
@@ -41,12 +40,12 @@ export namespace BoundNode {
         }
 
         if(nodeDef.attrs) {
-            const scope = ObservableScope.Create(nodeDef.attrs);
-            if(!scope.static) {
+            if(typeof nodeDef.attrs === 'function') {
+                const scope = ObservableScope.Create(nodeDef.attrs);
                 boundNode.scopes ??= [];
                 boundNode.scopes.push(scope);
 
-                !scope.static && ObservableScope.Watch(scope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
+                ObservableScope.Watch(scope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
                 SetAttributes(boundNode, ObservableScope.Value(scope));
             }
             else
@@ -56,35 +55,37 @@ export namespace BoundNode {
         }
 
         if(nodeDef.on) {
-            const scope = ObservableScope.Create(nodeDef.on);
             boundNode.assignEvents = NodeConfig.createEventAssignment(boundNode.node);
-            if(!scope.static) {
+            if(typeof nodeDef.on === 'function') {
+                const scope = ObservableScope.Create(nodeDef.on);
                 const eventScope = ObservableScope.Create(function() {
                     const events = ObservableScope.Value(scope);
                     return WrapEventObject(boundNode, events);
                 });
                 boundNode.scopes ??= [];
                 boundNode.scopes.push(scope, eventScope);
-                !scope.static && ObservableScope.Watch(eventScope, function(scope) { ScheduleSetEvents(boundNode, scope) });
+                ObservableScope.Watch(eventScope, function(scope) { ScheduleSetEvents(boundNode, scope) });
                 const next = ObservableScope.Value(eventScope);
                 boundNode.assignEvents(next);
             }
-            else
+            else {
                 boundNode.assignEvents(WrapEventObject(boundNode, nodeDef.on as NodeRefEvents));
+                boundNode.assignEvents = null;
+            }
         }
 
         if(nodeDef.text) {
-            const scope = ObservableScope.Create(nodeDef.text);
             boundNode.assignText = NodeConfig.createTextAssignment(boundNode.node);
-            if(!scope.static) {
+            if(typeof nodeDef.text === 'function') {
+                const scope = ObservableScope.Create(nodeDef.text);
                 boundNode.scopes ??= [];
                 boundNode.scopes.push(scope);
-                !scope.static && ObservableScope.Watch(scope, function(scope) { ScheduleSetText(boundNode, scope) });
+                ObservableScope.Watch(scope, function(scope) { ScheduleSetText(boundNode, scope) });
                 const next = ObservableScope.Value(scope);
                 boundNode.assignText(next);
             }
             else {
-                boundNode.assignText(nodeDef.text as string);
+                boundNode.assignText(nodeDef.text);
                 boundNode.assignText = null;
             }
         }
