@@ -1,4 +1,4 @@
-import { RemoveNulls } from "../../Utils/array";
+import { ArrayDiff, RemoveNulls } from "../../Utils/array";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IDestroyable } from "../../Utils/utils.types";
 
@@ -55,6 +55,7 @@ export class ObservableScope<T> extends ObservableScopeWrapper<T> {
 
 export interface IObservableScope<T> extends IDestroyable {
   getFunction: { (): T };
+  static: boolean;
   async: boolean;
   value: T;
   dirty: boolean;
@@ -62,24 +63,30 @@ export interface IObservableScope<T> extends IDestroyable {
   emitters: (Emitter | null)[];
   setCallback: EmitterCallback;
   destroyed: boolean;
+  calc: any[] | null;
 }
 
 let currentSet: Set<Emitter> = null;
+let currentCalc: any[] = null;
 let watching = false;
-function WatchAction(action: { (): void }) {
+function WatchAction<T>(action: { (): T }) {
   const parentSet = currentSet;
+  const parentCalc = currentCalc;
   currentSet = null;
+  currentCalc = null;
 
   const parentWatching = watching;
   watching = true;
 
-  action();
+  const value = action();
 
   const lastSet = currentSet;
+  const lastCalc = currentCalc;
   currentSet = parentSet;
+  currentCalc = parentCalc;
 
   watching = parentWatching;
-  return lastSet;
+  return [value, lastSet, lastCalc] as const;
 }
 
 export namespace ObservableScope {
@@ -87,14 +94,16 @@ export namespace ObservableScope {
     const hasFunction = typeof valueFunction === "function";
     const scope = {
       getFunction: hasFunction ? valueFunction : null,
+      static: !hasFunction,
       value: hasFunction ? null : valueFunction,
       async: hasFunction
         ? (valueFunction as any)[Symbol.toStringTag] === "AsyncFunction"
         : false,
       dirty: hasFunction,
       emitter: hasFunction ? Emitter.Create() : null,
-      emitters: [],
+      emitters: hasFunction ? [] : null,
       destroyed: false,
+      calc: null,
       setCallback: hasFunction
         ? function () {
             return OnSet(scope);
@@ -109,6 +118,12 @@ export namespace ObservableScope {
 
     currentSet ??= new Set();
     currentSet.add(emitter);
+  }
+
+  export function Calc<T>(value: T): T {
+    currentCalc ??= [];
+    currentCalc.push(value);
+    return value;
   }
 
   export function Value<T>(scope: IObservableScope<T>) {
@@ -168,18 +183,20 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
   if (!scope.dirty) return;
 
   scope.dirty = false;
-  let value: T = null;
-  const emitters =
-    scope.getFunction && WatchAction(() => (value = scope.getFunction()));
+  const [value, emitters, calc] =
+    scope.getFunction && WatchAction(() => scope.getFunction());
 
-  if (scope.async)
+  let diff = calc === null || ArrayDiff(scope.calc, calc);
+  scope.calc = calc;
+
+  if (diff && scope.async)
     Promise.resolve(value).then((val) => {
       scope.value = val;
       Emitter.Emit(scope.emitter, scope);
     });
-  else scope.value = value;
+  else if(diff) scope.value = value;
 
-  UpdateEmitters(scope, emitters);
+  diff && UpdateEmitters(scope, emitters);
 }
 
 function DestroyScope(scope: IObservableScope<any>) {
