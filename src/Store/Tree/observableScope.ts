@@ -48,14 +48,13 @@ export class ObservableScopeWrapper<T>
 }
 
 export class ObservableScope<T> extends ObservableScopeWrapper<T> {
-  constructor(getFunction: T | { (): T | Promise<T> }) {
+  constructor(getFunction: { (): T | Promise<T> }) {
     super(ObservableScope.Create(getFunction));
   }
 }
 
 export interface IObservableScope<T> extends IDestroyable {
   getFunction: { (): T };
-  static: boolean;
   async: boolean;
   value: T;
   dirty: boolean;
@@ -64,65 +63,60 @@ export interface IObservableScope<T> extends IDestroyable {
   setCallback: EmitterCallback;
   destroyed: boolean;
   calc: any[] | null;
+  watchSet: Set<Emitter> | null;
+  watchCalc: any[] | null;
 }
 
-let currentSet: Set<Emitter> = null;
-let currentCalc: any[] = null;
-let watching = false;
-function WatchAction<T>(action: { (): T }) {
-  const parentSet = currentSet;
-  const parentCalc = currentCalc;
-  currentSet = null;
-  currentCalc = null;
+let currentScope: IObservableScope<unknown> = null;
+let currentWatching = false;
+function WatchScope<T>(scope: IObservableScope<T>): T {
+  const parentScope = currentScope;
+  const parentWatching = currentWatching;
 
-  const parentWatching = watching;
-  watching = true;
+  currentScope = scope;
+  currentWatching = true;
 
-  const value = action();
+  const value = scope.getFunction();
 
-  const lastSet = currentSet;
-  const lastCalc = currentCalc;
-  currentSet = parentSet;
-  currentCalc = parentCalc;
-
-  watching = parentWatching;
-  return [value, lastSet, lastCalc] as const;
+  currentScope = parentScope;
+  currentWatching = parentWatching;
+  return value;
 }
 
 export namespace ObservableScope {
-  export function Create<T>(valueFunction: { (): T | Promise<T> } | T) {
-    const hasFunction = typeof valueFunction === "function";
+  export function Create<T>(valueFunction: { (): T | Promise<T> }) {
     const scope = {
-      getFunction: hasFunction ? valueFunction : null,
-      static: !hasFunction,
-      value: hasFunction ? null : valueFunction,
-      async: hasFunction
-        ? (valueFunction as any)[Symbol.toStringTag] === "AsyncFunction"
-        : false,
-      dirty: hasFunction,
-      emitter: hasFunction ? Emitter.Create() : null,
-      emitters: hasFunction ? [] : null,
+      getFunction: valueFunction,
+      value: null,
+      async: (valueFunction as any)[Symbol.toStringTag] === "AsyncFunction",
+      dirty: true,
+      emitter: Emitter.Create(),
+      emitters: [],
       destroyed: false,
       calc: null,
-      setCallback: hasFunction
-        ? function () {
-            return OnSet(scope);
-          }
-        : null,
+      watchSet: null,
+      watchCalc: null,
+      setCallback: function () {
+        return OnSet(scope);
+      },
     } as IObservableScope<T>;
     return scope;
   }
 
   export function Register(emitter: Emitter) {
-    if (!watching || !emitter) return;
+    if(!currentWatching)
+      return;
 
-    currentSet ??= new Set();
-    currentSet.add(emitter);
+    currentScope.watchSet ??= new Set();
+    currentScope.watchSet.add(emitter);
   }
 
   export function Calc<T>(value: T): T {
-    currentCalc ??= [];
-    currentCalc.push(value);
+    if(!currentWatching)
+      return;
+
+    currentScope.watchCalc ??= [];
+    currentScope.watchCalc.push(value);
     return value;
   }
 
@@ -135,7 +129,7 @@ export namespace ObservableScope {
   }
 
   export function Watching() {
-    return watching;
+    return currentWatching;
   }
 
   export function Touch<T>(scope: IObservableScope<T>) {
@@ -181,38 +175,31 @@ function OnSet(scope: IObservableScope<any>) {
 
 function UpdateValue<T>(scope: IObservableScope<T>) {
   if (!scope.dirty) return;
-
   scope.dirty = false;
-  const [value, emitters, calc] =
-    scope.getFunction && WatchAction(() => scope.getFunction());
 
-  let diff = calc === null || ArrayDiff(scope.calc, calc);
-  scope.calc = calc;
+  const value = WatchScope(scope);
+  const change = scope.watchCalc === null || ArrayDiff(scope.calc, scope.watchCalc);
+  scope.calc = scope.watchCalc;
 
-  if (diff && scope.async)
-    Promise.resolve(value).then((val) => {
-      scope.value = val;
-      Emitter.Emit(scope.emitter, scope);
-    });
-  else if(diff) scope.value = value;
+  if(change) {
+    if (scope.async)
+      Promise.resolve(value).then((val) => {
+        scope.value = val;
+        Emitter.Emit(scope.emitter, scope);
+      });
+    else scope.value = value;
 
-  diff && UpdateEmitters(scope, emitters);
-}
+    UpdateEmitters(scope);
+  }
 
-function DestroyScope(scope: IObservableScope<any>) {
-  if (!scope) return;
-
-  scope.emitters = null;
-  scope.emitter = null;
-  scope.getFunction = null;
-  scope.setCallback = null;
-  scope.destroyed = true;
+  scope.watchCalc = null;
+  scope.watchSet?.clear();
 }
 
 function UpdateEmitters<T>(
-  scope: IObservableScope<T>,
-  newEmitters: Set<Emitter> | null,
+  scope: IObservableScope<T>
 ) {
+  const newEmitters = scope.watchSet;
   if (newEmitters === null) {
     for (let x = 0; x < scope.emitters.length; x++)
       Emitter.Remove(scope.emitters[x], scope.setCallback);
@@ -236,4 +223,14 @@ function UpdateEmitters<T>(
     Emitter.On(scope.emitters[x], scope.setCallback);
 
   removed && RemoveNulls(scope.emitters);
+}
+
+function DestroyScope(scope: IObservableScope<any>) {
+  if (!scope) return;
+
+  scope.emitters = null;
+  scope.emitter = null;
+  scope.getFunction = null;
+  scope.setCallback = null;
+  scope.destroyed = true;
 }

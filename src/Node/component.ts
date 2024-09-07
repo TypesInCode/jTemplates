@@ -8,7 +8,6 @@ import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
 export class Component<D = void, T = void, E = void> {
   private scope: ObservableScope<D>;
   private templates: T;
-  // private decoratorMap: Map<string, any>;
 
   public get Injector() {
     return this.nodeRef.injector;
@@ -17,10 +16,6 @@ export class Component<D = void, T = void, E = void> {
   public get Destroyed() {
     return this.nodeRef.destroyed;
   }
-
-  /* public get DecoratorMap() {
-        return this.decoratorMap;
-    } */
 
   protected get Scope() {
     return this.scope;
@@ -39,14 +34,17 @@ export class Component<D = void, T = void, E = void> {
   }
 
   constructor(
-    data: D | { (): D | Promise<D> },
+    data: D | (() => (D | Promise<D>)),
     templates: T,
     private nodeRef: INodeRefBase,
     private componentEvents: ComponentNodeEvents<E>,
   ) {
-    this.scope = new ObservableScope<D>(data);
+    if(typeof data === 'function')
+      this.scope = new ObservableScope<D>(data as () => D | Promise<D>);
+    else
+      this.scope = new ObservableScope<D>(() => data);
+
     this.templates = templates || ({} as T);
-    // this.decoratorMap = new Map();
   }
 
   public Template(): NodeRefTypes | NodeRefTypes[] {
