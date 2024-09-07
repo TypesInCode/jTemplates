@@ -3,6 +3,7 @@ import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 import { CreatePropertyAssignment, CreateNodeValueAssignment } from './createPropertyAssignment';
 import { CreateEventAssignment } from './createEventAssignment';
+import { CreateAssignment } from './createAssignment';
 
 let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
@@ -76,8 +77,11 @@ export const DOMNodeConfig: INodeConfig = {
     remove(target: Node) {
         target && target.parentNode && target.parentNode.removeChild(target);
     },
+    createTextAssignment(target: HTMLElement) {
+        return CreateNodeValueAssignment(target);
+    },
     setText(target: Node, text: string) {
-        target.textContent = text;
+        target.nodeValue = text;
     },
     getAttribute(target: HTMLElement, attribute: string) {
         return target.getAttribute(attribute);
@@ -89,10 +93,10 @@ export const DOMNodeConfig: INodeConfig = {
         if(target.nodeType === Node.TEXT_NODE)
             return CreateNodeValueAssignment(target);
 
-        return CreatePropertyAssignment(target);
+        return CreateAssignment(target, CreatePropertyAssignment);
     },
     createEventAssignment(target: HTMLElement) {
-        return CreateEventAssignment(target);
+        return CreateAssignment(target, CreateEventAssignment);
     },
     fireEvent(target: HTMLElement, event: string, data: any) {
         var cEvent = new CustomEvent(event, data);
