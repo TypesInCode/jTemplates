@@ -1,42 +1,109 @@
 import { NodeConfig } from "./nodeConfig";
-import { IBoundNodeBase } from "./boundNode.types";
+import { IBoundNodeBase, NodeRefEvents } from "./boundNode.types";
 import { ObservableScope, IObservableScope } from "../Store/Tree/observableScope";
+import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export namespace BoundNode {
+
+    function WrapEventObject(node: IBoundNodeBase, events: NodeRefEvents) {
+        const keys = Object.keys(events);
+        const ret = {} as NodeRefEvents;
+        for(let x=0; x<keys.length; x++) {
+            const event = keys[x];
+            const eventFunc = events[event];
+            ret[event] = function(...args: any[]) {
+                if(node.destroyed)
+                    return;
+
+                return eventFunc(...args);
+            };
+        }
+
+        return ret;
+    }
     
     export function Init(boundNode: IBoundNodeBase) {
         const nodeDef = boundNode.nodeDef;
         if(nodeDef.props) {
             const scope = ObservableScope.Create(nodeDef.props);
-            boundNode.scopes ??= [];
-            boundNode.scopes.push(scope);
             boundNode.assignProperties = NodeConfig.createPropertyAssignment(boundNode.node);
-            ObservableScope.Watch(scope, function(scope) { ScheduleSetProperties(boundNode, scope) });
-            const next = ObservableScope.Value(scope);
-            boundNode.assignProperties(next);
+            if(!scope.static) {
+                boundNode.scopes ??= [];
+                boundNode.scopes.push(scope);
+                ObservableScope.Watch(scope, function(scope) { ScheduleSetProperties(boundNode, scope) });
+                const next = ObservableScope.Value(scope);
+                boundNode.assignProperties(next);
+            }
+            else {
+                boundNode.assignProperties(nodeDef.props);
+                boundNode.assignProperties = null;
+            }
         }
 
         if(nodeDef.attrs) {
             const scope = ObservableScope.Create(nodeDef.attrs);
-            boundNode.scopes ??= [];
-            boundNode.scopes.push(scope);
+            if(!scope.static) {
+                boundNode.scopes ??= [];
+                boundNode.scopes.push(scope);
 
-            ObservableScope.Watch(scope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
-            SetAttributes(boundNode, ObservableScope.Value(scope));
+                !scope.static && ObservableScope.Watch(scope, function(scope) { ScheduleSetAttributes(boundNode, scope) });
+                SetAttributes(boundNode, ObservableScope.Value(scope));
+            }
+            else
+                SetAttributes(boundNode, nodeDef.attrs as {
+                    [name: string]: string;
+                });
         }
 
         if(nodeDef.on) {
             const scope = ObservableScope.Create(nodeDef.on);
-            boundNode.scopes ??= [];
-            boundNode.scopes.push(scope);
-
             boundNode.assignEvents = NodeConfig.createEventAssignment(boundNode.node);
+            if(!scope.static) {
+                const eventScope = ObservableScope.Create(function() {
+                    const events = ObservableScope.Value(scope);
+                    return WrapEventObject(boundNode, events);
+                });
+                boundNode.scopes ??= [];
+                boundNode.scopes.push(scope, eventScope);
+                !scope.static && ObservableScope.Watch(eventScope, function(scope) { ScheduleSetEvents(boundNode, scope) });
+                const next = ObservableScope.Value(eventScope);
+                boundNode.assignEvents(next);
+            }
+            else
+                boundNode.assignEvents(WrapEventObject(boundNode, nodeDef.on as NodeRefEvents));
+        }
 
-            ObservableScope.Watch(scope, function(scope) { ScheduleSetEvents(boundNode, scope) });
-            const next = ObservableScope.Value(scope);
-            boundNode.assignEvents(next);
+        if(nodeDef.text) {
+            const scope = ObservableScope.Create(nodeDef.text);
+            boundNode.assignText = NodeConfig.createTextAssignment(boundNode.node);
+            if(!scope.static) {
+                boundNode.scopes ??= [];
+                boundNode.scopes.push(scope);
+                !scope.static && ObservableScope.Watch(scope, function(scope) { ScheduleSetText(boundNode, scope) });
+                const next = ObservableScope.Value(scope);
+                boundNode.assignText(next);
+            }
+            else {
+                boundNode.assignText(nodeDef.text as string);
+                boundNode.assignText = null;
+            }
         }
     }
+}
+
+function ScheduleSetText(node: IBoundNodeBase, scope: IObservableScope<string>) {
+    if(node.setText)
+        return;
+
+    node.setText = true;
+    NodeConfig.scheduleUpdate(function() {
+        node.setText = false;
+        if(node.destroyed)
+            return;
+
+        const next = ObservableScope.Value(scope);
+        node.assignText(next);
+    });
 }
 
 function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: any}>) {
@@ -50,7 +117,7 @@ function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[n
             return;
         
         const next = ObservableScope.Value(scope);
-        node.assignProperties(next);
+        node.assignProperties(next || null);
     });
 }
 

@@ -16,12 +16,14 @@ export interface NodeDefinition<T = any, E = any> {
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
+    text?: FunctionOr<string>;
 }
 
 export interface BoundNodeFunctionParam {
     props?: FunctionOr<{[name: string]: any}>;
     attrs?: FunctionOr<{[name: string]: string}>;
     on?: FunctionOr<NodeRefEvents>;
+    text?: FunctionOr<string>;
 }
 
 export interface IBoundNodeBase extends INodeRefBase {
@@ -30,8 +32,10 @@ export interface IBoundNodeBase extends INodeRefBase {
     setProperties: boolean;
     assignProperties: {(next: any): void};
     assignEvents: {(next: {[event: string]: (event: Event) => void }): void};
+    assignText: {(next: string): void};
     setAttributes: boolean;
     setEvents: boolean;
+    setText: boolean;
 }
 
 export interface IBoundNode extends IBoundNodeBase {
