@@ -222,7 +222,7 @@ export namespace NodeRef {
             case NodeRefType.ComponentNode:
                 node.component?.Destroy();
             case NodeRefType.BoundNode:
-                // node.assignEvents?.(null);
+                node.assignEvents?.(null);
             case NodeRefType.ElementNode:
                 for(let x=0; node.scopes && x<node.scopes.length; x++)
                     ObservableScope.Destroy(node.scopes[x]);
