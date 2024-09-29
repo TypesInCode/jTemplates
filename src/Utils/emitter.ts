@@ -17,8 +17,7 @@ export namespace Emitter {
   export function Emit(emitter: Emitter, ...args: any[]) {
     let removed = false;
     for (let x = 0; x < emitter.length; x++) {
-      const result = emitter[x]?.(...args);
-      if (result === true) {
+      if (emitter[x](...args) === true) {
         removed = true;
         emitter[x] = null;
       }
