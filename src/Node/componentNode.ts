@@ -124,19 +124,17 @@ function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
                 nodes
             });
 
-            if(init)
+            if(init) {
                 NodeRef.ReconcileChildren(node, list);
-                /* for(var x=0; x<nodes.length; x++)
-                    NodeRef.AddChild(node, nodes[x]); */
+                List.Clear(list);
+            }
             else
                 NodeConfig.scheduleUpdate(function() {
                     if(node.destroyed)
                         return;
 
                     NodeRef.ReconcileChildren(node, list);
-
-                    /* for(var x=0; x<nodes.length; x++)
-                        NodeRef.AddChild(node, nodes[x]); */
+                    List.Clear(list);
                 });
         });
 

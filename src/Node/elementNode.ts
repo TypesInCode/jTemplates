@@ -97,6 +97,7 @@ function SetDefaultData<T>(node: IElementNodeBase<T>) {
           nodes
         });
         NodeRef.ReconcileChildren(node, defaultNodeList);
+        List.Clear(defaultNodeList);
       });
     }
   });
