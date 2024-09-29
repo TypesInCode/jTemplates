@@ -11,6 +11,46 @@ export interface IList<T> {
 }
 
 export namespace List {
+    let maxTempListSize = 0;
+    let trimScheduled = false;
+    let idleCallback: number | undefined;
+    const tempList = Create<any>();
+
+    function CreateNode<T>(data: T): INode<T> {
+        const node = PopNode(tempList) ?? { previous: null, next: null, data: null };
+        node.data = data;
+        return node;
+    }
+
+    function ReturnNode(node: INode<any>) {
+        if(!node)
+            return;
+
+        node.previous = null;
+        node.next = null;
+        node.data = null;
+        AddNode(tempList, node);
+        ScheduleTrimTempList();
+    }
+
+    function ScheduleTrimTempList() {
+        if(!trimScheduled) {
+            trimScheduled = true;
+            setTimeout(function() {
+                trimScheduled = false;
+                cancelIdleCallback(idleCallback);
+                idleCallback = requestIdleCallback(TrimTempList);
+            });
+        }
+    }
+
+    function TrimTempList() {
+        if(maxTempListSize < tempList.size)
+            maxTempListSize = tempList.size;
+
+        const trimSize = Math.floor(maxTempListSize / 10);
+        Split(tempList, trimSize);
+    }
 
     export function Create<T>(): IList<T> {
         return {
@@ -20,14 +60,46 @@ export namespace List {
         };
     }
 
+    export function Split<T>(list: IList<T>, length: number) {
+        let index = 0;
+        let node = list.head;
+        while(node && index < length) {
+            node = node.next;
+            index++;
+        }
+
+        const retList = Create();
+        if(node) {
+            retList.head = node;
+            retList.tail = list.tail;
+            retList.size = list.size - length;
+
+            list.tail = node.previous;
+            list.size = length;
+            if(list.size === 0)
+                list.head = null;
+            else
+                list.tail.next = null;
+
+            node.previous = null;
+        }
+
+        return retList;
+    }
+
     export function Clear<T>(list: IList<T>) {
-        list.head = null;
-        list.tail = null;
-        list.size = 0;
+        let node = list.head;
+        while(node) {
+            node.data = null;
+            node = node.next;
+        }
+
+        Append(tempList, list);
+        ScheduleTrimTempList();
     }
 
     export function Push<T>(list: IList<T>, data: T) {
-        const node: INode<T> = { previous: null, next: null, data: data };
+        const node: INode<T> = CreateNode<T>(data); // { previous: null, next: null, data: data };
         if(list.size === 0) {
             list.head = node;
             list.tail = node;
@@ -43,7 +115,7 @@ export namespace List {
         return node;
     }
 
-    export function Pop<T>(list: IList<T>): T {
+    export function PopNode<T>(list: IList<T>): INode<T> {
         if(list.size === 0)
             return null;
 
@@ -56,11 +128,21 @@ export namespace List {
         if(list.size === 0)
             list.tail = null;
 
-        return node.data;
+        node.previous = null;
+        node.next = null;
+
+        return node;
+    }
+
+    export function Pop<T>(list: IList<T>): T {
+        const node = PopNode(list);
+        const data = node?.data;
+        ReturnNode(node);
+        return data;
     }
 
     export function Add<T>(list: IList<T>, data: T) {
-        const node: INode<T> = { previous: null, next: null, data: data };
+        const node: INode<T> = CreateNode<T>(data); // { previous: null, next: null, data: data };
         return AddNode(list, node);
     }
 
@@ -84,7 +166,7 @@ export namespace List {
         if(!node)
             return List.Add<T>(list, data);
 
-        const newNode: INode<T> = { previous: null, next: null, data: data };
+        const newNode: INode<T> = CreateNode<T>(data); // { previous: null, next: null, data: data };
         const prevNode = node.previous;
         newNode.next = node;
         node.previous = newNode;
@@ -105,7 +187,7 @@ export namespace List {
         if(!node)
             return List.Push<T>(list, data);
         
-        const newNode: INode<T> = { previous: null, next: null, data: data };
+        const newNode: INode<T> = CreateNode<T>(data); // { previous: null, next: null, data: data };
         const nextNode = node.next;
         node.next = newNode;
         newNode.previous = node;
@@ -135,7 +217,9 @@ export namespace List {
         if(list.size === 0)
             list.head = null;
         
-        return node.data;
+        const data = node.data;
+        ReturnNode(node);
+        return data;
     }
 
     export function RemoveNode<T>(list: IList<T>, node: INode<T>) {
@@ -164,6 +248,30 @@ export namespace List {
             callback(node.data);
             node = node.next;
         }
+    }
+
+    export function Append<T>(appendTo: IList<T>, append: IList<T>) {
+        if(append.size === 0)
+            return;
+
+        if(appendTo.size === 0) {
+            appendTo.head = append.head;
+            append.head = null;
+            appendTo.tail = append.tail;
+            append.tail = null;
+            appendTo.size = append.size;
+            append.size = 0;
+            return;
+        }
+
+        appendTo.tail.next = append.head;
+        append.head.previous = appendTo.tail;
+        appendTo.tail = append.tail;
+        appendTo.size += append.size;
+
+        append.head = null;
+        append.tail = null;
+        append.size = 0;
     }
 
     export function ToNodeMap<T>(list: IList<T>, keyCallback: (data: T) => unknown) {
