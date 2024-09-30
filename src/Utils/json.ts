@@ -1,5 +1,3 @@
-import { ObservableNode } from "../Store/Tree/observableNode";
-
 export type JsonDiffResult<T = unknown> = {
   path: (string | number)[];
   value: unknown;
@@ -10,12 +8,24 @@ export type JsonDiffFactoryResult = ReturnType<typeof JsonDiffFactory>;
 export function JsonDiffFactory() {
   
   const jsonProto = Object.getPrototypeOf({});
+  const arrayProto = Object.getPrototypeOf([]);
+  const strProto = Object.getPrototypeOf("");
+  const numProto = Object.getPrototypeOf(0);
+
   function JsonType(value: any) {
     if (value === null || value === undefined) return "value";
-  
+
+    switch(Object.getPrototypeOf(value)) {
+      case strProto:
+      case numProto:
+        return "value";
+      case jsonProto:
+        return "object";
+      case arrayProto:
+        return "array";
+    }
+
     if (Array.isArray(value)) return "array";
-  
-    if (jsonProto === Object.getPrototypeOf(value)) return "object";
   
     return "value";
   }
