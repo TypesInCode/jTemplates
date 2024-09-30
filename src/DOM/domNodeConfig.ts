@@ -1,9 +1,10 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
-import { CreatePropertyAssignment, CreateNodeValueAssignment } from './createPropertyAssignment';
+import { CreateNodeValueAssignment } from './createPropertyAssignment';
 import { CreateEventAssignment } from './createEventAssignment';
 import { CreateAssignment } from './createAssignment';
+import { CreatePropertyAssignment } from './createPropertyAssignment';
 
 let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
@@ -11,7 +12,6 @@ let updateScheduled = false;
 const updateMs = 16;
 function processUpdates() {
     List.Add(pendingUpdates, null);
-    const start = Date.now();
 
     let callback: {(): void};
     while((callback = List.Pop(pendingUpdates)))
@@ -19,8 +19,6 @@ function processUpdates() {
     
     if(pendingUpdates.size === 0)
         updateScheduled = false;
-    else if(Date.now() - start < updateMs)
-        processUpdates();
     else
         wndw.requestAnimationFrame(processUpdates);
 }
@@ -90,10 +88,7 @@ export const DOMNodeConfig: INodeConfig = {
         target.setAttribute(attribute, value);
     },
     createPropertyAssignment(target: HTMLElement) {
-        if(target.nodeType === Node.TEXT_NODE)
-            return CreateNodeValueAssignment(target);
-
-        return CreateAssignment(target, CreatePropertyAssignment);
+        return CreatePropertyAssignment(target);
     },
     createEventAssignment(target: HTMLElement) {
         return CreateAssignment(target, CreateEventAssignment);
