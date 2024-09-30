@@ -66,18 +66,18 @@ export interface IObservableScope<T> extends IDestroyable {
   watchEmitters: Emitter[] | null;
 }
 
-let currentScope: IObservableScope<unknown> = null;
+let watchingScope: IObservableScope<unknown> = null;
 let currentlyWatching = false;
 function WatchScope<T>(scope: IObservableScope<T>): T {
-  const parentScope = currentScope;
+  const parentScope = watchingScope;
   const parentWatching = currentlyWatching;
 
-  currentScope = scope;
+  watchingScope = scope;
   currentlyWatching = true;
 
   const value = scope.getFunction();
 
-  currentScope = parentScope;
+  watchingScope = parentScope;
   currentlyWatching = parentWatching;
   return value;
 }
@@ -105,15 +105,15 @@ export namespace ObservableScope {
     if(!currentlyWatching)
       return;
 
-    currentScope.watchEmitters ??= [];
-    currentScope.watchEmitters.push(emitter);
+    watchingScope.watchEmitters ??= [];
+    watchingScope.watchEmitters.push(emitter);
   }
 
   export function Value<T>(scope: IObservableScope<T>) {
     if (!scope) return undefined;
 
     Register(scope.emitter);
-    UpdateValue(scope);
+    UpdateScope(scope);
     return scope.value;
   }
 
@@ -155,10 +155,11 @@ export namespace ObservableScope {
 }
 
 function UpdateScope(scope: IObservableScope<unknown>) {
+  const prePromise = scope.promise;
   UpdateValue(scope);
-  scope.promise.then(function() {
-    Emitter.Emit(scope.emitter, scope);
-  });  
+  scope.async && prePromise !== scope.promise && scope.promise.then(function() {
+      Emitter.Emit(scope.emitter, scope);
+  });
 }
 
 const updateScopeQueue = List.Create<IObservableScope<unknown>>();
