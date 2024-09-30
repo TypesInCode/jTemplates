@@ -8,6 +8,7 @@ export const GET_TO_JSON = "toJSON";
 
 const proxyCache = new WeakMap<any, unknown | unknown[]>();
 const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
+const leafScopeCache = new WeakMap<any, {[prop: string]: IObservableScope<unknown>}>();
 
 function getOwnPropertyDescriptor(target: any, prop: string | symbol) {
   const descriptor = Object.getOwnPropertyDescriptor(target, prop);
@@ -61,8 +62,6 @@ function UnwrapProxy(value: any) {
   return value;
 }
 
-let applyingDiff = false;
-
 function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function CreateProxy<T>(value: T): T {
     value = UnwrapProxy(value);
@@ -76,7 +75,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         const typedValue = value as any[];
         const proxy = CreateProxy(typedValue);
         return proxy.map(ToJsonCopy);
-        break;
       }
       case "object": {
         const typedValue: { [prop: string]: unknown } = alias(value) ?? value;
@@ -133,7 +131,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ArrayProxySetter(array: unknown[], prop: string, value: any) {
-    if (readOnly && !applyingDiff) throw `Object is readonly`;
+    if (readOnly) throw `Object is readonly`;
 
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
@@ -149,7 +147,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
     if (prop === IS_OBSERVABLE_NODE) return true;
 
-    if (readOnly && !applyingDiff)
+    if (readOnly)
       switch (prop) {
         case "push":
         case "unshift":
@@ -158,7 +156,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         case "shift":
         case "sort":
         case "reverse":
-          if (readOnly && !applyingDiff) throw `Object is readonly`;
+          if (readOnly) throw `Object is readonly`;
       }
 
     const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
@@ -211,37 +209,32 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     }
   }
 
+  function SetPropertyValue(object: any, prop: string | number, value: any) {
+    object[prop] = value;
+    const leafScopes = leafScopeCache.get(object);
+    ObservableScope.Update(leafScopes && leafScopes[prop] || scopeCache.get(object));
+  }
+
   function ObjectProxySetter(object: any, prop: string, value: any) {
-    if (readOnly && !applyingDiff) throw `Object is readonly`;
+    if (readOnly) throw `Object is readonly`;
 
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
-    const scope = scopeCache.get(object) as IObservableScope<unknown>;
     value = UnwrapProxy(value);
+    const diff = JsonDiff(value, object[prop]);
 
-    if (applyingDiff) {
-      object[prop] = value;
-      ObservableScope.Update(scope);
-    } else {
-      applyingDiff = true;
-      const diff = JsonDiff(value, object[prop]);
+    for (let x = 0; x < diff.length; x++) {
+      if (diff[x].path.length === 0) {
+        SetPropertyValue(object, prop, diff[x].value);
+      } else {
+        const path = diff[x].path;
+        let curr = object[prop];
+        let y = 0;
+        for (; y < path.length - 1; y++) curr = curr[path[y]];
 
-      for (let x = 0; x < diff.length; x++) {
-        if (diff[x].path.length === 0) {
-          const proxy = proxyCache.get(object) as any;
-          proxy[prop] = diff[x].value;
-        } else {
-          const path = diff[x].path;
-          let curr = object[prop];
-          let y = 0;
-          for (; y < path.length - 1; y++) curr = curr[path[y]];
-
-          const target = proxyCache.get(curr) ?? curr;
-          target[path[y]] = diff[x].value;
-        }
+        SetPropertyValue(curr, path[y], diff[x].value);
       }
-      applyingDiff = false;
     }
 
     return true;
@@ -250,8 +243,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function ObjectProxyGetter(object: unknown, prop: string | symbol) {
     if (prop === IS_OBSERVABLE_NODE) return true;
 
-    const scope = scopeCache.get(object);
-    object = ObservableScope.Value<unknown>(scope);
     switch (prop) {
       case GET_TO_JSON:
         return function () {
@@ -260,14 +251,24 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       case GET_OBSERVABLE_VALUE:
         return object;
       default: {
-        const proxyValue = (object as any)[prop];
-
-        if (typeof prop === "symbol") return proxyValue;
-
-        const proxy = CreateProxyFromValue(proxyValue);
-        return proxy;
+        return GetAccessorValue(object, prop);
       }
     }
+  }
+
+  function GetAccessorValue(parent: any, prop: any) {
+    let leafScopes = leafScopeCache.get(parent);
+    if(leafScopes === undefined) {
+      leafScopes = {};
+      leafScopeCache.set(parent, leafScopes);
+    }
+
+    leafScopes[prop] ??= ObservableScope.Create(function() {
+      const value = parent[prop];
+      return CreateProxyFromValue(value);
+    });
+
+    return ObservableScope.Value(leafScopes[prop]);
   }
 
   function CreateProxyFromValue<T>(value: T): T {
@@ -305,10 +306,6 @@ export namespace ObservableNode {
   export function Touch(value: unknown) {
     const scope = scopeCache.get(value);
     ObservableScope.Update(scope);
-  }
-
-  export function EnableDiff(value: boolean) {
-    applyingDiff = value;
   }
 
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
