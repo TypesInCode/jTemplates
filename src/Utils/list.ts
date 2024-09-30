@@ -68,7 +68,7 @@ export namespace List {
             index++;
         }
 
-        const retList = Create();
+        const retList = Create<T>();
         if(node) {
             retList.head = node;
             retList.tail = list.tail;
