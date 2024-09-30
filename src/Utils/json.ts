@@ -120,7 +120,7 @@ export function JsonDiffFactory() {
       }
 
     if (allChildrenChanged) {
-      resp.splice(changedPathLength);
+      resp.length > changedPathLength && resp.splice(changedPathLength);
       resp.push({
         path,
         value: newValue,
@@ -137,6 +137,10 @@ export function JsonDiffFactory() {
     oldValue: any[],
     resp: JsonDiffResult<unknown>,
   ) {
+    if(oldValue.length === 0 || newValue.length === 0) {
+      return oldValue.length !== newValue.length;
+    }
+
     let allChildrenChanged = true;
 
     if (newValue.length !== oldValue.length)
