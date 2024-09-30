@@ -42,8 +42,8 @@ function ownKeysArray(value: any) {
   return Object.keys(value);
 }
 
-function UnwrapProxy(value: any) {
-  const type = JsonType(value);
+function UnwrapProxy(value: any, type: "value" | "array" | "object" = JsonType(value)) {
+  // const type = JsonType(value);
   if (type === "value") return value;
 
   if (value[IS_OBSERVABLE_NODE] === true) return value[GET_OBSERVABLE_VALUE];
@@ -221,11 +221,12 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
-    if(JsonType(value) === 'value') {
+    const jsonType = JsonType(value);
+    if(jsonType === 'value') {
       value !== object[prop] && SetPropertyValue(object, prop, value);
     }
     else {
-      value = UnwrapProxy(value);
+      value = UnwrapProxy(value, jsonType);
       const diff = JsonDiff(value, object[prop]);
 
       for (let x = 0; x < diff.length; x++) {
