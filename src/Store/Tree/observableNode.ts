@@ -221,19 +221,24 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     if (prop === IS_OBSERVABLE_NODE)
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
-    value = UnwrapProxy(value);
-    const diff = JsonDiff(value, object[prop]);
+    if(JsonType(value) === 'value') {
+      value !== object[prop] && SetPropertyValue(object, prop, value);
+    }
+    else {
+      value = UnwrapProxy(value);
+      const diff = JsonDiff(value, object[prop]);
 
-    for (let x = 0; x < diff.length; x++) {
-      if (diff[x].path.length === 0) {
-        SetPropertyValue(object, prop, diff[x].value);
-      } else {
-        const path = diff[x].path;
-        let curr = object[prop];
-        let y = 0;
-        for (; y < path.length - 1; y++) curr = curr[path[y]];
+      for (let x = 0; x < diff.length; x++) {
+        if (diff[x].path.length === 0) {
+          SetPropertyValue(object, prop, diff[x].value);
+        } else {
+          const path = diff[x].path;
+          let curr = object[prop];
+          let y = 0;
+          for (; y < path.length - 1; y++) curr = curr[path[y]];
 
-        SetPropertyValue(curr, path[y], diff[x].value);
+          SetPropertyValue(curr, path[y], diff[x].value);
+        }
       }
     }
 
