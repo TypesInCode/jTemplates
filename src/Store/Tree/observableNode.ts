@@ -115,7 +115,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function CreateObjectProxy(value: any) {
-    const scope = ObservableScope.Create(() => value);
     const proxy = new Proxy(value, {
       get: ObjectProxyGetter,
       set: ObjectProxySetter,
@@ -124,7 +123,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       getOwnPropertyDescriptor,
     }) as unknown;
 
-    scopeCache.set(value, scope);
     proxyCache.set(value, proxy);
 
     return proxy;
