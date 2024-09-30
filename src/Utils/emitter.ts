@@ -3,7 +3,7 @@ import { RemoveNulls } from "./array";
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => boolean | void;
-export type Emitter = Array<EmitterCallback>; // Set<EmitterCallback>;
+export type Emitter = Array<EmitterCallback | null>; // Set<EmitterCallback>;
 
 export namespace Emitter {
   export function Create(): Emitter {
@@ -17,7 +17,7 @@ export namespace Emitter {
   export function Emit(emitter: Emitter, ...args: any[]) {
     let removed = false;
     for (let x = 0; x < emitter.length; x++) {
-      if (emitter[x](...args) === true) {
+      if (emitter[x] === null || emitter[x](...args) === true) {
         removed = true;
         emitter[x] = null;
       }
@@ -28,10 +28,8 @@ export namespace Emitter {
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
     const index = emitter.indexOf(callback);
-    if (index >= 0) {
+    if (index >= 0)
       emitter[index] = null;
-      RemoveNulls(emitter, index);
-    }
   }
 
   export function Clear(emitter: Emitter) {
