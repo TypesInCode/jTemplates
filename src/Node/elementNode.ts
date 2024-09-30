@@ -26,14 +26,14 @@ export namespace ElementNode {
       if (nodeDef.data) {
         const dataScope = ObservableScope.Create(nodeDef.data);
         const valueScope = ObservableScope.Create(function () {
-          let value = ObservableScope.Value(dataScope);
+          const value = ObservableScope.Value(dataScope);
           if (!value)
             return valueDefault;
 
           if (!Array.isArray(value))
             return [value];
 
-          return value.slice();
+          return value;
         });
         elementNode.childNodes = new Set();
         elementNode.scopes ??= [];
@@ -53,17 +53,6 @@ export namespace ElementNode {
   }
 
 }
-
-/* function GetValue(dataScope: IObservableScope<any>): any[] {
-    var value = ObservableScope.Value(dataScope);
-    if(!value)
-        return valueDefault;
-
-    if(!Array.isArray(value))
-        value = [value];
-
-    return value;
-} */
 
 function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<any>) {
   if (node.setData)
