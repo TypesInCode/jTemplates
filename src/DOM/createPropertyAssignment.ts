@@ -1,5 +1,4 @@
-import { JsonType } from "../Utils/jsonType";
-import { CreateAssignment } from "./createAssignment";
+import { JsonType } from "../Utils/json";
 
 export function CreateNodeValueAssignment(target: HTMLElement) {
   let lastValue = target.nodeValue;
@@ -11,72 +10,76 @@ export function CreateNodeValueAssignment(target: HTMLElement) {
   }
 }
 
-function AssignValue(target: any, value: string) {
-  const start = target.selectionStart;
-  const end = target.selectionEnd;
-  target.value = value;
-  if (target.ownerDocument.activeElement === target)
-    target.setSelectionRange(start, end);
-
-}
-
-export function CreatePropertyAssignment(target: any, prop: string) {
-  let lastValue: any;
-  let childPropertyAssignment: any;
-
-  return function(next: any) {
-    const nextValue = next && next[prop];
-    if(nextValue === lastValue)
-      return;
-
-    lastValue = nextValue;
-
-    if(childPropertyAssignment !== undefined)
-      childPropertyAssignment(target[prop], nextValue);
-
-    const nextValueType = JsonType(nextValue);
-    switch(nextValueType) {
-      case "value":
-        switch(prop) {
-          case "value":
-            AssignValue(target, nextValue || "");
-            break;
-          default:
-            target[prop] = nextValue;
-            break;
+function WalkValue(next: {[prop: string]: any}, callback: (path: string, value: any, index: number) => void, index = 0, parent = "") {
+    const keys = Object.keys(next);
+    for(let x=0; x<keys.length; x++) {
+        const value = next[keys[x]];
+        const type = JsonType(value);
+        switch(type) {
+            case "object":
+                index = WalkValue(value, callback, index, `${parent}${keys[x]}.`);
+                break;
+            default:
+                callback(`${parent}${keys[x]}`, value, index);
+                index++;
+                break;
         }
-        break;
-      default:
-        childPropertyAssignment ??= CreateAssignment(target[prop], CreatePropertyAssignment);
-        childPropertyAssignment(target[prop], nextValue);
-        break;
     }
-  }
+    return index;
 }
 
+function AssignNodeValue(target: any, value: string) {
+    target.nodeValue = value;
+}
 
+function AssignValue(target: any, value: string) {
+    target.value = value;
+}
 
+function AssignClassName(target: any, value: string) {
+    target.className = value;
+}
 
+function GetAssignmentFunction(path: string): (target: any, next: any) => void {
+    switch(path) {
+        case "nodeValue":
+            return AssignNodeValue;
+        case "value":
+            return AssignValue;
+        case "className":
+            return AssignClassName;
+        default:
+            return new Function("t", "v", `t.${path} = v;`) as (target: any, next: any) => void;
+    }
+}
 
-/* export function CreatePropertyAssignment(target: any) {
-  let last: any | undefined;
-  let writeTo: any;
-  return function AssignNext(next: any) {
-    if (next === last)
-      return;
+export function CreatePropertyAssignment(target: any) {
+    const last: [string, any, (target: any, next: any) => void][] = [["", null, null]];
 
-    last = next;
-
-    writeTo ??= {};
-    const nextKeys = next && Object.keys(next);
-
-    for(let x=0; nextKeys && x<nextKeys.length; x++) {
-      const key = nextKeys[x];
-      writeTo[key] ??= CreateAssignProp(target, key);
+    function WalkCallback(path: string, value: any, index: number) {
+        if(index >= last.length || last[index][0] !== path) {
+            last[index] = [path, value, GetAssignmentFunction(path)];
+            last[index][2](target, value);
+        }
+        else if(last[index][1] !== value) {
+            last[index][2](target, value);
+        }
     }
 
-    const writeKeys = Object.keys(writeTo);
-    for(let x=0; x<writeKeys.length; x++)
-      writeTo[writeKeys[x]](next);
-  }
-} */
+    return function AssignProperty(next: {[prop: string]: any}) {
+        if(next === null) {
+            for(let x=0; x<last.length; x++)
+                last[x][2](target, null);
+
+            if(last.length > 0)
+                last.splice(0);
+
+            return;
+        }
+        
+        const endIndex = WalkValue(next, WalkCallback);
+        if(endIndex < last.length)
+            last.splice(endIndex);
+    }
+
+}
