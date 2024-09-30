@@ -157,8 +157,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
           if (readOnly) throw `Object is readonly`;
       }
 
-    const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
-    array = ObservableScope.Value<unknown[]>(scope);
     switch (prop) {
       case GET_TO_JSON:
         return function () {
@@ -167,6 +165,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       case GET_OBSERVABLE_VALUE:
         return array;
       default: {
+        const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
+        array = ObservableScope.Value(scope);
         const arrayValue = (array as any)[prop];
 
         if (typeof prop === "symbol") return arrayValue;
