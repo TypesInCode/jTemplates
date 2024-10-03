@@ -4,7 +4,7 @@ import { INode, List } from "../Utils/list";
 import { Schedule, Synch, Thread } from "../Utils/thread";
 import { BoundNode } from "./boundNode";
 import { IBoundNode } from "./boundNode.types";
-import { ElementChildrenFunction, ElementNodeFunctionParam, IElementDataNode, IElementNode, IElementNodeBase } from "./elementNode.types";
+import { ElementChildrenFunctionParam, ElementNodeFunctionParam, IElementDataNode, IElementNode, IElementNodeBase } from "./elementNode.types";
 import { NodeConfig } from "./nodeConfig";
 import { NodeRef, NodeRefType } from "./nodeRef";
 import { NodeRefTypes } from "./nodeRef.types";
@@ -12,46 +12,46 @@ import { NodeRefTypes } from "./nodeRef.types";
 const valueDefault = [] as Array<any>;
 export namespace ElementNode {
 
-  export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children: ElementChildrenFunction<T>) {
+  export function Create<T>(type: any, namespace: string, nodeDef: ElementNodeFunctionParam<T>, children: ElementChildrenFunctionParam<T>) {
     var elemNode = NodeRef.Create(type, namespace, NodeRefType.ElementNode) as IElementNode<T>;
     elemNode.nodeDef = nodeDef;
-    elemNode.childrenFunc = children;
+    if(Array.isArray(children))
+      elemNode.childrenArray = children;
+    else if(children !== undefined)
+      elemNode.children = children;
     return elemNode;
   }
 
   export function Init<T>(elementNode: IElementNodeBase<T>) {
-    if (elementNode.childrenFunc) {
-      var nodeDef = elementNode.nodeDef;
+    const nodeDef = elementNode.nodeDef;
+    if  (elementNode.childrenArray !== null || (elementNode.children !== null && !nodeDef.data)) {
+      SetDefaultData(elementNode);
+    }
+    else if (elementNode.children !== null) {
+      const dataScope = ObservableScope.Create(nodeDef.data);
+      const valueScope = ObservableScope.Create(function () {
+        const value = ObservableScope.Value(dataScope);
+        if (!value)
+          return valueDefault;
 
-      if (nodeDef.data) {
-        const dataScope = ObservableScope.Create(nodeDef.data);
-        const valueScope = ObservableScope.Create(function () {
-          const value = ObservableScope.Value(dataScope);
-          if (!value)
-            return valueDefault;
+        if (!Array.isArray(value))
+          return [value];
 
-          if (!Array.isArray(value))
-            return [value];
+        return value;
+      });
+      elementNode.childNodes = new Set();
+      elementNode.scopes ??= [];
+      elementNode.scopes.push(dataScope, valueScope);
 
-          return value;
-        });
-        elementNode.childNodes = new Set();
-        elementNode.scopes ??= [];
-        elementNode.scopes.push(dataScope, valueScope);
+      ObservableScope.Watch(valueScope, function () {
+        ScheduleSetData(elementNode, valueScope);
+      });
 
-        ObservableScope.Watch(valueScope, function () {
-          ScheduleSetData(elementNode, valueScope);
-        });
-
-        SetData(elementNode, ObservableScope.Value(valueScope), true);
-      }
-      else
-        SetDefaultData(elementNode);
+      SetData(elementNode, ObservableScope.Value(valueScope), true);
     }
 
     BoundNode.Init(elementNode);
   }
-
 }
 
 function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<any>) {
@@ -70,10 +70,16 @@ function ScheduleSetData<T>(node: IElementNodeBase<T>, scope: IObservableScope<a
 
 function SetDefaultData<T>(node: IElementNodeBase<T>) {
   Synch(function () {
-    const nodes = Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, true);
+    const nodes = node.childrenArray || Injector.Scope(node.injector, CreateNodeArray, node.children, true);
+    node.childrenArray = null;
 
     if (nodes.length > 0) {
-      NodeRef.InitAll(node as IElementNode<T>, nodes);
+      Schedule(function() {
+        if(node.destroyed)
+          return;
+
+        NodeRef.InitAll(node as IElementNode<T>, nodes);
+      });
 
       Thread(function () {
         if (node.destroyed)
@@ -123,7 +129,7 @@ function ReconcileNodeData<T>(node: IElementNodeBase<T>, values: T[]) {
       curNode = List.Add(nextNodeList, {
         value: values[x],
         init: false,
-        nodes: Injector.Scope(node.injector, CreateNodeArray, node.childrenFunc, values[x])
+        nodes: Injector.Scope(node.injector, CreateNodeArray, node.children, values[x])
       });
     }
   }

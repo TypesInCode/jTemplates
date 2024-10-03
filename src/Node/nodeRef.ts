@@ -78,7 +78,8 @@ export namespace NodeRef {
                     assignText: null,
                     setAttributes: false,
                     setEvents: false,
-                    childrenFunc: null,
+                    children: null,
+                    childrenArray: null,
                     nodeList: null,
                     setData: false,
                     setText: false,
@@ -166,11 +167,10 @@ export namespace NodeRef {
         }
 
         let priorNode: any;
-        let curDataNode = nextChildren?.head;
         let insert = false;
         let remove = false;
 
-        while(curDataNode) {
+        for(let curDataNode = nextChildren.head; curDataNode !== null; curDataNode = curDataNode.next) {
             for(let x=0; x<curDataNode.data.nodes.length; x++) {
                 const actualNode = priorNode ? NodeConfig.getNextSibling(priorNode) : NodeConfig.getFirstChild(rootNode);
                 const virtualNode = curDataNode.data.nodes[x];
@@ -189,8 +189,6 @@ export namespace NodeRef {
 
                 priorNode = expectedNode;
             }
-
-            curDataNode = curDataNode.next;
         }
        
         let lastChild = NodeConfig.getLastChild(rootNode);

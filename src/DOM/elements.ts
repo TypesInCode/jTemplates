@@ -1,5 +1,5 @@
 import { ElementNode } from "../Node/elementNode";
-import { ElementNodeFunctionParam, ElementChildrenFunction } from "../Node/elementNode.types";
+import { ElementNodeFunctionParam, ElementChildrenFunction, ElementChildrenFunctionParam } from "../Node/elementNode.types";
 
 export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
     return ElementNode.Create<T>("div", null, nodeDef, children);
@@ -49,55 +49,55 @@ export function textarea<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("textarea", null, nodeDef, null);
 }
 
-export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("select", null, nodeDef, children);
 }
 
-export function option<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function option<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("option", null, nodeDef, children);
 }
 
-export function h1<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function h1<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("h1", null, nodeDef, children);
 }
 
-export function h2<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function h2<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("h2", null, nodeDef, children);
 }
 
-export function h3<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function h3<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("h3", null, nodeDef, children);
 }
 
-export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("p", null, nodeDef, children);
 }
 
-export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("style", null, nodeDef, children);
 }
 
-export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("button", null, nodeDef, children);
 }
 
-export function table<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function table<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("table", null, nodeDef, children);
 }
 
-export function tbody<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function tbody<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("tbody", null, nodeDef, children);
 }
 
-export function th<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function th<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("th", null, nodeDef, children);
 }
 
-export function tr<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function tr<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("tr", null, nodeDef, children);
 }
 
-export function td<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function td<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("td", null, nodeDef, children);
 }
 
