@@ -3,11 +3,14 @@ import { RemoveNulls } from "./array";
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => boolean | void;
-export type Emitter = Array<EmitterCallback | null>; // Set<EmitterCallback>;
+export type Emitter = Array<EmitterCallback | null> & { _id: number };
 
 export namespace Emitter {
+  let globalId = 0;
   export function Create(): Emitter {
-    return [];
+    const emitter: Emitter = [] as any;
+    emitter._id = globalId++;
+    return emitter;
   }
 
   export function On(emitter: Emitter, callback: EmitterCallback) {
@@ -34,5 +37,13 @@ export namespace Emitter {
 
   export function Clear(emitter: Emitter) {
     emitter.splice(0);
+  }
+
+  export function Sort(emitters: Emitter[]) {
+    return emitters.sort(Compare);
+  }
+
+  function Compare(a: Emitter, b: Emitter) {
+    return a._id - b._id;
   }
 }
