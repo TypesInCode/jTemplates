@@ -1,19 +1,19 @@
 import { ElementNode } from "../Node/elementNode";
-import { ElementNodeFunctionParam, ElementChildrenFunction, ElementChildrenFunctionParam } from "../Node/elementNode.types";
+import { ElementNodeFunctionParam, ElementChildrenFunctionParam } from "../Node/elementNode.types";
 
-export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function div<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("div", null, nodeDef, children);
 }
 
-export function a<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function a<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("a", null, nodeDef, children);
 }
 
-export function ul<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function ul<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("ul", null, nodeDef, children);
 }
 
-export function li<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function li<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("li", null, nodeDef, children);
 }
 
@@ -21,11 +21,11 @@ export function br<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("br", null, nodeDef, null);
 }
 
-export function b<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function b<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("b", null, nodeDef, children);
 }
 
-export function span<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function span<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("span", null, nodeDef, children);
 }
 
@@ -33,7 +33,7 @@ export function img<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("img", null, nodeDef, null);
 }
 
-export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunction<T>) {
+export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("video", null, nodeDef, children);
 }
 
