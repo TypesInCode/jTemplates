@@ -13,13 +13,28 @@ export interface IList<T> {
 export namespace List {
     let maxTempListSize = 0;
     let trimScheduled = false;
-    let idleCallback: number | undefined;
     const tempList = Create<any>();
 
     function CreateNode<T>(data: T): INode<T> {
         const node = PopNode(tempList) ?? { previous: null, next: null, data: null };
         node.data = data;
         return node;
+    }
+
+    function TrimTempList() {
+        trimScheduled = false;
+        if(maxTempListSize < tempList.size)
+            maxTempListSize = tempList.size;
+
+        const trimSize = Math.floor(maxTempListSize / 10);
+        Split(tempList, trimSize);
+    }
+
+    function ScheduleTrimTempList() {
+        if(!trimScheduled) {
+            trimScheduled = true;
+            requestIdleCallback(TrimTempList);
+        }
     }
 
     function ReturnNode(node: INode<any>) {
@@ -31,25 +46,6 @@ export namespace List {
         node.data = null;
         AddNode(tempList, node);
         ScheduleTrimTempList();
-    }
-
-    function ScheduleTrimTempList() {
-        if(!trimScheduled) {
-            trimScheduled = true;
-            setTimeout(function() {
-                trimScheduled = false;
-                cancelIdleCallback(idleCallback);
-                idleCallback = requestIdleCallback(TrimTempList);
-            });
-        }
-    }
-
-    function TrimTempList() {
-        if(maxTempListSize < tempList.size)
-            maxTempListSize = tempList.size;
-
-        const trimSize = Math.floor(maxTempListSize / 10);
-        Split(tempList, trimSize);
     }
 
     export function Create<T>(): IList<T> {
@@ -276,15 +272,13 @@ export namespace List {
 
     export function ToNodeMap<T>(list: IList<T>, keyCallback: (data: T) => unknown) {
         const map = new Map<any, INode<T>[]>();
-        let node = list.head;
-        while(node) {
+        for(let node = list.head; node !== null; node = node.next) {
             const key = keyCallback(node.data);
-            const nodes = map.get(key) || [node];
-            if(nodes[0] !== node)
-                nodes.push(node);
+            const nodes = map.get(key);
+            if(nodes === undefined)
+                map.set(key, [node]);
             else
-                map.set(key, nodes);
-            node = node.next;
+                nodes[nodes.length] = node;
         }
 
         return map;
