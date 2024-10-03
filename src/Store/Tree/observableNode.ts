@@ -123,6 +123,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       getOwnPropertyDescriptor,
     }) as unknown;
 
+    leafScopeCache.set(value, {});
     proxyCache.set(value, proxy);
 
     return proxy;
@@ -143,8 +144,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
-    if (prop === IS_OBSERVABLE_NODE) return true;
-
     if (readOnly)
       switch (prop) {
         case "push":
@@ -158,6 +157,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       }
 
     switch (prop) {
+      case IS_OBSERVABLE_NODE:
+        return true;
       case GET_TO_JSON:
         return function () {
           return ToJson(array);
@@ -182,6 +183,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
               prop === "slice"
                 ? proxyArray
                 : (proxyArray as any)[prop as any](...args);
+
             switch (prop) {
               case "push":
               case "unshift":
@@ -245,9 +247,9 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ObjectProxyGetter(object: unknown, prop: string | symbol) {
-    if (prop === IS_OBSERVABLE_NODE) return true;
-
     switch (prop) {
+      case IS_OBSERVABLE_NODE:
+        return true;
       case GET_TO_JSON:
         return function () {
           return ToJson(object);
@@ -261,11 +263,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function GetAccessorValue(parent: any, prop: any) {
-    let leafScopes = leafScopeCache.get(parent);
-    if(leafScopes === undefined) {
-      leafScopes = {};
-      leafScopeCache.set(parent, leafScopes);
-    }
+    const leafScopes = leafScopeCache.get(parent);
 
     leafScopes[prop] ??= ObservableScope.Create(function() {
       const value = parent[prop];
