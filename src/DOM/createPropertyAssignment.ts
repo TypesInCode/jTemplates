@@ -62,6 +62,7 @@ export function CreatePropertyAssignment(target: any) {
             last[index][2](target, value);
         }
         else if(last[index][1] !== value) {
+            last[index][1] = value;
             last[index][2](target, value);
         }
     }
