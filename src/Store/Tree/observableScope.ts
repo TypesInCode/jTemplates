@@ -53,6 +53,11 @@ export class ObservableScope<T> extends ObservableScopeWrapper<T> {
   }
 }
 
+interface ICalcFunction<T> {
+  getFunction: {(): T };
+  value: T
+}
+
 export interface IObservableScope<T> extends IDestroyable {
   getFunction: { (): T };
   async: boolean;
@@ -64,6 +69,8 @@ export interface IObservableScope<T> extends IDestroyable {
   setCallback: EmitterCallback;
   destroyed: boolean;
   watchEmitters: Emitter[] | null;
+  watchEmittersSet: Set<Emitter> | null;
+  calcFunctions: ICalcFunction<any>[] | null;
 }
 
 let watchingScope: IObservableScope<unknown> = null;
@@ -77,8 +84,22 @@ function WatchScope<T>(scope: IObservableScope<T>): T {
 
   const value = scope.getFunction();
 
+  watchingScope.watchEmittersSet = null;
   watchingScope = parentScope;
   currentlyWatching = parentWatching;
+  return value;
+}
+
+export function CalcScope<T>(callback: () => T) {
+  const value = callback();
+  if(currentlyWatching) {
+    watchingScope.calcFunctions ??= [];
+    watchingScope.calcFunctions.push({
+      getFunction: callback,
+      value
+    });
+  }
+
   return value;
 }
 
@@ -94,6 +115,8 @@ export namespace ObservableScope {
       emitters: [],
       destroyed: false,
       watchEmitters: null,
+      watchEmittersSet: null,
+      calcFunctions: null,
       setCallback: function () {
         return OnSet(scope);
       },
@@ -106,7 +129,14 @@ export namespace ObservableScope {
       return;
 
     watchingScope.watchEmitters ??= [];
-    watchingScope.watchEmitters.push(emitter);
+
+    if(watchingScope.watchEmitters.length === 10)
+      watchingScope.watchEmittersSet = new Set(watchingScope.watchEmitters);
+
+    if((watchingScope.watchEmittersSet === null && !watchingScope.watchEmitters.includes(emitter)) || (watchingScope.watchEmittersSet !== null && !watchingScope.watchEmittersSet.has(emitter))) {
+      watchingScope.watchEmittersSet?.add(emitter);
+      watchingScope.watchEmitters.push(emitter);
+    }
   }
 
   export function Value<T>(scope: IObservableScope<T>) {
@@ -178,9 +208,16 @@ function QueueScopeUpdate(scope: IObservableScope<unknown>) {
     queueMicrotask(ProcessScopeUpdateQueue);
 }
 
+function CalcChanged(calc: ICalcFunction<any>) {
+  const value = calc.getFunction();
+  const changed = calc.value !== value;
+  calc.value = value;
+  return changed;
+}
+
 function DirtyScope(scope: IObservableScope<unknown>) {
-  scope.dirty = true;
-  scope.async ? QueueScopeUpdate(scope) : Emitter.Emit(scope.emitter, scope);
+  scope.dirty = scope.calcFunctions === null || scope.calcFunctions.some(CalcChanged);
+  scope.dirty && (scope.async ? QueueScopeUpdate(scope) : Emitter.Emit(scope.emitter, scope));
 }
 
 function OnSet(scope: IObservableScope<any>) {
@@ -196,6 +233,7 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 
   scope.dirty = false;
   scope.watchEmitters = null;
+  scope.calcFunctions = null;
   const value = WatchScope(scope);  
 
   if (scope.async) {
@@ -210,33 +248,55 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 }
 
 function UpdateEmitters(scope: IObservableScope<unknown>) {
-  const newEmitters = scope.watchEmitters;
-  if (newEmitters === null) {
-    for (let x = 0; x < scope.emitters.length; x++)
-      Emitter.Remove(scope.emitters[x], scope.setCallback);
+  const right = scope.watchEmitters;
+  if (right === null) {
+    if(scope.emitters.length > 0) {
+      for (let x = 0; x < scope.emitters.length; x++)
+        Emitter.Remove(scope.emitters[x], scope.setCallback);
 
-    scope.emitters = [];
+      scope.emitters = [];
+    }
     return;
   }
 
-  let x = 0;
-  for(; x < scope.emitters.length && x < newEmitters.length && scope.emitters[x] === newEmitters[x]; x++) {}
+  Emitter.Sort(right);
 
-  for(let y=x; y<scope.emitters.length; y++)
-    Emitter.Remove(scope.emitters[y], scope.setCallback);
+  const left = scope.emitters;
+  let leftIndex = 0;
+  let rightIndex = 0;
 
-  for(let y=x; y<newEmitters.length; y++)
-    Emitter.On(newEmitters[y], scope.setCallback);
+  for(; leftIndex < left.length; leftIndex++) {
+    let y = rightIndex;
+    for(; y < right.length && left[leftIndex] !== right[y]; y++)
+      Emitter.On(right[rightIndex], scope.setCallback);
 
-  scope.emitters = newEmitters;
+    if(y === right.length)
+      Emitter.Remove(left[leftIndex], scope.setCallback);
+    else {
+      for(let x=rightIndex; x < y; x++)
+        Emitter.On(right[x], scope.setCallback);
+
+      rightIndex = y+1;
+    }
+  }
+
+  for(; rightIndex < right.length; rightIndex++)
+    Emitter.On(right[rightIndex], scope.setCallback);
+
+  scope.emitters = right;
 }
 
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope) return;
+  const emitters = scope.emitters
 
   scope.emitters = null;
   scope.emitter = null;
   scope.getFunction = null;
   scope.setCallback = null;
+  scope.calcFunctions = null;
   scope.destroyed = true;
+
+  for(let x=0; x<emitters.length; x++)
+    Emitter.Remove(emitters[x], scope.setCallback);
 }
