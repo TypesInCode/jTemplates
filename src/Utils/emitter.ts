@@ -3,13 +3,12 @@ import { RemoveNulls } from "./array";
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => boolean | void;
-export type Emitter = Array<EmitterCallback | null> & { _id: number };
+export type Emitter = [number, ...EmitterCallback[]];
 
 export namespace Emitter {
   let globalId = 0;
   export function Create(): Emitter {
-    const emitter: Emitter = [] as any;
-    emitter._id = globalId++;
+    const emitter: Emitter = [++globalId] as any;
     return emitter;
   }
 
@@ -19,8 +18,8 @@ export namespace Emitter {
 
   export function Emit(emitter: Emitter, ...args: any[]) {
     let removed = false;
-    for (let x = 0; x < emitter.length; x++) {
-      if (emitter[x] === null || emitter[x](...args) === true) {
+    for (let x = 1; x < emitter.length; x++) {
+      if (emitter[x] === null || (emitter[x] as EmitterCallback)(...args) === true) {
         removed = true;
         emitter[x] = null;
       }
@@ -31,7 +30,7 @@ export namespace Emitter {
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
     const index = emitter.indexOf(callback);
-    if (index >= 0)
+    if (index >= 1)
       emitter[index] = null;
   }
 
@@ -44,6 +43,6 @@ export namespace Emitter {
   }
 
   function Compare(a: Emitter, b: Emitter) {
-    return a._id - b._id;
+    return a[0] - b[0];
   }
 }
