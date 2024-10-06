@@ -60,17 +60,17 @@ interface ICalcFunction<T> {
 
 export interface IObservableScope<T> extends IDestroyable {
   getFunction: { (): T };
+  setCallback: EmitterCallback;
   async: boolean;
   value: T;
   promise: Promise<T> | null;
   dirty: boolean;
   emitter: Emitter;
   emitters: (Emitter | null)[];
-  setCallback: EmitterCallback;
+  calcFunctions: ICalcFunction<any>[] | null;
   destroyed: boolean;
   watchEmitters: Emitter[] | null;
   watchEmittersSet: Set<Emitter> | null;
-  calcFunctions: ICalcFunction<any>[] | null;
 }
 
 let watchingScope: IObservableScope<unknown> = null;
@@ -113,10 +113,10 @@ export namespace ObservableScope {
       dirty: true,
       emitter: Emitter.Create(),
       emitters: [],
+      calcFunctions: null,
       destroyed: false,
       watchEmitters: null,
       watchEmittersSet: null,
-      calcFunctions: null,
       setCallback: function () {
         return OnSet(scope);
       },
@@ -131,9 +131,9 @@ export namespace ObservableScope {
     watchingScope.watchEmitters ??= [];
 
     if(watchingScope.watchEmitters.length === 10)
-      watchingScope.watchEmittersSet = new Set(watchingScope.watchEmitters);
+      watchingScope.watchEmittersSet ??= new Set(watchingScope.watchEmitters);
 
-    if((watchingScope.watchEmittersSet === null && !watchingScope.watchEmitters.includes(emitter)) || (watchingScope.watchEmittersSet !== null && !watchingScope.watchEmittersSet.has(emitter))) {
+    if(watchingScope.watchEmittersSet === null ? !watchingScope.watchEmitters.includes(emitter) : !watchingScope.watchEmittersSet.has(emitter)) {
       watchingScope.watchEmittersSet?.add(emitter);
       watchingScope.watchEmitters.push(emitter);
     }
