@@ -32,7 +32,7 @@ export function JsonDiffFactory() {
 
   function JsonMerge(source: unknown, patch: unknown) {
     if(patch === undefined)
-        return source;
+        return JsonDeepClone(source);
 
     const sourceType = JsonType(source);
     const patchType = JsonType(patch);
@@ -44,9 +44,11 @@ export function JsonDiffFactory() {
       case "array": {
         const typedSource = source as unknown[];
         const typedPatch = patch as unknown[];
-        return typedSource.map(function(source, index): unknown {
-            return JsonMerge(source, typedPatch[index]);
+        const result = typedPatch.map(function(patch, index): unknown {
+            return JsonMerge(typedSource[index], patch);
         });
+
+        return result;
       }
       case "object": {
         const typedSource = source as {[prop: string]: unknown};
