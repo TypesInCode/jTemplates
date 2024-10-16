@@ -36,7 +36,7 @@ export class AsyncQueue {
 
     private async ExecuteQueue() {
         const callback = List.Pop(this.queue);
-        if(callback !== null) {
+        if(callback !== undefined) {
             await callback();
             this.ExecuteQueue();
         }
