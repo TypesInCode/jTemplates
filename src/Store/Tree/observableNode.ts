@@ -305,8 +305,13 @@ export namespace ObservableNode {
     return DefaultCreateProxy(value);
   }
 
-  export function Touch(value: unknown) {
-    const scope = scopeCache.get(value);
+  export function Touch(value: unknown, prop?: string | number) {
+    let scope: IObservableScope<unknown>;
+    if(prop !== undefined) {
+      const leafScopes = leafScopeCache.get(value);
+      scope = leafScopes?.[prop];
+    }
+    scope ??= scopeCache.get(value);
     ObservableScope.Update(scope);
   }
 
@@ -335,7 +340,7 @@ export namespace ObservableNode {
 
       const assignValue = pathTuples[y][1];
       (assignValue as any)[path[y]] = value;
-      ObservableNode.Touch(assignValue);
+      ObservableNode.Touch(assignValue, path[y]);
     }
   }
 
