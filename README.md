@@ -4,7 +4,7 @@ Type-safe templating for the browser.
 ```
 npm install --save-dev j-templates
 ```
-## Hello World - [sample](https://typesincode.github.io/jTemplates/pages/helloWorld.html)
+## Hello World
 ```typescript
 import { Component } from 'j-templates';
 import { div } from 'j-templates/DOM';
@@ -26,5 +26,3 @@ Component.Attach(document.body, hellowWorld({}));
     <div>Hello world</div>
 </hello-world>
 ```
-
-## [More Examples](https://typesincode.github.io/jTemplates/)

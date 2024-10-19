@@ -15,10 +15,9 @@
   "typings": "lib/index.d.ts",
   "scripts": {
     "clean": "rimraf lib",
-    "build": "npm run buildquick && node ./tools/copy-package-json.js && webpack",
+    "build": "npm run buildquick && node ./tools/copy-package-json.js",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
-    "builddocs": "mkdocs build && typedoc --out docs/code src/index.ts src/DOM/index.ts src/Utils/index.ts && touch docs/.nojekyll",
-    "buildmddocs": "typedoc --out mddocs/code --plugin typedoc-plugin-markdown src/index.ts src/Store/index.ts src/DOM/index.ts src/Utils/index.ts",
+    "builddocs": "typedoc --out docs src/index.ts src/DOM/index.ts src/Utils/index.ts src/Store/index.ts && touch docs/.nojekyll",
     "test": "mocha --require ts-node/register --recursive test/**/*-spec.ts",
     "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts"
   },
@@ -29,20 +28,11 @@
     "chai": "^3.5.0",
     "fs-extra": "^8.1.0",
     "jsdom": "^13.2.0",
-    "mkdocs": "^0.0.1",
     "mocha": "^7.0.0",
     "nyc": "^15.1.0",
     "rimraf": "^2.5.4",
-    "source-map-support": "^0.5.19",
-    "ts-loader": "^9.4.2",
-    "ts-node": "^10.9.1",
-    "typedoc": "^0.25.3",
-    "typedoc-plugin-markdown": "^3.17.1",
-    "typedocs": "^0.6.7",
-    "typescript": "^5.5.3",
-    "uglifyjs-webpack-plugin": "^1.2.4",
-    "webpack": "^5.92.1",
-    "webpack-cli": "^3.3.11"
+    "typedoc": "^0.26.10",
+    "typescript": "^5.5.3"
   },
   "engines": {
     "node": ">=4.0.0"
