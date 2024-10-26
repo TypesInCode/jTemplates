@@ -10,11 +10,11 @@ export namespace BoundNode {
         for(let x=0; x<keys.length; x++) {
             const event = keys[x];
             const eventFunc = events[event];
-            ret[event] = function(...args: any[]) {
+            ret[event] = function(event: any) {
                 if(node.destroyed)
                     return;
 
-                return eventFunc(...args);
+                return eventFunc(event);
             };
         }
 

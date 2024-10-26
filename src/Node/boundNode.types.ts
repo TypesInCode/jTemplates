@@ -1,11 +1,12 @@
 import { IObservableScope } from "../Store/Tree/observableScope";
+import { RecursivePartial } from "../Utils/utils.types";
 import { NodeRefType } from "./nodeRef";
 import { INodeRefBase } from "./nodeRef.types";
 
 export type FunctionOr<T> = {(...args: Array<any>): T | Promise<T> } | T;
 
-export type NodeRefEvents = {
-    [name: string]: {(...args: Array<any>): void}
+export type NodeRefEvents<E extends {[event: string]: any} = any> = {
+    [P in keyof E]?: { (events: E[P]): void }
 }
 
 export interface NodeDefinition<T = any, E = any> {
@@ -13,14 +14,14 @@ export interface NodeDefinition<T = any, E = any> {
     namespace: string;
     props?: FunctionOr<{[name: string]: unknown}>;
     attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
+    on?: FunctionOr<NodeRefEvents<E>>;
     text?: FunctionOr<string>;
 }
 
-export interface BoundNodeFunctionParam {
-    props?: FunctionOr<{[name: string]: unknown}>;
+export interface BoundNodeFunctionParam<P = HTMLElement, E = HTMLElementEventMap> {
+    props?: FunctionOr<RecursivePartial<P>>;
     attrs?: FunctionOr<{[name: string]: string}>;
-    on?: FunctionOr<NodeRefEvents>;
+    on?: FunctionOr<NodeRefEvents<E>>;
     text?: FunctionOr<string>;
 }
 

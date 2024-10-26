@@ -1,10 +1,9 @@
-import { BoundNodeFunctionParam, FunctionOr, IBoundNodeBase, NodeDefinition } from "./boundNode.types";
+import { BoundNodeFunctionParam, IBoundNodeBase, NodeDefinition } from "./boundNode.types";
 import { Component, ComponentConstructor } from "./component";
 import { NodeRefType } from "./nodeRef";
-import { INodeRefBase } from "./nodeRef.types";
 
 export type ComponentNodeEvents<E = void> = {
-    [P in keyof E]: {(data?: E[P]): void};
+    [P in keyof E]?: {(data: E[P]): void};
 }
 
 export interface ComponentNodeDefinition<D = void, E = void> extends NodeDefinition<D> {
@@ -12,7 +11,7 @@ export interface ComponentNodeDefinition<D = void, E = void> extends NodeDefinit
     data?: {(): D | Promise<D>};
 }
 
-export interface ComponentNodeFunctionParam<D = void, E = void> extends BoundNodeFunctionParam {
+export interface ComponentNodeFunctionParam<D = void, E = void, P = HTMLElement> extends BoundNodeFunctionParam<P> {
     on?: ComponentNodeEvents<E>;
     data?: { (): D | Promise<D> };
 }

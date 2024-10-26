@@ -12,7 +12,7 @@ export interface ElementNodeDefinition<T> extends NodeDefinition<T> {
     children?: ElementChildrenFunction<T>;
 }
 
-export interface ElementNodeFunctionParam<T> extends BoundNodeFunctionParam {
+export interface ElementNodeFunctionParam<T, P = HTMLElement, E = HTMLElementEventMap> extends BoundNodeFunctionParam<P, E> {
     data?: {(): T | Array<T> | Promise<Array<T>> | Promise<T> };
 }
 

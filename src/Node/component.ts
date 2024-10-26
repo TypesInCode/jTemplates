@@ -1,7 +1,7 @@
 import { NodeRef } from "./nodeRef";
 import { ComponentNode } from "./componentNode";
 import { Destroy } from "../Utils/decorators";
-import { ComponentNodeEvents } from "./componentNode.types";
+import { ComponentNodeEvents, ComponentNodeFunction } from "./componentNode.types";
 import { ObservableScope } from "../Store/Tree/observableScope";
 import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
 
@@ -66,11 +66,24 @@ export class Component<D = void, T = void, E = void> {
 
 export namespace Component {
   export function ToFunction<D = void, T = void, E = void>(
-    type: any,
-    namespace: any,
-    constructor: ComponentConstructor<D, T, E>,
+    type: string,
+    constructor: ComponentConstructor<D, T, E>
+  ): ComponentNodeFunction<D, T, E>;
+  export function ToFunction<D = void, T = void, E = void>(
+    type: string,
+    namespace: string,
+    constructor: ComponentConstructor<D, T, E>
+  ): ComponentNodeFunction<D, T, E>;
+  export function ToFunction<D = void, T = void, E = void>(
+    type: string,
+    namespace: string | ComponentConstructor<D, T, E>,
+    constructor?: ComponentConstructor<D, T, E>
   ) {
-    return ComponentNode.ToFunction<D, T, E>(type, namespace, constructor);
+    if(constructor === undefined) {
+      constructor = namespace as ComponentConstructor<D, T, E>;
+      namespace = undefined;
+    }
+    return ComponentNode.ToFunction<D, T, E>(type, namespace as string, constructor);
   }
 
   export function Register<D = void, T = void, E = void>(

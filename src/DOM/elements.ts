@@ -33,7 +33,7 @@ export function img<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("img", null, nodeDef, null);
 }
 
-export function video<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
+export function video<T>(nodeDef: ElementNodeFunctionParam<T, HTMLVideoElement, HTMLVideoElementEventMap>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("video", null, nodeDef, children);
 }
 
@@ -41,7 +41,7 @@ export function source<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("source", null, nodeDef, null);
 }
 
-export function input<T>(nodeDef: ElementNodeFunctionParam<T>) {
+export function input<T>(nodeDef: ElementNodeFunctionParam<T, HTMLInputElement>) {
     return ElementNode.Create<T>("input", null, nodeDef, null);
 }
 
@@ -49,11 +49,11 @@ export function textarea<T>(nodeDef: ElementNodeFunctionParam<T>) {
     return ElementNode.Create<T>("textarea", null, nodeDef, null);
 }
 
-export function select<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
+export function select<T>(nodeDef: ElementNodeFunctionParam<T, HTMLSelectElement>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("select", null, nodeDef, children);
 }
 
-export function option<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
+export function option<T>(nodeDef: ElementNodeFunctionParam<T, HTMLOptionElement>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("option", null, nodeDef, children);
 }
 
@@ -73,11 +73,11 @@ export function p<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChi
     return ElementNode.Create<T>("p", null, nodeDef, children);
 }
 
-export function style<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
+export function style<T>(nodeDef: ElementNodeFunctionParam<T, HTMLStyleElement>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("style", null, nodeDef, children);
 }
 
-export function button<T>(nodeDef: ElementNodeFunctionParam<T>, children?: ElementChildrenFunctionParam<T>) {
+export function button<T>(nodeDef: ElementNodeFunctionParam<T, HTMLButtonElement>, children?: ElementChildrenFunctionParam<T>) {
     return ElementNode.Create<T>("button", null, nodeDef, children);
 }
 
