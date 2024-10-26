@@ -14,6 +14,7 @@ const contextQueue: IList<IThreadContext> = List.Create();
 let threadContext: IThreadContext = null;
 let timeoutRunning = false;
 // const scheduleCallback = typeof requestIdleCallback === 'undefined' ? setTimeout : requestIdleCallback;
+const scheduleInitialCallback = queueMicrotask;
 const scheduleCallback = setTimeout;
 
 function timeRemaining(this: { end: number }) {
@@ -45,7 +46,7 @@ function ScheduleWork(ctx: IThreadContext) {
         return;
 
     timeoutRunning = true;
-    scheduleCallback(ProcessQueue);
+    scheduleInitialCallback(ProcessQueue);
 }
 
 function Invoke(ctx: IThreadContext, callback: ThreadCallback) {
