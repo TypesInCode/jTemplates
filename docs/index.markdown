@@ -4,3 +4,18 @@
 
 layout: home
 ---
+
+## Hello World
+``` typescript
+import { Component, NodeRefTypes } from "j-templates";
+import { div } from "j-templates/DOM";
+
+class App extends Component {
+  Template(): NodeRefTypes | NodeRefTypes[] {
+    return div({}, () => "Hello world!");
+  }
+}
+
+const app = Component.ToFunction("app-component", undefined, App);
+Component.Attach(document.getElementById("app") as any, app({}));
+```
