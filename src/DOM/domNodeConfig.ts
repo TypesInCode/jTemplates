@@ -9,8 +9,11 @@ import { CreatePropertyAssignment } from './createPropertyAssignment';
 let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
 
-const updateMs = 16;
+const frameTime = 16;
+let lastUpdate = 0;
 function processUpdates() {
+    lastUpdate = Date.now();
+
     List.Add(pendingUpdates, null);
 
     let callback: {(): void};
@@ -23,6 +26,18 @@ function processUpdates() {
         wndw.requestAnimationFrame(processUpdates);
 }
 
+function scheduleUpdate(callback: () => void) {
+    List.Add(pendingUpdates, callback);
+
+    if(!updateScheduled) {
+        updateScheduled = true;
+        if(Date.now() - lastUpdate < frameTime)
+            queueMicrotask(processUpdates);
+        else
+            wndw.requestAnimationFrame(processUpdates);
+    }
+}
+
 export const DOMNodeConfig: INodeConfig = {
     createNode(type: string, namespace?: string): Node {
         return namespace ? 
@@ -32,14 +47,7 @@ export const DOMNodeConfig: INodeConfig = {
     createTextNode(value: string = '') {
         return wndw.document.createTextNode(value);
     },
-    scheduleUpdate(callback: () => void): void {
-        List.Add(pendingUpdates, callback);
-    
-        if(!updateScheduled) {
-            updateScheduled = true;
-            wndw.requestAnimationFrame(processUpdates);
-        }
-    },
+    scheduleUpdate,
     addListener(target: Node, type: string, callback: {():void}) {
         target.addEventListener(type, callback);
     },
