@@ -35,7 +35,7 @@ export namespace Emitter {
   }
 
   export function Clear(emitter: Emitter) {
-    emitter.splice(0);
+    emitter.splice(1);
   }
 
   export function Sort(emitters: Emitter[]) {
