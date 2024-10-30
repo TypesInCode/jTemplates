@@ -4,6 +4,12 @@ Type-safe templating for the browser.
 ```
 npm install --save-dev j-templates
 ```
+
+Framework for building reactive browser applications:
+* TypeScript only - no extra transpile or compile steps
+* Bundler agnostic - bundle using your preferred library
+* Low dependencies - hello world only requires this + a bundler to get started
+
 ## Hello World
 ```typescript
 import { Component } from 'j-templates';
@@ -17,8 +23,8 @@ class HelloWorld extends Component {
 
 }
 
-var helloWorld = Component.ToFunction("hello-world", null, HelloWorld);
-Component.Attach(document.body, hellowWorld({}));
+var helloWorld = Component.ToFunction("hello-world", HelloWorld);
+Component.Attach(document.body, helloWorld({}));
 ```
 ### Resulting HTML
 ```html
@@ -26,3 +32,5 @@ Component.Attach(document.body, hellowWorld({}));
     <div>Hello world</div>
 </hello-world>
 ```
+
+[More Examples](https://typesincode.github.io/jTemplates/)
