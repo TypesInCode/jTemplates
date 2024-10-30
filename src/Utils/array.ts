@@ -36,3 +36,28 @@ export function ArrayDiff(source: any[], target: any[]) {
 
   return x < source.length;
 }
+
+export function ReconcileSortedArrays<T>(left: T[], right: T[], add: (value: T) => void, remove: (value: T) => void) {
+  let leftIndex = 0;
+  let rightIndex = 0;
+
+  while(leftIndex < left.length && rightIndex < right.length) {
+    let y = rightIndex;
+
+    for(; y<right.length && left[leftIndex] !== right[y]; y++) {}
+
+    if(y === right.length)
+      remove(left[leftIndex]);
+    else {
+      for(let z=rightIndex; z < y; z++)
+        add(right[z]);
+
+      rightIndex = y + 1;
+    }
+
+    leftIndex++;
+  }
+
+  for(; rightIndex < right.length; rightIndex++)
+    add(right[rightIndex]);
+}

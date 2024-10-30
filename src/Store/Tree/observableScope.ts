@@ -1,3 +1,4 @@
+import { ReconcileSortedArrays } from "../../Utils/array";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { List } from "../../Utils/list";
 import { IDestroyable } from "../../Utils/utils.types";
@@ -261,27 +262,11 @@ function UpdateEmitters(scope: IObservableScope<unknown>) {
 
   Emitter.Sort(right);
 
-  const left = scope.emitters;
-  let leftIndex = 0;
-  let rightIndex = 0;
-
-  for(; leftIndex < left.length; leftIndex++) {
-    let y = rightIndex;
-    for(; y < right.length && left[leftIndex] !== right[y]; y++)
-      Emitter.On(right[rightIndex], scope.setCallback);
-
-    if(y === right.length)
-      Emitter.Remove(left[leftIndex], scope.setCallback);
-    else {
-      for(let x=rightIndex; x < y; x++)
-        Emitter.On(right[x], scope.setCallback);
-
-      rightIndex = y+1;
-    }
-  }
-
-  for(; rightIndex < right.length; rightIndex++)
-    Emitter.On(right[rightIndex], scope.setCallback);
+  ReconcileSortedArrays(scope.emitters, right, function(emitter) {
+    Emitter.On(emitter, scope.setCallback);
+  }, function(emitter) {
+    Emitter.Remove(emitter, scope.setCallback);
+  });
 
   scope.emitters = right;
 }
