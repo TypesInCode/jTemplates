@@ -4,8 +4,6 @@
 
 layout: home
 ---
-
-## Hello World
 <iframe src="https://codesandbox.io/embed/yskttf?view=editor+%2B+preview&module=%2Fsrc%2Findex.ts"
      style="width:100%; height: 500px; border:0; border-radius: 4px; overflow:hidden;"
      title="j-templates Hello World"
