@@ -6,16 +6,9 @@ layout: home
 ---
 
 ## Hello World
-``` typescript
-import { Component, NodeRefTypes } from "j-templates";
-import { div } from "j-templates/DOM";
-
-class App extends Component {
-  Template(): NodeRefTypes | NodeRefTypes[] {
-    return div({}, () => "Hello world!");
-  }
-}
-
-const app = Component.ToFunction("app-component", undefined, App);
-Component.Attach(document.getElementById("app") as any, app({}));
-```
+<iframe src="https://codesandbox.io/embed/yskttf?view=editor+%2B+preview&module=%2Fsrc%2Findex.ts"
+     style="width:100%; height: 500px; border:0; border-radius: 4px; overflow:hidden;"
+     title="j-templates Hello World"
+     allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+     sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+   ></iframe>
