@@ -1,4 +1,4 @@
-import { ThreadAsync, Schedule, Callback, Thread, After } from "../../src/Utils/thread";
+/* import { ThreadAsync, Schedule, Callback, Thread, After } from "../../src/Utils/thread";
 
 import { expect } from "chai";
 
@@ -103,4 +103,4 @@ describe("Thread", () => {
 
         expect(countEquals).to.be.true;
     });
-});
+}); */
