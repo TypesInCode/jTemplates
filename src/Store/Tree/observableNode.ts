@@ -8,7 +8,10 @@ export const GET_TO_JSON = "toJSON";
 
 const proxyCache = new WeakMap<any, unknown | unknown[]>();
 const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
-const leafScopeCache = new WeakMap<any, {[prop: string]: IObservableScope<unknown>}>();
+const leafScopeCache = new WeakMap<
+  any,
+  { [prop: string]: IObservableScope<unknown> }
+>();
 
 function getOwnPropertyDescriptor(target: any, prop: string | symbol) {
   const descriptor = Object.getOwnPropertyDescriptor(target, prop);
@@ -42,8 +45,10 @@ function ownKeysArray(value: any) {
   return Object.keys(value);
 }
 
-function UnwrapProxy(value: any, type: "value" | "array" | "object" = JsonType(value)) {
-  // const type = JsonType(value);
+function UnwrapProxy(
+  value: any,
+  type: "value" | "array" | "object" = JsonType(value),
+) {
   if (type === "value") return value;
 
   if (value[IS_OBSERVABLE_NODE] === true) return value[GET_OBSERVABLE_VALUE];
@@ -212,7 +217,9 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function SetPropertyValue(object: any, prop: string | number, value: any) {
     object[prop] = value;
     const leafScopes = leafScopeCache.get(object);
-    ObservableScope.Update(leafScopes && leafScopes[prop] || scopeCache.get(object));
+    ObservableScope.Update(
+      (leafScopes && leafScopes[prop]) || scopeCache.get(object),
+    );
   }
 
   function ObjectProxySetter(object: any, prop: string, value: any) {
@@ -222,10 +229,9 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
 
     const jsonType = JsonType(value);
-    if(jsonType === 'value') {
+    if (jsonType === "value") {
       value !== object[prop] && SetPropertyValue(object, prop, value);
-    }
-    else {
+    } else {
       value = UnwrapProxy(value, jsonType);
       const diff = JsonDiff(value, object[prop]);
 
@@ -265,7 +271,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function GetAccessorValue(parent: any, prop: any) {
     const leafScopes = leafScopeCache.get(parent);
 
-    leafScopes[prop] ??= ObservableScope.Create(function() {
+    leafScopes[prop] ??= ObservableScope.Create(function () {
       const value = parent[prop];
       return CreateProxyFromValue(value);
     });
@@ -307,7 +313,7 @@ export namespace ObservableNode {
 
   export function Touch(value: unknown, prop?: string | number) {
     let scope: IObservableScope<unknown>;
-    if(prop !== undefined) {
+    if (prop !== undefined) {
       const leafScopes = leafScopeCache.get(value);
       scope = leafScopes?.[prop];
     }
