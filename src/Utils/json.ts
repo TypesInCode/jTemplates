@@ -6,18 +6,19 @@ export type JsonDiffResult<T = unknown> = {
 export type JsonDiffFactoryResult = ReturnType<typeof JsonDiffFactory>;
 
 export function JsonDiffFactory() {
-  
   const jsonProto = Object.getPrototypeOf({});
   const arrayProto = Object.getPrototypeOf([]);
   const strProto = Object.getPrototypeOf("");
   const numProto = Object.getPrototypeOf(0);
+  const boolProto = Object.getPrototypeOf(false);
 
   function JsonType(value: any) {
     if (value === null || value === undefined) return "value";
 
-    switch(Object.getPrototypeOf(value)) {
+    switch (Object.getPrototypeOf(value)) {
       case strProto:
       case numProto:
+      case boolProto:
         return "value";
       case jsonProto:
         return "object";
@@ -26,38 +27,39 @@ export function JsonDiffFactory() {
     }
 
     if (Array.isArray(value)) return "array";
-  
+
     return "value";
   }
 
   function JsonMerge(source: unknown, patch: unknown) {
-    if(patch === undefined)
-        return JsonDeepClone(source);
+    if (patch === undefined) return JsonDeepClone(source);
 
     const sourceType = JsonType(source);
     const patchType = JsonType(patch);
-  
-    if(sourceType !== patchType)
-      return patch;
-  
-    switch(sourceType) {
+
+    if (sourceType !== patchType) return patch;
+
+    switch (sourceType) {
       case "array": {
         const typedSource = source as unknown[];
         const typedPatch = patch as unknown[];
-        const result = typedPatch.map(function(patch, index): unknown {
-            return JsonMerge(typedSource[index], patch);
+        const result = typedPatch.map(function (patch, index): unknown {
+          return JsonMerge(typedSource[index], patch);
         });
 
         return result;
       }
       case "object": {
-        const typedSource = source as {[prop: string]: unknown};
-        const typedPatch = patch as {[prop: string]: unknown};
+        const typedSource = source as { [prop: string]: unknown };
+        const typedPatch = patch as { [prop: string]: unknown };
         const sourceKeys = Object.keys(typedSource);
-        const result = {} as {[prop: string]: unknown};
-        for(let x=0; x<sourceKeys.length; x++)
-            result[sourceKeys[x]] = JsonMerge(typedSource[sourceKeys[x]], typedPatch[sourceKeys[x]]);
-        
+        const result = {} as { [prop: string]: unknown };
+        for (let x = 0; x < sourceKeys.length; x++)
+          result[sourceKeys[x]] = JsonMerge(
+            typedSource[sourceKeys[x]],
+            typedPatch[sourceKeys[x]],
+          );
+
         return result;
       }
       default:
@@ -69,13 +71,15 @@ export function JsonDiffFactory() {
     const type = JsonType(value);
     switch (type) {
       case "array":
-        return (value as unknown as unknown[]).map(JsonDeepClone) as unknown as T;
+        return (value as unknown as unknown[]).map(
+          JsonDeepClone,
+        ) as unknown as T;
       case "object": {
         const ret = {} as T;
         const keys = Object.keys(value as unknown as object) as (keyof T)[];
         for (let x = 0; x < keys.length; x++)
           ret[keys[x]] = JsonDeepClone(value[keys[x]]);
-  
+
         return ret;
       }
       default:
@@ -139,7 +143,7 @@ export function JsonDiffFactory() {
     oldValue: any[],
     resp: JsonDiffResult<unknown>,
   ) {
-    if(oldValue.length === 0 || newValue.length === 0) {
+    if (oldValue.length === 0 || newValue.length === 0) {
       return oldValue.length !== newValue.length;
     }
 
@@ -210,4 +214,5 @@ export function JsonDiffFactory() {
   return { JsonDiff, JsonType, JsonDeepClone, JsonMerge };
 }
 
-export const { JsonDiff, JsonType, JsonDeepClone, JsonMerge } = JsonDiffFactory();
+export const { JsonDiff, JsonType, JsonDeepClone, JsonMerge } =
+  JsonDiffFactory();
