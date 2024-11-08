@@ -4,6 +4,7 @@ export interface INodeConfig {
     createNode(type: any, namespace: string): any;
     createTextNode(value?: string): any;
     scheduleUpdate(callback: () => void): void;
+    wrapPriorityUpdates<P extends any[]>(callback: (...args: P) => void): (...args: P) => void;
     setText(target: any, text: string): void;
     getAttribute(target: any, attribute: string): string;
     setAttribute(target: any, attribute: string, value: string): void;

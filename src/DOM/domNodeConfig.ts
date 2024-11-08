@@ -10,32 +10,48 @@ let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
 
 const frameTime = 16;
-let lastUpdate = 0;
+let frameStart = 0;
 function processUpdates() {
-    lastUpdate = Date.now();
-
     List.Add(pendingUpdates, null);
 
     let callback: {(): void};
     while((callback = List.Pop(pendingUpdates)))
         callback();
-    
+
     if(pendingUpdates.size === 0)
         updateScheduled = false;
-    else
+    else {
+        frameStart = Date.now();
         wndw.requestAnimationFrame(processUpdates);
+    }
 }
 
+let highPriority = false;
 function scheduleUpdate(callback: () => void) {
-    List.Add(pendingUpdates, callback);
+    if(highPriority)
+        List.Push(pendingUpdates, callback);
+    else
+        List.Add(pendingUpdates, callback);
 
     if(!updateScheduled) {
+        const now = Date.now();
         updateScheduled = true;
-        if(Date.now() - lastUpdate < frameTime)
+        if(now - frameStart < frameTime)
             queueMicrotask(processUpdates);
-        else
+        else {
+            frameStart = now;
             wndw.requestAnimationFrame(processUpdates);
+        }
     }
+}
+
+function wrapPriorityUpdates<P extends any[]>(callback: (...args: P) => void) {
+    return function(...args: P) {
+        const currentPriority = highPriority;
+        highPriority = true;
+        callback(...args);
+        highPriority = currentPriority;
+    };
 }
 
 export const DOMNodeConfig: INodeConfig = {
@@ -48,6 +64,7 @@ export const DOMNodeConfig: INodeConfig = {
         return wndw.document.createTextNode(value);
     },
     scheduleUpdate,
+    wrapPriorityUpdates,
     addListener(target: Node, type: string, callback: {():void}) {
         target.addEventListener(type, callback);
     },
