@@ -25,7 +25,7 @@ namespace StepFunctions {
 /**
  * Supported animation functions.
  */
-export enum AnimationTypeV2 {
+export enum AnimationType {
   Linear,
   EaseIn,
 }
@@ -34,7 +34,7 @@ export enum AnimationTypeV2 {
  * Class for handling interpolation for basic animations.
  */
 export class Animation implements IDestroyable {
-  private type: AnimationTypeV2;
+  private type: AnimationType;
   private running: boolean;
   private start: number;
   private end: number;
@@ -78,7 +78,7 @@ export class Animation implements IDestroyable {
    * @param update Callback invoked during the animation with the next value
    */
   constructor(
-    type: AnimationTypeV2,
+    type: AnimationType,
     duration: number,
     update: { (next: number): void },
   ) {
@@ -112,7 +112,7 @@ export class Animation implements IDestroyable {
     this.end = end;
     return new Promise<void>((resolve) => {
       const stepFunc =
-        StepFunctions[AnimationTypeV2[this.type] as keyof typeof StepFunctions];
+        StepFunctions[AnimationType[this.type] as keyof typeof StepFunctions];
       const animationRun = () => {
         if (this.animationRun !== animationRun) return;
 
