@@ -31,7 +31,7 @@ export namespace List {
     }
 
     function ScheduleTrimTempList() {
-        if(!trimScheduled) {
+        if(!trimScheduled && tempList.size > maxTempListSize) {
             trimScheduled = true;
             requestIdleCallback(TrimTempList);
         }
