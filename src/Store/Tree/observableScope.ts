@@ -69,6 +69,7 @@ export interface IObservableScope<T> extends IDestroyable {
   emitter: Emitter;
   emitters: (Emitter | null)[];
   calcFunctions: ICalcFunction<any>[] | null;
+  onDestroyed: Emitter | null;
   destroyed: boolean;
   watchEmitters: Emitter[] | null;
   watchEmittersSet: Set<Emitter> | null;
@@ -115,6 +116,7 @@ export namespace ObservableScope {
       emitter: Emitter.Create(),
       emitters: [],
       calcFunctions: null,
+      onDestroyed: null,
       destroyed: false,
       watchEmitters: null,
       watchEmittersSet: null,
@@ -138,6 +140,13 @@ export namespace ObservableScope {
       watchingScope.watchEmittersSet?.add(emitter);
       watchingScope.watchEmitters.push(emitter);
     }
+  }
+
+  export function Init<T>(scope: IObservableScope<T>) {
+    if(!scope)
+      return;
+    
+    UpdateScope(scope);
   }
 
   export function Value<T>(scope: IObservableScope<T>) {
@@ -174,6 +183,11 @@ export namespace ObservableScope {
     if (!scope || !scope.emitter) return;
 
     Emitter.Remove(scope.emitter, callback);
+  }
+
+  export function OnDestroyed(scope: IObservableScope<unknown>, callback: () => void) {
+    scope.onDestroyed ??= Emitter.Create();
+    Emitter.On(scope.onDestroyed, callback);
   }
 
   export function Update(scope: IObservableScope<any>) {
@@ -281,6 +295,7 @@ function DestroyScope(scope: IObservableScope<any>) {
   scope.setCallback = null;
   scope.calcFunctions = null;
   scope.destroyed = true;
+  scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
 
   for(let x=0; x<emitters.length; x++)
     Emitter.Remove(emitters[x], scope.setCallback);
