@@ -6,7 +6,8 @@ import {
 import { IDestroyable } from "./utils.types";
 import { NodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
-import { StoreAsync } from "../Store";
+import { StoreAsync, StoreSync } from "../Store";
+import { JsonDeepClone } from "./json";
 
 const nodeInstanceMap = new WeakMap<
   WeakKey,
@@ -37,6 +38,104 @@ function GetDestroyArrayForPrototype(prototype: WeakKey) {
   destroyPrototypeMap.set(prototype, array);
 
   return array;
+}
+
+export function Computed<T extends Component<any, any, any>, K extends keyof T, V extends T[K]>(defaultValue: V) {
+  return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    return ComputedDecorator(target, propertyKey, descriptor, defaultValue)
+  }
+}
+
+function ComputedDecorator<T extends Component<any, any, any>, K extends keyof T, D extends T[K]>(
+  target: T,
+  prop: K,
+  descriptor: PropertyDescriptor,
+  defaultValue: D
+) {
+  const propertyKey = prop as string;
+  if (!(descriptor && descriptor.get))
+    throw "Computed decorator requires a getter";
+
+  if (descriptor && descriptor.set)
+    throw "Computed decorator does not support setters";
+
+  const getter = descriptor.get;
+
+  return {
+    configurable: false,
+    enumerable: true,
+    get: function (this: T) {
+      const scopeMap = GetScopeMapForInstance(this);
+      if (scopeMap[propertyKey] === undefined) {
+        const getterScope = ObservableScope.Create(async () => getter.call(this));
+        const syncStore = new StoreSync();
+
+        ObservableScope.Watch(getterScope, (scope) => {
+          const copy = JsonDeepClone(ObservableScope.Value(scope));
+          syncStore.Write(copy, 'root');
+        });
+        ObservableScope.Init(getterScope);
+
+        const propertyScope = ObservableScope.Create(() => syncStore.Get('root', defaultValue));
+        ObservableScope.OnDestroyed(propertyScope, function() {
+          ObservableScope.Destroy(getterScope);
+        });
+
+        scopeMap[propertyKey] = [propertyScope, undefined];
+      }
+
+      return ObservableScope.Value(scopeMap[propertyKey][0]);
+    }
+  } as PropertyDescriptor;
+}
+
+export function ComputedAsync<T extends Component<any, any, any>, K extends keyof T, V extends T[K]>(defaultValue: V) {
+  return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    return ComputedAsyncDecorator(target, propertyKey, descriptor, defaultValue)
+  }
+}
+
+function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends keyof T, D extends T[K]>(
+  target: T,
+  prop: K,
+  descriptor: PropertyDescriptor,
+  defaultValue: D
+) {
+  const propertyKey = prop as string;
+  if (!(descriptor && descriptor.get))
+    throw "Computed decorator requires a getter";
+
+  if (descriptor && descriptor.set)
+    throw "Computed decorator does not support setters";
+
+  const getter = descriptor.get;
+
+  return {
+    configurable: false,
+    enumerable: true,
+    get: function (this: T) {
+      const scopeMap = GetScopeMapForInstance(this);
+      if (scopeMap[propertyKey] === undefined) {
+        const getterScope = ObservableScope.Create(async () => getter.call(this));
+        const asyncStore = new StoreAsync();
+
+        ObservableScope.Watch(getterScope, (scope) => {
+          asyncStore.Write(ObservableScope.Value(scope), 'root');
+        });
+        ObservableScope.Init(getterScope);
+
+        const propertyScope = ObservableScope.Create(() => asyncStore.Get('root', defaultValue));
+        ObservableScope.OnDestroyed(propertyScope, function() {
+          ObservableScope.Destroy(getterScope);
+          asyncStore.Destroy();
+        });
+
+        scopeMap[propertyKey] = [propertyScope, undefined];
+      }
+
+      return ObservableScope.Value(scopeMap[propertyKey][0]);
+    }
+  } as PropertyDescriptor;
 }
 
 export function State(): any {
