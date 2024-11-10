@@ -70,10 +70,14 @@ export function JsonDiffFactory() {
   function JsonDeepClone<T>(value: T): T {
     const type = JsonType(value);
     switch (type) {
-      case "array":
-        return (value as unknown as unknown[]).map(
-          JsonDeepClone,
-        ) as unknown as T;
+      case "array": {
+        const typed = value as unknown[];
+        const result = new Array(typed.length);
+        for(let x=0; x<typed.length; x++)
+          result[x] = JsonDeepClone(typed[x]);
+        
+        return result as T;
+      }
       case "object": {
         const ret = {} as T;
         const keys = Object.keys(value as unknown as object) as (keyof T)[];
