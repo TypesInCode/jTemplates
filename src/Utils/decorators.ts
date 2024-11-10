@@ -71,8 +71,8 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends keyof T
         const syncStore = new StoreSync();
 
         ObservableScope.Watch(getterScope, (scope) => {
-          const copy = JsonDeepClone(ObservableScope.Value(scope));
-          syncStore.Write(copy, 'root');
+          const data = ObservableScope.Value(scope);
+          syncStore.Write(data, 'root');
         });
         ObservableScope.Init(getterScope);
 

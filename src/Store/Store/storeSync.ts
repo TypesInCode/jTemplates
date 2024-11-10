@@ -13,6 +13,7 @@ export class StoreSync extends Store {
   }
 
   Write(data: unknown, key?: string) {
+    data = JsonDeepClone(data);
     key = key || this.keyFunc?.(data);
 
     if (!key) throw "No key provided for data";
