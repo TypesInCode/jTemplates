@@ -8,13 +8,10 @@ export interface IDiffMethod {
 export interface IDiffTree {
   DiffBatch(data: Array<{ path: string; value: any }>): JsonDiffResult;
   DiffPath(path: string, value: any): JsonDiffResult;
-  // UpdatePath(path: string, value: any): void;
 }
 
 export interface IDiffTreeConstructor {
   new (keyFunc?: { (val: any): string }): IDiffTree;
-  /* GetKeyRef(key: string): string;
-  ReadKeyRef(ref: string): string; */
 }
 
 export function DiffTreeFactory(
@@ -48,11 +45,6 @@ export function DiffTreeFactory(
           ctx.postMessage(diff);
           break;
         }
-        /* case "updatepath": {
-          diffTree.UpdatePath(data.arguments[0], data.arguments[1]);
-          ctx.postMessage(null);
-          break;
-          } */
         case "getpath": {
           const ret = diffTree.GetPath(data.arguments[0]);
           ctx.postMessage(ret);
@@ -100,7 +92,7 @@ export function DiffTreeFactory(
   function SetPathValue(
     source: any,
     path: (string | number)[],
-    value: unknown
+    value: unknown,
   ) {
     if (path.length === 0) return;
 
@@ -111,24 +103,33 @@ export function DiffTreeFactory(
     curr[path[x]] = value;
   }
 
-  function ResolveKeyPath(source: any, path: string, keyFunc: (val: any) => string) {
-    const parts = path.split('.');
+  function ResolveKeyPath(
+    source: any,
+    path: string,
+    keyFunc: (val: any) => string,
+  ) {
+    const parts = path.split(".");
     const pathValues = new Array(parts.length - 1);
 
     let curr = source;
-    for(let x=0; x<parts.length - 1; x++) {
+    for (let x = 0; x < parts.length - 1; x++) {
       curr = curr[parts[x]];
       pathValues[x] = curr;
     }
 
-    let y=pathValues.length - 1;
+    let y = pathValues.length - 1;
 
-    for(; y >= 0 && !(JsonType(pathValues[y]) === 'object' && keyFunc(pathValues[y])); y--) { }
+    for (
+      ;
+      y >= 0 &&
+      !(JsonType(pathValues[y]) === "object" && keyFunc(pathValues[y]));
+      y--
+    ) {}
 
-    if(y >= 0) {
+    if (y >= 0) {
       const key = keyFunc(pathValues[y]);
-      parts.splice(0, y+1, key);
-      return parts.join('.');
+      parts.splice(0, y + 1, key);
+      return parts.join(".");
     }
 
     return path;
@@ -138,12 +139,12 @@ export function DiffTreeFactory(
     source: any,
     path: string,
     value: unknown,
-    keyFunc?: (val: any) => string
+    keyFunc?: (val: any) => string,
   ) {
     const diffResult: JsonDiffResult = [];
-    if(keyFunc) {
+    if (keyFunc) {
       const keyPath = ResolveKeyPath(source, path, keyFunc);
-      if(keyPath !== path) {
+      if (keyPath !== path) {
         const keyDiffResult = UpdateSource(source, keyPath, value, keyFunc);
         diffResult.push(...keyDiffResult);
       }
@@ -161,9 +162,15 @@ export function DiffTreeFactory(
         JsonDiff(flattened[keys[x]], source[keys[x]], keys[x], diffResult);
     }
 
-    const filteredDiffResult = diffResult.filter((diff) => diff.value !== undefined);
+    const filteredDiffResult = diffResult.filter(
+      (diff) => diff.value !== undefined,
+    );
     for (let x = 0; x < filteredDiffResult.length; x++) {
-      SetPathValue(source, filteredDiffResult[x].path, filteredDiffResult[x].value);
+      SetPathValue(
+        source,
+        filteredDiffResult[x].path,
+        filteredDiffResult[x].value,
+      );
     }
 
     return diffResult;

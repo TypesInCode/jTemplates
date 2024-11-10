@@ -9,14 +9,6 @@ export class DiffSync implements IDiffTree {
     this.diffTree = new diffCnstr(keyFunc);
   }
 
-  /* public static GetKeyRef(key: string) {
-        return diffCnstr.GetKeyRef(key);
-    }
-
-    public static ReadKeyRef(ref: string) {
-        return diffCnstr.ReadKeyRef(ref);
-    } */
-
   public DiffPath(path: string, value: any) {
     return this.diffTree.DiffPath(path, value);
   }
@@ -24,8 +16,4 @@ export class DiffSync implements IDiffTree {
   public DiffBatch(data: Array<{ path: string; value: any }>) {
     return this.diffTree.DiffBatch(data);
   }
-
-  /* public UpdatePath(path: string, value: any) {
-        this.diffTree.UpdatePath(path, value);
-    } */
 }
