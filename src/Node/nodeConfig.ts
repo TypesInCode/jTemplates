@@ -6,6 +6,7 @@ export interface INodeConfig {
     scheduleUpdate(callback: () => void): void;
     wrapPriorityUpdates<P extends any[]>(callback: (...args: P) => void): (...args: P) => void;
     setText(target: any, text: string): void;
+    isTextNode(target: any): boolean;
     getAttribute(target: any, attribute: string): string;
     setAttribute(target: any, attribute: string, value: string): void;
     addListener(target: any, type: string, callback: {(): void}): void;

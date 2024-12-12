@@ -28,7 +28,7 @@ export namespace ComponentNode {
         nodeDef.on = null;
 
         componentNode.component = new componentNode.constructor(nodeDef.data, componentNode.templates, componentNode, events);
-        SetChildren(componentNode);
+        SetChildren(componentNode as IComponentNode<any, any, any>);
         // componentNode.destroyables.push(componentNode.component);
 
         BoundNode.Init(componentNode);
@@ -44,7 +44,7 @@ function Create<D, T, E>(type: any, namespace: string, nodeDef: ComponentNodeFun
     return compNode;
 }
 
-function SetChildren(node: IComponentNodeBase<any, any, any>) {
+function SetChildren(node: IComponentNode<any, any, any>) {
     if(PreReq.Has(node.component)) {
         AddPreReqTemplate(node).then(function() {
             AddTemplate(node, false);
@@ -54,7 +54,7 @@ function SetChildren(node: IComponentNodeBase<any, any, any>) {
         AddTemplate(node, true);
 }
 
-function AddPreReqTemplate(node: IComponentNodeBase<any, any, any>) {
+function AddPreReqTemplate(node: IComponentNode<any, any, any>) {
     return new Promise<void>(resolve => {
         Thread(function() {
             const preNodes = Injector.Scope(node.injector, PreReqTemplate.Get, node.component);
@@ -102,7 +102,7 @@ function InvokeNodeTemplate(node: IComponentNodeBase<any, any, any>) {
     return nodes;
 }
 
-function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
+function AddTemplate(node: IComponentNode<any, any, any>, init: boolean) {
     Thread(function() {
         if(node.destroyed)
             return;
@@ -121,6 +121,7 @@ function AddTemplate(node: IComponentNodeBase<any, any, any>, init: boolean) {
             List.Add(list, {
                 value: undefined,
                 init: true,
+                scope: null,
                 nodes
             });
 

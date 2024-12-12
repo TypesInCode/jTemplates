@@ -4,6 +4,7 @@ import { IBoundNode } from "./boundNode.types";
 import { IComponentNode } from "./componentNode.types";
 import { IElementNode } from "./elementNode.types";
 import { NodeRefType } from "./nodeRef";
+import { ITextNode } from "./textNode.types";
 
 export interface INodeRefBase {
     type: NodeRefType;
@@ -12,7 +13,7 @@ export interface INodeRefBase {
     nodeNamespace: string;
     injector: Injector;
     parent: INodeRefBase;
-    childNodes: INodeRefBase[] | Set<INodeRefBase>;
+    childNodes: AllNodeRefTypes[] | Set<AllNodeRefTypes>;
     destroyed: boolean;
     // destroyables: IDestroyable[];
 }
@@ -21,4 +22,5 @@ export interface INodeRef extends INodeRefBase {
     type: NodeRefType.NodeRef;
 }
 
-export type NodeRefTypes = INodeRef | IBoundNode | IElementNode<any> | IComponentNode<any, any, any>;
+export type ElementNodeRefTypes = INodeRef | IBoundNode | IElementNode<any> | IComponentNode<any, any, any>;
+export type AllNodeRefTypes = ElementNodeRefTypes | ITextNode;

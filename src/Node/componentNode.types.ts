@@ -1,6 +1,7 @@
 import { BoundNodeFunctionParam, IBoundNodeBase, NodeDefinition } from "./boundNode.types";
 import { Component, ComponentConstructor } from "./component";
 import { NodeRefType } from "./nodeRef";
+import { AllNodeRefTypes } from "./nodeRef.types";
 
 export type ComponentNodeEvents<E = void> = {
     [P in keyof E]?: {(data: E[P]): void};
@@ -28,4 +29,5 @@ export interface IComponentNodeBase<D, T, E> extends IBoundNodeBase {
 
 export interface IComponentNode<D, T, E> extends IComponentNodeBase<D, T, E> {
     type: NodeRefType.ComponentNode;
+    childNodes: AllNodeRefTypes[]
 }

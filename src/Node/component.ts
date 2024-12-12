@@ -3,7 +3,7 @@ import { ComponentNode } from "./componentNode";
 import { Destroy } from "../Utils/decorators";
 import { ComponentNodeEvents, ComponentNodeFunction } from "./componentNode.types";
 import { ObservableScope } from "../Store/Tree/observableScope";
-import { INodeRefBase, NodeRefTypes } from "./nodeRef.types";
+import { INodeRefBase, ElementNodeRefTypes } from "./nodeRef.types";
 
 export class Component<D = void, T = void, E = void> {
   private scope: ObservableScope<D>;
@@ -47,7 +47,7 @@ export class Component<D = void, T = void, E = void> {
     this.templates = templates || ({} as T);
   }
 
-  public Template(): NodeRefTypes | NodeRefTypes[] {
+  public Template(): ElementNodeRefTypes | ElementNodeRefTypes[] {
     return [];
   }
 
@@ -109,7 +109,7 @@ export namespace Component {
     customElements.define(name, WebComponent);
   }
 
-  export function Attach(node: Node, nodeRef: NodeRefTypes) {
+  export function Attach(node: Node, nodeRef: ElementNodeRefTypes) {
     NodeRef.Init(nodeRef);
     var rootRef = NodeRef.Wrap(node);
     NodeRef.AddChild(rootRef, nodeRef);

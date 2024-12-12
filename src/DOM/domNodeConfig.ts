@@ -63,6 +63,9 @@ export const DOMNodeConfig: INodeConfig = {
     createTextNode(value: string = '') {
         return wndw.document.createTextNode(value);
     },
+    isTextNode(target: Node) {
+        return target.nodeType === Node.TEXT_NODE;
+    },
     scheduleUpdate,
     wrapPriorityUpdates,
     addListener(target: Node, type: string, callback: {():void}) {

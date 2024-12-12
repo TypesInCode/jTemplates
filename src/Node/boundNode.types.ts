@@ -1,7 +1,7 @@
 import { IObservableScope } from "../Store/Tree/observableScope";
 import { RecursivePartial } from "../Utils/utils.types";
 import { NodeRefType } from "./nodeRef";
-import { INodeRefBase } from "./nodeRef.types";
+import { AllNodeRefTypes, INodeRefBase } from "./nodeRef.types";
 
 export type FunctionOr<T> = {(...args: Array<any>): T | Promise<T> } | T;
 
@@ -39,4 +39,5 @@ export interface IBoundNodeBase extends INodeRefBase {
 
 export interface IBoundNode extends IBoundNodeBase {
     type: NodeRefType.BoundNode;
+    childNodes: AllNodeRefTypes[];
 }

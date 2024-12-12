@@ -73,38 +73,7 @@ export namespace BoundNode {
                 boundNode.assignEvents = null;
             }
         }
-
-        if(nodeDef.text) {
-            boundNode.assignText = NodeConfig.createTextAssignment(boundNode.node);
-            if(typeof nodeDef.text === 'function') {
-                const scope = ObservableScope.Create(nodeDef.text);
-                boundNode.scopes ??= [];
-                boundNode.scopes.push(scope);
-                ObservableScope.Watch(scope, function(scope) { ScheduleSetText(boundNode, scope) });
-                const next = ObservableScope.Value(scope);
-                boundNode.assignText(next);
-            }
-            else {
-                boundNode.assignText(nodeDef.text);
-                boundNode.assignText = null;
-            }
-        }
     }
-}
-
-function ScheduleSetText(node: IBoundNodeBase, scope: IObservableScope<string>) {
-    if(node.setText)
-        return;
-
-    node.setText = true;
-    NodeConfig.scheduleUpdate(function() {
-        node.setText = false;
-        if(node.destroyed)
-            return;
-
-        const next = ObservableScope.Value(scope);
-        node.assignText(next);
-    });
 }
 
 function ScheduleSetProperties(node: IBoundNodeBase, scope: IObservableScope<{[name: string]: any}>) {

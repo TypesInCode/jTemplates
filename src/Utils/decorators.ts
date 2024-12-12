@@ -4,10 +4,9 @@ import {
   IObservableScope,
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
-import { NodeRefTypes } from "../Node/nodeRef.types";
+import { ElementNodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
 import { StoreAsync, StoreSync } from "../Store";
-import { JsonDeepClone } from "./json";
 
 const nodeInstanceMap = new WeakMap<
   WeakKey,
@@ -291,7 +290,7 @@ function DestroyDecorator<
 }
 
 export function PreReqTemplate(template: {
-  (): NodeRefTypes | NodeRefTypes[];
+  (): ElementNodeRefTypes | ElementNodeRefTypes[];
 }) {
   return PreReqTemplateDecorator.bind(null, template) as <
     T extends Component<any, any, any>,
@@ -301,9 +300,9 @@ export function PreReqTemplate(template: {
 }
 
 export namespace PreReqTemplate {
-  export function Get(value: any): NodeRefTypes[] {
+  export function Get(value: any): ElementNodeRefTypes[] {
     var func = value && value.PreReqTemplateDecorator_Template;
-    var ret: NodeRefTypes[] = func ? func() : [];
+    var ret: ElementNodeRefTypes[] = func ? func() : [];
     if (!Array.isArray(ret)) ret = [ret];
 
     return ret;
@@ -311,7 +310,7 @@ export namespace PreReqTemplate {
 }
 
 function PreReqTemplateDecorator<T extends Component<any, any, any>>(
-  template: { (): NodeRefTypes | NodeRefTypes[] },
+  template: { (): ElementNodeRefTypes | ElementNodeRefTypes[] },
   target: { new(...args: Array<any>): T },
 ) {
   var proto = target.prototype as any;
