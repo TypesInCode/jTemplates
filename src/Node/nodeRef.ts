@@ -1,7 +1,7 @@
 import { NodeConfig } from "./nodeConfig";
 import { Injector } from "../Utils/injector";
-import { INodeRef, INodeRefBase, ElementNodeRefTypes, AllNodeRefTypes } from "./nodeRef.types";
-import { IBoundNode, IBoundNodeBase } from "./boundNode.types";
+import { INodeRef, ElementNodeRefTypes, AllNodeRefTypes } from "./nodeRef.types";
+import { IBoundNode } from "./boundNode.types";
 import { IElementDataNode, IElementNode } from "./elementNode.types";
 import { IComponentNode } from "./componentNode.types";
 import { BoundNode } from "./boundNode";
@@ -10,6 +10,7 @@ import { ComponentNode } from "./componentNode";
 import { IList, List } from "../Utils/list";
 import { ObservableScope } from "../Store";
 import { ITextNode } from "./textNode.types";
+import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export enum NodeRefType {
     NodeRef,
@@ -119,11 +120,11 @@ export namespace NodeRef {
     }
 
     export function Init(nodeRef: AllNodeRefTypes) {
-        if(nodeRef.node || nodeRef.type === NodeRefType.TextNode)
+        if(nodeRef.type === NodeRefType.TextNode || nodeRef.node)
             return;
 
-        nodeRef.node = nodeRef.nodeType === 'text' ? NodeConfig.createTextNode() : NodeConfig.createNode(nodeRef.nodeType, nodeRef.nodeNamespace);
-        nodeRef.childNodes = nodeRef.nodeType !== 'text' ? [] : null;
+        nodeRef.node = NodeConfig.createNode(nodeRef.nodeType, nodeRef.nodeNamespace);
+        nodeRef.childNodes = nodeRef.nodeType !== NodeRefType.TextNode ? [] : null;
 
         switch(nodeRef.type) {
             case NodeRefType.BoundNode:
@@ -202,16 +203,16 @@ export namespace NodeRef {
 
                 const actualNode = priorNode ? NodeConfig.getNextSibling(priorNode) : NodeConfig.getFirstChild(rootNode);
 
-                let expectedNode: Node | undefined;
-                if(virtualNode.type === NodeRefType.TextNode && actualNode !== null && NodeConfig.isTextNode(actualNode)) {
-                    NodeConfig.setText(actualNode, virtualNode.value);
-                    virtualNode.node = expectedNode = actualNode;
+                if(virtualNode.type === NodeRefType.TextNode && virtualNode.node === null) {
+                    if(DOMNodeConfig.isTextNode(actualNode)) {
+                        DOMNodeConfig.setText(actualNode, virtualNode.value);
+                        virtualNode.node = actualNode;
+                    }
+                    else
+                        virtualNode.node = DOMNodeConfig.createTextNode(virtualNode.value);
                 }
-                else if(virtualNode.type === NodeRefType.TextNode)
-                    expectedNode = NodeConfig.createTextNode(virtualNode.value);
-                else
-                    expectedNode = virtualNode.node;
 
+                const expectedNode = virtualNode.node;
                 if(actualNode !== expectedNode) {
                     NodeConfig.addChildBefore(rootNode, actualNode, expectedNode);
                     !remove && insert && actualNode && NodeConfig.removeChild(rootNode, actualNode);
