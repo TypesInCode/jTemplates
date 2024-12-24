@@ -1,6 +1,6 @@
 import { ReconcileSortedArrays } from "../../Utils/array";
+import { AVL, AvlTree } from "../../Utils/avlTree";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
-import { List } from "../../Utils/list";
 import { IDestroyable } from "../../Utils/utils.types";
 
 export class ObservableScopeValue<T> {
@@ -44,7 +44,7 @@ export class ObservableScopeWrapper<T>
 
   public Destroy() {
     DestroyScope(this.scope);
-    this.scopeEmitter && Emitter.Clear(this.scopeEmitter); //.clear();
+    this.scopeEmitter && Emitter.Clear(this.scopeEmitter);
   }
 }
 
@@ -55,8 +55,8 @@ export class ObservableScope<T> extends ObservableScopeWrapper<T> {
 }
 
 interface ICalcFunction<T> {
-  getFunction: {(): T };
-  value: T
+  getFunction: { (): T };
+  value: T;
 }
 
 export interface IObservableScope<T> extends IDestroyable {
@@ -68,39 +68,30 @@ export interface IObservableScope<T> extends IDestroyable {
   dirty: boolean;
   emitter: Emitter;
   emitters: (Emitter | null)[];
-  calcFunctions: ICalcFunction<any>[] | null;
+  calcFunctions: ICalcFunction<any>[];
   onDestroyed: Emitter | null;
   destroyed: boolean;
-  watchEmitters: Emitter[] | null;
-  watchEmittersSet: Set<Emitter> | null;
 }
 
-let watchingScope: IObservableScope<unknown> = null;
-let currentlyWatching = false;
-function WatchScope<T>(scope: IObservableScope<T>): T {
-  const parentScope = watchingScope;
-  const parentWatching = currentlyWatching;
-
-  watchingScope = scope;
-  currentlyWatching = true;
+let watchState: [AvlTree<Emitter>, ICalcFunction<any>[]] = null;
+function WatchScope<T>(scope: IObservableScope<T>): readonly [T, Emitter[], ICalcFunction<any>[]] {
+  const parent = watchState;
+  watchState = [AVL.Create(Emitter.Compare), []];
 
   const value = scope.getFunction();
 
-  watchingScope.watchEmittersSet = null;
-  watchingScope = parentScope;
-  currentlyWatching = parentWatching;
-  return value;
+  const result = [value, AVL.ToArray(watchState[0]), watchState[1]] as const;
+  watchState = parent;
+  return result;
 }
 
 export function CalcScope<T>(callback: () => T) {
   const value = callback();
-  if(currentlyWatching) {
-    watchingScope.calcFunctions ??= [];
-    watchingScope.calcFunctions.push({
+  if(watchState !== null)
+    watchState[1].push({
       getFunction: callback,
       value
     });
-  }
 
   return value;
 }
@@ -115,11 +106,9 @@ export namespace ObservableScope {
       dirty: true,
       emitter: Emitter.Create(),
       emitters: [],
-      calcFunctions: null,
+      calcFunctions: [],
       onDestroyed: null,
       destroyed: false,
-      watchEmitters: null,
-      watchEmittersSet: null,
       setCallback: function () {
         return OnSet(scope);
       },
@@ -128,37 +117,24 @@ export namespace ObservableScope {
   }
 
   export function Register(emitter: Emitter) {
-    if(!currentlyWatching)
+    if(watchState === null)
       return;
 
-    watchingScope.watchEmitters ??= [];
-
-    if(watchingScope.watchEmitters.length === 10)
-      watchingScope.watchEmittersSet ??= new Set(watchingScope.watchEmitters);
-
-    if(watchingScope.watchEmittersSet === null ? !watchingScope.watchEmitters.includes(emitter) : !watchingScope.watchEmittersSet.has(emitter)) {
-      watchingScope.watchEmittersSet?.add(emitter);
-      watchingScope.watchEmitters.push(emitter);
-    }
+    AVL.Insert(watchState[0], emitter);
   }
 
   export function Init<T>(scope: IObservableScope<T>) {
-    if(!scope)
-      return;
-    
-    UpdateScope(scope);
+    if (!scope) return;
+
+    UpdateValue(scope);
   }
 
   export function Value<T>(scope: IObservableScope<T>) {
     if (!scope) return undefined;
 
     Register(scope.emitter);
-    UpdateScope(scope);
+    UpdateValue(scope);
     return scope.value;
-  }
-
-  export function Watching() {
-    return currentlyWatching;
   }
 
   export function Touch<T>(scope: IObservableScope<T>) {
@@ -185,42 +161,24 @@ export namespace ObservableScope {
     Emitter.Remove(scope.emitter, callback);
   }
 
-  export function OnDestroyed(scope: IObservableScope<unknown>, callback: () => void) {
+  export function OnDestroyed(
+    scope: IObservableScope<unknown>,
+    callback: () => void,
+  ) {
     scope.onDestroyed ??= Emitter.Create();
     Emitter.On(scope.onDestroyed, callback);
   }
 
   export function Update(scope: IObservableScope<any>) {
+    if(!scope || scope.dirty || scope.destroyed)
+      return;
+
     OnSet(scope);
   }
 
   export function Destroy<T>(scope: IObservableScope<T>) {
     DestroyScope(scope);
   }
-}
-
-function UpdateScope(scope: IObservableScope<unknown>) {
-  const prePromise = scope.promise;
-  UpdateValue(scope);
-  scope.async && prePromise !== scope.promise && scope.promise.then(function() {
-      Emitter.Emit(scope.emitter, scope);
-  });
-}
-
-const updateScopeQueue = List.Create<IObservableScope<unknown>>();
-function ProcessScopeUpdateQueue() {
-  const processList = List.Split(updateScopeQueue, 0);
-
-  for(let node = processList.head; node !== null; node = node.next)
-    UpdateScope(node.data);
-
-  List.Clear(processList);
-}
-
-function QueueScopeUpdate(scope: IObservableScope<unknown>) {
-  List.Add(updateScopeQueue, scope);
-  if(updateScopeQueue.size === 1)
-    queueMicrotask(ProcessScopeUpdateQueue);
 }
 
 function CalcChanged(calc: ICalcFunction<any>) {
@@ -230,16 +188,36 @@ function CalcChanged(calc: ICalcFunction<any>) {
   return changed;
 }
 
-function DirtyScope(scope: IObservableScope<unknown>) {
-  scope.dirty = scope.calcFunctions === null || scope.calcFunctions.some(CalcChanged);
-  scope.dirty && (scope.async ? QueueScopeUpdate(scope) : Emitter.Emit(scope.emitter, scope));
+function DirtyScope(scope: IObservableScope<any>) {
+  if(scope.dirty || !scope.getFunction)
+    return;
+
+  scope.dirty = scope.calcFunctions.length === 0 || scope.calcFunctions.some(CalcChanged);
+  scope.dirty && Emitter.Emit(scope.emitter, scope);
+}
+
+const scopeQueue = new Set<IObservableScope<unknown>>();
+function ProcessScopeQueue() {
+  const scopes = Array.from(scopeQueue);
+  scopeQueue.clear();
+
+  for(let x=0; x<scopes.length; x++)
+    DirtyScope(scopes[x]);
 }
 
 function OnSet(scope: IObservableScope<any>) {
-  if (!scope || scope.dirty || scope.destroyed) return scope?.destroyed;
+  if(scope.destroyed)
+    return true;
+
+  if(scope.async || scope.calcFunctions.length > 0) {
+    if(scopeQueue.size === 0)
+      queueMicrotask(ProcessScopeQueue);
+
+    scopeQueue.add(scope);
+    return;
+  }
 
   DirtyScope(scope);
-  return false;
 }
 
 function UpdateValue<T>(scope: IObservableScope<T>) {
@@ -247,25 +225,23 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
     return;
 
   scope.dirty = false;
-  scope.watchEmitters = null;
-  scope.calcFunctions = null;
-  const value = WatchScope(scope);  
+  const [value, emitters, calcFunctions] = WatchScope(scope);
 
   if (scope.async) {
-    scope.promise = (value as Promise<T>).then(function(result) {
+    scope.promise = (value as Promise<T>).then(function (result) {
       scope.value = result;
+      Emitter.Emit(scope.emitter, scope);
       return result;
     });
-  }
-  else scope.value = value;
+  } else scope.value = value;
 
-  UpdateEmitters(scope);
+  scope.calcFunctions = calcFunctions;
+  UpdateEmitters(scope, emitters);
 }
 
-function UpdateEmitters(scope: IObservableScope<unknown>) {
-  const right = scope.watchEmitters;
-  if (right === null) {
-    if(scope.emitters.length > 0) {
+function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
+  if(right.length === 0) {
+    if (scope.emitters.length > 0) {
       for (let x = 0; x < scope.emitters.length; x++)
         Emitter.Remove(scope.emitters[x], scope.setCallback);
 
@@ -274,20 +250,23 @@ function UpdateEmitters(scope: IObservableScope<unknown>) {
     return;
   }
 
-  Emitter.Sort(right);
-
-  ReconcileSortedArrays(scope.emitters, right, function(emitter) {
-    Emitter.On(emitter, scope.setCallback);
-  }, function(emitter) {
-    Emitter.Remove(emitter, scope.setCallback);
-  });
+  ReconcileSortedArrays(
+    scope.emitters,
+    right,
+    function (emitter) {
+      Emitter.On(emitter, scope.setCallback);
+    },
+    function (emitter) {
+      Emitter.Remove(emitter, scope.setCallback);
+    }
+  );
 
   scope.emitters = right;
 }
 
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope) return;
-  const emitters = scope.emitters
+  const emitters = scope.emitters;
 
   scope.emitters = null;
   scope.emitter = null;
@@ -297,6 +276,6 @@ function DestroyScope(scope: IObservableScope<any>) {
   scope.destroyed = true;
   scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
 
-  for(let x=0; x<emitters.length; x++)
+  for (let x = 0; x < emitters.length; x++)
     Emitter.Remove(emitters[x], scope.setCallback);
 }

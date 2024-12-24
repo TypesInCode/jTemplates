@@ -12,6 +12,10 @@ export namespace Emitter {
     return emitter;
   }
 
+  export function GetId(emitter: Emitter) {
+    return emitter[0];
+  }
+
   export function On(emitter: Emitter, callback: EmitterCallback) {
     emitter.push(callback);
   }
@@ -42,7 +46,7 @@ export namespace Emitter {
     return emitters.sort(Compare);
   }
 
-  function Compare(a: Emitter, b: Emitter) {
+  export function Compare(a: Emitter, b: Emitter) {
     return a[0] - b[0];
   }
 }
