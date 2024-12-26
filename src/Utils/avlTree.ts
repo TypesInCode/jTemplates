@@ -81,10 +81,9 @@ function InsertValue<T>(
 ) {
   const startSize = tree.size;
   let node = tree.root;
-  let comp = 0;
   const path = [] as [number, AvlTreeNode<T>][];
   while(node !== null) {
-    comp = Squash(tree.compare(value, node[VALUE]));
+    const comp = Squash(tree.compare(value, node[VALUE]));
     path.push([comp, node]);
     switch(comp) {
       case 0:
