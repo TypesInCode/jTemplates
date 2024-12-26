@@ -39,7 +39,7 @@ export namespace AVL {
   }
 
   export function ForEach<T>(tree: AvlTree<T>, callback: (value: T) => void) {
-    PreOrder(tree.root, callback);
+    InOrder(tree.root, callback);
   }
 
   export function ToArray<T>(tree: AvlTree<T>): T[] {
@@ -54,13 +54,13 @@ export namespace AVL {
   }
 }
 
-function PreOrder<T>(node: AvlTreeNode<T> | null, callback: (value: T) => void) {
+function InOrder<T>(node: AvlTreeNode<T> | null, callback: (value: T) => void) {
   if(node === null)
     return;
 
-  PreOrder(node[LEFT], callback);
+  InOrder(node[LEFT], callback);
   callback(node[VALUE]);
-  PreOrder(node[RIGHT], callback);
+  InOrder(node[RIGHT], callback);
 }
 
 function CreateTree<T>(compare: Compare<T>): AvlTree<T> {
