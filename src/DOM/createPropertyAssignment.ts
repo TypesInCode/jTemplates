@@ -89,3 +89,10 @@ export function CreatePropertyAssignment(target: any) {
     if (endIndex < last.length) last.splice(endIndex);
   };
 }
+
+export function AssignProperties(target: any, next: any) {
+  WalkValue(next, function(path, value) {
+    const assignment = GetAssignmentFunction(path);
+    assignment(target, value);
+  })
+}

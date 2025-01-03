@@ -1,10 +1,10 @@
-import { Component } from "../Node/component";
+// import { Component } from "../Node/component";
 import {
   ObservableScope,
   IObservableScope,
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
-import { ElementNodeRefTypes } from "../Node/nodeRef.types";
+// import { ElementNodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
 import { StoreAsync, StoreSync } from "../Store";
 
@@ -39,13 +39,13 @@ function GetDestroyArrayForPrototype(prototype: WeakKey) {
   return array;
 }
 
-export function Computed<T extends Component<any, any, any>, K extends keyof T, V extends T[K]>(defaultValue: V) {
+export function Computed<T extends WeakKey, K extends keyof T, V extends T[K]>(defaultValue: V) {
   return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     return ComputedDecorator(target, propertyKey, descriptor, defaultValue)
   }
 }
 
-function ComputedDecorator<T extends Component<any, any, any>, K extends keyof T, D extends T[K]>(
+function ComputedDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>(
   target: T,
   prop: K,
   descriptor: PropertyDescriptor,
@@ -88,13 +88,13 @@ function ComputedDecorator<T extends Component<any, any, any>, K extends keyof T
   } as PropertyDescriptor;
 }
 
-export function ComputedAsync<T extends Component<any, any, any>, K extends keyof T, V extends T[K]>(defaultValue: V) {
+export function ComputedAsync<T extends WeakKey, K extends keyof T, V extends T[K]>(defaultValue: V) {
   return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
     return ComputedAsyncDecorator(target, propertyKey, descriptor, defaultValue)
   }
 }
 
-function ComputedAsyncDecorator<T extends Component<any, any, any>, K extends keyof T, D extends T[K]>(
+function ComputedAsyncDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>(
   target: T,
   prop: K,
   descriptor: PropertyDescriptor,
@@ -141,7 +141,7 @@ export function State(): any {
   return StateDecorator;
 }
 
-function StateDecorator<T extends Component<any, any, any>, K extends string>(
+function StateDecorator<T extends WeakKey, K extends string>(
   target: T,
   propertyKey: K,
 ) {
@@ -172,7 +172,7 @@ function CreateValueScope(tuple: [unknown, any]) {
   });
 }
 
-function ValueDecorator<T extends Component<any, any, any>, K extends string>(
+function ValueDecorator<T extends WeakKey, K extends string>(
   target: T,
   propertyKey: K,
 ) {
@@ -200,7 +200,7 @@ export function Scope() {
   return ScopeDecorator;
 }
 
-function ScopeDecorator<T extends Component<any, any, any>, K extends string>(
+function ScopeDecorator<T, K extends string>(
   target: T,
   propertyKey: K,
   descriptor: PropertyDescriptor,
@@ -228,10 +228,10 @@ function ScopeDecorator<T extends Component<any, any, any>, K extends string>(
   } as PropertyDescriptor;
 }
 
-export function Inject<I>(type: { new(...args: Array<any>): I }) {
+/* export function Inject<I>(type: { new(...args: Array<any>): I }) {
   return InjectorDecorator.bind(null, type) as <
     F extends I,
-    T extends Component<any, any, any> & Record<K, F>,
+    T extends Record<K, F>,
     K extends string,
   >(
     target: T,
@@ -243,7 +243,7 @@ export function Inject<I>(type: { new(...args: Array<any>): I }) {
 function InjectorDecorator<
   I,
   F extends I,
-  T extends Component<any, any, any> & Record<K, F>,
+  T extends Record<K, F>,
   K extends string,
 >(
   type: { new(): I },
@@ -261,7 +261,7 @@ function InjectorDecorator<
       (this as T).Injector.Set(type, val);
     },
   };
-}
+} */
 
 export function Destroy() {
   return DestroyDecorator;
@@ -271,9 +271,9 @@ export namespace Destroy {
   export function All<T extends WeakKey, K>(value: T) {
     const scopeMap = scopeInstanceMap.get(value);
     if (scopeMap !== undefined) {
-      const keys = Object.keys(scopeMap);
-      for (let x = 0; x < keys.length; x++)
-        ObservableScope.Destroy(scopeMap[keys[x]][0]);
+      const values = Object.values(scopeMap);
+      for (let x = 0; x < values.length; x++)
+        ObservableScope.Destroy(values[x][0]);
     }
 
     const array = GetDestroyArrayForPrototype(Object.getPrototypeOf(value));
@@ -282,69 +282,9 @@ export namespace Destroy {
 }
 
 function DestroyDecorator<
-  T extends Component<any, any, any> & Record<K, IDestroyable>,
+  T extends Record<K, IDestroyable>,
   K extends string,
 >(target: T, propertyKey: K): any {
   const array = GetDestroyArrayForPrototype(target);
   array.push(propertyKey);
-}
-
-export function PreReqTemplate(template: {
-  (): ElementNodeRefTypes | ElementNodeRefTypes[];
-}) {
-  return PreReqTemplateDecorator.bind(null, template) as <
-    T extends Component<any, any, any>,
-  >(target: {
-    new(...args: Array<any>): T;
-  }) => any;
-}
-
-export namespace PreReqTemplate {
-  export function Get(value: any): ElementNodeRefTypes[] {
-    var func = value && value.PreReqTemplateDecorator_Template;
-    var ret: ElementNodeRefTypes[] = func ? func() : [];
-    if (!Array.isArray(ret)) ret = [ret];
-
-    return ret;
-  }
-}
-
-function PreReqTemplateDecorator<T extends Component<any, any, any>>(
-  template: { (): ElementNodeRefTypes | ElementNodeRefTypes[] },
-  target: { new(...args: Array<any>): T },
-) {
-  var proto = target.prototype as any;
-  proto.PreReqTemplateDecorator_Template = template;
-}
-
-export function PreReq() {
-  return PreReqDecorator;
-}
-
-export namespace PreReq {
-  function Get(value: any): Array<string> {
-    return (value && value.PreReqDecorator_PreReqs) || [];
-  }
-
-  export function All(value: any) {
-    var arr = Get(value).map(
-      (prop: string) =>
-        ((value[prop] && value[prop].Init) as Promise<void>) ||
-        Promise.resolve(),
-    );
-    return Promise.all(arr);
-  }
-
-  export function Has(value: any) {
-    return Get(value).length > 0;
-  }
-}
-
-function PreReqDecorator<
-  T extends Record<K, { Init: Promise<void> }>,
-  K extends string,
->(target: T, propertyKey: K): any {
-  var proto = target as any;
-  proto.PreReqDecorator_PreReqs = proto.PreReqDecorator_PreReqs || [];
-  proto.PreReqDecorator_PreReqs.push(propertyKey);
 }

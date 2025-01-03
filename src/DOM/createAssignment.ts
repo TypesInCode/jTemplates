@@ -1,22 +1,20 @@
 export function CreateAssignment(target: any, createAssignment: {(target: any, key: string): (next: any) => void }) {
     let last: any | undefined;
-    let writeTo: any;
+    let writeTo: {[key: string]: (next: any) => void} = {};
     return function AssignNext(next: any) {
       if (next === last)
         return;
   
       last = next;
-  
-      writeTo ??= {};
       const nextKeys = next && Object.keys(next);
   
       for(let x=0; nextKeys && x<nextKeys.length; x++) {
         const key = nextKeys[x];
         writeTo[key] ??= createAssignment(target, key);
       }
-  
-      const writeKeys = Object.keys(writeTo);
-      for(let x=0; x<writeKeys.length; x++)
-        writeTo[writeKeys[x]](next);
+
+      const writeFunctions = Object.values(writeTo);
+      for(let x=0; x<writeFunctions.length; x++)
+        writeFunctions[x](next);
     }
   }

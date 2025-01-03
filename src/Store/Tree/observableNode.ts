@@ -158,7 +158,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         case "shift":
         case "sort":
         case "reverse":
-          if (readOnly) throw `Object is readonly`;
+          throw "Object is readonly";
       }
 
     switch (prop) {

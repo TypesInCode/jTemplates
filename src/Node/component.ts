@@ -1,20 +1,21 @@
-import { NodeRef } from "./nodeRef";
-import { ComponentNode } from "./componentNode";
 import { Destroy } from "../Utils/decorators";
-import { ComponentNodeEvents, ComponentNodeFunction } from "./componentNode.types";
+import { ComponentEvents } from "./component.types";
 import { ObservableScope } from "../Store/Tree/observableScope";
-import { INodeRefBase, ElementNodeRefTypes } from "./nodeRef.types";
+import { FunctionOr, vNode as vNodeType, vNodeDefinition } from "./vNode.types";
+import { RecursivePartial } from "../Utils/utils.types";
+import { vNode } from "./vNode";
 
-export class Component<D = void, T = void, E = void> {
+
+export class Component<D = void, T = void, E = {}> {
   private scope: ObservableScope<D>;
   private templates: T;
 
   public get Injector() {
-    return this.nodeRef.injector;
+    return this.vNode.injector;
   }
 
   public get Destroyed() {
-    return this.nodeRef.destroyed;
+    return this.vNode.destroyed;
   }
 
   protected get Scope() {
@@ -25,8 +26,8 @@ export class Component<D = void, T = void, E = void> {
     return this.scope.Value;
   }
 
-  protected get NodeRef() {
-    return this.nodeRef;
+  protected get VNode() {
+    return this.vNode;
   }
 
   protected get Templates() {
@@ -36,8 +37,8 @@ export class Component<D = void, T = void, E = void> {
   constructor(
     data: D | (() => (D | Promise<D>)),
     templates: T,
-    private nodeRef: INodeRefBase,
-    private componentEvents: ComponentNodeEvents<E>,
+    private vNode: vNodeType,
+    private componentEvents: ComponentEvents<E>,
   ) {
     if(typeof data === 'function')
       this.scope = new ObservableScope<D>(data as () => D | Promise<D>);
@@ -47,14 +48,14 @@ export class Component<D = void, T = void, E = void> {
     this.templates = templates || ({} as T);
   }
 
-  public Template(): ElementNodeRefTypes | ElementNodeRefTypes[] {
+  public Template(): vNodeType | vNodeType[] {
     return [];
   }
 
   public Bound() {}
 
   public Fire<P extends keyof E>(event: P, data?: E[P]) {
-    var eventCallback = this.componentEvents && this.componentEvents[event];
+    var eventCallback = this.componentEvents && (this.componentEvents as any)[event];
     eventCallback && eventCallback(data);
   }
 
@@ -64,63 +65,48 @@ export class Component<D = void, T = void, E = void> {
   }
 }
 
-export namespace Component {
-  export function ToFunction<D = void, T = void, E = void>(
-    type: string,
-    constructor: ComponentConstructor<D, T, E>
-  ): ComponentNodeFunction<D, T, E>;
-  export function ToFunction<D = void, T = void, E = void>(
-    type: string,
-    namespace: string,
-    constructor: ComponentConstructor<D, T, E>
-  ): ComponentNodeFunction<D, T, E>;
-  export function ToFunction<D = void, T = void, E = void>(
-    type: string,
-    namespace: string | ComponentConstructor<D, T, E>,
-    constructor?: ComponentConstructor<D, T, E>
-  ) {
-    if(constructor === undefined) {
-      constructor = namespace as ComponentConstructor<D, T, E>;
-      namespace = undefined;
-    }
-    return ComponentNode.ToFunction<D, T, E>(type, namespace as string, constructor);
-  }
-
-  export function Register<D = void, T = void, E = void>(
-    name: string,
-    constructor: ComponentConstructor<D, T, E>,
-  ) {
-    const componentFunction = ToFunction(
-      `${name}-component`,
-      undefined,
-      constructor,
-    );
-
-    class WebComponent extends HTMLElement {
-      constructor() {
-        super();
-
-        const shadowRoot = this.attachShadow({ mode: "open" });
-        const node = componentFunction({});
-        Attach(shadowRoot, node);
-      }
-    }
-
-    customElements.define(name, WebComponent);
-  }
-
-  export function Attach(node: Node, nodeRef: ElementNodeRefTypes) {
-    NodeRef.Init(nodeRef);
-    var rootRef = NodeRef.Wrap(node);
-    NodeRef.AddChild(rootRef, nodeRef);
-  }
+type vComponentConfig<D, E, P = HTMLElement> = {
+  data?: () => D | undefined;
+  props?: FunctionOr<RecursivePartial<P>> | undefined;
+  on?: ComponentEvents<E> | undefined;
 }
 
-export type ComponentConstructor<D, T, E> = {
-  new (
-    data: { (): D | Promise<D> },
+type ComponentConstructor<D, T, E> = { 
+  new(
+    data: D | (() => (D | Promise<D>)),
     templates: T,
-    nodeRef: INodeRefBase,
-    componentEvents: ComponentNodeEvents<E>,
-  ): Component<D, T, E>;
-};
+    vNode: vNodeType,
+    componentEvents: ComponentEvents<E>
+  ): Component<D, T, E> 
+}
+
+export namespace Component {
+  export function ToFunction<D, T, E, P = HTMLElement>(
+    type: string,
+    constructor: ComponentConstructor<D, T, E>,
+    namespace?: string
+  ) {
+    return function(config: vComponentConfig<D, E, P>, templates?: T): vNodeType {
+      const { data, on, props } = config;
+
+      class ConcreteComponent extends constructor {
+        constructor(vnode: vNodeType) {
+          super(data, templates, vnode, on);
+        }
+      }
+
+      const definition: vNodeDefinition<P, any, never> = {
+        type,
+        namespace: namespace ?? null,
+        props,
+        componentConstructor: ConcreteComponent
+      };
+
+      return vNode.Create(definition);
+    }
+  }
+
+  export function Attach(node: any, vnode: vNodeType) {
+    return vNode.Attach(node, vnode);
+  }
+}

@@ -20,11 +20,14 @@ export interface INodeConfig {
     fireEvent(target: any, event: string, data: any): void;
     createTextAssignment(target: any): {(next: string): void};
     createPropertyAssignment(target: any): {(next: any): void};
+    assignProperties(target: any, next: any): void;
     createEventAssignment(target: any): {(next: {[event: string]: (event: Event) => void }): void};
+    createAttributeAssignment(target: any): {(next: {[attribute: string]: string }): void};
     getFirstChild(target: any): any;
     getLastChild(target: any): any;
     getNextSibling(target: any): any;
     replaceChildren(target: any, children: any[]): void;
+    reconcileChildren(target: any, children: any[]): void;
 }
 
 export const NodeConfig = DOMNodeConfig as INodeConfig;

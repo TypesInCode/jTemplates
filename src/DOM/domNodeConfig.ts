@@ -1,10 +1,12 @@
 import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
-import { CreateNodeValueAssignment } from './createPropertyAssignment';
+import { AssignProperties, CreateNodeValueAssignment } from './createPropertyAssignment';
 import { CreateEventAssignment } from './createEventAssignment';
 import { CreateAssignment } from './createAssignment';
 import { CreatePropertyAssignment } from './createPropertyAssignment';
+import { ReconcileSortedArrays } from '../Utils/array';
+import { CreateAttributeAssignment } from './createAttributeAssignment';
 
 let pendingUpdates = List.Create<{(): void}>();
 let updateScheduled = false;
@@ -56,6 +58,9 @@ function wrapPriorityUpdates<P extends any[]>(callback: (...args: P) => void) {
 
 export const DOMNodeConfig: INodeConfig = {
     createNode(type: string, namespace?: string): Node {
+        if(type === 'text')
+            return wndw.document.createTextNode('');
+
         return namespace ? 
             wndw.document.createElementNS(namespace, type) : 
             wndw.document.createElement(type)
@@ -118,8 +123,14 @@ export const DOMNodeConfig: INodeConfig = {
     createPropertyAssignment(target: HTMLElement) {
         return CreatePropertyAssignment(target);
     },
+    assignProperties(target: HTMLElement, next: any) {
+        AssignProperties(target, next);
+    },
     createEventAssignment(target: HTMLElement) {
         return CreateAssignment(target, CreateEventAssignment);
+    },
+    createAttributeAssignment(target: HTMLElement) {
+        return CreateAssignment(target, CreateAttributeAssignment);
     },
     fireEvent(target: HTMLElement, event: string, data: any) {
         var cEvent = new CustomEvent(event, data);
@@ -137,4 +148,41 @@ export const DOMNodeConfig: INodeConfig = {
     replaceChildren(target: HTMLElement, children: HTMLElement[]) {
         target.replaceChildren(...children);
     },
+    reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
+        if(children.length === 0 && !target.firstChild)
+            return;
+        
+        if(children.length === 0 || !target.firstChild) {
+            target.replaceChildren(...children);
+            return;
+        }
+
+        let actualNode = target.firstChild;
+        let x = 0;
+        let removed = false;
+        for(; actualNode && x<children.length; x++) {
+            const expectedNode = children[x];
+
+            if(!removed && actualNode !== expectedNode) {
+                const remove = actualNode;
+                actualNode = actualNode.nextSibling
+                target.removeChild(remove);
+                removed = true;
+            }
+                
+            if(actualNode !== expectedNode) {
+                target.insertBefore(expectedNode, actualNode);
+            }
+            else {
+                actualNode = actualNode.nextSibling;
+                removed = false;
+            }
+        }
+
+        while(target.lastChild !== children[x - 1])
+            target.removeChild(target.lastChild);
+
+        for(; x<children.length; x++)
+            target.appendChild(children[x]);
+    }
 }

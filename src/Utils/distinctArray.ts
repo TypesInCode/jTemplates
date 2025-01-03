@@ -1,6 +1,6 @@
 export type DistinctArray<T> = {
     id: (value: T) => number;
-    distinct: T[];
+    distinct: boolean[];
     array: T[];
 }
 
@@ -16,8 +16,8 @@ export namespace DistinctArray {
     export function Push<T>({ id, distinct, array }: DistinctArray<T>, value: T) {
         const vId = id(value);
 
-        if(distinct[vId] === undefined) {
-            distinct[vId] = value;
+        if(!distinct[vId]) {
+            distinct[vId] = true;
             array.push(value);
         }
     }
