@@ -1,4 +1,4 @@
-import { DOMNodeConfig } from "../DOM/domNodeConfig";
+import { NodeConfig } from "../Node/nodeConfig";
 import { IDestroyable } from "./utils.types";
 
 namespace StepFunctions {
@@ -88,7 +88,7 @@ export class Animation implements IDestroyable {
     this.enabled = true;
     this.type = type;
     this.animationDuration = duration;
-    this.animationUpdate = DOMNodeConfig.wrapPriorityUpdates(update);
+    this.animationUpdate = NodeConfig.wrapPriorityUpdates(update);
   }
 
   /**
@@ -121,14 +121,14 @@ export class Animation implements IDestroyable {
         const next = this.start + step;
         this.animationUpdate(next);
 
-        if (percent < 1) DOMNodeConfig.scheduleUpdate(this.animationRun);
+        if (percent < 1) NodeConfig.scheduleUpdate(this.animationRun);
         else {
           resolve();
         }
       };
 
       this.animationRun = animationRun;
-      DOMNodeConfig.scheduleUpdate(this.animationRun);
+      NodeConfig.scheduleUpdate(this.animationRun);
     }).then(() => {
       this.Cancel();
     });
