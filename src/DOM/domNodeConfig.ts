@@ -2,10 +2,9 @@ import { wndw } from './window';
 import { INodeConfig } from '../Node/nodeConfig';
 import { List } from '../Utils/list';
 import { AssignProperties, CreateNodeValueAssignment } from './createPropertyAssignment';
-import { CreateEventAssignment } from './createEventAssignment';
+import { AssignEvents, CreateEventAssignment } from './createEventAssignment';
 import { CreateAssignment } from './createAssignment';
 import { CreatePropertyAssignment } from './createPropertyAssignment';
-import { ReconcileSortedArrays } from '../Utils/array';
 import { CreateAttributeAssignment } from './createAttributeAssignment';
 
 let pendingUpdates = List.Create<{(): void}>();
@@ -129,6 +128,9 @@ export const DOMNodeConfig: INodeConfig = {
     createEventAssignment(target: HTMLElement) {
         return CreateAssignment(target, CreateEventAssignment);
     },
+    assignEvents(target: HTMLElement, next: any) {
+        AssignEvents(target, next);  
+    },
     createAttributeAssignment(target: HTMLElement) {
         return CreateAssignment(target, CreateAttributeAssignment);
     },
@@ -149,9 +151,6 @@ export const DOMNodeConfig: INodeConfig = {
         target.replaceChildren(...children);
     },
     reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
-        if(children.length === 0 && !target.firstChild)
-            return;
-        
         if(children.length === 0 || !target.firstChild) {
             target.replaceChildren(...children);
             return;

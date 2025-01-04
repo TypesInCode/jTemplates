@@ -22,6 +22,7 @@ export interface INodeConfig {
     createPropertyAssignment(target: any): {(next: any): void};
     assignProperties(target: any, next: any): void;
     createEventAssignment(target: any): {(next: {[event: string]: (event: Event) => void }): void};
+    assignEvents(target: any, next: any): void;
     createAttributeAssignment(target: any): {(next: {[attribute: string]: string }): void};
     getFirstChild(target: any): any;
     getLastChild(target: any): any;
