@@ -15,9 +15,6 @@ export type vNode = {
     node: Node | null;
     children: vNode[] | null;
     destroyed: boolean;
-    assignProperties: (next: any) => void;
-    assignEvents: (next: {[event: string]: (event: Event) => void}) => void;
-    assignAttributes: (next: {[attr: string]: string}) => void;
     scopes: IObservableScope<unknown>[];
     component: Component;
 }

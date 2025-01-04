@@ -1,4 +1,3 @@
-
 import { ObservableScope } from "../Store";
 import { IObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
@@ -23,9 +22,6 @@ export namespace vNode {
             node: null,
             children: null,
             destroyed: false,
-            assignProperties: null,
-            assignEvents: null,
-            assignAttributes: null,
             component: null,
             scopes: []
         };
@@ -48,7 +44,6 @@ export namespace vNode {
             return;
 
         vnode.destroyed = true;
-        vnode.assignEvents?.(null);
         vnode.component?.Destroy();
         ObservableScope.DestroyAll(vnode.scopes);
         vnode.children && DestroyAll(vnode.children);
@@ -85,61 +80,45 @@ function InitNode(vnode: vNodeType) {
     vnode.definition = null;
 
     if(props) {
-        vnode.assignProperties = NodeConfig.createPropertyAssignment(node);
+        const assignProperties = NodeConfig.createPropertyAssignment(node);
         if(typeof props === 'function') {
             const scope = ObservableScope.Create(props as () => any);
             vnode.scopes.push(scope);
 
-            ObservableScope.Watch(scope, CreateScheduledCallback(function() {
-                const value = ObservableScope.Peek(scope);
-                vnode.assignProperties(value);
-            }));
-
+            ObservableScope.Watch(scope, ScheduledAssignment(assignProperties));
             const value = ObservableScope.Peek(scope);
-            vnode.assignProperties(value);
+            assignProperties(value);
         }
-        else {
-            vnode.assignProperties(props);
-            vnode.assignProperties = null;
-        }
+        else
+            assignProperties(props);
     }
 
     if(on) {
-        vnode.assignEvents = NodeConfig.createEventAssignment(node);
+        const assignEvents = NodeConfig.createEventAssignment(node);
         if(typeof on === 'function') {
             const scope = ObservableScope.Create(on)
             vnode.scopes.push(scope);
 
-            ObservableScope.Watch(scope, CreateScheduledCallback(function() {
-                const value = ObservableScope.Peek(scope);
-                vnode.assignEvents(value);
-            }));
-
+            ObservableScope.Watch(scope, ScheduledAssignment(assignEvents));
             const value = ObservableScope.Peek(scope);
-            vnode.assignEvents(value);
+            assignEvents(value);
         }
         else
-            vnode.assignEvents(on);
+            assignEvents(on);
     }
 
     if(attrs) {
-        vnode.assignAttributes = NodeConfig.createAttributeAssignment(node);
+        const assignAttributes = NodeConfig.createAttributeAssignment(node);
         if(typeof attrs === 'function') {
             const scope = ObservableScope.Create(attrs)
             vnode.scopes.push(scope);
 
-            ObservableScope.Watch(scope, CreateScheduledCallback(function() {
-                const value = ObservableScope.Peek(scope);
-                vnode.assignAttributes(value);
-            }));
-
+            ObservableScope.Watch(scope, ScheduledAssignment(assignAttributes));
             const value = ObservableScope.Peek(scope);
-            vnode.assignAttributes(value);
+            assignAttributes(value);
         }
-        else {
-            vnode.assignAttributes(attrs);
-            vnode.assignAttributes = null;
-        }
+        else 
+            assignAttributes(attrs);
     }
     
     if(componentConstructor) {
@@ -333,6 +312,21 @@ function ToArray<T, P extends any[]>(callback: (...args: P) => T | T[]): () => T
             return [];
 
         return [result];
+    }
+}
+
+function ScheduledAssignment(assign: (data: any) => void) {
+    let scheduled = false;
+    return function(scope: IObservableScope<any>) {
+        if(scheduled)
+            return;
+
+        scheduled = true;
+        NodeConfig.scheduleUpdate(function() {
+            scheduled = false;
+            const value = ObservableScope.Peek(scope);
+            assign(value);
+        });
     }
 }
 
