@@ -11,41 +11,9 @@ export interface IList<T> {
 }
 
 export namespace List {
-    let maxTempListSize = 0;
-    let trimScheduled = false;
-    const tempList = Create<any>();
 
     function CreateNode<T>(data: T): INode<T> {
-        const node = PopNode(tempList) ?? { previous: null, next: null, data: null };
-        node.data = data;
-        return node;
-    }
-
-    function TrimTempList() {
-        trimScheduled = false;
-        if(maxTempListSize < tempList.size)
-            maxTempListSize = tempList.size;
-
-        const trimSize = Math.floor(maxTempListSize / 10);
-        Split(tempList, trimSize);
-    }
-
-    function ScheduleTrimTempList() {
-        if(!trimScheduled && tempList.size > maxTempListSize) {
-            trimScheduled = true;
-            requestIdleCallback(TrimTempList);
-        }
-    }
-
-    function ReturnNode(node: INode<any>) {
-        if(!node)
-            return;
-
-        node.previous = null;
-        node.next = null;
-        node.data = null;
-        AddNode(tempList, node);
-        ScheduleTrimTempList();
+        return { previous: null, next: null, data };
     }
 
     export function Create<T>(): IList<T> {
@@ -84,14 +52,9 @@ export namespace List {
     }
 
     export function Clear<T>(list: IList<T>) {
-        let node = list.head;
-        while(node) {
-            node.data = null;
-            node = node.next;
-        }
-
-        Append(tempList, list);
-        ScheduleTrimTempList();
+        list.head = null;
+        list.tail = null;
+        list.size = 0;
     }
 
     export function Push<T>(list: IList<T>, data: T) {
@@ -133,7 +96,6 @@ export namespace List {
     export function Pop<T>(list: IList<T>): T {
         const node = PopNode(list);
         const data = node?.data;
-        ReturnNode(node);
         return data;
     }
 
@@ -214,7 +176,6 @@ export namespace List {
             list.head = null;
         
         const data = node.data;
-        ReturnNode(node);
         return data;
     }
 
