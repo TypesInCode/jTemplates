@@ -107,8 +107,8 @@ export namespace ObservableScope {
       async: (valueFunction as any)[Symbol.toStringTag] === "AsyncFunction",
       dirty: true,
       emitter: Emitter.Create(),
-      emitters: [],
-      calcFunctions: [],
+      emitters: null,
+      calcFunctions: null,
       onDestroyed: null,
       destroyed: false,
       setCallback: function () {
@@ -194,18 +194,17 @@ export namespace ObservableScope {
   }
 }
 
-function CalcChanged(calc: ICalcFunction<any>) {
-  const value = calc.getFunction();
-  const changed = calc.value !== value;
-  calc.value = value;
-  return changed;
-}
-
 function DirtyScope(scope: IObservableScope<any>) {
   if(scope.dirty || !scope.getFunction)
     return;
 
-  scope.dirty = scope.calcFunctions.length === 0 || scope.calcFunctions.some(CalcChanged);
+  let dirty = scope.calcFunctions.length === 0;
+  for(let x=0; !dirty && x < scope.calcFunctions.length; x++) {
+    const calc = scope.calcFunctions[x];
+    dirty = dirty || calc.value !== calc.getFunction();
+  }
+
+  scope.dirty = dirty;
   if(!scope.dirty)
     return;
 
@@ -262,6 +261,14 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 }
 
 function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
+  if(scope.emitters === null) {
+    for(let x = 0; x<right.length; x++)
+      Emitter.On(right[x], scope.setCallback);
+
+    scope.emitters = right;
+    return;
+  }
+  
   if(right.length === 0) {
     if (scope.emitters.length > 0) {
       for (let x = 0; x < scope.emitters.length; x++)
