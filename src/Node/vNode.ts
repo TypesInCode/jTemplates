@@ -32,7 +32,7 @@ export namespace vNode {
     }
 
     export function Init(vnode: vNodeType) {
-        if(vnode.node !== null)
+        if(vnode.definition === null)
             return;
 
         InitNode(vnode);
@@ -81,8 +81,8 @@ export namespace vNode {
 
 function InitNode(vnode: vNodeType) {
     const { type, namespace, props, attrs, on, data, componentConstructor, children, childrenArray } = vnode.definition;
-    const node = NodeConfig.createNode(type, namespace);
-    vnode.node = node;
+    const node = vnode.node = NodeConfig.createNode(type, namespace);
+    vnode.definition = null;
 
     if(props) {
         vnode.assignProperties = NodeConfig.createPropertyAssignment(node);
@@ -243,7 +243,6 @@ function WrapDynamicChildren(dataScope: IObservableScope<any[]>, nodeList: IList
         const nextData = ObservableScope.Value(dataScope);
         const nodeMap = List.ToNodeMap(nodeList, function(data) { return data.data; });
         const nextNodeList: IList<NodeListData> = List.Create();
-
         const nextNodeArray: vNodeType[] = [];
 
         for(let x=0; x<nextData.length; x++) {
