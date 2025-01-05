@@ -169,6 +169,7 @@ function InitNode(vnode: vNodeType) {
     vnode.children = nodes;
   } else if (childrenArray) {
     vnode.children = childrenArray;
+    vNode.InitAll(vnode.children);
   } else if (children) {
     if (data) {
       DynamicChildren(
@@ -179,7 +180,7 @@ function InitNode(vnode: vNodeType) {
     } else StaticChildren(vnode, children);
   }
 
-  UpdateChildren(vnode, true);
+  UpdateChildren(vnode, true, !!childrenArray);
 }
 
 function StaticChildren(
@@ -348,14 +349,14 @@ function WrapDynamicChildren(
   };
 }
 
-function UpdateChildren(vnode: vNodeType, init = false) {
+function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
   if (!vnode.children) return;
 
   const children = vnode.children;
   Thread(function () {
     if (vnode.destroyed || children !== vnode.children) return;
 
-    for (let x = 0; x < children.length; x++)
+    for (let x = 0; !skipInit && x < children.length; x++)
       if (children[x].node === null) {
         const childNode = children[x];
         Schedule(function () {
