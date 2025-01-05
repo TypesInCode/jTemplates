@@ -5,7 +5,6 @@ import { FunctionOr, vNode as vNodeType, vNodeDefinition } from "./vNode.types";
 import { RecursivePartial } from "../Utils/utils.types";
 import { vNode } from "./vNode";
 
-
 export class Component<D = void, T = void, E = {}> {
   private scope: ObservableScope<D>;
   private templates: T;
@@ -35,15 +34,14 @@ export class Component<D = void, T = void, E = {}> {
   }
 
   constructor(
-    data: D | (() => (D | Promise<D>)),
+    data: D | (() => D | Promise<D>),
     templates: T,
     private vNode: vNodeType,
     private componentEvents: ComponentEvents<E>,
   ) {
-    if(typeof data === 'function')
+    if (typeof data === "function")
       this.scope = new ObservableScope<D>(data as () => D | Promise<D>);
-    else
-      this.scope = new ObservableScope<D>(() => data);
+    else this.scope = new ObservableScope<D>(() => data);
 
     this.templates = templates || ({} as T);
   }
@@ -55,7 +53,8 @@ export class Component<D = void, T = void, E = {}> {
   public Bound() {}
 
   public Fire<P extends keyof E>(event: P, data?: E[P]) {
-    var eventCallback = this.componentEvents && (this.componentEvents as any)[event];
+    var eventCallback =
+      this.componentEvents && (this.componentEvents as any)[event];
     eventCallback && eventCallback(data);
   }
 
@@ -69,24 +68,27 @@ type vComponentConfig<D, E, P = HTMLElement> = {
   data?: () => D | undefined;
   props?: FunctionOr<RecursivePartial<P>> | undefined;
   on?: ComponentEvents<E> | undefined;
-}
+};
 
-type ComponentConstructor<D, T, E> = { 
-  new(
-    data: D | (() => (D | Promise<D>)),
+type ComponentConstructor<D, T, E> = {
+  new (
+    data: D | (() => D | Promise<D>),
     templates: T,
     vNode: vNodeType,
-    componentEvents: ComponentEvents<E>
-  ): Component<D, T, E> 
-}
+    componentEvents: ComponentEvents<E>,
+  ): Component<D, T, E>;
+};
 
 export namespace Component {
   export function ToFunction<D, T, E, P = HTMLElement>(
     type: string,
     constructor: ComponentConstructor<D, T, E>,
-    namespace?: string
+    namespace?: string,
   ) {
-    return function(config: vComponentConfig<D, E, P>, templates?: T): vNodeType {
+    return function (
+      config: vComponentConfig<D, E, P>,
+      templates?: T,
+    ): vNodeType {
       const { data, on, props } = config;
 
       class ConcreteComponent extends constructor {
@@ -99,11 +101,11 @@ export namespace Component {
         type,
         namespace: namespace ?? null,
         props,
-        componentConstructor: ConcreteComponent
+        componentConstructor: ConcreteComponent,
       };
 
       return vNode.Create(definition);
-    }
+    };
   }
 
   export function Attach(node: any, vnode: vNodeType) {
