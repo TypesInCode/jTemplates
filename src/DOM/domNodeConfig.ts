@@ -151,8 +151,15 @@ export const DOMNodeConfig: INodeConfig = {
         target.replaceChildren(...children);
     },
     reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
-        if(children.length === 0 || !target.firstChild) {
-            target.replaceChildren(...children);
+        if(!target.firstChild) {
+            for(let x=0; x<children.length; x++)
+                target.appendChild(children[x]);
+
+            return;
+        }
+
+        if(children.length === 0) {
+            target.replaceChildren();
             return;
         }
 
