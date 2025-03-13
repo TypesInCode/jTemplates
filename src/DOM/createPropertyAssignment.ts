@@ -78,7 +78,7 @@ export function CreatePropertyAssignment(target: any) {
 
   return function AssignProperty(next: { [prop: string]: any }) {
     if (next === null) {
-      for (let x = 0; x < last.length; x++) last[x][2](target, null);
+      for (let x = 0; x < last.length; x++) last[x][2] !== null && last[x][2](target, null);
 
       if (last.length > 0) last.splice(0);
 
