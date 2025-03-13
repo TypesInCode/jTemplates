@@ -210,9 +210,6 @@ function DirtyScope(scope: IObservableScope<any>) {
 
   if(scope.async) {
     UpdateValue(scope);
-    scope.promise.then(function() {
-      Emitter.Emit(scope.emitter, scope);
-    });
   }
   else
     Emitter.Emit(scope.emitter, scope);
@@ -252,6 +249,7 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
   if (scope.async) {
     scope.promise = (value as Promise<T>).then(function (result) {
       scope.value = result;
+      Emitter.Emit(scope.emitter, scope);
       return result;
     });
   } else scope.value = value;
