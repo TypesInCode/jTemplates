@@ -145,8 +145,9 @@ function InitNode(vnode: vNodeType) {
 
   if (componentConstructor) {
     vnode.component = new componentConstructor(vnode);
+    vnode.component.Bound();
     const componentScope = ObservableScope.Create(function () {
-      let nodes = vnode.component.Template();
+      let nodes = Injector.Scope(vnode.injector, function() { return vnode.component.Template() });
       if (!Array.isArray(nodes)) nodes = [nodes];
 
       return nodes as any as vNodeType[];
@@ -158,7 +159,7 @@ function InitNode(vnode: vNodeType) {
       CreateScheduledCallback(function () {
         if (vnode.destroyed) return;
 
-        const nodes = ObservableScope.Peek(componentScope);
+        const nodes = Injector.Scope(vnode.injector, ObservableScope.Peek, componentScope);
         vNode.DestroyAll(vnode.children);
         vnode.children = nodes as any as vNodeType[];
         UpdateChildren(vnode);
@@ -195,13 +196,13 @@ function StaticChildren(
   const child = ObservableScope.Peek(childrenScope);
   switch(typeof child) {
     case 'string': {
-      const node = vNode.Create({
+      const node = Injector.Scope(vnode.injector, vNode.Create, {
         type: "text",
         namespace: null,
         props() {
           return { nodeValue: ObservableScope.Value(childrenScope) as string };
         },
-      });
+      } as vNodeDefinition);
       vnode.children = [node];
       break;
     }
