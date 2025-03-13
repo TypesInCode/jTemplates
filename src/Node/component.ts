@@ -80,6 +80,10 @@ type ComponentConstructor<D, T, E> = {
 };
 
 export namespace Component {
+  /**
+   * Function wraps the Component as a function that can be used to create vNode objects
+   * and generate templates.
+   */
   export function ToFunction<D, T, E, P = HTMLElement>(
     type: string,
     constructor: ComponentConstructor<D, T, E>,
@@ -108,6 +112,31 @@ export namespace Component {
     };
   }
 
+  /**
+   * Function registers the Component as a WebComponent as the provided name. 
+   */
+  export function Register<D = void, T = void, E = void>(
+    name: string,
+    constructor: ComponentConstructor<D, T, E>,
+  ) {
+    const componentFunction = ToFunction(
+      `${name}-component`,
+      constructor,
+    );
+
+    class WebComponent extends HTMLElement {
+      constructor() {
+        super();
+
+        const shadowRoot = this.attachShadow({ mode: "open" });
+        const node = componentFunction({});
+        Attach(shadowRoot, node);
+      }
+    }
+
+    customElements.define(name, WebComponent);
+  }
+  
   export function Attach(node: any, vnode: vNodeType) {
     return vNode.Attach(node, vnode);
   }
