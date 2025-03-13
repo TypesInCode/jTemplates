@@ -10,6 +10,7 @@ export const table = vNode.ToFunction("table");
 export const tbody = vNode.ToFunction("tbody");
 export const tr = vNode.ToFunction("tr");
 export const td = vNode.ToFunction("td");
+export const img = vNode.ToFunction<HTMLImageElement>("img");
 
 const textElement = vNode.ToFunction("text");
 export const text = function (callback: () => string) {
