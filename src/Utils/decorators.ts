@@ -7,6 +7,7 @@ import { IDestroyable } from "./utils.types";
 // import { ElementNodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
 import { StoreAsync, StoreSync } from "../Store";
+import { Component } from "../Node/component";
 
 const nodeInstanceMap = new WeakMap<
   WeakKey,
@@ -228,28 +229,17 @@ function ScopeDecorator<T, K extends string>(
   } as PropertyDescriptor;
 }
 
-/* export function Inject<I>(type: { new(...args: Array<any>): I }) {
-  return InjectorDecorator.bind(null, type) as <
-    F extends I,
-    T extends Record<K, F>,
-    K extends string,
-  >(
-    target: T,
-    propertyKey: K,
-    descriptor?: PropertyDescriptor,
-  ) => any;
+export function Inject<I, T extends Component<any, any, any>>(type: { new(...args: Array<any>): I }) {
+  return function() {
+    return InjectDecorator<I, T>(type);
+  } as (target: T, propertyKey: string, descriptor?: PropertyDescriptor) => void
 }
 
-function InjectorDecorator<
+function InjectDecorator<
   I,
-  F extends I,
-  T extends Record<K, F>,
-  K extends string,
+  T extends Component<any, any, any>
 >(
-  type: { new(): I },
-  target: T,
-  propertyKey: K,
-  descriptor?: PropertyDescriptor,
+  type: { new(): I }
 ): any {
   return {
     configurable: false,
@@ -261,7 +251,7 @@ function InjectorDecorator<
       (this as T).Injector.Set(type, val);
     },
   };
-} */
+}
 
 export function Destroy() {
   return DestroyDecorator;
