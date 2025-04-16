@@ -11,6 +11,7 @@ export const tbody = vNode.ToFunction("tbody");
 export const tr = vNode.ToFunction("tr");
 export const td = vNode.ToFunction("td");
 export const img = vNode.ToFunction<HTMLImageElement>("img");
+export const video = vNode.ToFunction<HTMLVideoElement>("video");
 
 const textElement = vNode.ToFunction("text");
 export const text = function (callback: () => string) {

@@ -1,4 +1,4 @@
-import { ReconcileSortedArrays } from "../../Utils/array";
+import { ReconcileSortedEmitters } from "../../Utils/array";
 import { DistinctArray } from "../../Utils/distinctArray";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IDestroyable } from "../../Utils/utils.types";
@@ -248,6 +248,9 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 
   if (scope.async) {
     scope.promise = (value as Promise<T>).then(function (result) {
+      if(scope.destroyed)
+        return;
+        
       scope.value = result;
       Emitter.Emit(scope.emitter, scope);
       return result;
@@ -277,9 +280,9 @@ function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
     return;
   }
 
-  ReconcileSortedArrays(
-    scope.emitters,
-    right,
+  ReconcileSortedEmitters(
+    scope.emitters as [number][],
+    right as [number][],
     function (emitter) {
       Emitter.On(emitter, scope.setCallback);
     },

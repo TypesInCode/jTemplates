@@ -53,12 +53,19 @@ export function JsonDiffFactory() {
         const typedSource = source as { [prop: string]: unknown };
         const typedPatch = patch as { [prop: string]: unknown };
         const sourceKeys = Object.keys(typedSource);
+        const targetKeys = Object.keys(typedPatch).filter(key => !sourceKeys.includes(key));
+        
         const result = {} as { [prop: string]: unknown };
-        for (let x = 0; x < sourceKeys.length; x++)
+        for (let x = 0; x < sourceKeys.length; x++) {
           result[sourceKeys[x]] = JsonMerge(
             typedSource[sourceKeys[x]],
             typedPatch[sourceKeys[x]],
           );
+        }
+
+        for (let x = 0; x < targetKeys.length; x++) {
+          result[targetKeys[x]] = typedPatch[targetKeys[x]];
+        }
 
         return result;
       }

@@ -1,7 +1,31 @@
 /// <reference path="../../node_modules/@types/mocha/index.d.ts" />
 import * as chai from "chai";
-import { ReconcileSortedArrays } from "../../src/Utils/array";
+import { ReconcileSortedEmitters, ReconcileSortedArrays } from "../../src/Utils/array";
 const expect = chai.expect;
+
+describe("Reconcile sorted emitters", () => {
+  it("Basic Reconcile", () => {
+    const left = [[1], [2]];
+    const right = [[1], [2]];
+
+    const added: any = [];
+    const removed: any = [];
+    ReconcileSortedEmitters(left as [number][], right as [number][], (value) => added.push(value), (value) => removed.push(value));
+    expect(added.length).to.eq(0);
+    expect(removed.length).to.eq(0);
+  });
+
+  it("No overlap", () => {
+    const left = [[1]];
+    const right = [[2]];
+
+    const added: any = [];
+    const removed: any = [];
+    ReconcileSortedEmitters(left as [number][], right as [number][], (value) => added.push(value), (value) => removed.push(value));
+    expect(added.length).to.eq(1);
+    expect(removed.length).to.eq(1);
+  });
+});
 
 describe("Reconcile Sorted Arrays", () => {
   it("Basic Reconcile", () => {

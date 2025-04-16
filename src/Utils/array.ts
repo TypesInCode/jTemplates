@@ -37,6 +37,36 @@ export function ArrayDiff(source: any[], target: any[]) {
   return x < source.length;
 }
 
+export function ReconcileSortedEmitters<T extends [number]>(left: T[], right: T[], add: (value: T) => void, remove: (value: T) => void) {
+  let leftIndex = 0;
+  let rightIndex = 0;
+
+  while(leftIndex < left.length && rightIndex < right.length) {
+    let li = leftIndex;
+    let ri = rightIndex;
+
+    for(; li < left.length && left[li][0] < right[ri][0]; li++)
+      remove(left[li]);
+
+    while(li < left.length && ri < right.length && left[li][0] === right[ri][0]) {
+      li++;
+      ri++;
+    }
+
+    for(; ri < right.length && li < left.length && right[ri][0] < left[li][0]; ri++)
+      add(right[ri]);
+
+    leftIndex = li;
+    rightIndex = ri;
+  }
+
+  for(let li = leftIndex; li < left.length; li++)
+    remove(left[li]);
+
+  for(let ri = rightIndex; ri < right.length; ri++)
+    add(right[ri]);
+}
+
 export function ReconcileSortedArrays<T>(left: T[], right: T[], add: (value: T) => void, remove: (value: T) => void) {
   let leftIndex = 0;
   let rightIndex = 0;
