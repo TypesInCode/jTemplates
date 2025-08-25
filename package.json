@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "7.0.26",
+  "version": "7.0.32",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -18,7 +18,7 @@
     "build": "npm run buildquick && node ./tools/copy-package-json.js",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
     "builddocs": "typedoc --out docs src/index.ts src/DOM/index.ts src/Utils/index.ts src/Store/index.ts && touch docs/.nojekyll",
-    "test": "mocha --require ts-node/register --recursive test/**/*arrays-spec.ts",
+    "test": "mocha --require ts-node/register --recursive test/**/*-spec.ts",
     "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts"
   },
   "devDependencies": {
