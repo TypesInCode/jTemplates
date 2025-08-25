@@ -14,6 +14,7 @@ export type vNodeChildrenFunction<T> =
   | ((data: T) => string);
 
 export type vNode = {
+  type: string;
   definition: vNodeDefinition<any, any, any>;
   injector: Injector;
   node: Node | null;
