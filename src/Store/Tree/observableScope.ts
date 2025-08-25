@@ -296,7 +296,6 @@ function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
 
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope) return;
-  const emitters = scope.emitters;
 
   scope.emitters = null;
   scope.emitter = null;
@@ -305,7 +304,4 @@ function DestroyScope(scope: IObservableScope<any>) {
   scope.calcFunctions = null;
   scope.destroyed = true;
   scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
-
-  for (let x = 0; x < emitters.length; x++)
-    Emitter.Remove(emitters[x], scope.setCallback);
 }
