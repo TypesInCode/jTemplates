@@ -244,4 +244,21 @@ export namespace List {
 
         return map;
     }
+
+    export function ToListMap<T>(list: IList<T>, keyCallback: (data: T) => unknown) {
+        const map = new Map<any, IList<T>>();
+
+        let node = list.head;
+        while(node !== null) {
+            const key = keyCallback(node.data);
+            const mapList = map.get(key) ?? List.Create();
+
+            List.RemoveNode(list, node);
+            List.AddNode(mapList, node);
+            map.set(key, mapList);
+            node = list.head;    
+        }
+
+        return map;
+    }
 }
