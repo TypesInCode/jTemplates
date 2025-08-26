@@ -62,6 +62,12 @@ function GetAssignmentFunction(path: string): (target: any, next: any) => void {
 }
 
 export function CreatePropertyAssignment(target: any) {
+  if((target as Node).nodeType === Node.TEXT_NODE) {
+    return function(next: { nodeValue: string }) {
+      AssignNodeValue(target, next.nodeValue);
+    };
+  }
+  
   const last: [string, any, (target: any, next: any) => void][] = [
     ["", null, null],
   ];
