@@ -30,6 +30,7 @@ export type vNodeDefinition<
   T = never,
 > = {
   type: string;
+  node?: Node;
   namespace: string | null;
   props?: FunctionOr<RecursivePartial<P>>;
   attrs?: FunctionOr<{ [name: string]: string }>;

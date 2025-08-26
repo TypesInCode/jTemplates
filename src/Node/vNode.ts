@@ -20,11 +20,6 @@ type vNodeConfig<P = HTMLElement, E = HTMLElementEventMap, T = never> = {
   data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
 };
 
-const DEFAULT_VNODE_ARRAY: [undefined] = [undefined];
-function DEFAULT_VNODE_DATA() {
-  return DEFAULT_VNODE_ARRAY;
-}
-
 export namespace vNode {
   export function Create<P = HTMLElement, E = HTMLElementEventMap, T = never>(
     definition: vNodeDefinition<P, E, T>,
@@ -33,7 +28,7 @@ export namespace vNode {
       definition,
       type: definition.type,
       injector: Injector.Current() ?? new Injector(),
-      node: null,
+      node: definition.node ?? null,
       children: null,
       destroyed: false,
       component: null,
@@ -110,7 +105,7 @@ function InitNode(vnode: vNodeType) {
     children,
     childrenArray,
   } = vnode.definition;
-  const node = (vnode.node = NodeConfig.createNode(type, namespace));
+  const node = (vnode.node = vnode.definition.node ?? NodeConfig.createNode(type, namespace));
   vnode.definition = null;
 
   if (props) {
@@ -178,7 +173,7 @@ function InitNode(vnode: vNodeType) {
     vnode.children = childrenArray;
     vNode.InitAll(vnode.children);
   } else if (children) {
-    Children(vnode, children, data ? ToArray(data) : DEFAULT_VNODE_DATA)
+    Children(vnode, children, data)
   }
 
   UpdateChildren(vnode, true, !!childrenArray);
@@ -187,17 +182,9 @@ function InitNode(vnode: vNodeType) {
 function Children(
   vnode: vNodeType,
   children: (data: any) => string | vNodeType | vNodeType[],
-  data: () => any[]
+  data: () => any[] | undefined
 ) {
-  const nodeList = List.Create<NodeListData>();
-  const childrenScope = ObservableScope.Create(
-    WrapChildren(vnode.injector, children, data, nodeList)
-  );
-  
-  ObservableScope.OnDestroyed(childrenScope, function() {
-    DestroyNodeList(nodeList)
-  });
-  
+  const childrenScope = CreateChildrenScope(vnode, children, data);  
   vnode.scopes.push(childrenScope);
 
   ObservableScope.Watch(childrenScope, CreateScheduledCallback(function(scope) {
@@ -211,27 +198,34 @@ function Children(
   AssignChildren(vnode, childrenScope);
 }
 
-function AssignChildren(vnode: vNodeType, childrenScope: IObservableScope<string | vNodeType |  vNodeType[]>) {
-  const children = ObservableScope.Value(childrenScope);
-  switch(typeof children) {
-    case 'string': {
-      if(vnode.children?.[0]?.type !== 'text') {
-        vnode.children && vNode.DestroyAll(vnode.children);
-        const node = Injector.Scope(vnode.injector, vNode.Create, {
-          type: "text",
-          namespace: null,
-          props() {
-            return { nodeValue: ObservableScope.Value(childrenScope) as string };
-          },
-        } as vNodeDefinition);
-        vnode.children = [node];
-      }
-      break;
-    }
-    default: {
-      vnode.children = Array.isArray(children) ? children : [children];
-      break;
-    }
+function CreateChildrenScope(
+  vnode: vNodeType,
+  children: (data: any) => string | vNodeType | vNodeType[],
+  data: () => any[] | undefined
+) {
+  if(data === undefined)
+    return ObservableScope.Create(
+      WrapStaticChildren(vnode, children)
+    )
+    
+  const nodeList = List.Create<NodeListData>();
+  const scope = ObservableScope.Create(
+    WrapChildren(vnode.injector, children, ToArray(data), nodeList)
+  );
+  ObservableScope.OnDestroyed(scope, function() {
+    DestroyNodeList(nodeList)
+  });
+
+  return scope;
+}
+
+function WrapStaticChildren(
+  vnode: vNodeType,
+  children: (data: any) => string | vNodeType | vNodeType[]
+) {
+  return function() {
+    vnode.children && vNode.DestroyAll(vnode.children);
+    return Injector.Scope(vnode.injector, children, undefined);
   }
 }
 
@@ -248,9 +242,6 @@ function WrapChildren(
       case 0:
         DestroyNodeList(nodeList);
         return [];
-      case 1:
-        DestroyNodeList(nodeList);
-        return Injector.Scope(injector, children, nextData[0]);
       default: {
         const nodeListMap = List.ToListMap(nodeList, GetData);
         const nextNodeList = List.Create<NodeListData>();
@@ -323,6 +314,27 @@ function GetData(data: NodeListData) {
   return data.data;
 }
 
+function AssignChildren(vnode: vNodeType, childrenScope: IObservableScope<string | vNodeType |  vNodeType[]>) {
+  const children = ObservableScope.Peek(childrenScope);
+  switch(typeof children) {
+    case 'string': {
+      vnode.children = [vNode.Create({
+        type: 'text',
+        namespace: null,
+        node: vnode.children?.[0]?.type === 'text' && vnode.children[0].node || undefined,
+        props: {
+          nodeValue: children
+        }
+      })];
+      break;
+    }
+    default: {
+      vnode.children = Array.isArray(children) ? children : [children];
+      break;
+    }
+  }
+}
+
 function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
   if (!vnode.children) return;
 
@@ -331,7 +343,7 @@ function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
     if (vnode.destroyed || children !== vnode.children) return;
 
     for (let x = 0; !skipInit && x < children.length; x++)
-      if (children[x].node === null) {
+      if (children[x].definition) {
         const childNode = children[x];
         Schedule(function () {
           if (vnode.destroyed || children !== vnode.children) return;
