@@ -1,7 +1,7 @@
 import { ObservableScope } from "../Store";
 import { IObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
-import { IList, INode, List } from "../Utils/list";
+import { IList, List } from "../Utils/list";
 import { Schedule, Thread } from "../Utils/thread";
 import { RecursivePartial } from "../Utils/utils.types";
 import { NodeConfig } from "./nodeConfig";
@@ -207,13 +207,26 @@ function CreateChildrenScope(
     return ObservableScope.Create(
       WrapStaticChildren(vnode, children)
     )
-    
+
+  const dataScope = ObservableScope.Create(data);
+  data = function() {
+    const result = ObservableScope.Value(dataScope);
+    if(!result)
+      return [];
+
+    if(Array.isArray(result))
+      return result;
+
+    return [result];
+  };
+  
   const nodeList = List.Create<NodeListData>();
   const scope = ObservableScope.Create(
-    WrapChildren(vnode.injector, children, ToArray(data), nodeList)
+    WrapChildren(vnode.injector, children, data, nodeList)
   );
   ObservableScope.OnDestroyed(scope, function() {
-    DestroyNodeList(nodeList)
+    DestroyNodeList(nodeList);
+    ObservableScope.Destroy(dataScope);
   });
 
   return scope;
@@ -225,7 +238,8 @@ function WrapStaticChildren(
 ) {
   return function() {
     vnode.children && vNode.DestroyAll(vnode.children);
-    return Injector.Scope(vnode.injector, children, undefined);
+    const childNodes = Injector.Scope(vnode.injector, children, undefined);
+    return CreateNodeArray(childNodes, vnode.children);
   }
 }
 
@@ -260,20 +274,14 @@ function WrapChildren(
                 existingNode.data.scope
               );
             }
+            else
+              ObservableScope.Touch(existingNode.data.scope);
           }
           else {
             nodeListMap.delete(data);
             const childrenScope = ObservableScope.Create(function() {
               const childNodes = Injector.Scope(injector, children, data);
-              const nodes = typeof childNodes === 'string' ? [vNode.Create({
-                type: 'text',
-                namespace: null,
-                props: {
-                  nodeValue: childNodes
-                }
-              })] : Array.isArray(childNodes) ? childNodes : [childNodes];
-          
-              return nodes;
+              return CreateNodeArray(childNodes);
             });
 
             List.Add(nextNodeList, {
@@ -295,6 +303,20 @@ function WrapChildren(
   }
 }
 
+function CreateNodeArray(children: string | vNodeType | vNodeType[], previousChildren?: vNodeType[]) {
+  if(Array.isArray(children))
+    return children;
+
+  return typeof children === 'string' ? [vNode.Create({
+    type: 'text',
+    namespace: null,
+    node: previousChildren?.[0]?.type === 'text' && previousChildren[0].node || undefined,
+    props: {
+      nodeValue: children
+    }
+  })] : [children];
+}
+
 type NodeListData = {
   data: any;
   nodes: vNodeType[];
@@ -314,25 +336,9 @@ function GetData(data: NodeListData) {
   return data.data;
 }
 
-function AssignChildren(vnode: vNodeType, childrenScope: IObservableScope<string | vNodeType |  vNodeType[]>) {
+function AssignChildren(vnode: vNodeType, childrenScope: IObservableScope<vNodeType[]>) {
   const children = ObservableScope.Peek(childrenScope);
-  switch(typeof children) {
-    case 'string': {
-      vnode.children = [vNode.Create({
-        type: 'text',
-        namespace: null,
-        node: vnode.children?.[0]?.type === 'text' && vnode.children[0].node || undefined,
-        props: {
-          nodeValue: children
-        }
-      })];
-      break;
-    }
-    default: {
-      vnode.children = Array.isArray(children) ? children : [children];
-      break;
-    }
-  }
+  vnode.children = children;
 }
 
 function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
@@ -371,19 +377,6 @@ function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
         });
     });
   });
-}
-
-function ToArray<T, P extends any[]>(
-  callback: (...args: P) => T | T[],
-): () => T[] {
-  return function (...args: P) {
-    const result = callback(...args);
-    if (Array.isArray(result)) return result;
-
-    if (!result) return [];
-
-    return [result];
-  };
 }
 
 function ScheduledAssignment(assign: (data: any) => void) {

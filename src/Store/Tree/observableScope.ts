@@ -1,6 +1,7 @@
 import { ReconcileSortedEmitters } from "../../Utils/array";
 import { DistinctArray } from "../../Utils/distinctArray";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
+import { IsAsync } from "../../Utils/functions";
 import { IDestroyable } from "../../Utils/utils.types";
 
 export class ObservableScopeValue<T> {
@@ -104,7 +105,7 @@ export namespace ObservableScope {
       getFunction: valueFunction,
       value: null,
       promise: null,
-      async: (valueFunction as any)[Symbol.toStringTag] === "AsyncFunction",
+      async: IsAsync(valueFunction),
       dirty: true,
       emitter: Emitter.Create(),
       emitters: null,
@@ -305,3 +306,4 @@ function DestroyScope(scope: IObservableScope<any>) {
   scope.destroyed = true;
   scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
 }
+
