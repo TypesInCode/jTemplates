@@ -1,11 +1,11 @@
 export type DistinctArray<T> = {
-    id: (value: T) => number;
-    distinct: Array<true | undefined> | null;
+    id: (value: T) => unknown;
+    distinct: Set<unknown> | null;
     array: T[];
 }
 
 export namespace DistinctArray {
-    export function Create<T>(id: (value: T) => number): DistinctArray<T> {
+    export function Create<T>(id: (value: T) => unknown): DistinctArray<T> {
         return {
             id,
             distinct: null,
@@ -14,23 +14,20 @@ export namespace DistinctArray {
     }
 
     export function Push<T>(distinctArr: DistinctArray<T>, value: T) {
-
-        const{ id, array }: DistinctArray<T> = distinctArr;
-        switch(array.length) {
+        switch(distinctArr.array.length) {
             case 0:
-                array.push(value);
+                distinctArr.array.push(value);
                 break;
             case 1: {
                 if(distinctArr.distinct === null) {
-                    distinctArr.distinct = []
-                    distinctArr.distinct[id(array[0])] = true;
+                    distinctArr.distinct = new Set([distinctArr.id(distinctArr.array[0])]);
                 }
             }
             default: {
-                const vId = id(value);
-                if(distinctArr.distinct[vId] === undefined) {
-                    distinctArr.distinct[vId] = true;
-                    array.push(value);
+                const vId = distinctArr.id(value);
+                if(!distinctArr.distinct.has(vId)) {
+                    distinctArr.distinct.add(vId);
+                    distinctArr.array.push(value);
                 }
             }
         }
