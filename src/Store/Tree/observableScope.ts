@@ -1,5 +1,4 @@
 import { ReconcileSortedEmitters } from "../../Utils/array";
-import { DistinctArray } from "../../Utils/distinctArray";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
 import { IDestroyable } from "../../Utils/utils.types";
@@ -74,17 +73,16 @@ export interface IObservableScope<T> extends IDestroyable {
   destroyed: boolean;
 }
 
-let watchState: [DistinctArray<Emitter>, ICalcFunction<any>[]] = null;
+let watchState: [Emitter[], ICalcFunction<any>[]] = null;
 function WatchScope<T>(
   scope: IObservableScope<T>,
 ): readonly [T, Emitter[], ICalcFunction<any>[]] {
-  const parent = watchState;
-  watchState = [DistinctArray.Create(Emitter.GetId), []];
+  const parent = watchState;  
+  watchState = [[], []];
 
   const value = scope.getFunction();
-
-  const emitters = DistinctArray.Get(watchState[0]);
-  emitters.sort(Emitter.Compare);
+  const emitters = watchState[0];
+  Emitter.Distinct(emitters);
   const result = [value, emitters, watchState[1]] as const;
   watchState = parent;
   return result;
@@ -124,7 +122,7 @@ export namespace ObservableScope {
   export function Register(emitter: Emitter) {
     if (watchState === null) return;
 
-    DistinctArray.Push(watchState[0], emitter);
+    watchState[0].push(emitter);
   }
 
   export function Init<T>(scope: IObservableScope<T>) {
