@@ -2,6 +2,7 @@ import { JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/jsonType";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
+let bypassProxy = false;
 export const IS_OBSERVABLE_NODE = "____isObservableNode";
 export const GET_OBSERVABLE_VALUE = "____getObservableValue";
 export const GET_TO_JSON = "toJSON";
@@ -174,6 +175,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
         array = ObservableScope.Value(scope);
         const arrayValue = (array as any)[prop];
+        if (bypassProxy) return arrayValue;
 
         if (typeof prop === "symbol") return arrayValue;
 
@@ -263,6 +265,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       case GET_OBSERVABLE_VALUE:
         return object;
       default: {
+        if (bypassProxy) return (object as any)[prop];
+
         return GetAccessorValue(object, prop);
       }
     }
@@ -307,6 +311,10 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
 const DefaultCreateProxy = CreateProxyFactory();
 
 export namespace ObservableNode {
+  export function BypassProxy(value: boolean) {
+    bypassProxy = value;
+  }
+
   export function Create<T>(value: T): T {
     return DefaultCreateProxy(value);
   }
