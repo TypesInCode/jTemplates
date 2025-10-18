@@ -211,27 +211,26 @@ function DirtyScope(scope: IObservableScope<any>) {
   } else Emitter.Emit(scope.emitter, scope);
 }
 
-// const scopeQueue = new Set<IObservableScope<unknown>>();
-// const scopeQueue = DistinctArray.Create<IObservableScope<unknown>>();
 let scopeQueue: IObservableScope<unknown>[] = [];
 function ProcessScopeQueue() {
-  /* const scopes = Array.from(scopeQueue);
-  scopeQueue.clear(); */
-  const scopes = scopeQueue; // DistinctArray.Get(scopeQueue);
-  scopeQueue = []; // DistinctArray.Clear(scopeQueue);
+  const scopes = scopeQueue;
+  scopeQueue = [];
 
-  for (let x = 0; x < scopes.length; x++) DirtyScope(scopes[x]);
+  const distinct = new Set();
+  for (let x = 0; x < scopes.length; x++) {
+    if(!distinct.has(scopes[x])) {
+      distinct.add(scopes[x]);
+      DirtyScope(scopes[x]);
+    }
+  }
 }
 
 function OnSet(scope: IObservableScope<any>) {
   if (scope.destroyed) return true;
 
   if (scope.async || scope.calcFunctions.length > 0) {
-    // if (scopeQueue.size === 0) queueMicrotask(ProcessScopeQueue);
-    // if (DistinctArray.Size(scopeQueue) === 0) queueMicrotask(ProcessScopeQueue);
     if (scopeQueue.length === 0) queueMicrotask(ProcessScopeQueue);
-
-    // DistinctArray.Push(scopeQueue, scope); //scopeQueue.add(scope);
+    
     scopeQueue.push(scope);
     return;
   }
