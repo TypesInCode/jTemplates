@@ -18,15 +18,10 @@ export class Injector {
      * @param type Key to retrieve from the Injector map
      */
     public Get<T>(type: any): T {
-        if(this.typeMap.size === 0)
-            return this.parent && this.parent.Get(type);
-        
-        var ret = this.typeMap.get(type);
-
-        if(!ret)
-            ret = this.parent && this.parent.Get(type);
-
-        return ret;
+        if (this.typeMap.has(type)) {
+            return this.typeMap.get(type) as T;
+        }
+        return this.parent ? this.parent.Get<T>(type) : undefined as any;
     }
 
     /**
@@ -37,6 +32,7 @@ export class Injector {
      */
     public Set<T>(type: any, instance: T) {
         this.typeMap.set(type, instance);
+        return instance;
     }
 
 }
@@ -58,10 +54,12 @@ export namespace Injector {
      * @param action Callback to invoke for this scope
      */
     export function Scope<R = void, P extends any[] = []>(injector: Injector, action: {(...args: P): R}, ...args: P): R {
-        var parent = Current();
+        const parent = Current();
         scope = injector;
-        const ret = action(...args);
-        scope = parent;
-        return ret;
+        try {
+            return action(...args);
+        } finally {
+            scope = parent;
+        }
     }
 }

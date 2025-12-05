@@ -38,7 +38,11 @@ function AssignNodeValue(target: any, value: string) {
 }
 
 function AssignValue(target: any, value: string) {
+  const start = target.selectionStart;
+  const end = target.selectionEnd;
   target.value = value;
+  if(target.ownerDocument.activeElement === target)
+    target.setSelectionRange(start, end);
 }
 
 function AssignClassName(target: any, value: string) {

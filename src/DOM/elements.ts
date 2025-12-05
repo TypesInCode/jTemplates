@@ -6,6 +6,7 @@ export const b = vNode.ToFunction("b");
 export const button = vNode.ToFunction<HTMLButtonElement>("button");
 export const h1 = vNode.ToFunction("h1");
 export const input = vNode.ToFunction<HTMLInputElement>("input");
+export const textarea = vNode.ToFunction<HTMLTextAreaElement>("textarea");
 export const span = vNode.ToFunction("span");
 export const table = vNode.ToFunction("table");
 export const tbody = vNode.ToFunction("tbody");
