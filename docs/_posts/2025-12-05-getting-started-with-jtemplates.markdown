@@ -6,8 +6,8 @@ categories: getting-started tutorial
 ---
 
 ## Navigation
-- Prev: [TODO Sample](/2024-10-30-todo-sample)
-- Next: [Reactive Updates](/reactive-updates)
+- Prev: [TODO Sample](/2024-10-30-TODO Sample.markdown)
+- Next: [Reactive Updates](/2025-12-05-reactive-updates.md)
 
 ## Introduction
 Welcome to jTemplates, a lightweight library that combines a **virtual‑DOM‑free** rendering engine with a **reactive state system**. This guide walks a new developer through installation, core concepts, and a complete Hello World example.

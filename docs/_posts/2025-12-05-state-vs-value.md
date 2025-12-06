@@ -5,8 +5,8 @@ tags: [state, value, decorators, reactivity]
 ---
 
 ## Navigation
-- Prev: [Reactive Updates](/reactive-updates)
-- Next: [Computed Decorator](/computed-decorator)
+- Prev: [Reactive Updates](/2025-12-05-reactive-updates.md)
+- Next: [Computed Decorator](/2025-12-06-computed-decorator.md)
 
 ## Introduction
 Welcome to jTemplates! When you start building components, you’ll need a way to store data that the UI reacts to. jTemplates provides two decorators for this purpose:

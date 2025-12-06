@@ -7,7 +7,7 @@ categories: code sample
 
 ## Navigation
 - Prev: None (first post)
-- Next: [Getting Started with jTemplates](/getting-started-with-jtemplates)
+- Next: [Getting Started with jTemplates](/2025-12-05-getting-started-with-jtemplates.markdown)
 <iframe src="https://codesandbox.io/embed/y7l9mg?view=preview"
      style="width:100%; height: 500px; border:0; border-radius: 4px; overflow:hidden;"
      title="j-templates TODO Sample"

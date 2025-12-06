@@ -5,23 +5,11 @@ tags: [computed, decorator, reactivity]
 ---
 
 ## Navigation
-- Prev: [State vs. Value](/state-vs-value)
+- Prev: [State vs. Value](/2025-12-05-state-vs-value.md)
 - Next: None
 
 ## Introduction
 `@Computed` and `@ComputedAsync` let you define read‑only derived values that automatically update the UI when the state they depend on changes. They hide the low‑level `ObservableScope` API and keep your components declarative.
-
-## What `@Computed` Does
-`@Computed` creates a **getter scope** that watches any `@State`/`@Value` accessed inside the getter. The value is written to a temporary **StoreSync** and exposed via a read‑only scope.
-
-- Implementation: `src/Utils/decorators.ts:49‑84` (factory at 43‑63).
-- DOM update: scheduled through `ScheduledAssignment` in `src/Node/vNode.ts:82‑96`.
-
-### How it works (step‑by‑step)
-1. The decorator creates `getterScope = ObservableScope.Create(getter)`.
-2. `ObservableScope.Watch(getterScope, ...)` writes the evaluated value to a `StoreSync` (`store.Write`).
-3. `propertyScope = ObservableScope.Create(() => store.Get('root', defaultValue))` reads from the store.
-4.2011only derived values that automatically update the UI when the state they depend on changes. They hide the low‑level `ObservableScope` API and keep your components declarative.
 
 ## What `@Computed` Does
 `@Computed` creates a **getter scope** that watches any `@State`/`@Value` accessed inside the getter. The value is written to a temporary **StoreSync** and exposed via a read‑only scope.
@@ -49,7 +37,7 @@ class Cart extends Component {
 The `total` property updates automatically whenever `items` changes; you can bind it in a template with `{ data: () => this.total }`.
 
 ## What `@ComputedAsync` Does
-`@ComputedAsync` follows the same pattern but uses **StoreAsync** internally, which queues writes and performs diffing asynchronously. **Important:** the getter must still return a plain value; it does **not** return a `Promise`. The async behavior is limited to the store’s write queue.
+`@ComputedAsync` follows the same pattern but uses **StoreAsync** internally, which queues writes and performs diffing asynchronously. **Important:** the getter must still return a plain value; it does **not** return a `Promise`. The async behavior is limited to the store's write queue.
 
 - Implementation: `src/Utils/decorators.ts:98‑138` (factory at 92‑108).
 - Store: `src/Store/Store/storeAsync.ts:1‑82`.

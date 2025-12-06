@@ -6,8 +6,8 @@ categories: understanding tutorial
 ---
 
 ## Navigation
-- Prev: [Getting Started with jTemplates](/getting-started-with-jtemplates)
-- Next: [State vs. Value Decorators](/state-vs-value)
+- Prev: [Getting Started with jTemplates](/2025-12-05-getting-started-with-jtemplates.markdown)
+- Next: [State vs. Value Decorators](/2025-12-05-state-vs-value.md)
 
 ## Introduction
 jTemplates updates the real DOM directly – there is **no virtual‑DOM diff**. The framework relies on **ObservableScope** to track which parts of the UI depend on which pieces of data and patches only the affected nodes.
