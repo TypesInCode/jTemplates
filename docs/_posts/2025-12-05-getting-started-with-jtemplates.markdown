@@ -32,6 +32,8 @@ vNodes are plain objects that describe DOM elements. Helper functions (`div`, `b
 ```typescript
 import { div, button, h1, span } from 'j-templates/DOM';
 
+// Children can be passed in several formats:
+// 1. Array of vNodes
 const container = div({ props: { className: 'container' } }, [
   h1({}, 'Hello World'),
   button({
@@ -40,6 +42,20 @@ const container = div({ props: { className: 'container' } }, [
   }, 'Click me'),
   span({}, 'Welcome to jTemplates!')
 ]);
+
+// 2. String (automatically converted to text node)
+const textNode = div({}, 'Simple text content');
+
+// 3. Function that returns vNodes or strings (for dynamic content)
+const dynamicContainer = div({ 
+  data: () => ({ title: 'Dynamic Title', content: 'Dynamic Content' }),
+  props: { className: 'dynamic' } 
+}, function(data) {
+  return [
+    h1({}, data.title),
+    span({}, data.content)
+  ];
+});
 ```
 
 ### Components
@@ -54,8 +70,8 @@ interface CounterEvents { increment: void; decrement: void; }
 class Counter extends Component<CounterData, void, CounterEvents> {
   public Template(): vNode {
     return div({ props: { className: 'app' } }, [
-      h1({}, this.Data.message),
-      p({}, `Count: ${this.Data.count}`),
+      h1({}, [this.Data.message]),
+      p({}, [`Count: ${this.Data.count}`]),
       button({ props: { type: 'button' }, on: { click: () => this.Fire('increment') } }, 'Increment'),
       button({ props: { type: 'button' }, on: { click: () => this.Fire('decrement') } }, 'Decrement')
     ]);
@@ -69,7 +85,7 @@ const CounterFn = Component.ToFunction('counter-component', Counter);
 A complete, runnable example that shows state creation, mutation, and rendering.
 ```typescript
 import { Component, div, h1, button } from 'j-templates';
-import { ObservableScope } from 'j-templates/Store/Tree/observableScope';
+import { ObservableScope } from 'j-templates/Store';
 
 interface CounterData { count: number; }
 interface CounterEvents { increment: void; decrement: void; }
@@ -102,7 +118,7 @@ const app = div({ props: { className: 'app' } }, [
 ]);
 
 const container = document.getElementById('app');
-vNode.Attach(container, app);
+Component.Attach(container, app);
 ```
 
 ## Project Setup
