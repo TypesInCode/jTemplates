@@ -21,9 +21,7 @@ Each exported constant is a **function** that accepts a `vNodeConfig` object (pr
 The framework uses two helper functions internally:
 - `createPropertyAssignment` – assigns property values and updates them reactively when a `props` function returns a new object.
 - `createEventAssignment` – wires event listeners declared in the `on` object.
-When a component supplies `props` or `on` as a2011DOM (`vNode`) definitions for standard HTML elements. These factories replace manual calls to `vNode.Create` and make component templates concise.
-
-## What the Module Exposes
+When a component supplies `props` or `on` as a function, an `ObservableScope` is created and watched, so changes trigger automatic DOM updates.
 ```ts
 export const div = vNode.ToFunction("div");
 export const a = vNode.ToFunction("a");

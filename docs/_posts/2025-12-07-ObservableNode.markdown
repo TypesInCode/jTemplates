@@ -31,6 +31,7 @@ state.count++; // triggers ObservableScope.Update for the leaf scope
 - **Nested objects**: Deep property reads/writes are tracked via leaf scopes, enabling fine‑grained updates.
 - **Computed values**: `ObservableScope.CalcScope` (exposed as `calc`) creates read‑only computed scopes that recompute when dependencies change.
 - **Batch updates**: Multiple mutations within the same tick are queued and processed together for efficiency.
+- **Store access**: When accessing objects through stores (e.g., `store.Get(key)`), the returned ObservableNode objects are read-only; state changes must be performed via store methods (Write, Patch, Push, Splice).
 
 ## File References
 - **Implementation**: `src/Store/Tree/observableNode.ts`

@@ -13,17 +13,16 @@ This post introduces the core building block of the jTemplates framework – the
 - **Function wrapper**: `Component.ToFunction(type, constructor, namespace?)` returns a factory that produces a vnode definition.
 
 ## Correct Component Declaration
-The component class **does not override its constructor**. The type parameters order is **Data, Templates, Events**. Each type is 
+The component class **does not override its constructor**. The type parameters order is **Data, Templates, Events** (Events optional).
 
 ```ts
-import { Component } from "../src";
-import { div } from "../src/DOM/elements";
+import { Component } from 'j-templates';
+import { div } from 'j-templates/DOM';
 
 interface Props { greeting: string }
 
-
-// Data = Props, Templates = void
-class HelloWorld extends Component<Props> {
+// Data = Props, Templates = void, Events = void
+class HelloWorld extends Component<Props, void, void> {
   // No constructor – the framework supplies data, templates, vnode, and events.
 
   Template() {

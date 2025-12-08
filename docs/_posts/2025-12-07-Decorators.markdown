@@ -104,7 +104,7 @@ class MyService {
   public getData() { return 'data'; }
 }
 
-class Example extends Component<void, void> {
+class Example extends Component<void, void, void> {
   @Inject(MyService)
   private service: MyService;
   
