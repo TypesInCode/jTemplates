@@ -40,18 +40,19 @@ function GetDestroyArrayForPrototype(prototype: WeakKey) {
   return array;
 }
 
-export function Computed<T extends WeakKey, K extends keyof T, V extends T[K]>(defaultValue: V) {
-  return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
-    return ComputedDecorator(target, propertyKey, descriptor, defaultValue)
-  }
+export function Computed<T extends WeakKey, K extends keyof T, V extends T[K]>(
+  defaultValue: V,
+) {
+  return function (target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    return ComputedDecorator(target, propertyKey, descriptor, defaultValue);
+  };
 }
 
-function ComputedDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>(
-  target: T,
-  prop: K,
-  descriptor: PropertyDescriptor,
-  defaultValue: D
-) {
+function ComputedDecorator<
+  T extends WeakKey,
+  K extends keyof T,
+  D extends T[K],
+>(target: T, prop: K, descriptor: PropertyDescriptor, defaultValue: D) {
   const propertyKey = prop as string;
   if (!(descriptor && descriptor.get))
     throw "Computed decorator requires a getter";
@@ -67,17 +68,21 @@ function ComputedDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const getterScope = ObservableScope.Create(async () => getter.call(this));
+        const getterScope = ObservableScope.Create(async () =>
+          getter.call(this),
+        );
         const syncStore = new StoreSync();
 
         ObservableScope.Watch(getterScope, (scope) => {
           const data = ObservableScope.Value(scope);
-          syncStore.Write(data, 'root');
+          syncStore.Write(data, "root");
         });
         ObservableScope.Init(getterScope);
 
-        const propertyScope = ObservableScope.Create(() => syncStore.Get('root', defaultValue));
-        ObservableScope.OnDestroyed(propertyScope, function() {
+        const propertyScope = ObservableScope.Create(() =>
+          syncStore.Get("root", defaultValue),
+        );
+        ObservableScope.OnDestroyed(propertyScope, function () {
           ObservableScope.Destroy(getterScope);
         });
 
@@ -85,22 +90,30 @@ function ComputedDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>
       }
 
       return ObservableScope.Value(scopeMap[propertyKey][0]);
-    }
+    },
   } as PropertyDescriptor;
 }
 
-export function ComputedAsync<T extends WeakKey, K extends keyof T, V extends T[K]>(defaultValue: V) {
-  return function(target: T, propertyKey: K, descriptor: PropertyDescriptor) {
-    return ComputedAsyncDecorator(target, propertyKey, descriptor, defaultValue)
-  }
+export function ComputedAsync<
+  T extends WeakKey,
+  K extends keyof T,
+  V extends T[K],
+>(defaultValue: V) {
+  return function (target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    return ComputedAsyncDecorator(
+      target,
+      propertyKey,
+      descriptor,
+      defaultValue,
+    );
+  };
 }
 
-function ComputedAsyncDecorator<T extends WeakKey, K extends keyof T, D extends T[K]>(
-  target: T,
-  prop: K,
-  descriptor: PropertyDescriptor,
-  defaultValue: D
-) {
+function ComputedAsyncDecorator<
+  T extends WeakKey,
+  K extends keyof T,
+  D extends T[K],
+>(target: T, prop: K, descriptor: PropertyDescriptor, defaultValue: D) {
   const propertyKey = prop as string;
   if (!(descriptor && descriptor.get))
     throw "Computed decorator requires a getter";
@@ -116,16 +129,18 @@ function ComputedAsyncDecorator<T extends WeakKey, K extends keyof T, D extends 
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const getterScope = ObservableScope.Create(async () => getter.call(this));
+        const getterScope = ObservableScope.Create(() => getter.call(this));
         const asyncStore = new StoreAsync();
 
         ObservableScope.Watch(getterScope, (scope) => {
-          asyncStore.Write(ObservableScope.Value(scope), 'root');
+          asyncStore.Write(ObservableScope.Value(scope), "root");
         });
         ObservableScope.Init(getterScope);
 
-        const propertyScope = ObservableScope.Create(() => asyncStore.Get('root', defaultValue));
-        ObservableScope.OnDestroyed(propertyScope, function() {
+        const propertyScope = ObservableScope.Create(() =>
+          asyncStore.Get("root", defaultValue),
+        );
+        ObservableScope.OnDestroyed(propertyScope, function () {
           ObservableScope.Destroy(getterScope);
           asyncStore.Destroy();
         });
@@ -134,7 +149,7 @@ function ComputedAsyncDecorator<T extends WeakKey, K extends keyof T, D extends 
       }
 
       return ObservableScope.Value(scopeMap[propertyKey][0]);
-    }
+    },
   } as PropertyDescriptor;
 }
 
@@ -157,7 +172,7 @@ function StateDecorator<T extends WeakKey, K extends string>(
     set: function (this: T, val: any) {
       const map = GetNodeMapForInstance(this);
       if (map[propertyKey] === undefined)
-        map[propertyKey] = ObservableNode.Create({ root: val });
+        map[propertyKey] ??= ObservableNode.Create({ root: val });
       else map[propertyKey].root = val;
     },
   } as PropertyDescriptor;
@@ -182,7 +197,9 @@ function ValueDecorator<T extends WeakKey, K extends string>(
     enumerable: true,
     get: function (this: T) {
       const propertyMap = GetScopeMapForInstance(this);
-      const tuple: typeof propertyMap[typeof propertyKey] = propertyMap[propertyKey] ??= [null, undefined];
+      const tuple: (typeof propertyMap)[typeof propertyKey] = (propertyMap[
+        propertyKey
+      ] ??= [null, undefined]);
       tuple[0] ??= CreateValueScope(tuple);
 
       return ObservableScope.Value(tuple[0]);
@@ -229,18 +246,21 @@ function ScopeDecorator<T, K extends string>(
   } as PropertyDescriptor;
 }
 
-export function Inject<I, T extends Component<any, any, any>>(type: { new(...args: Array<any>): I }) {
-  return function() {
+export function Inject<I, T extends Component<any, any, any>>(type: {
+  new (...args: Array<any>): I;
+}) {
+  return function () {
     return InjectDecorator<I, T>(type);
-  } as (target: T, propertyKey: string, descriptor?: PropertyDescriptor) => void
+  } as (
+    target: T,
+    propertyKey: string,
+    descriptor?: PropertyDescriptor,
+  ) => void;
 }
 
-function InjectDecorator<
-  I,
-  T extends Component<any, any, any>
->(
-  type: { new(): I }
-): any {
+function InjectDecorator<I, T extends Component<any, any, any>>(type: {
+  new (): I;
+}): any {
   return {
     configurable: false,
     enumerable: true,
@@ -271,10 +291,10 @@ export namespace Destroy {
   }
 }
 
-function DestroyDecorator<
-  T extends Record<K, IDestroyable>,
-  K extends string,
->(target: T, propertyKey: K): any {
+function DestroyDecorator<T extends Record<K, IDestroyable>, K extends string>(
+  target: T,
+  propertyKey: K,
+): any {
   const array = GetDestroyArrayForPrototype(target);
   array.push(propertyKey);
 }

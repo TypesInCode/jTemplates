@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import 'mocha';
-import { ObservableScope } from '../../src/Store/Tree/observableScope';
+import { CalcScope, ObservableScope } from '../../src/Store/Tree/observableScope';
 
 describe("Observable Scope", () => {
     it('Basic Test', () => {
@@ -98,5 +98,48 @@ describe("Observable Scope", () => {
         const nestedScope = ObservableScope.Create(() => ObservableScope.Value(scope).value);
         
         expect(ObservableScope.Value(nestedScope)).to.eq("test");
+    });
+
+    it('Simple calc scope test', async () => {
+       let temp = "temp1";
+
+       const scope = ObservableScope.Create(() => temp, true);
+       expect(ObservableScope.Value(scope)).to.eq("temp1");
+       let fired = false;
+       ObservableScope.Watch(scope, (scope) => fired = true);
+       ObservableScope.Update(scope);
+       await new Promise(resolve => setTimeout(resolve, 0));
+       expect(fired).to.eq(false);
+
+       temp = "temp2";
+       ObservableScope.Update(scope);
+       await new Promise(resolve => setTimeout(resolve, 0));
+       expect(fired).to.eq(true);
+    });
+
+    it('Calc helper function test', async () => {
+       let temp = "temp1";
+
+       const sourceScope = ObservableScope.Create(() => temp);
+       const destScope = ObservableScope.Create(() => CalcScope(() => ObservableScope.Value(sourceScope)));
+
+       expect(ObservableScope.Value(sourceScope)).to.eq("temp1");
+       expect(ObservableScope.Value(destScope)).to.eq("temp1");
+
+       let sourceFired = false;
+       let destFired = false;
+       ObservableScope.Watch(sourceScope, () => sourceFired = true);
+       ObservableScope.Watch(destScope, () => destFired = true);
+
+       ObservableScope.Update(sourceScope);
+       await new Promise(resolve => setTimeout(resolve, 0));
+       expect(sourceFired).to.eq(true);
+       expect(destFired).to.eq(false);
+
+       temp = "temp2";
+       ObservableScope.Update(sourceScope);
+       await new Promise(resolve => setTimeout(resolve, 0));
+       expect(sourceFired).to.eq(true);
+       expect(destFired).to.eq(true);
     });
 });
