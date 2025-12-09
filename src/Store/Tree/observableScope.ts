@@ -69,7 +69,7 @@ export interface IObservableScope<T> extends IDestroyable {
   dirty: boolean;
   emitter: Emitter;
   emitters: (Emitter | null)[];
-  calcScopes: ICalcObservable<unknown>[] | null;
+  calcScopes: { [id: string]: IObservableScope<unknown> | null } | null;
   calc: boolean;
   onDestroyed: Emitter | null;
   destroyed: boolean;
@@ -77,8 +77,8 @@ export interface IObservableScope<T> extends IDestroyable {
 
 let watchState: [
   Emitter[],
-  (ICalcObservable<any> | null)[] | null,
-  ICalcObservable<any>[] | null,
+  { [id: string]: IObservableScope<unknown> | null } | null,
+  { [id: string]: IObservableScope<unknown> } | null,
 ] = null;
 function WatchScope<T>(scope: IObservableScope<T>): T {
   const parent = watchState;
@@ -88,38 +88,32 @@ function WatchScope<T>(scope: IObservableScope<T>): T {
   const emitters = watchState[0];
   UpdateEmitters(scope, emitters);
   const calcScopes = watchState[1];
-  for (let x = 0; calcScopes && x < calcScopes.length; x++)
-    ObservableScope.Destroy(calcScopes[x]?.scope);
+  const calcScopeValues = calcScopes && Object.values(calcScopes);
+  for (let x = 0; calcScopeValues && x < calcScopeValues.length; x++)
+    calcScopeValues[x] && ObservableScope.Destroy(calcScopeValues[x]);
 
   scope.calcScopes = watchState[2];
   watchState = parent;
   return value;
 }
 
-export function CalcScope<T>(callback: () => T) {
+export function CalcScope<T>(callback: () => T, idOverride?: string) {
   if (watchState === null) return callback();
 
-  watchState[2] ??= [];
+  const nextScopes = (watchState[2] ??= {});
   const currentScopes = watchState[1];
-  const id = callback.toString();
-  if (currentScopes !== null) {
-    let index = 0;
-    for (; currentScopes[index].id !== id; index++) {}
-    if (index < currentScopes.length) {
-      const scope = currentScopes[index];
-      currentScopes[index] = null;
-      watchState[2].push(scope);
-      return ObservableScope.Value(scope.scope);
-    }
+  const id = idOverride ?? callback.toString();
+
+  const currentScope = currentScopes?.[id];
+  if (currentScope) {
+    delete currentScopes[id];
+    nextScopes[id] = currentScope;
+  } else if (!nextScopes[id]) {
+    const scope = ObservableScope.Create(callback, true);
+    nextScopes[id] = scope;
   }
 
-  // create new scope
-  const scope = ObservableScope.Create(callback, true);
-  watchState[2].push({
-    id,
-    scope,
-  });
-  return ObservableScope.Value(scope);
+  return ObservableScope.Value(nextScopes[id]);
 }
 
 export namespace ObservableScope {
@@ -221,19 +215,12 @@ export namespace ObservableScope {
 
 function DirtyScope(scope: IObservableScope<any>) {
   if (scope.dirty || !scope.getFunction) return;
-
-  if (scope.calc) {
-    const startVal = scope.value;
-    scope.dirty = true;
-    UpdateValue(scope);
-    if (startVal !== scope.value) Emitter.Emit(scope.emitter);
-
-    return;
-  }
-
   scope.dirty = true;
-  if (scope.async) {
+  if (scope.async) UpdateValue(scope);
+  else if (scope.calc) {
+    const startValue = scope.value;
     UpdateValue(scope);
+    startValue !== scope.value && Emitter.Emit(scope.emitter);
   } else Emitter.Emit(scope.emitter, scope);
 }
 
@@ -283,6 +270,7 @@ function UpdateValue<T>(scope: IObservableScope<T>) {
 
 function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
   Emitter.Distinct(right);
+
   if (scope.emitters === null) {
     for (let x = 0; x < right.length; x++)
       Emitter.On(right[x], scope.setCallback);
@@ -322,10 +310,11 @@ function DestroyScope(scope: IObservableScope<any>) {
   scope.emitter = null;
   scope.getFunction = null;
   scope.setCallback = null;
-  // scope.calcFunctions = null;
-  for (let x = 0; scope.calcScopes && x < scope.calcScopes.length; x++)
-    ObservableScope.Destroy(scope.calcScopes[x].scope);
+  const scopes = scope.calcScopes && Object.values(scope.calcScopes);
+  for (let x = 0; scopes && x < scopes.length; x++)
+    ObservableScope.Destroy(scope.calcScopes[x]);
 
+  scope.calcScopes = null;
   scope.destroyed = true;
   scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
 }
