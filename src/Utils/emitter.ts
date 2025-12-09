@@ -23,7 +23,10 @@ export namespace Emitter {
   export function Emit(emitter: Emitter, ...args: any[]) {
     let removed = false;
     for (let x = 1; x < emitter.length; x++) {
-      if (emitter[x] === null || (emitter[x] as EmitterCallback)(...args) === true) {
+      if (
+        emitter[x] === null ||
+        (emitter[x] as EmitterCallback)(...args) === true
+      ) {
         removed = true;
         emitter[x] = null;
       }
@@ -34,8 +37,7 @@ export namespace Emitter {
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
     const index = emitter.indexOf(callback);
-    if (index >= 1)
-      emitter[index] = null;
+    if (index >= 1) emitter[index] = null;
   }
 
   export function Clear(emitter: Emitter) {
@@ -43,8 +45,7 @@ export namespace Emitter {
   }
 
   export function Distinct(emitters: Emitter[]) {
-    if(emitters.length === 1)
-      return;
+    if (emitters.length === 1) return;
 
     emitters.length < 50 ? DistinctSmall(emitters) : DistinctLarge(emitters);
   }
@@ -53,9 +54,9 @@ export namespace Emitter {
     Sort(emitters);
     let lastId = -1;
     let remove = false;
-    for(let x=0; x<emitters.length; x++) {
+    for (let x = 0; x < emitters.length; x++) {
       const id = emitters[x][0];
-      if(lastId === emitters[x][0]) {
+      if (lastId === emitters[x][0]) {
         emitters[x] = null;
         remove = true;
       }
@@ -68,10 +69,9 @@ export namespace Emitter {
   function DistinctLarge(emitters: Emitter[]) {
     let remove = false;
     const ids = new Set<number>();
-    for(let x=0; x<emitters.length; x++) {
+    for (let x = 0; x < emitters.length; x++) {
       const id = emitters[x][0];
-      if(!ids.has(id))
-        ids.add(id);
+      if (!ids.has(id)) ids.add(id);
       else {
         emitters[x] = null;
         remove = true;
