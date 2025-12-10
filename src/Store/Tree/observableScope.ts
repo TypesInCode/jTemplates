@@ -192,7 +192,7 @@ export namespace ObservableScope {
 
   export function OnDestroyed(
     scope: IObservableScope<unknown>,
-    callback: () => void,
+    callback: EmitterCallback,
   ) {
     scope.onDestroyed ??= Emitter.Create();
     Emitter.On(scope.onDestroyed, callback);
@@ -306,15 +306,16 @@ function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope) return;
 
+  const scopes = scope.calcScopes && Object.values(scope.calcScopes);
+  scopes && ObservableScope.DestroyAll(scopes);
+  scope.calcScopes = null;
+
   scope.emitters = null;
+  Emitter.Clear(scope.emitter);
   scope.emitter = null;
   scope.getFunction = null;
   scope.setCallback = null;
-  const scopes = scope.calcScopes && Object.values(scope.calcScopes);
-  for (let x = 0; scopes && x < scopes.length; x++)
-    ObservableScope.Destroy(scope.calcScopes[x]);
 
-  scope.calcScopes = null;
   scope.destroyed = true;
-  scope.onDestroyed !== null && Emitter.Emit(scope.onDestroyed);
+  scope.onDestroyed && Emitter.Emit(scope.onDestroyed);
 }

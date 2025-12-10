@@ -2,6 +2,7 @@ import { Component } from "./component";
 import { IObservableScope } from "../Store/Tree/observableScope";
 import { Injector } from "../Utils/injector";
 import { RecursivePartial } from "../Utils/utils.types";
+import { Emitter } from "../Utils/emitter";
 
 export type FunctionOr<T> = { (): T | Promise<T> } | T;
 
@@ -20,6 +21,7 @@ export type vNode = {
   node: Node | null;
   children: vNode[] | null;
   destroyed: boolean;
+  onDestroyed: Emitter | null;
   scopes: IObservableScope<unknown>[];
   component: Component;
 };
