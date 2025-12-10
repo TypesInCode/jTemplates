@@ -124,6 +124,35 @@ export function ReconcileSortedEmitters<T extends [number]>(
   for (let ri = rightIndex; ri < right.length; ri++) add(right[ri]);
 }
 
+export function InsertionSortTuples<T extends [number, ...any[]]>(
+  arr: T[],
+): T[] {
+  const n = arr.length;
+
+  // Start from the second element (index 1) as the first element (index 0)
+  // is trivially sorted by itself.
+  for (let i = 1; i < n; i++) {
+    // Pick up the current element to be inserted
+    const currentItem = arr[i];
+
+    // This is the index of the last element in the sorted sub-array
+    let j = i - 1;
+
+    // Move elements of the sorted sub-array that are greater than currentItem,
+    // to one position ahead of their current position.
+    // We compare using the first element of the tuples (currentItem[0]).
+    while (j >= 0 && arr[j][0] > currentItem[0]) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+
+    // Place the currentItem in its correct position in the sorted sub-array
+    arr[j + 1] = currentItem;
+  }
+
+  return arr;
+}
+
 export function ReconcileSortedArrays<T>(
   left: T[],
   right: T[],
