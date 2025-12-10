@@ -1,6 +1,6 @@
 /// <reference path="../../node_modules/@types/mocha/index.d.ts" />
 import * as chai from "chai";
-import { RemoveNulls } from "../../src/Utils/array";
+import { InsertionSortTuples, RemoveNulls } from "../../src/Utils/array";
 const expect = chai.expect;
 
 describe("Array Remove Nulls", () => {
@@ -45,5 +45,10 @@ describe("Array Remove Nulls", () => {
     RemoveNulls(arr);
     expect(arr.length).to.eq(3);
     expect(arr[2]).to.eq(3);
+  });
+  it("Insertion Sort", () => {
+    const arr = [[5], [3], [6], [2], [8]] as [number][];
+    InsertionSortTuples(arr);
+    expect(arr[0][0]).to.eq(2);
   });
 });
