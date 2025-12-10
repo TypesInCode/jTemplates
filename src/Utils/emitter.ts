@@ -1,4 +1,4 @@
-import { RemoveNulls } from "./array";
+import { InsertionSortTuples, RemoveNulls } from "./array";
 
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
@@ -45,16 +45,16 @@ export namespace Emitter {
   }
 
   export function Distinct(emitters: Emitter[]) {
-    if (emitters.length === 1) return;
+    if (emitters.length < 2) return;
 
-    emitters.length < 50 ? DistinctSmall(emitters) : DistinctLarge(emitters);
+    emitters.length < 51 ? DistinctSmall(emitters) : DistinctLarge(emitters);
   }
 
   function DistinctSmall(emitters: Emitter[]) {
     Sort(emitters);
-    let lastId = -1;
+    let lastId = emitters[0][0];
     let remove = false;
-    for (let x = 0; x < emitters.length; x++) {
+    for (let x = 1; x < emitters.length; x++) {
       const id = emitters[x][0];
       if (lastId === emitters[x][0]) {
         emitters[x] = null;
@@ -83,7 +83,8 @@ export namespace Emitter {
   }
 
   export function Sort(emitters: Emitter[]) {
-    return emitters.sort(Compare);
+    if (emitters.length < 11) InsertionSortTuples(emitters);
+    else emitters.sort(Compare);
   }
 
   export function Compare(a: Emitter, b: Emitter) {
