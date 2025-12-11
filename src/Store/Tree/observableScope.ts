@@ -88,9 +88,11 @@ function WatchScope<T>(scope: IObservableScope<T>): T {
   const emitters = watchState[0];
   UpdateEmitters(scope, emitters);
   const calcScopes = watchState[1];
-  const calcScopeValues = calcScopes && Object.values(calcScopes);
-  for (let x = 0; calcScopeValues && x < calcScopeValues.length; x++)
-    calcScopeValues[x] && ObservableScope.Destroy(calcScopeValues[x]);
+  if (calcScopes) {
+    const calcScopeValues = Object.values(calcScopes);
+    for (let x = 0; x < calcScopeValues.length; x++)
+      calcScopeValues[x] && ObservableScope.Destroy(calcScopeValues[x]);
+  }
 
   scope.calcScopes = watchState[2];
   watchState = parent;
@@ -220,7 +222,7 @@ function DirtyScope(scope: IObservableScope<any>) {
   else if (scope.calc) {
     const startValue = scope.value;
     UpdateValue(scope);
-    startValue !== scope.value && Emitter.Emit(scope.emitter);
+    startValue !== scope.value && Emitter.Emit(scope.emitter, scope);
   } else Emitter.Emit(scope.emitter, scope);
 }
 
