@@ -4,17 +4,18 @@ export function CreateAssignment(target: any, createAssignment: {(target: any, k
     return function AssignNext(next: any) {
       if (next === last)
         return;
-  
+
       last = next;
-      const nextKeys = next && Object.keys(next);
-  
-      for(let x=0; nextKeys && x<nextKeys.length; x++) {
-        const key = nextKeys[x];
-        writeTo[key] ??= createAssignment(target, key);
+      
+      for(const key in writeTo) {
+        writeTo[key](next);
       }
 
-      const writeFunctions = Object.values(writeTo);
-      for(let x=0; x<writeFunctions.length; x++)
-        writeFunctions[x](next);
+      for(const key in next) {
+        if(!Object.hasOwn(writeTo, key)) {
+          writeTo[key] = createAssignment(target, key);
+          writeTo[key](next);
+        }
+      }
     }
   }

@@ -1,13 +1,9 @@
 import { wndw } from "./window";
 import { INodeConfig } from "../Node/nodeConfig";
 import { List } from "../Utils/list";
-import {
-  AssignProperties,
-  CreateNodeValueAssignment,
-} from "./createPropertyAssignment";
-import { AssignEvents, CreateEventAssignment } from "./createEventAssignment";
+import { CreateRootPropertyAssignment } from "./createPropertyAssignment";
+import { CreateEventAssignment } from "./createEventAssignment";
 import { CreateAssignment } from "./createAssignment";
-import { CreatePropertyAssignment } from "./createPropertyAssignment";
 import { CreateAttributeAssignment } from "./createAttributeAssignment";
 
 let pendingUpdates = List.Create<{ (): void }>();
@@ -103,9 +99,6 @@ export const DOMNodeConfig: INodeConfig = {
   remove(target: Node) {
     target && target.parentNode && target.parentNode.removeChild(target);
   },
-  createTextAssignment(target: HTMLElement) {
-    return CreateNodeValueAssignment(target);
-  },
   setText(target: Node, text: string) {
     target.nodeValue = text;
   },
@@ -116,16 +109,10 @@ export const DOMNodeConfig: INodeConfig = {
     target.setAttribute(attribute, value);
   },
   createPropertyAssignment(target: HTMLElement) {
-    return CreatePropertyAssignment(target);
-  },
-  assignProperties(target: HTMLElement, next: any) {
-    AssignProperties(target, next);
+    return CreateAssignment(target, CreateRootPropertyAssignment);
   },
   createEventAssignment(target: HTMLElement) {
     return CreateAssignment(target, CreateEventAssignment);
-  },
-  assignEvents(target: HTMLElement, next: any) {
-    AssignEvents(target, next);
   },
   createAttributeAssignment(target: HTMLElement) {
     return CreateAssignment(target, CreateAttributeAssignment);
