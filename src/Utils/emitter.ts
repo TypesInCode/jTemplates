@@ -1,4 +1,4 @@
-import { InsertionSortTuples, RemoveNulls } from "./array";
+import { InsertionSortTuples } from "./array";
 
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
@@ -21,18 +21,16 @@ export namespace Emitter {
   }
 
   export function Emit(emitter: Emitter, ...args: any[]) {
-    let removed = false;
+    let writePos = 1;
     for (let x = 1; x < emitter.length; x++) {
       if (
-        emitter[x] === null ||
-        (emitter[x] as EmitterCallback)(...args) === true
-      ) {
-        removed = true;
-        emitter[x] = null;
-      }
+        emitter[x] !== null &&
+        (emitter[x] as EmitterCallback)(...args) !== true
+      )
+        emitter[writePos++] = emitter[x];
     }
 
-    if (removed) RemoveNulls(emitter);
+    if (writePos < emitter.length) emitter.splice(writePos);
   }
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
@@ -52,33 +50,30 @@ export namespace Emitter {
 
   function DistinctSmall(emitters: Emitter[]) {
     Sort(emitters);
-    let lastId = emitters[0][0];
-    let remove = false;
+
+    let writePos = 1;
     for (let x = 1; x < emitters.length; x++) {
-      const id = emitters[x][0];
-      if (lastId === emitters[x][0]) {
-        emitters[x] = null;
-        remove = true;
+      if (emitters[x][0] !== emitters[writePos - 1][0]) {
+        emitters[writePos++] = emitters[x];
       }
-      lastId = id;
     }
 
-    remove && RemoveNulls(emitters);
+    if (writePos < emitters.length) emitters.splice(writePos);
   }
 
   function DistinctLarge(emitters: Emitter[]) {
-    let remove = false;
+    let writePos = 0;
     const ids = new Set<number>();
     for (let x = 0; x < emitters.length; x++) {
       const id = emitters[x][0];
-      if (!ids.has(id)) ids.add(id);
-      else {
-        emitters[x] = null;
-        remove = true;
+      if (!ids.has(id)) {
+        ids.add(id);
+        emitters[writePos++] = emitters[x];
       }
     }
 
-    remove && RemoveNulls(emitters);
+    if (writePos < emitters.length) emitters.splice(writePos);
+
     Sort(emitters);
   }
 
