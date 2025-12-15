@@ -27,6 +27,8 @@ class HelloWorld extends Component<Props, void, void> {
 
   Template() {
     // Use DOM helper functions from src/DOM/elements.ts
+    // These helper functions (div, span, etc.) return vnode definitions
+    // that are compatible with the Template() method's return type (vNodeType | vNodeType[])
     return div({}, () => this.Data.greeting);
   }
 }
@@ -35,6 +37,8 @@ class HelloWorld extends Component<Props, void, void> {
 Component.Register("hello", HelloWorld);
 
 // Create a vnode factory using Component.ToFunction
+// The first parameter "div" specifies the HTML tag name for the resulting vnode
+// The second parameter is the Component constructor
 const helloFactory = Component.ToFunction("div", HelloWorld);
 // Use the factory to create a vnode instance (no additional props)
 const helloVNode = helloFactory({});
