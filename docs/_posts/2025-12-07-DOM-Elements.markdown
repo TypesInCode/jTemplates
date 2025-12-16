@@ -72,23 +72,6 @@ The `data` argument passed to a DOM factory (e.g., the first argument of `div({ 
    - Signature: `data: T[]`, `children: (data: T) => vNodeType`.  
 3. **Objects are treated as a single child** – Non‑array, non‑falsy values render as one child using the supplied children function or static content.
 
-**Preferred pattern** – Pass the data as a function and render each item directly in the children callback:
-
-```ts
-Template() {
-  return div({ data: () => this.Data.items }, (item) => div({}, () => item.name));
-}
-```
-
-### Data Property Behaviors
-
-The `data` argument passed to a DOM factory (e.g., the first argument of `div({ … }, …)`) behaves as follows:
-
-1. **Falsy values hide/destroy children** – `null`, `undefined`, `false`, `0`, or `''` removes all existing children and renders nothing.  
-2. **Arrays are auto‑iterated** – When `data` is an array (`T[]`), the provided `children` function is called for each element (`(data: T) => vNodeType`). The returned vNodes are concatenated.  
-   - Signature: `data: T[]`, `children: (data: T) => vNodeType`.  
-3. **Objects are treated as a single child** – Non‑array, non‑falsy values render as one child using the supplied children function or static content.
-
 **Best‑practice pattern** – Map over data directly in the children callback without manually creating arrays:
 
 ```ts
