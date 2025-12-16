@@ -97,8 +97,6 @@ Template() {
 }
 ```
 
-> This avoids creating intermediate arrays on every render and works with the framework’s auto‑iteration rule.
-
 ## Internal Mechanics
 
 The framework uses these utilities to handle assignments:
@@ -144,17 +142,6 @@ Component.Register('counter', Counter);
 ```
 
 > **Note** – Direct mutation of non‑decorated state (e.g., `this.state.count++` without `@State()`) will not trigger updates. Always use `@State()`, `@Value()`, or `StoreSync` for reactive state.
-
-## When to Use Low‑Level Helpers
-
-For advanced use cases, you can import the underlying helpers directly:
-
-```ts
-import { CreatePropertyAssignment } from 'j-templates/DOM/createPropertyAssignment';
-import { CreateEventAssignment } from 'j-templates/DOM/createEventAssignment';
-```
-
-These are rarely needed — the factory functions abstract complexity and are preferred in most scenarios.
 
 ## Summary
 
