@@ -2,7 +2,7 @@
 
 *File: `src/DOM/elements.ts`*
 
-The DOM module provides factory functions for creating virtual DOM (`vNode`) elements using standard HTML tags. These functions replace manual `vNode.Create` calls, enabling clean, declarative template construction with built-in reactivity.
+The DOM module provides factory functions for creating virtual DOM (`vNode`) elements using standard HTML tags. These functions replace manual `vNode.Create` calls, enabling clean, declarative template construction with built‑in reactivity.
 
 ## Core Functionality
 
@@ -20,14 +20,14 @@ export const text = (callback: () => string) => {
 
 Props, events, and children can be provided as **static values** or **reactive functions**:
 
-- **Static**: Plain objects or arrays — assigned once, no reactivity.
+- **Static** – Plain objects or arrays; assigned once, no reactivity.
   ```ts
   div({ props: { className: 'container' } }, [
     button({ on: { click: () => console.log('clicked') } }, () => 'Click')
   ])
   ```
 
-- **Reactive**: Functions returning values — automatically tracked via `ObservableScope` and re-evaluated when dependencies change.
+- **Reactive** – Functions returning values; automatically tracked via `ObservableScope` and re‑evaluated when dependencies change.
   ```ts
   div({
     props: () => ({
@@ -44,34 +44,70 @@ Props, events, and children can be provided as **static values** or **reactive f
 When a function is used, the framework:
 - Creates an `ObservableScope` around it.
 - Watches for changes to its dependencies (e.g., `this.Data`, `@State`, `@Value`).
-- Automatically re-runs the function and updates the DOM via `createPropertyAssignment` or `createEventAssignment`.
+- Automatically re‑runs the function and updates the DOM.
 
 ## Child Nodes
 
 Children can be:
 - Static arrays of `vNode` or strings.
-- Reactive functions returning arrays or single `vNode`.
+- Reactive functions returning arrays or a single `vNode`.
 
 ```ts
 // Static children
-div({}, [button({}, () => 'OK'), button({}, () => 'Cancel')])
+div({}, [
+  button({}, () => 'OK'), 
+  button({}, () => 'Cancel')
+])
 
-// Reactive children
-div({}, () => {
-  return this.Data.items.map(item =>
-    div({ key: item.id }, () => item.name)
-  );
-})
+// Reactive children (preferred)
+div({ data: () => this.Data.items }, (item) => div({}, () => item.name));
 ```
+
+### Data Property Behaviors
+
+The `data` argument passed to a DOM factory (e.g., the first argument of `div({ … }, …)`) behaves as follows:
+
+1. **Falsy values hide/destroy children** – `null`, `undefined`, `false`, `0`, or `''` removes all existing children and renders nothing.  
+2. **Arrays are auto‑iterated** – When `data` is an array (`T[]`), the provided `children` function is called for each element (`(data: T) => vNodeType`). The returned vNodes are concatenated.  
+   - Signature: `data: T[]`, `children: (data: T) => vNodeType`.  
+3. **Objects are treated as a single child** – Non‑array, non‑falsy values render as one child using the supplied children function or static content.
+
+**Preferred pattern** – Pass the data as a function and render each item directly in the children callback:
+
+```ts
+Template() {
+  return div({ data: () => this.Data.items }, (item) => div({}, () => item.name));
+}
+```
+
+### Data Property Behaviors
+
+The `data` argument passed to a DOM factory (e.g., the first argument of `div({ … }, …)`) behaves as follows:
+
+1. **Falsy values hide/destroy children** – `null`, `undefined`, `false`, `0`, or `''` removes all existing children and renders nothing.  
+2. **Arrays are auto‑iterated** – When `data` is an array (`T[]`), the provided `children` function is called for each element (`(data: T) => vNodeType`). The returned vNodes are concatenated.  
+   - Signature: `data: T[]`, `children: (data: T) => vNodeType`.  
+3. **Objects are treated as a single child** – Non‑array, non‑falsy values render as one child using the supplied children function or static content.
+
+**Best‑practice pattern** – Map over data directly in the children callback without manually creating arrays:
+
+```ts
+Template() {
+  return div({ data: () => this.Data.items }, (item) => div({}, () => item.name));
+}
+```
+
+> This avoids creating intermediate arrays on every render and works with the framework’s auto‑iteration rule.
 
 ## Internal Mechanics
 
 The framework uses these utilities to handle assignments:
-- `createPropertyAssignment`: Dynamically updates element properties (e.g., `style`, `className`) when `props` is a function.
-- `createEventAssignment`: Attaches/detaches event listeners when `on` is a function.
-- `createAttributeAssignment`: Updates DOM attributes (e.g., `aria-label`) from `attrs`.
 
-These are automatically invoked based on whether values are static or reactive — no manual setup is required.
+- `createPropertyAssignment` – Updates element properties (e.g., `style`, `className`) when `props` is a function.  
+- `createEventAssignment` – Attaches/detaches event listeners when `on` is a function.  
+- `createAttributeAssignment` – Updates attributes (e.g., `aria-label`) from `attrs`.  
+
+These are automatically invoked based on whether values are static or reactive; no manual setup is required.
 
 ## Example: Reactive Counter
 
@@ -107,9 +143,9 @@ class Counter extends Component<State, void> {
 Component.Register('counter', Counter);
 ```
 
-> **Note**: Direct mutation of non-decorated state (e.g., `this.state.count++` without `@State()`) will not trigger updates. Always use `@State()`, `@Value()`, or `StoreSync` for reactive state.
+> **Note** – Direct mutation of non‑decorated state (e.g., `this.state.count++` without `@State()`) will not trigger updates. Always use `@State()`, `@Value()`, or `StoreSync` for reactive state.
 
-## When to Use Low-Level Helpers
+## When to Use Low‑Level Helpers
 
 For advanced use cases, you can import the underlying helpers directly:
 
@@ -120,16 +156,24 @@ import { CreateEventAssignment } from 'j-templates/DOM/createEventAssignment';
 
 These are rarely needed — the factory functions abstract complexity and are preferred in most scenarios.
 
+## Summary
+
+- **Static vs Reactive**: Choose static for constant values; use reactive functions for any `this.Data`, `@State`, or `@Value` dependencies.  
+- **Children**: Can be static arrays, strings, or reactive functions that return arrays/objects.  
+- **Data Prop**: Falsy values clear children; arrays auto‑iterate over the `children` callback; objects render as a single child.  
+- **Best Practice**: Pass a `data` function and map inside the `children` callback; avoid manual array creation inside `Template()`.  
+- **Lifecycle**: `Template()` must return vNodes; `Bound()` runs after mounting; `Destroy()` is automatic.
+
 ## File References
 
-- **Factory definitions**: `src/DOM/elements.ts`
-- **Property assignment**: `src/DOM/createPropertyAssignment.ts`
-- **Event assignment**: `src/DOM/createEventAssignment.ts`
-- **Attribute assignment**: `src/DOM/createAttributeAssignment.ts`
-- **VNode creation**: `src/Node/vNode.ts`
-- **Reactivity**: `src/Store/Tree/observableScope.ts`
-- **Decorators**: `src/Utils/decorators.ts`
+- **Factory definitions**: `src/DOM/elements.ts`  
+- **Property assignment**: `src/DOM/createPropertyAssignment.ts`  
+- **Event assignment**: `src/DOM/createEventAssignment.ts`  
+- **Attribute assignment**: `src/DOM/createAttributeAssignment.ts`  
+- **VNode creation**: `src/Node/vNode.ts`  
+- **Reactivity**: `src/Store/Tree/observableScope.ts`  
+- **Decorators**: `src/Utils/decorators.ts`  
 
----
+---  
 
 *Next post*: ObservableScope — how reactive scopes are created, read, and watched.
