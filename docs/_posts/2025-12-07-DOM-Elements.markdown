@@ -2,102 +2,134 @@
 
 *File: `src/DOM/elements.ts`*
 
-The DOM module provides **factory functions** that create virtual‑DOM (`vNode`) definitions for standard HTML elements. These factories replace manual calls to `vNode.Create` and make component templates concise.
+The DOM module provides factory functions for creating virtual DOM (`vNode`) elements using standard HTML tags. These functions replace manual `vNode.Create` calls, enabling clean, declarative template construction with built-in reactivity.
 
-## What the Module Exposes
+## Core Functionality
+
+Each exported function (e.g., `div`, `button`, `a`) is a `vNode.ToFunction()` wrapper that accepts a `vNodeConfig` and optional children, returning a `vNode` ready for rendering:
+
 ```ts
 export const div = vNode.ToFunction("div");
-export const a = vNode.ToFunction("a");
 export const button = vNode.ToFunction<HTMLButtonElement>("button");
-// ... other HTML tags
 export const text = (callback: () => string) => {
-  const textElement = vNode.ToFunction("text");
-  return textElement({ props: () => ({ nodeValue: callback() }) });
+  return vNode.ToFunction("text")({ props: () => ({ nodeValue: callback() }) });
 };
 ```
-Each exported constant is a **function** that accepts a `vNodeConfig` object (props, attrs, on, data) and optional children, returning a `vNode` ready for rendering.
 
-## How Props and Events Are Assigned
-The framework uses two helper functions internally:
-- `createPropertyAssignment` – assigns property values and updates them reactively when a `props` function returns a new object.
-- `createEventAssignment` – wires event listeners declared in the `on` object.
-When a component supplies `props` or `on` as a function, an `ObservableScope` is created and watched, so changes trigger automatic DOM updates.
+## Reactive vs Static Configuration
+
+Props, events, and children can be provided as **static values** or **reactive functions**:
+
+- **Static**: Plain objects or arrays — assigned once, no reactivity.
+  ```ts
+  div({ props: { className: 'container' } }, [
+    button({ on: { click: () => console.log('clicked') } }, () => 'Click')
+  ])
+  ```
+
+- **Reactive**: Functions returning values — automatically tracked via `ObservableScope` and re-evaluated when dependencies change.
+  ```ts
+  div({
+    props: () => ({
+      style: { color: this.Data.color, padding: this.Data.padding },
+    }),
+    on: () => ({
+      click: () => this.handleClick(),
+    }),
+  }, () => [
+    div({}, () => `Count: ${this.Data.count}`)
+  ])
+  ```
+
+When a function is used, the framework:
+- Creates an `ObservableScope` around it.
+- Watches for changes to its dependencies (e.g., `this.Data`, `@State`, `@Value`).
+- Automatically re-runs the function and updates the DOM via `createPropertyAssignment` or `createEventAssignment`.
+
+## Child Nodes
+
+Children can be:
+- Static arrays of `vNode` or strings.
+- Reactive functions returning arrays or single `vNode`.
+
 ```ts
-export const div = vNode.ToFunction("div");
-export const a = vNode.ToFunction("a");
-export const button = vNode.ToFunction<HTMLButtonElement>("button");
-// ... other HTML tags
-export const text = (callback: () => string) => {
-  const textElement = vNode.ToFunction("text");
-  return textElement({ props: () => ({ nodeValue: callback() }) });
-};
+// Static children
+div({}, [button({}, () => 'OK'), button({}, () => 'Cancel')])
+
+// Reactive children
+div({}, () => {
+  return this.Data.items.map(item =>
+    div({ key: item.id }, () => item.name)
+  );
+})
 ```
-Each exported constant is a **function** that accepts a `vNodeConfig` object (props, attrs, on, data) and optional children, returning a `vNode` ready for rendering.
 
-## How Props and Events Are Assigned
-The framework uses two helper functions internally:
-- `createPropertyAssignment` – assigns property values and updates them reactively when a `props` function returns a new object.
-- `createEventAssignment` – wires event listeners declared in the `on` object.
-When a component supplies `props` or `on` as a function, an `ObservableScope` is created and watched, so changes trigger automatic DOM updates.
+## Internal Mechanics
 
-## Example: Simple Counter Component
+The framework uses these utilities to handle assignments:
+- `createPropertyAssignment`: Dynamically updates element properties (e.g., `style`, `className`) when `props` is a function.
+- `createEventAssignment`: Attaches/detaches event listeners when `on` is a function.
+- `createAttributeAssignment`: Updates DOM attributes (e.g., `aria-label`) from `attrs`.
+
+These are automatically invoked based on whether values are static or reactive — no manual setup is required.
+
+## Example: Reactive Counter
+
 ```ts
-import { Component, ObservableScope } from 'j-templates';
+import { Component } from 'j-templates';
 import { div, button } from 'j-templates/DOM';
 
 interface State { count: number }
 
-class Counter extends Component<{ count: number }, void> {
-  // Local observable scope to hold mutable state
-  private state = { count: 0 };
-  private counterScope = ObservableScope.Create(() => this.state);
+class Counter extends Component<State, void> {
+  @State()
+  private state: State = { count: 0 };
 
   private inc() {
-    this.state.count++;
-    ObservableScope.Update(this.counterScope);
+    this.state.count++; // ✅ Reactive — triggers automatic update
   }
 
-   Template() {
-+    return div({
-+      // Props are supplied as a function for reactivity
-+      props: () => ({
-+        style: { fontFamily: 'sans-serif', padding: '0.5rem' },
-+      }),
-+      // Event handlers are also reactive
-+      on: () => ({
-+        click: () => this.inc(),
-+      }),
-+    }, [
-+      // Child nodes – a text node showing the count and a button
-+      div({}, () => `Count: ${ObservableScope.Value(this.counterScope).count}`),
-+      button({}, () => 'Increment'),
-+    ]);
-+  }
-
+  Template() {
+    return div({
+      props: () => ({
+        style: { fontFamily: 'sans-serif', padding: '0.5rem' },
+      }),
+      on: () => ({
+        click: () => this.inc(),
+      }),
+    }, [
+      div({}, () => `Count: ${this.state.count}`),
+      button({}, () => 'Increment'),
+    ]);
+  }
 }
 
-// Register as a custom element <counter-component>
 Component.Register('counter', Counter);
 ```
-**Explanation**
-- `div` and `button` are imported from `j-templates/DOM` and used directly.
-- `props` returns an object; the framework creates an `ObservableScope` that watches the returned value, so any change to `this.Data` re‑evaluates the function and updates the DOM via `createPropertyAssignment`.
-- `on` returns an object mapping event names to callbacks; `createEventAssignment` ensures listeners are attached/detached when the vnode updates.
-- Child nodes are supplied as an array; they can be other factory calls or plain strings (the `text` helper could also be used).
 
-## When to Use the Helpers Directly
-If you need fine‑grained control, you can import the low‑level helpers:
+> **Note**: Direct mutation of non-decorated state (e.g., `this.state.count++` without `@State()`) will not trigger updates. Always use `@State()`, `@Value()`, or `StoreSync` for reactive state.
+
+## When to Use Low-Level Helpers
+
+For advanced use cases, you can import the underlying helpers directly:
+
 ```ts
 import { CreatePropertyAssignment } from 'j-templates/DOM/createPropertyAssignment';
 import { CreateEventAssignment } from 'j-templates/DOM/createEventAssignment';
 ```
-These are rarely needed in typical component templates because the `props`/`on` functions abstract the details.
+
+These are rarely needed — the factory functions abstract complexity and are preferred in most scenarios.
 
 ## File References
+
 - **Factory definitions**: `src/DOM/elements.ts`
 - **Property assignment**: `src/DOM/createPropertyAssignment.ts`
 - **Event assignment**: `src/DOM/createEventAssignment.ts`
-- **Underlying vnode creation**: `src/Node/vNode.ts`
+- **Attribute assignment**: `src/DOM/createAttributeAssignment.ts`
+- **VNode creation**: `src/Node/vNode.ts`
+- **Reactivity**: `src/Store/Tree/observableScope.ts`
+- **Decorators**: `src/Utils/decorators.ts`
 
 ---
-*Next post*: ObservableScope – how reactive scopes are created, read, and watched.
+
+*Next post*: ObservableScope — how reactive scopes are created, read, and watched.
