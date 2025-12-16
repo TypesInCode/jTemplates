@@ -28,7 +28,11 @@ export namespace vNode {
     return {
       definition,
       type: definition.type,
-      injector: Injector.Current() ?? new Injector(),
+      injector: definition.componentConstructor
+        ? Injector.Scope(Injector.Current(), function () {
+            return new Injector();
+          })
+        : (Injector.Current() ?? new Injector()),
       node: definition.node ?? null,
       children: null,
       destroyed: false,
