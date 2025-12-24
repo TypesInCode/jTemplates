@@ -19,7 +19,7 @@ export type vNode = {
   definition: vNodeDefinition<any, any, any>;
   injector: Injector;
   node: Node | null;
-  children: vNode[] | null;
+  children: [any, vNode[]][] | null;
   destroyed: boolean;
   onDestroyed: Emitter | null;
   scopes: IObservableScope<unknown>[];

@@ -2,7 +2,6 @@ import { ReconcileSortedEmitters } from "../../Utils/array";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
 import { IDestroyable } from "../../Utils/utils.types";
-import { ObservableNode } from "./observableNode";
 
 export class ObservableScopeValue<T> {
   public get Value() {
@@ -308,12 +307,16 @@ function UpdateEmitters(scope: IObservableScope<unknown>, right: Emitter[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope) return;
 
+  Emitter.Clear(scope.emitter);
   const scopes = scope.calcScopes && Object.values(scope.calcScopes);
   scopes && ObservableScope.DestroyAll(scopes);
   scope.calcScopes = null;
 
+  for (let x = 0; x < scope.emitters.length; x++)
+    Emitter.Remove(scope.emitters[x], scope.setCallback);
+
+  scope.calcScopes = null;
   scope.emitters = null;
-  Emitter.Clear(scope.emitter);
   scope.emitter = null;
   scope.getFunction = null;
   scope.setCallback = null;

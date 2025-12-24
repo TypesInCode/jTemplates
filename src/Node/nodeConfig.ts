@@ -8,6 +8,7 @@ export interface INodeConfig {
     callback: (...args: P) => void,
   ): (...args: P) => void;
   setText(target: any, text: string): void;
+  copyText(source: any, target: any): void;
   isTextNode(target: any): boolean;
   getAttribute(target: any, attribute: string): string;
   setAttribute(target: any, attribute: string, value: string): void;
@@ -32,6 +33,7 @@ export interface INodeConfig {
   getNextSibling(target: any): any;
   replaceChildren(target: any, children: any[]): void;
   reconcileChildren(target: any, children: any[]): void;
+  reconcileChild(target: any, child: any): void;
 }
 
 export const NodeConfig = DOMNodeConfig as INodeConfig;

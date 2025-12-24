@@ -102,6 +102,9 @@ export const DOMNodeConfig: INodeConfig = {
   setText(target: Node, text: string) {
     target.nodeValue = text;
   },
+  copyText(source: Node, target: Node) {
+    target.nodeValue = source.nodeValue;
+  },
   getAttribute(target: HTMLElement, attribute: string) {
     return target.getAttribute(attribute);
   },
@@ -135,15 +138,8 @@ export const DOMNodeConfig: INodeConfig = {
   },
   reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
     if (!target.firstChild) {
-      if (children.length > 10) {
-        const fragment = new DocumentFragment();
-        for (let x = 0; x < children.length; x++)
-          fragment.appendChild(children[x]);
-
-        target.appendChild(fragment);
-      } else
-        for (let x = 0; x < children.length; x++)
-          target.appendChild(children[x]);
+      for (let x = 0; x < children.length; x++)
+        target.appendChild(children[x]);
 
       return;
     }
@@ -177,11 +173,10 @@ export const DOMNodeConfig: INodeConfig = {
     while (target.lastChild !== children[x - 1])
       target.removeChild(target.lastChild);
 
-    if (children.length - x > 10) {
-      const fragment = new DocumentFragment();
-      for (; x < children.length; x++) fragment.appendChild(children[x]);
-
-      target.appendChild(fragment);
-    } else for (; x < children.length; x++) target.appendChild(children[x]);
+    for (; x < children.length; x++) target.appendChild(children[x]);
   },
+  reconcileChild(target: HTMLElement, child: HTMLElement) {
+    if (target.firstChild !== child)
+      target.replaceChildren(child);
+  }
 };

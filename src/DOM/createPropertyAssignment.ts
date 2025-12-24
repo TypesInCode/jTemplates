@@ -20,7 +20,8 @@ function CreatePropertyAssignment(target: any, property: string) {
         childAssignment ??= CreateAssignment(childTarget, CreateRootPropertyAssignment);
         childAssignment(nextValue);
       }
-    }        
+    }
+    lastValue = nextValue;
   }
 }
 
@@ -60,6 +61,8 @@ export function CreateRootPropertyAssignment(target: HTMLElement, property: stri
         }
       }
     }
+
+    lastValue = nextValue;
   }
 }
 
