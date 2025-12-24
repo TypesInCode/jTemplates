@@ -98,6 +98,26 @@ function WatchScope<T>(scope: IObservableScope<T>): T {
   return value;
 }
 
+function WatchFunction<T>(func: {
+  (): T | Promise<T>;
+}): [T, IObservableScope<T> | null] {
+  const parent = watchState;
+  watchState = [[], null, null];
+
+  const async = IsAsync(func);
+  const result = func();
+  let scope: IObservableScope<T> = null;
+  if (watchState[0].length > 0 || async) {
+    scope = ObservableScope.Create(func);
+    UpdateEmitters(scope, watchState[0]);
+    scope.calcScopes = watchState[2];
+    UpdateValue(scope, result);
+  }
+
+  watchState = parent;
+  return [async ? null : (result as T), scope] as const;
+}
+
 export function CalcScope<T>(callback: () => T, idOverride?: string) {
   if (watchState === null) return callback();
 
@@ -139,6 +159,12 @@ export namespace ObservableScope {
       },
     } as IObservableScope<T>;
     return scope;
+  }
+
+  export function CreateIf<T>(valueFunction: {
+    (): T | Promise<T>;
+  }): [T, IObservableScope<T> | null] {
+    return WatchFunction(valueFunction);
   }
 
   export function Register(emitter: Emitter) {
@@ -252,11 +278,14 @@ function OnSet(scope: IObservableScope<any>) {
   DirtyScope(scope);
 }
 
-function UpdateValue<T>(scope: IObservableScope<T>) {
+function UpdateValue<T>(
+  scope: IObservableScope<T>,
+  valueOverride: any = undefined,
+) {
   if (!scope.dirty) return;
 
   scope.dirty = false;
-  const value = WatchScope(scope);
+  const value = valueOverride === undefined ? WatchScope(scope) : valueOverride;
 
   if (scope.async) {
     scope.promise = (value as Promise<T>).then(function (result) {
