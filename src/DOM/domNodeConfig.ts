@@ -138,8 +138,7 @@ export const DOMNodeConfig: INodeConfig = {
   },
   reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
     if (!target.firstChild) {
-      for (let x = 0; x < children.length; x++)
-        target.appendChild(children[x]);
+      for (let x = 0; x < children.length; x++) target.appendChild(children[x]);
 
       return;
     }
@@ -176,7 +175,7 @@ export const DOMNodeConfig: INodeConfig = {
     for (; x < children.length; x++) target.appendChild(children[x]);
   },
   reconcileChild(target: HTMLElement, child: HTMLElement) {
-    if (target.firstChild !== child)
+    if (target.childElementCount > 1 || target.firstChild !== child)
       target.replaceChildren(child);
-  }
+  },
 };

@@ -408,7 +408,11 @@ function AssignChildren(
 function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
   if (!vnode.children) return;
 
-  if (vnode.children.length === 1 && vnode.children[0][1][0].node) {
+  if (
+    vnode.children.length === 1 &&
+    vnode.children[0][1].length === 1 &&
+    vnode.children[0][1][0].node
+  ) {
     NodeConfig.reconcileChild(vnode.node, vnode.children[0][1][0].node);
     return;
   }
