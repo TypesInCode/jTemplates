@@ -26,6 +26,8 @@ export class Store {
       : ObservableNode.Create;
   }
 
+  Get<O>(id: string): O | undefined;
+  Get<O>(id: string, defaultValue: O): O;
   Get<O>(id: string, defaultValue?: O): O | undefined {
     let result = this.rootMap.get(id);
     if (result === undefined) {
@@ -33,7 +35,7 @@ export class Store {
       this.rootMap.set(id, result);
     }
 
-    return result[id] as O;
+    return result[id] as O | undefined;
   }
 
   protected UpdateRootMap(results: JsonDiffResult) {
