@@ -1,6 +1,7 @@
 import { ObservableScope } from "../Store";
-import { IObservableScope } from "../Store/Tree/observableScope";
+import { CalcScope, IObservableScope } from "../Store/Tree/observableScope";
 import { Emitter } from "../Utils/emitter";
+import { IsAsync } from "../Utils/functions";
 import { Injector } from "../Utils/injector";
 import { IList, List } from "../Utils/list";
 import { Schedule, Thread } from "../Utils/thread";
@@ -190,23 +191,48 @@ function InitNode(vnode: vNodeType) {
 function Children(
   vnode: vNodeType,
   children: (data: any) => string | vNodeType | vNodeType[],
-  data: () => any[] | undefined,
+  data: () => any | undefined,
 ) {
-  const childrenScope = CreateChildrenScope(vnode, children, data);
-  vnode.scopes.push(childrenScope);
-
-  ObservableScope.Watch(
-    childrenScope,
-    CreateScheduledCallback(function (scope) {
-      if (vnode.destroyed) return;
-
-      const startChildren = vnode.children;
-      AssignChildren(vnode, scope);
-      startChildren !== vnode.children && UpdateChildren(vnode);
-    }),
+  const [childNodes, childrenScope] = CreateChildrenScope(
+    vnode,
+    children,
+    data,
   );
+  if (childrenScope) {
+    vnode.scopes.push(childrenScope);
 
-  AssignChildren(vnode, childrenScope);
+    ObservableScope.Watch(
+      childrenScope,
+      CreateScheduledCallback(function (scope) {
+        if (vnode.destroyed) return;
+
+        const startChildren = vnode.children;
+        const newChildren = ObservableScope.Value(scope);
+        // AssignChildren(vnode, scope);
+        if (startChildren !== newChildren) {
+          vnode.children = newChildren;
+          UpdateChildren(vnode);
+        }
+      }),
+    );
+  }
+
+  vnode.children = childNodes;
+  // AssignChildren(vnode, childrenScope);
+}
+
+function AssignChildren(
+  vnode: vNodeType,
+  childrenScope: IObservableScope<
+    [
+      any,
+      vNodeType[],
+      IObservableScope<string | vNodeType | vNodeType[]> | null,
+    ][]
+  >,
+) {
+  const children = ObservableScope.Peek(childrenScope);
+  vnode.children = children;
 }
 
 const DEFAULT_DATA: [undefined] = [undefined];
@@ -217,39 +243,24 @@ function DefaultData() {
 function CreateChildrenScope(
   vnode: vNodeType,
   children: (data: any) => string | vNodeType | vNodeType[],
-  data: () => any[] | undefined,
+  data: () => any | undefined = DefaultData,
 ) {
-  // if (data === undefined)
-  //   return ObservableScope.Create(WrapStaticChildren(vnode, children));
-  let dataScope: IObservableScope<any> | undefined;
-  if (data !== undefined) {
-    dataScope = ObservableScope.Create(data);
+  if (IsAsync(data)) {
+    const asyncData = data;
     data = function () {
-      const result = ObservableScope.Value(dataScope);
-      if (!result) return [];
-
-      if (Array.isArray(result)) return result;
-
-      return [result];
+      return CalcScope(async function () {
+        return asyncData();
+      });
     };
-  } else data = DefaultData;
+  }
 
-  const scope = ObservableScope.Create(
-    WrapChildren(vnode.injector, children, data),
-  );
-  dataScope &&
-    ObservableScope.OnDestroyed(scope, function () {
-      ObservableScope.Destroy(dataScope);
-      return true;
-    });
-
-  return scope;
+  return ObservableScope.CreateIf(WrapChildren(vnode.injector, children, data));
 }
 
 function WrapChildren(
   injector: Injector,
   children: (data: any) => string | vNodeType | vNodeType[],
-  data: () => any[],
+  data: () => any,
 ) {
   let nodeArray: [
     any,
@@ -257,7 +268,7 @@ function WrapChildren(
     IObservableScope<string | vNodeType | vNodeType[]> | null,
   ][] = [];
   return function () {
-    const nextData = data();
+    const nextData = ToArray(data());
 
     switch (nextData.length) {
       case 0: {
@@ -288,6 +299,14 @@ function WrapChildren(
 
     return nodeArray;
   };
+}
+
+function ToArray(result: any) {
+  if (!result) return [];
+
+  if (Array.isArray(result)) return result;
+
+  return [result];
 }
 
 function EvaluateNextNodesSmall(
@@ -456,20 +475,6 @@ function CreateNodeArray(
   }
 
   return [children];
-}
-
-function AssignChildren(
-  vnode: vNodeType,
-  childrenScope: IObservableScope<
-    [
-      any,
-      vNodeType[],
-      IObservableScope<string | vNodeType | vNodeType[]> | null,
-    ][]
-  >,
-) {
-  const children = ObservableScope.Peek(childrenScope);
-  vnode.children = children;
 }
 
 function UpdateChildren(vnode: vNodeType, init = false, skipInit = false) {
