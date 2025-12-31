@@ -21,6 +21,7 @@ export const option = vNode.ToFunction<HTMLOptionElement>("option");
 export const aside = vNode.ToFunction("aside");
 export const p = vNode.ToFunction("p");
 export const label = vNode.ToFunction("label");
+export const pre = vNode.ToFunction("pre");
 
 const textElement = vNode.ToFunction("text");
 export const text = function (callback: () => string) {
