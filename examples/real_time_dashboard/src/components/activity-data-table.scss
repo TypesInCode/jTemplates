@@ -1,0 +1,106 @@
+activity-data-table {
+    display: block;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+
+    .table-header {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 1rem;
+    }
+
+    > table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th {
+            background: #f8f9fa;
+            padding: 0.875rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #444;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e8e8e8;
+
+            &:first-child {
+                border-radius: 8px 0 0 0;
+            }
+            &:last-child {
+                border-radius: 0 8px 0 0;
+            }
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #fafafa;
+        }
+
+        tr {
+            animation: rowEnter 0.5s ease-out forwards;
+        }
+
+        @keyframes rowEnter {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.7rem;
+                font-weight: 600;
+            }
+        }
+
+        .url-cell {
+            font-family: "SF Mono", Monaco, "Courier New", monospace;
+            font-size: 0.8rem;
+            color: #007bff;
+        }
+
+        .time-spent-cell {
+            font-weight: 500;
+            color: #28a745;
+
+            &.high {
+                color: #dc3545;
+            }
+            &.medium {
+                color: #ffc107;
+            }
+        }
+    }
+}
