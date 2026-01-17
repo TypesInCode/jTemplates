@@ -2,10 +2,23 @@ import { JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/jsonType";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
-let bypassProxy = false;
-export const IS_OBSERVABLE_NODE = "____isObservableNode";
-export const GET_OBSERVABLE_VALUE = "____getObservableValue";
-export const GET_TO_JSON = "toJSON";
+/**
+ * Symbol to identify observable nodes.
+ * Used to check if a value is an observable node proxy.
+ */
+export const IS_OBSERVABLE_NODE = Symbol("isObservableNode");
+
+/**
+ * Symbol to get the raw underlying value from an observable node.
+ * Returns the unwrapped, non-proxied value.
+ */
+export const GET_OBSERVABLE_VALUE = Symbol("getObservableValue");
+
+/**
+ * Symbol for the toJSON method on observable nodes.
+ * Used to serialize observable nodes to plain JSON.
+ */
+export const GET_TO_JSON = Symbol("toJSON");
 
 const proxyCache = new WeakMap<any, unknown | unknown[]>();
 const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
@@ -52,7 +65,7 @@ function UnwrapProxy(
 ) {
   if (type === "value") return value;
 
-  if (value[IS_OBSERVABLE_NODE] === true) return value[GET_OBSERVABLE_VALUE];
+  if (value[IS_OBSERVABLE_NODE]) return value[GET_OBSERVABLE_VALUE];
 
   switch (type) {
     case "object": {
@@ -138,9 +151,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function ArrayProxySetter(array: unknown[], prop: string, value: any) {
     if (readOnly) throw `Object is readonly`;
 
-    if (prop === IS_OBSERVABLE_NODE)
-      throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
-
     value = UnwrapProxy(value);
     array[prop as any] = value;
 
@@ -175,7 +185,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
         array = ObservableScope.Value(scope);
         const arrayValue = (array as any)[prop];
-        if (bypassProxy) return arrayValue;
 
         if (typeof prop === "symbol") return arrayValue;
 
@@ -227,9 +236,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function ObjectProxySetter(object: any, prop: string, value: any) {
     if (readOnly) throw `Object is readonly`;
 
-    if (prop === IS_OBSERVABLE_NODE)
-      throw `Cannot assign read-only property: ${IS_OBSERVABLE_NODE}`;
-
     const jsonType = JsonType(value);
     if (jsonType === "value") {
       value !== object[prop] && SetPropertyValue(object, prop, value);
@@ -265,8 +271,6 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       case GET_OBSERVABLE_VALUE:
         return object;
       default: {
-        if (bypassProxy) return (object as any)[prop];
-
         return GetAccessorValue(object, prop);
       }
     }
@@ -315,18 +319,34 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
 const DefaultCreateProxy = CreateProxyFactory();
 
 export namespace ObservableNode {
-  export function BypassProxy(value: boolean) {
-    bypassProxy = value;
-  }
-
+  /**
+   * Unwraps an observable node to get the raw underlying value.
+   * Recursively unwraps nested objects and arrays.
+   * @template T The type of value to unwrap.
+   * @param value The value to unwrap, which may be an observable node or plain value.
+   * @returns The unwrapped raw value without proxy wrappers.
+   */
   export function Unwrap<T>(value: T): T {
     return UnwrapProxy(value);
   }
 
+  /**
+   * Creates an observable node from a plain value.
+   * Wraps the value in a proxy that tracks changes and enables reactive updates.
+   * @template T The type of value to wrap.
+   * @param value The plain value (object, array, or primitive) to make observable.
+   * @returns A proxied version of the value that emits change events.
+   */
   export function Create<T>(value: T): T {
     return DefaultCreateProxy(value);
   }
 
+  /**
+   * Marks an observable node or its property as changed, triggering reactive updates.
+   * Used internally to notify dependencies that a value has been modified.
+   * @param value The observable node to touch.
+   * @param prop Optional property name or index to touch a specific nested property.
+   */
   export function Touch(value: unknown, prop?: string | number) {
     let scope: IObservableScope<unknown>;
     if (prop !== undefined) {
@@ -337,6 +357,12 @@ export namespace ObservableNode {
     ObservableScope.Update(scope);
   }
 
+  /**
+   * Applies a JSON diff result to an observable node, efficiently updating only changed properties.
+   * Optimizes nested object updates by computing paths incrementally and touching modified properties.
+   * @param rootNode The observable node to apply the diff to.
+   * @param diffResult The diff result from JsonDiff containing path-value pairs of changes.
+   */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
     const root = rootNode[GET_OBSERVABLE_VALUE];
     const pathTuples: [string | number, unknown][] = [["", root]];
@@ -366,6 +392,13 @@ export namespace ObservableNode {
     }
   }
 
+  /**
+   * Creates a factory function for making values observable with optional aliasing.
+   * The alias function transforms values before creating the observable proxy,
+   * useful for read-only views or value transformations.
+   * @param alias Optional function to transform values before making them observable.
+   * @returns A function that creates observable nodes from plain values.
+   */
   export function CreateFactory(alias?: (value: any) => any | undefined) {
     return CreateProxyFactory(alias);
   }
