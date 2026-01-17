@@ -45,36 +45,17 @@ export namespace Emitter {
   export function Distinct(emitters: Emitter[]) {
     if (emitters.length < 2) return;
 
-    emitters.length < 51 ? DistinctSmall(emitters) : DistinctLarge(emitters);
-  }
-
-  function DistinctSmall(emitters: Emitter[]) {
     Sort(emitters);
 
-    let writePos = 1;
-    for (let x = 1; x < emitters.length; x++) {
-      if (emitters[x][0] !== emitters[writePos - 1][0]) {
-        emitters[writePos++] = emitters[x];
-      }
-    }
-
-    if (writePos < emitters.length) emitters.splice(writePos);
-  }
-
-  function DistinctLarge(emitters: Emitter[]) {
     let writePos = 0;
-    const ids = new Set<number>();
-    for (let x = 0; x < emitters.length; x++) {
-      const id = emitters[x][0];
-      if (!ids.has(id)) {
-        ids.add(id);
-        emitters[writePos++] = emitters[x];
+    for (let x = 1; x < emitters.length; x++) {
+      if (emitters[x][0] !== emitters[writePos][0]) {
+        emitters[++writePos] = emitters[x];
       }
     }
 
+    writePos++;
     if (writePos < emitters.length) emitters.splice(writePos);
-
-    Sort(emitters);
   }
 
   export function Sort(emitters: Emitter[]) {

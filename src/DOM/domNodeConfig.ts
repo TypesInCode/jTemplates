@@ -175,7 +175,10 @@ export const DOMNodeConfig: INodeConfig = {
     for (; x < children.length; x++) target.appendChild(children[x]);
   },
   reconcileChild(target: HTMLElement, child: HTMLElement) {
-    if (target.childElementCount > 1 || target.firstChild !== child)
-      target.replaceChildren(child);
+    if (target.firstChild === child) return;
+
+    target.appendChild(child);
+    while (target.firstChild !== child)
+      target.removeChild(target.firstChild);
   },
 };

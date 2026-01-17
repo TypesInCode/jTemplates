@@ -42,5 +42,5 @@ export type vNodeDefinition<
   data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
   children?: vNodeChildrenFunction<T>;
   childrenArray?: vNode[];
-  componentConstructor?: { new (vnode: vNode): Component<any, any, any> };
+  componentFactory?: (vnode: vNode) => Component<any, any, any>;
 };

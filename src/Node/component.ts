@@ -1,9 +1,10 @@
-import { Destroy } from "../Utils/decorators";
+import { Bound, Destroy } from "../Utils/decorators";
 import { ComponentEvents } from "./component.types";
-import { ObservableScope } from "../Store/Tree/observableScope";
 import { FunctionOr, vNode as vNodeType, vNodeDefinition } from "./vNode.types";
 import { RecursivePartial } from "../Utils/utils.types";
 import { vNode } from "./vNode";
+import { IObservableScope } from "../Store/Tree/observableScope";
+import { ObservableScope } from "../Store";
 
 /**
  * Base Component class.
@@ -13,8 +14,10 @@ import { vNode } from "./vNode";
  * @template E - Event map type for component events.
  */
 export class Component<D = void, T = void, E = {}> {
-  private scope: ObservableScope<D>;
+  // private scope: ObservableScope<D>;
+  private scope: IObservableScope<D>;
   private templates: T;
+  private componentEvents: ComponentEvents<E>;
 
   /**
    * Returns the component's virtual node injector.
@@ -41,7 +44,7 @@ export class Component<D = void, T = void, E = {}> {
    * Current data value from the scoped Observable.
    */
   protected get Data() {
-    return this.scope.Value;
+    return ObservableScope.Value(this.scope);
   }
 
   /**
@@ -58,23 +61,21 @@ export class Component<D = void, T = void, E = {}> {
     return this.templates;
   }
 
-  /**
-   * Creates a new Component instance. Not intended to be overriden.
-   *
-   * @param data - Initial data or a factory function returning data/promise.
-   * @param templates - Template definitions for rendering.
-   * @param vNode - The underlying virtual node instance.
-   * @param componentEvents - Optional event callbacks.
-   */
   constructor(
-    data: D | (() => D | Promise<D>),
-    templates: T,
     private vNode: vNodeType,
-    private componentEvents: ComponentEvents<E>,
+    config: vComponentConfig<D, E>,
+    templates: T,
   ) {
+    const { data, on } = config;
     if (typeof data === "function")
-      this.scope = new ObservableScope<D>(data as () => D | Promise<D>);
-    else this.scope = new ObservableScope<D>(() => data);
+      this.scope = ObservableScope.Create(data as () => D | Promise<D>);
+    else
+      this.scope = {
+        type: "static",
+        value: data,
+      };
+
+    this.componentEvents = on;
 
     this.templates = templates || ({} as T);
   }
@@ -93,7 +94,9 @@ export class Component<D = void, T = void, E = {}> {
    * Lifecycle hook called after the component has been bound to the DOM.
    * Override to perform post‑binding initialization.
    */
-  public Bound() {}
+  public Bound() {
+    Bound.All(this);
+  }
 
   /**
    * Fires a component event.
@@ -111,7 +114,7 @@ export class Component<D = void, T = void, E = {}> {
    * Destroys the component, cleaning up its scoped data and decorators.
    */
   public Destroy() {
-    this.scope.Destroy();
+    ObservableScope.Destroy(this.scope);
     Destroy.All(this);
   }
 }
@@ -122,15 +125,6 @@ type vComponentConfig<D, E, P = HTMLElement> = {
   on?: ComponentEvents<E> | undefined;
 };
 
-type ComponentConstructor<D, T, E> = {
-  new (
-    data: D | (() => D | Promise<D>),
-    templates: T,
-    vNode: vNodeType,
-    componentEvents: ComponentEvents<E>,
-  ): Component<D, T, E>;
-};
-
 export namespace Component {
   /**
    * Function wraps the Component as a function that can be used to create vNode objects
@@ -138,26 +132,22 @@ export namespace Component {
    */
   export function ToFunction<D, T, E, P = HTMLElement>(
     type: string,
-    constructor: ComponentConstructor<D, T, E>,
+    constructor: typeof Component<D, T, E>,
     namespace?: string,
   ) {
     return function (
       config: vComponentConfig<D, E, P>,
       templates?: T,
     ): vNodeType {
-      const { data, on, props } = config;
-
-      class ConcreteComponent extends constructor {
-        constructor(vnode: vNodeType) {
-          super(data, templates, vnode, on);
-        }
+      function ComponentFactory(vnode: vNodeType) {
+        return new constructor(vnode, config, templates);
       }
 
       const definition: vNodeDefinition<P, any, never> = {
         type,
         namespace: namespace ?? null,
-        props,
-        componentConstructor: ConcreteComponent,
+        props: config.props,
+        componentFactory: ComponentFactory,
       };
 
       return vNode.Create(definition);
@@ -165,16 +155,13 @@ export namespace Component {
   }
 
   /**
-   * Function registers the Component as a WebComponent as the provided name. 
+   * Function registers the Component as a WebComponent as the provided name.
    */
   export function Register<D = void, T = void, E = void>(
     name: string,
-    constructor: ComponentConstructor<D, T, E>,
+    constructor: typeof Component<D, T, E>, // ComponentConstructor<D, T, E>,
   ) {
-    const componentFunction = ToFunction(
-      `${name}-component`,
-      constructor,
-    );
+    const componentFunction = ToFunction(`${name}-component`, constructor);
 
     class WebComponent extends HTMLElement {
       constructor() {
@@ -188,7 +175,7 @@ export namespace Component {
 
     customElements.define(name, WebComponent);
   }
-  
+
   /**
    * Attaches a virtual node to a real DOM node.
    *

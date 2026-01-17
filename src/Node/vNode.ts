@@ -29,7 +29,7 @@ export namespace vNode {
     return {
       definition,
       type: definition.type,
-      injector: definition.componentConstructor
+      injector: definition.componentFactory
         ? Injector.Scope(Injector.Current(), function () {
             return new Injector();
           })
@@ -127,7 +127,7 @@ function InitNode(vnode: vNodeType) {
     attrs,
     on,
     data,
-    componentConstructor,
+    componentFactory,
     children,
     childrenArray,
   } = vnode.definition;
@@ -138,41 +138,35 @@ function InitNode(vnode: vNodeType) {
   if (props) {
     const assignProperties = NodeConfig.createPropertyAssignment(node);
     if (typeof props === "function") {
-      const [value, scope] = ObservableScope.CreateIf(props as () => any);
-      if (scope) {
-        vnode.scopes.push(scope);
-        ObservableScope.Watch(scope, ScheduledAssignment(assignProperties));
-      }
-      assignProperties(value);
+      const scope = ObservableScope.Create(props as () => any);
+      vnode.scopes.push(scope);
+      ObservableScope.Watch(scope, ScheduledAssignment(assignProperties));
+      assignProperties(ObservableScope.Value(scope));
     } else assignProperties(props);
   }
 
   if (on) {
     const assignEvents = NodeConfig.createEventAssignment(node);
     if (typeof on === "function") {
-      const [value, scope] = ObservableScope.CreateIf(on);
-      if (scope) {
-        vnode.scopes.push(scope);
-        ObservableScope.Watch(scope, ScheduledAssignment(assignEvents));
-      }
-      assignEvents(value);
+      const scope = ObservableScope.Create(on);
+      vnode.scopes.push(scope);
+      ObservableScope.Watch(scope, ScheduledAssignment(assignEvents));
+      assignEvents(ObservableScope.Value(scope));
     } else assignEvents(on);
   }
 
   if (attrs) {
     const assignAttributes = NodeConfig.createAttributeAssignment(node);
     if (typeof attrs === "function") {
-      const [value, scope] = ObservableScope.CreateIf(attrs);
-      if (scope) {
-        vnode.scopes.push(scope);
-        ObservableScope.Watch(scope, ScheduledAssignment(assignAttributes));
-      }
-      assignAttributes(value);
+      const scope = ObservableScope.Create(attrs);
+      vnode.scopes.push(scope);
+      ObservableScope.Watch(scope, ScheduledAssignment(assignAttributes));
+      assignAttributes(ObservableScope.Value(scope));
     } else assignAttributes(attrs);
   }
 
-  if (componentConstructor) {
-    vnode.component = new componentConstructor(vnode);
+  if (componentFactory) {
+    vnode.component = componentFactory(vnode);
     vnode.component.Bound();
     function componentChildren() {
       return vnode.component.Template();
@@ -193,11 +187,7 @@ function Children(
   children: (data: any) => string | vNodeType | vNodeType[],
   data: () => any | undefined,
 ) {
-  const [childNodes, childrenScope] = CreateChildrenScope(
-    vnode,
-    children,
-    data,
-  );
+  const childrenScope = CreateChildrenScope(vnode, children, data);
   if (childrenScope) {
     vnode.scopes.push(childrenScope);
 
@@ -208,7 +198,6 @@ function Children(
 
         const startChildren = vnode.children;
         const newChildren = ObservableScope.Value(scope);
-        // AssignChildren(vnode, scope);
         if (startChildren !== newChildren) {
           vnode.children = newChildren;
           UpdateChildren(vnode);
@@ -217,22 +206,7 @@ function Children(
     );
   }
 
-  vnode.children = childNodes;
-  // AssignChildren(vnode, childrenScope);
-}
-
-function AssignChildren(
-  vnode: vNodeType,
-  childrenScope: IObservableScope<
-    [
-      any,
-      vNodeType[],
-      IObservableScope<string | vNodeType | vNodeType[]> | null,
-    ][]
-  >,
-) {
-  const children = ObservableScope.Peek(childrenScope);
-  vnode.children = children;
+  vnode.children = ObservableScope.Value(childrenScope);
 }
 
 const DEFAULT_DATA: [undefined] = [undefined];
@@ -254,7 +228,7 @@ function CreateChildrenScope(
     };
   }
 
-  return ObservableScope.CreateIf(WrapChildren(vnode.injector, children, data));
+  return ObservableScope.Create(WrapChildren(vnode.injector, children, data));
 }
 
 function WrapChildren(
@@ -363,11 +337,15 @@ function EvaluateNextNodesSmall(
       nextNodes[x] = nodeArray[i];
       nodeArray[i] = null;
     } else {
-      const [nextChildren, scope] = ObservableScope.CreateIf(function () {
+      const scope = ObservableScope.Create(function () {
         return Injector.Scope(injector, getNextChildren, data);
       });
 
-      nextNodes[x] = [data, CreateNodeArray(nextChildren), scope];
+      nextNodes[x] = [
+        data,
+        CreateNodeArray(ObservableScope.Value(scope)),
+        scope,
+      ];
     }
   }
 
@@ -417,27 +395,26 @@ function EvaluateNextNodesLarge(
 
     if (currentChildIndex !== -1) {
       const currentChild = currentChildren[currentChildIndex];
-      if (currentChild[2]) {
-        const scope = currentChild[2];
-        const value = scope.value;
-        const updatedValue = ObservableScope.Value(scope);
-        if (value !== updatedValue)
-          currentChild[1] = CreateNodeArray(updatedValue);
-      }
-
-      if (currentChild[2]?.dirty) {
-        const nextChildren = ObservableScope.Value(currentChild[2]);
-        currentChild[1] = CreateNodeArray(nextChildren);
+      currentChildren[currentChildIndex] = null;
+      const scope = currentChild[2];
+      const value = scope.value;
+      const updatedValue = ObservableScope.Value(scope);
+      if (value !== updatedValue) {
+        vNode.DestroyAll(currentChild[1]);
+        currentChild[1] = CreateNodeArray(updatedValue);
       }
       nextNodes[x] = currentChild;
-      currentChildren[currentChildIndex] = null;
       if (currentChildIndex === 0) dataMap.delete(data);
     } else {
-      const [nextChildren, scope] = ObservableScope.CreateIf(function () {
+      const scope = ObservableScope.Create(function () {
         return Injector.Scope(injector, getNextChildren, data);
       });
 
-      nextNodes[x] = [data, CreateNodeArray(nextChildren), scope];
+      nextNodes[x] = [
+        data,
+        CreateNodeArray(ObservableScope.Value(scope)),
+        scope,
+      ];
     }
   }
 
@@ -540,8 +517,6 @@ function ScheduledAssignment(assign: (data: any) => void) {
 
     scheduled = true;
     NodeConfig.scheduleUpdate(function () {
-      if (scope.destroyed) return;
-
       scheduled = false;
       const value = ObservableScope.Peek(scope);
       assign(value);

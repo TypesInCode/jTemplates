@@ -101,11 +101,14 @@ export class Animation implements IDestroyable {
    */
   public Animate(start: number, end: number): Promise<void> {
     if (!this.enabled) return;
+    this.Cancel();
 
     const diff = end - start;
-    if (diff === 0) return;
+    if (diff === 0) {
+      this.animationUpdate(end);
+      return;
+    }
 
-    this.Cancel();
     this.animationStart = Date.now();
     this.running = true;
     this.start = start;
@@ -114,7 +117,10 @@ export class Animation implements IDestroyable {
       const stepFunc =
         StepFunctions[AnimationType[this.type] as keyof typeof StepFunctions];
       const animationRun = () => {
-        if (this.animationRun !== animationRun) return;
+        if (this.animationRun !== animationRun) {
+          resolve();
+          return;
+        }
 
         const percent = stepFunc(this.animationStart, this.animationDuration);
         const step = percent * diff;

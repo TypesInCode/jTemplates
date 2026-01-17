@@ -6,7 +6,7 @@
     "noImplicitAny": true,
     "outDir": "./lib",
     "preserveConstEnums": true,
-    "removeComments": true,
+    "removeComments": false,
     "target": "ESNext",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -14,19 +14,14 @@
     // "sourceMap": true,
     "types": [
       // add node as an option
-      "node"
+      "node",
     ],
     // typeRoots option has been previously configured
     "typeRoots": [
-        // add path to @types
-        "node_modules/@types"
-    ]
+      // add path to @types
+      "node_modules/@types",
+    ],
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*-spec.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*-spec.ts"],
 }

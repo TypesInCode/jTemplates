@@ -1,7 +1,7 @@
 /**
  * This module provides decorators for managing state, computed values, and dependency injection in components.
  * These decorators are designed to work with observable data structures, allowing for efficient updates and notifications.
- * 
+ *
  * @module Utils/Decorators
  * @see ObservableScope
  * @see ObservableNode
@@ -10,16 +10,14 @@
  * @see Component
  */
 
-// import { Component } from "../Node/component";
 import {
-  ObservableScope,
   IObservableScope,
+  ObservableScope,
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
-// import { ElementNodeRefTypes } from "../Node/nodeRef.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
 import { StoreAsync, StoreSync } from "../Store";
-import { Component } from "../Node/component";
+import { Injector } from "./injector";
 
 /**
  * WeakMap for storing node instances and their associated properties.
@@ -38,6 +36,8 @@ const scopeInstanceMap = new WeakMap<
   WeakKey,
   { [prop: string]: [IObservableScope<unknown>, unknown] }
 >();
+
+const boundPrototypeMap = new WeakMap<WeakKey, ((instance: any) => void)[]>();
 
 /**
  * WeakMap for storing arrays of properties that need to be destroyed for each prototype.
@@ -73,6 +73,16 @@ function GetScopeMapForInstance(instance: WeakKey) {
   return map;
 }
 
+function GetBoundArrayForPrototype(prototype: WeakKey, create = true) {
+  let array = boundPrototypeMap.get(prototype);
+  if (create) {
+    array ??= [];
+    boundPrototypeMap.set(prototype, array);
+  }
+
+  return array;
+}
+
 /**
  * Retrieves the destroy array for a given prototype.
  * If the array does not exist, it creates a new one and associates it with the prototype.
@@ -80,18 +90,44 @@ function GetScopeMapForInstance(instance: WeakKey) {
  * @param prototype The prototype for which to retrieve the destroy array.
  * @returns The array of properties to be destroyed for the prototype.
  */
-function GetDestroyArrayForPrototype(prototype: WeakKey) {
-  const array = destroyPrototypeMap.get(prototype) ?? [];
-  destroyPrototypeMap.set(prototype, array);
+function GetDestroyArrayForPrototype(prototype: WeakKey, create = true) {
+  let array = destroyPrototypeMap.get(prototype);
+  if (create) {
+    array ??= [];
+    destroyPrototypeMap.set(prototype, array);
+  }
 
   return array;
 }
 
+function CreateComputedScope(
+  getter: () => any,
+  defaultValue: any,
+  store: StoreSync | StoreAsync,
+) {
+  const getterScope = ObservableScope.Create(getter, true);
+
+  ObservableScope.Watch(getterScope, (scope) => {
+    const data = ObservableScope.Value(scope);
+    store.Write(data, "root");
+  });
+  // ObservableScope.Init(getterScope);
+
+  const propertyScope = ObservableScope.Create(() =>
+    store.Get("root", defaultValue),
+  );
+  ObservableScope.OnDestroyed(propertyScope, function () {
+    ObservableScope.Destroy(getterScope);
+    if (store instanceof StoreAsync) store.Destroy();
+  });
+
+  return propertyScope;
+}
 
 /**
  * Computed decorator factory for creating synchronous computed properties.
  * A computed property is derived from other properties and automatically updates when its dependencies change.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @Computed({ count: 0 })
@@ -99,7 +135,7 @@ function GetDestroyArrayForPrototype(prototype: WeakKey) {
  *     return { count: this.myStateValue };
  *   }
  * }
- * 
+ *
  * @param defaultValue The default value to be used if the computed property is not defined.
  * @returns A property decorator that can be applied to a getter method.
  * @throws Will throw an error if the property is not a getter or if it has a setter.
@@ -143,23 +179,11 @@ function ComputedDecorator<
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const getterScope = ObservableScope.Create(async () =>
-          getter.call(this),
+        const propertyScope = CreateComputedScope(
+          getter.bind(this),
+          undefined,
+          new StoreSync(),
         );
-        const syncStore = new StoreSync();
-
-        ObservableScope.Watch(getterScope, (scope) => {
-          const data = ObservableScope.Value(scope);
-          syncStore.Write(data, "root");
-        });
-        ObservableScope.Init(getterScope);
-
-        const propertyScope = ObservableScope.Create(() =>
-          syncStore.Get("root", defaultValue),
-        );
-        ObservableScope.OnDestroyed(propertyScope, function () {
-          ObservableScope.Destroy(getterScope);
-        });
 
         scopeMap[propertyKey] = [propertyScope, undefined];
       }
@@ -172,7 +196,7 @@ function ComputedDecorator<
 /**
  * ComputedAsync decorator factory for creating asynchronous computed properties.
  * A computed property is derived from other properties and automatically updates when its dependencies change.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @ComputedAsync({ items: [] })
@@ -180,7 +204,7 @@ function ComputedDecorator<
  *     return { items: this.myStateValue };
  *   }
  * }
- * 
+ *
  * @param defaultValue The default value to be used if the computed property is not defined.
  * @returns A property decorator that can be applied to a getter method.
  * @throws Will throw an error if the property is not a getter or if it has a setter.
@@ -231,22 +255,11 @@ function ComputedAsyncDecorator<
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const getterScope = ObservableScope.Create(() => getter.call(this));
-        const asyncStore = new StoreAsync();
-
-        ObservableScope.Watch(getterScope, (scope) => {
-          asyncStore.Write(ObservableScope.Value(scope), "root");
-        });
-        ObservableScope.Init(getterScope);
-
-        const propertyScope = ObservableScope.Create(() =>
-          asyncStore.Get("root", defaultValue),
+        const propertyScope = CreateComputedScope(
+          getter.bind(this),
+          defaultValue,
+          new StoreAsync(),
         );
-        ObservableScope.OnDestroyed(propertyScope, function () {
-          ObservableScope.Destroy(getterScope);
-          asyncStore.Destroy();
-        });
-
         scopeMap[propertyKey] = [propertyScope, undefined];
       }
 
@@ -258,13 +271,13 @@ function ComputedAsyncDecorator<
 /**
  * State decorator factory for creating state properties.
  * A state property is a reactive value that can be read and written synchronously.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @State()
  *   myState: { count: number } = { count: 0 };
  * }
- * 
+ *
  * @returns A property decorator that can be applied to a property.
  * @remarks The State decorator creates an ObservableNode to store the value. Updates to the property automatically notify any watchers of dependent scopes, making it ideal for mutable complex data structures that need to trigger reactivity.
  */
@@ -303,13 +316,13 @@ function StateDecorator<T extends WeakKey, K extends string>(
 /**
  * Value decorator factory for creating value properties.
  * A value property is a reactive value that can be read and written synchronously.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @Value()
  *   myValue: string = "Hello";
  * }
- * 
+ *
  * @returns A property decorator that can be applied to a property.
  * @remarks The Value decorator lazily creates a scoped ObservableScope whose getter returns the stored value. The setter updates the stored value and invokes ObservableScope.Update on the scope, causing any dependent computed or scope decorators to re-evaluate.
  */
@@ -324,9 +337,13 @@ export function Value(): any {
  * @returns An observable scope created from the tuple's value.
  */
 function CreateValueScope(tuple: [unknown, any]) {
-  return ObservableScope.Create(function () {
-    return tuple[1];
-  });
+  return ObservableScope.Create(
+    function () {
+      return tuple[1];
+    },
+    false,
+    true,
+  );
 }
 
 /**
@@ -365,7 +382,7 @@ function ValueDecorator<T extends WeakKey, K extends string>(
 /**
  * Scope decorator factory for creating scope properties.
  * A scope property is a reactive value that can be read and written synchronously.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @Scope()
@@ -373,7 +390,7 @@ function ValueDecorator<T extends WeakKey, K extends string>(
  *     return this.myStateValue + "!";
  *   }
  * }
- * 
+ *
  * @returns A property decorator that can be applied to a getter method.
  * @throws Will throw an error if the property is not a getter or if it has a setter.
  */
@@ -418,49 +435,91 @@ function ScopeDecorator<T, K extends string>(
   } as PropertyDescriptor;
 }
 
+export function Watch<
+  S extends (instance: T) => any,
+  T extends Record<K, (value: ReturnType<S>) => any>,
+  K extends string,
+>(scope: S) {
+  return function (target: T, propertyKey: K, descriptor: PropertyDescriptor) {
+    return WatchDecorator<T, K>(target, propertyKey, descriptor, scope);
+  };
+}
+
+function WatchDecorator<T, K extends string>(
+  target: T,
+  propertyKey: K,
+  descriptor: PropertyDescriptor,
+  scopeFunction: (instance: any) => any,
+) {
+  if (!descriptor || typeof descriptor.value !== "function")
+    throw "Watch decorator requires a function";
+
+  function bindWatch(instance: T) {
+    function scopeFunctionWrapper() {
+      return scopeFunction(instance);
+    }
+
+    const scope = ObservableScope.Create(scopeFunctionWrapper, true);
+    const propertyMap = GetScopeMapForInstance(this);
+    propertyMap[propertyKey as string] = [scope, undefined];
+    ObservableScope.Watch(scope, function (scope) {
+      (instance as any)[propertyKey](ObservableScope.Value(scope));
+    });
+
+    (instance as any)[propertyKey](ObservableScope.Value(scope));
+    return instance;
+  }
+
+  const boundArray = GetBoundArrayForPrototype(target as WeakKey);
+  boundArray.push(bindWatch);
+}
+
+type ConstructorToken<I> =
+  | {
+      new (...args: any[]): I;
+    }
+  | (abstract new (...args: any[]) => I);
 
 /**
  * Inject decorator factory for creating dependency-injected properties.
  * An injected property is automatically provided by the framework's dependency injection system.
- * 
+ *
  * @example
  * class MyComponent extends Component {
  *   @Inject(Token)
  *   property: ServiceForToken;
  * }
- * 
+ *
  * // Setting the value in the class definition
  * class MyComponent extends Component {
  *   @Inject(Token)
  *   property: ServiceForToken = new ServiceForToken();
  * }
- * 
+ *
  * @param type The constructor type of the dependency to be injected.
  * @returns A property decorator that can be applied to a property.
  */
-export function Inject<I, T extends Component<any, any, any>>(type: {
-  new (...args: Array<any>): I;
-}) {
+export function Inject<
+  I,
+  T extends Record<K, I> & { Injector: Injector },
+  K extends string,
+>(type: ConstructorToken<I>) {
   return function () {
     return InjectDecorator<I, T>(type);
-  } as (
-    target: T,
-    propertyKey: string,
-    descriptor?: PropertyDescriptor,
-  ) => void;
+  } as (target: T, propertyKey: K, descriptor?: PropertyDescriptor) => void;
 }
 
-function InjectDecorator<I, T extends Component<any, any, any>>(type: {
-  new (): I;
-}): any {
+function InjectDecorator<I, T extends { Injector: Injector }>(
+  type: ConstructorToken<I>,
+): any {
   return {
     configurable: false,
     enumerable: true,
-    get: function () {
-      return (this as T).Injector.Get(type);
+    get: function (this: T) {
+      return this.Injector.Get(type);
     },
-    set: function (val: any) {
-      (this as T).Injector.Set(type, val);
+    set: function (this: T, val: any) {
+      this.Injector.Set(type, val);
     },
   };
 }
@@ -477,6 +536,16 @@ export function Destroy() {
   return DestroyDecorator;
 }
 
+export namespace Bound {
+  export function All<T extends WeakKey>(value: T) {
+    const array = GetBoundArrayForPrototype(
+      Object.getPrototypeOf(value),
+      false,
+    );
+    for (let x = 0; array && x < array.length; x++) array[x](value);
+  }
+}
+
 /**
  * Utility to destroy all observable scopes and invoke destroy on marked properties of an instance.
  * @param value The instance to clean up.
@@ -484,7 +553,7 @@ export function Destroy() {
  * Destroy.All(this);
  */
 export namespace Destroy {
-  export function All<T extends WeakKey, K>(value: T) {
+  export function All<T extends WeakKey>(value: T) {
     const scopeMap = scopeInstanceMap.get(value);
     if (scopeMap !== undefined) {
       const values = Object.values(scopeMap);
@@ -492,8 +561,12 @@ export namespace Destroy {
         ObservableScope.Destroy(values[x][0]);
     }
 
-    const array = GetDestroyArrayForPrototype(Object.getPrototypeOf(value));
-    for (let x = 0; x < array.length; x++) (value as any)[array[x]].Destroy();
+    const array = GetDestroyArrayForPrototype(
+      Object.getPrototypeOf(value),
+      false,
+    );
+    for (let x = 0; array && x < array.length; x++)
+      (value as any)[array[x]].Destroy();
   }
 }
 

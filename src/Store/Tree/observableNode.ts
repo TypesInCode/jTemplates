@@ -105,7 +105,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   const readOnly = alias !== undefined;
 
   function CreateArrayProxy(value: any[]) {
-    const scope = ObservableScope.Create(() => value);
+    const scope = ObservableScope.Create(() => value, false, true);
     const proxy = new Proxy(value, {
       get: ArrayProxyGetter,
       set: ArrayProxySetter,
@@ -275,10 +275,14 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function GetAccessorValue(parent: any, prop: any) {
     const leafScopes = leafScopeCache.get(parent);
 
-    leafScopes[prop] ??= ObservableScope.Create(function () {
-      const value = parent[prop];
-      return CreateProxyFromValue(value);
-    });
+    leafScopes[prop] ??= ObservableScope.Create(
+      function () {
+        const value = parent[prop];
+        return CreateProxyFromValue(value);
+      },
+      false,
+      true,
+    );
 
     return ObservableScope.Value(leafScopes[prop]);
   }
@@ -313,6 +317,10 @@ const DefaultCreateProxy = CreateProxyFactory();
 export namespace ObservableNode {
   export function BypassProxy(value: boolean) {
     bypassProxy = value;
+  }
+
+  export function Unwrap<T>(value: T): T {
+    return UnwrapProxy(value);
   }
 
   export function Create<T>(value: T): T {
