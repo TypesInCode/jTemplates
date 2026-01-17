@@ -101,6 +101,11 @@ function CreateStaticScope<T>(initialValue: T): IStaticObservableScope<T> {
 }
 
 let scopeQueue: IDynamicObservableScope<any>[] = [];
+
+/**
+ * Processes all queued scopes, recomputing dirty scopes and emitting changes.
+ * Executed as a microtask to batch updates efficiently.
+ */
 function ProcessScopeQueue() {
   const queue = scopeQueue;
   scopeQueue = [];
@@ -114,6 +119,11 @@ function ProcessScopeQueue() {
   }
 }
 
+/**
+ * Queues a scope for batched update processing.
+ * Schedules ProcessScopeQueue as a microtask if the queue was empty.
+ * @param scope The scope to queue for update.
+ */
 function OnSetQueued(scope: IDynamicObservableScope<any>) {
   if (scopeQueue.length === 0) queueMicrotask(ProcessScopeQueue);
 
@@ -140,6 +150,13 @@ function OnSet(scope: IObservableScope<any>) {
   return false;
 }
 
+/**
+ * Registers an emitter using SAME_STRATEGY.
+ * If the emitter is already registered at the current index, increments the index.
+ * Otherwise, switches to PUSH_STRATEGY and appends the emitter.
+ * @param state The current watch state.
+ * @param emitter The emitter to register.
+ */
 function RegisterSame(state: typeof watchState, emitter: Emitter) {
   if (
     state.emitterIndex < state.emitters.length &&
@@ -150,11 +167,34 @@ function RegisterSame(state: typeof watchState, emitter: Emitter) {
   }
 
   state.emitters = state.emitters.slice(0, state.emitterIndex);
-  state.emitters.push(emitter);
-  state.emitterIndex = -1;
-  state.strategy = PUSH_STRATEGY;
+  state.strategy = SORTED_STRATEGY;
+  RegisterSorted(state, emitter);
 }
 
+/**
+ * Registers an emitter while maintaining sorted order by emitter ID.
+ * If insertion would break sort order, falls back to PUSH_STRATEGY.
+ * @param state The current watch state.
+ * @param emitter The emitter to register.
+ */
+function RegisterSorted(state: typeof watchState, emitter: Emitter) {
+  if (
+    state.emitters.length === 0 ||
+    state.emitters[state.emitters.length - 1][0] < emitter[0]
+  )
+    state.emitters.push(emitter);
+  else {
+    state.strategy = PUSH_STRATEGY;
+    RegisterPush(state, emitter);
+  }
+}
+
+/**
+ * Registers an emitter using PUSH_STRATEGY.
+ * Switches to DISTINCT_STRATEGY when the emitter count exceeds 50 to optimize memory.
+ * @param state The current watch state.
+ * @param emitter The emitter to register.
+ */
 function RegisterPush(state: typeof watchState, emitter: Emitter) {
   state.emitters.push(emitter);
 
@@ -175,6 +215,12 @@ function RegisterPush(state: typeof watchState, emitter: Emitter) {
   }
 }
 
+/**
+ * Registers an emitter using DISTINCT_STRATEGY.
+ * Only adds emitters that haven't been registered yet, using an ID set for O(1) lookup.
+ * @param state The current watch state.
+ * @param emitter The emitter to register.
+ */
 function RegisterDistinct(state: typeof watchState, emitter: Emitter) {
   if (!state.emitterIds.has(emitter[0])) {
     state.emitters.push(emitter);
@@ -182,12 +228,20 @@ function RegisterDistinct(state: typeof watchState, emitter: Emitter) {
   }
 }
 
+/**
+ * Routes an emitter to the appropriate registration strategy based on current watch state.
+ * Does nothing if not within a watch context.
+ * @param emitter The emitter to register.
+ */
 function RegisterEmitter(emitter: Emitter) {
   if (watchState === null) return;
 
   switch (watchState.strategy) {
     case SAME_STRATEGY:
       RegisterSame(watchState, emitter);
+      break;
+    case SORTED_STRATEGY:
+      RegisterSorted(watchState, emitter);
       break;
     case PUSH_STRATEGY:
       RegisterPush(watchState, emitter);
@@ -222,13 +276,19 @@ function GetScopeValue<T>(scope: IObservableScope<T>): T {
   return scope.value as T;
 }
 
+/**
+ * Strategy constants for optimizing emitter registration during watch operations.
+ * Each strategy represents a different approach to tracking and deduplicating dependencies.
+ */
 const SAME_STRATEGY = 1;
 const PUSH_STRATEGY = 2;
-const DISTINCT_STRATEGY = 3;
-const SHRINK_STRATEGY = 4;
+const SORTED_STRATEGY = 3;
+const DISTINCT_STRATEGY = 4;
+const SHRINK_STRATEGY = 5;
 
 type WatchStrategy =
   | typeof SAME_STRATEGY
+  | typeof SORTED_STRATEGY
   | typeof PUSH_STRATEGY
   | typeof DISTINCT_STRATEGY
   | typeof SHRINK_STRATEGY;
@@ -245,6 +305,11 @@ let watchState: {
 
 const watchPool = List.Create<typeof watchState>();
 
+/**
+ * Creates a new watch state object, reusing from pool if available.
+ * Object pooling reduces GC pressure during frequent watch operations.
+ * @returns A new or recycled watch state object.
+ */
 function CreateWatchState() {
   return (
     List.Pop(watchPool) ?? {
@@ -259,6 +324,11 @@ function CreateWatchState() {
   );
 }
 
+/**
+ * Returns a watch state object to the pool for reuse.
+ * Resets all fields to their default values before pooling.
+ * @param state The watch state to return to the pool.
+ */
 function ReturnWatchState(state: typeof watchState) {
   state.emitterIndex = 0;
   state.value = null;
@@ -266,7 +336,7 @@ function ReturnWatchState(state: typeof watchState) {
   state.emitterIds = null;
   state.currentCalc = null;
   state.nextCalc = null;
-  state.strategy = PUSH_STRATEGY;
+  state.strategy = SORTED_STRATEGY;
 
   List.Push(watchPool, state);
 }
@@ -433,6 +503,7 @@ function UpdateEmitters(
       strategy === PUSH_STRATEGY
         ? Emitter.Distinct(right)
         : Emitter.Sort(right);
+    case SORTED_STRATEGY:
       if (scope.emitters === null || scope.emitters.length === 0) {
         for (let x = 0; x < right.length; x++)
           Emitter.On(right[x], scope.setCallback);
