@@ -300,44 +300,6 @@ let watchState: {
   strategy: WatchStrategy;
 } = null;
 
-const watchPool = List.Create<typeof watchState>();
-
-/**
- * Creates a new watch state object, reusing from pool if available.
- * Object pooling reduces GC pressure during frequent watch operations.
- * @returns A new or recycled watch state object.
- */
-function CreateWatchState() {
-  return (
-    List.Pop(watchPool) ?? {
-      emitterIndex: 0,
-      value: null,
-      emitters: null,
-      emitterIds: null,
-      currentCalc: null,
-      nextCalc: null,
-      strategy: PUSH_STRATEGY,
-    }
-  );
-}
-
-/**
- * Returns a watch state object to the pool for reuse.
- * Resets all fields to their default values before pooling.
- * @param state The watch state to return to the pool.
- */
-function ReturnWatchState(state: typeof watchState) {
-  state.emitterIndex = 0;
-  state.value = null;
-  state.emitters = null;
-  state.emitterIds = null;
-  state.currentCalc = null;
-  state.nextCalc = null;
-  state.strategy = SORTED_STRATEGY;
-
-  List.Push(watchPool, state);
-}
-
 /**
  * Executes a callback while tracking all scope and emitter dependencies.
  * Creates a watch context that records what was accessed during execution.
@@ -351,11 +313,15 @@ function WatchFunction(
   initialEmitters: Emitter[] | null,
 ) {
   const parent = watchState;
-  watchState = CreateWatchState();
-  watchState.emitters = initialEmitters ?? [];
-  watchState.currentCalc = currentCalc;
-  if (initialEmitters !== null) watchState.strategy = SAME_STRATEGY;
-
+  watchState = {
+    emitterIndex: 0,
+    value: null,
+    emitters: initialEmitters ?? [],
+    emitterIds: null,
+    currentCalc,
+    nextCalc: null,
+    strategy: initialEmitters === null ? SORTED_STRATEGY : SAME_STRATEGY,
+  };
   watchState.value = callback();
 
   const resultState = watchState;
@@ -399,8 +365,6 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
       Emitter.Emit(scope.emitter, scope);
     });
   else scope.value = state.value;
-
-  ReturnWatchState(state);
 }
 
 /**
@@ -432,12 +396,10 @@ function ExecuteFunction<T>(
         Emitter.Emit(scope.emitter, scope);
       });
 
-    ReturnWatchState(state);
     return scope;
   }
 
   const value = state.value;
-  ReturnWatchState(state);
   return CreateStaticScope(value);
 }
 
