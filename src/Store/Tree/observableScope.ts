@@ -73,15 +73,15 @@ function CreateDynamicScope<T>(
     dirty: false,
     destroyed: false,
     getFunction,
-    setCallback: function () {
-      return OnSet(scope);
-    },
+    setCallback: null,
     value,
     emitter: Emitter.Create(),
     emitters: null,
     onDestroyed: null,
     calcScopes: null,
   };
+
+  scope.setCallback = OnSet.bind(scope);
 
   return scope;
 }
@@ -135,19 +135,16 @@ function OnSetQueued(scope: IDynamicObservableScope<any>) {
  * @param scope The scope to mark for update.
  * @returns true if the scope is static or destroyed, false if queued or non-greedy scope emitted.
  */
-function OnSet(scope: IObservableScope<any>) {
-  if (scope.type === "static" || scope.destroyed) return true;
+function OnSet(this: IDynamicObservableScope<any>) {
+  if (this.dirty) return;
 
-  if (scope.dirty) return false;
-
-  scope.dirty = true;
-  if (scope.greedy) {
-    OnSetQueued(scope);
+  this.dirty = true;
+  if (this.greedy) {
+    OnSetQueued(this);
     return;
   }
 
-  Emitter.Emit(scope.emitter, scope);
-  return false;
+  Emitter.Emit(this.emitter, this);
 }
 
 /**
@@ -541,9 +538,9 @@ function DestroyAllScopes(scopes: IObservableScope<any>[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope || scope.type === "static") return;
 
-  Emitter.Clear(scope.emitter);
-  const scopes = scope.calcScopes && Object.values(scope.calcScopes);
-  scopes && DestroyAllScopes(scopes);
+  Emitter.Destroy(scope.emitter);
+  for (const key in scope.calcScopes) DestroyScope(scope.calcScopes[key]);
+
   scope.calcScopes = null;
 
   for (let x = 0; x < scope.emitters.length; x++)
@@ -669,9 +666,10 @@ export namespace ObservableScope {
    * @param scope The scope to mark for update.
    */
   export function Update(scope: IObservableScope<any>) {
-    if (!scope) return;
+    if (!scope || scope.type === "static") return;
 
-    OnSet(scope);
+    // OnSet(scope);
+    scope.setCallback();
   }
 
   /**

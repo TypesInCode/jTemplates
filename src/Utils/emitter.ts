@@ -2,7 +2,7 @@ import { InsertionSortTuples } from "./array";
 
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
-) => boolean | void;
+) => void;
 export type Emitter = [number, ...EmitterCallback[]];
 
 export namespace Emitter {
@@ -21,19 +21,26 @@ export namespace Emitter {
   }
 
   export function Emit(emitter: Emitter, ...args: any[]) {
+    if (emitter[0] === -1) return;
+
     let writePos = 1;
     for (let x = 1; x < emitter.length; x++) {
-      if (
-        emitter[x] !== null &&
-        (emitter[x] as EmitterCallback)(...args) !== true
-      )
+      if (emitter[x] !== null) {
+        (emitter[x] as EmitterCallback)(...args);
         emitter[writePos++] = emitter[x];
+      }
     }
 
     if (writePos < emitter.length) emitter.splice(writePos);
   }
 
+  export function Destroy(emitter: Emitter) {
+    emitter[0] = -1;
+  }
+
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
+    if (emitter[0] === -1) return;
+
     const index = emitter.indexOf(callback);
     if (index >= 1) emitter[index] = null;
   }
