@@ -1,7 +1,5 @@
-import { ReconcileSortedEmitters } from "../../Utils/array";
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
-import { List } from "../../Utils/list";
 
 /**
  * Represents a static (non-reactive) observable scope.
@@ -164,26 +162,8 @@ function RegisterSame(state: typeof watchState, emitter: Emitter) {
   }
 
   state.emitters = state.emitters.slice(0, state.emitterIndex);
-  state.strategy = SORTED_STRATEGY;
-  RegisterSorted(state, emitter);
-}
-
-/**
- * Registers an emitter while maintaining sorted order by emitter ID.
- * If insertion would break sort order, falls back to PUSH_STRATEGY.
- * @param state The current watch state.
- * @param emitter The emitter to register.
- */
-function RegisterSorted(state: typeof watchState, emitter: Emitter) {
-  if (
-    state.emitters.length === 0 ||
-    state.emitters[state.emitters.length - 1][0] < emitter[0]
-  )
-    state.emitters.push(emitter);
-  else {
-    state.strategy = PUSH_STRATEGY;
-    RegisterPush(state, emitter);
-  }
+  state.strategy = PUSH_STRATEGY;
+  RegisterPush(state, emitter);
 }
 
 /**
@@ -193,23 +173,11 @@ function RegisterSorted(state: typeof watchState, emitter: Emitter) {
  * @param emitter The emitter to register.
  */
 function RegisterPush(state: typeof watchState, emitter: Emitter) {
-  state.emitters.push(emitter);
-
-  if (state.emitters.length > 50) {
-    const idSet = (state.emitterIds = new Set([state.emitters[0][0]]));
-    let writePos = 0;
-    for (let x = 1; x < state.emitters.length; x++) {
-      if (!idSet.has(state.emitters[x][0])) {
-        state.emitters[++writePos] = state.emitters[x];
-        idSet.add(state.emitters[x][0]);
-      }
-    }
-
-    writePos++;
-    if (writePos < state.emitters.length) state.emitters.splice(writePos);
-
+  if (state.emitters.length > 10) {
     state.strategy = DISTINCT_STRATEGY;
-  }
+    state.emitterSet = new Set(state.emitters);
+    RegisterDistinct(state, emitter);
+  } else if (!state.emitters.includes(emitter)) state.emitters.push(emitter);
 }
 
 /**
@@ -219,9 +187,9 @@ function RegisterPush(state: typeof watchState, emitter: Emitter) {
  * @param emitter The emitter to register.
  */
 function RegisterDistinct(state: typeof watchState, emitter: Emitter) {
-  if (!state.emitterIds.has(emitter[0])) {
+  if (!state.emitterSet.has(emitter)) {
     state.emitters.push(emitter);
-    state.emitterIds.add(emitter[0]);
+    state.emitterSet.add(emitter);
   }
 }
 
@@ -236,9 +204,6 @@ function RegisterEmitter(emitter: Emitter) {
   switch (watchState.strategy) {
     case SAME_STRATEGY:
       RegisterSame(watchState, emitter);
-      break;
-    case SORTED_STRATEGY:
-      RegisterSorted(watchState, emitter);
       break;
     case PUSH_STRATEGY:
       RegisterPush(watchState, emitter);
@@ -279,13 +244,11 @@ function GetScopeValue<T>(scope: IObservableScope<T>): T {
  */
 const SAME_STRATEGY = 1;
 const PUSH_STRATEGY = 2;
-const SORTED_STRATEGY = 3;
-const DISTINCT_STRATEGY = 4;
-const SHRINK_STRATEGY = 5;
+const DISTINCT_STRATEGY = 3;
+const SHRINK_STRATEGY = 4;
 
 type WatchStrategy =
   | typeof SAME_STRATEGY
-  | typeof SORTED_STRATEGY
   | typeof PUSH_STRATEGY
   | typeof DISTINCT_STRATEGY
   | typeof SHRINK_STRATEGY;
@@ -294,7 +257,7 @@ let watchState: {
   value: any;
   emitterIndex: number;
   emitters: Emitter[];
-  emitterIds: Set<number> | null;
+  emitterSet: Set<Emitter> | null;
   currentCalc: { [id: string]: IObservableScope<unknown> | null } | null;
   nextCalc: { [id: string]: IObservableScope<unknown> } | null;
   strategy: WatchStrategy;
@@ -317,10 +280,10 @@ function WatchFunction(
     emitterIndex: 0,
     value: null,
     emitters: initialEmitters ?? [],
-    emitterIds: null,
+    emitterSet: null,
     currentCalc,
     nextCalc: null,
-    strategy: initialEmitters === null ? SORTED_STRATEGY : SAME_STRATEGY,
+    strategy: initialEmitters === null ? PUSH_STRATEGY : SAME_STRATEGY,
   };
   watchState.value = callback();
 
@@ -354,7 +317,7 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
     scope.emitters,
   );
 
-  UpdateEmitters(scope, state.emitters, state.strategy);
+  UpdateEmitters(scope, state);
 
   const calcScopes = state.currentCalc;
   scope.calcScopes = state.nextCalc;
@@ -389,7 +352,7 @@ function ExecuteFunction<T>(
       async ? null : state.value,
     );
     scope.calcScopes = state.nextCalc;
-    UpdateEmitters(scope, state.emitters, state.strategy);
+    UpdateEmitters(scope, state);
     if (async)
       state.value.then(function (result: any) {
         scope.value = result;
@@ -447,41 +410,47 @@ export function CalcScope<T>(callback: () => T, idOverride?: string): T {
  */
 function UpdateEmitters(
   scope: IDynamicObservableScope<unknown>,
-  right: Emitter[],
-  strategy: WatchStrategy,
+  state: typeof watchState,
 ) {
-  switch (strategy) {
+  if (scope.emitters === null) {
+    for (let x = 0; x < state.emitters.length; x++)
+      Emitter.On(state.emitters[x], scope.setCallback);
+
+    scope.emitters = state.emitters;
+    return;
+  }
+
+  switch (state.strategy) {
     case SHRINK_STRATEGY: {
-      for (let x = right.length; x < scope.emitters.length; x++)
+      for (let x = state.emitters.length; x < scope.emitters.length; x++)
         Emitter.Remove(scope.emitters[x], scope.setCallback);
 
       break;
     }
-    case PUSH_STRATEGY:
-    case DISTINCT_STRATEGY:
-      strategy === PUSH_STRATEGY
-        ? Emitter.Distinct(right)
-        : Emitter.Sort(right);
-    case SORTED_STRATEGY:
-      if (scope.emitters === null || scope.emitters.length === 0) {
-        for (let x = 0; x < right.length; x++)
-          Emitter.On(right[x], scope.setCallback);
-      } else {
-        ReconcileSortedEmitters(
-          scope.emitters as [number][],
-          right as [number][],
-          function (emitter) {
-            Emitter.On(emitter, scope.setCallback);
-          },
-          function (emitter) {
-            Emitter.Remove(emitter, scope.setCallback);
-          },
-        );
-      }
+    case PUSH_STRATEGY: {
+      for (let x = state.emitterIndex; x < scope.emitters.length; x++)
+        if (!state.emitters.includes(scope.emitters[x], state.emitterIndex))
+          Emitter.Remove(scope.emitters[x], scope.setCallback);
+
+      for (let x = state.emitterIndex; x < state.emitters.length; x++)
+        if (!scope.emitters.includes(state.emitters[x], state.emitterIndex))
+          Emitter.On(state.emitters[x], scope.setCallback);
+
       break;
+    }
+    case DISTINCT_STRATEGY: {
+      for (let x = state.emitterIndex; x < scope.emitters.length; x++)
+        if (!state.emitterSet.delete(scope.emitters[x]))
+          Emitter.Remove(scope.emitters[x], scope.setCallback);
+
+      for (let x = state.emitterIndex; x < state.emitters.length; x++)
+        if (state.emitterSet.has(state.emitters[x]))
+          Emitter.On(state.emitters[x], scope.setCallback);
+      break;
+    }
   }
 
-  scope.emitters = right;
+  scope.emitters = state.emitters;
 }
 
 /**
@@ -500,7 +469,7 @@ function DestroyAllScopes(scopes: IObservableScope<any>[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope || scope.type === "static") return;
 
-  Emitter.Destroy(scope.emitter);
+  // Emitter.Destroy(scope.emitter);
   for (const key in scope.calcScopes) DestroyScope(scope.calcScopes[key]);
 
   scope.calcScopes = null;
