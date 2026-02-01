@@ -1,5 +1,5 @@
 import { JsonDiff, JsonDiffResult } from "../../Utils/json";
-import { JsonType } from "../../Utils/jsonType";
+import { JsonType } from "../../Utils/json";
 import { IObservableScope, ObservableScope } from "./observableScope";
 
 /**
