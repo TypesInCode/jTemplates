@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "j-templates": "^7.0.70",
+    "j-templates": "^7.0.75",
     "sass-embedded": "^1.97.1",
     "vite": "^7.3.0"
   }
