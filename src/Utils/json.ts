@@ -1,10 +1,20 @@
+/**
+ * Result of a JSON diff operation, containing paths and values that changed.
+ * @template T - The type of the JSON value being diffed
+ */
 export type JsonDiffResult<T = unknown> = {
+  /** Array path segments (strings for object keys, numbers for array indices) */
   path: (string | number)[];
+  /** The new value at this path */
   value: unknown;
 }[];
 
 export type JsonDiffFactoryResult = ReturnType<typeof JsonDiffFactory>;
 
+/**
+ * Factory that creates JSON utility functions for diffing, merging, and cloning.
+ * @returns Object containing JsonDiff, JsonType, JsonDeepClone, and JsonMerge functions
+ */
 export function JsonDiffFactory() {
   const jsonProto = Object.getPrototypeOf({});
   const arrayProto = Object.getPrototypeOf([]);
@@ -12,6 +22,11 @@ export function JsonDiffFactory() {
   const numProto = Object.getPrototypeOf(0);
   const boolProto = Object.getPrototypeOf(false);
 
+  /**
+   * Determines the JSON type of a value.
+   * @param value - The value to check
+   * @returns "value" for primitives/null/undefined, "object" for plain objects, "array" for arrays
+   */
   function JsonType(value: any) {
     if (value === null || value === undefined) return "value";
 
@@ -31,6 +46,15 @@ export function JsonDiffFactory() {
     return "value";
   }
 
+  /**
+   * Deep merges a patch into a source value.
+   * - If types don't match, returns the patch
+   * - For objects: recursively merges properties, adds new properties
+   * - For arrays: maps over patch, merging with corresponding source elements
+   * @param source - The original value
+   * @param patch - The value to merge into source
+   * @returns The merged result
+   */
   function JsonMerge(source: unknown, patch: unknown) {
     if (patch === undefined) return JsonDeepClone(source);
 
@@ -53,8 +77,10 @@ export function JsonDiffFactory() {
         const typedSource = source as { [prop: string]: unknown };
         const typedPatch = patch as { [prop: string]: unknown };
         const sourceKeys = Object.keys(typedSource);
-        const targetKeys = Object.keys(typedPatch).filter(key => !sourceKeys.includes(key));
-        
+        const targetKeys = Object.keys(typedPatch).filter(
+          (key) => !sourceKeys.includes(key),
+        );
+
         const result = {} as { [prop: string]: unknown };
         for (let x = 0; x < sourceKeys.length; x++) {
           result[sourceKeys[x]] = JsonMerge(
@@ -74,15 +100,21 @@ export function JsonDiffFactory() {
     }
   }
 
+  /**
+   * Creates a deep clone of a JSON-compatible value.
+   * @template T - The type of the value to clone
+   * @param value - The value to clone
+   * @returns A deep clone of the value
+   */
   function JsonDeepClone<T>(value: T): T {
     const type = JsonType(value);
     switch (type) {
       case "array": {
         const typed = value as unknown[];
         const result = new Array(typed.length);
-        for(let x=0; x<typed.length; x++)
+        for (let x = 0; x < typed.length; x++)
           result[x] = JsonDeepClone(typed[x]);
-        
+
         return result as T;
       }
       case "object": {
@@ -98,6 +130,16 @@ export function JsonDiffFactory() {
     }
   }
 
+  /**
+   * Computes the differences between two JSON values.
+   * Returns an array of paths and values that changed from oldValue to newValue.
+   * @template T - The type of the JSON values being compared
+   * @param newValue - The new value
+   * @param oldValue - The old value to compare against
+   * @param rootPath - Optional dot-separated string for the base path (for internal recursion)
+   * @param initResult - Optional initial result array (for internal recursion)
+   * @returns Array of change records with path and new value
+   */
   function JsonDiff<T>(
     newValue: T,
     oldValue: T,
@@ -110,6 +152,15 @@ export function JsonDiffFactory() {
     return result;
   }
 
+  /**
+   * Recursive helper for JsonDiff that traverses and compares values.
+   * @internal
+   * @param path - Current path being evaluated
+   * @param newValue - New value at this path
+   * @param oldValue - Old value at this path
+   * @param resp - Result array to populate with changes
+   * @returns true if the entire subtree changed, false otherwise
+   */
   function JsonDiffRecursive(
     path: (string | number)[],
     newValue: any,
@@ -148,6 +199,15 @@ export function JsonDiffFactory() {
     return false;
   }
 
+  /**
+   * Compares two arrays and records differences.
+   * @internal
+   * @param path - Current path being evaluated
+   * @param newValue - New array
+   * @param oldValue - Old array to compare against
+   * @param resp - Result array to populate with changes
+   * @returns true if the entire array changed, false otherwise
+   */
   function JsonDiffArrays(
     path: (string | number)[],
     newValue: any[],
@@ -179,6 +239,16 @@ export function JsonDiffFactory() {
     return allChildrenChanged;
   }
 
+  /**
+   * Compares two objects and records differences.
+   * Uses sorted keys and two-pointer technique for efficient comparison.
+   * @internal
+   * @param path - Current path being evaluated
+   * @param newValue - New object
+   * @param oldValue - Old object to compare against
+   * @param resp - Result array to populate with changes
+   * @returns true if the entire object should be replaced (keys removed), false otherwise
+   */
   function JsonDiffObjects(
     path: (string | number)[],
     newValue: { [key: string]: any },

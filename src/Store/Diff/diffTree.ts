@@ -1,19 +1,52 @@
 import { JsonDiffFactoryResult, JsonDiffResult } from "../../Utils/json";
 
+/**
+ * Represents a method call for worker-based diff operations.
+ */
 export interface IDiffMethod {
+  /** The method to call */
   method: "create" | "diffpath" | "diffbatch" | "updatepath" | "getpath";
+  /** Arguments for the method call */
   arguments: Array<any>;
 }
 
+/**
+ * Interface for diff tree operations.
+ */
 export interface IDiffTree {
+  /**
+   * Computes diffs for a batch of path/value pairs.
+   * @param data - Array of objects with path and value properties
+   * @returns Combined diff results
+   */
   DiffBatch(data: Array<{ path: string; value: any }>): JsonDiffResult;
+  /**
+   * Computes the diff between a new value and the current value at a path.
+   * @param path - Dot-separated path to the value
+   * @param value - The new value to compare
+   * @returns Diff results showing changes
+   */
   DiffPath(path: string, value: any): JsonDiffResult;
 }
 
+/**
+ * Constructor interface for IDiffTree.
+ */
 export interface IDiffTreeConstructor {
+  /**
+   * Creates a new IDiffTree instance.
+   * @param keyFunc - Optional function to extract a key from a value
+   */
   new (keyFunc?: { (val: any): string }): IDiffTree;
 }
 
+/**
+ * Factory function that creates a DiffTree class.
+ * Can operate in worker mode for async operations.
+ * @param jsonDiffFactory - Optional factory for JSON diff utilities
+ * @param worker - If true, sets up worker message handling
+ * @returns DiffTree constructor
+ */
 export function DiffTreeFactory(
   jsonDiffFactory?: () => JsonDiffFactoryResult,
   worker?: boolean,
@@ -54,6 +87,13 @@ export function DiffTreeFactory(
     };
   }
 
+  /**
+   * Flattens nested objects/arrays, extracting keyed objects to root.
+   * @param root - Root object to store flattened values
+   * @param value - Value to flatten
+   * @param keyFunc - Function to extract key from objects
+   * @returns The root object with flattened values
+   */
   function FlattenValue(
     root: { [key: string]: unknown },
     value: unknown,
@@ -79,6 +119,12 @@ export function DiffTreeFactory(
     return root;
   }
 
+  /**
+   * Retrieves a value from a source object using a dot-separated path.
+   * @param source - The source object
+   * @param path - Dot-separated path to the value (empty string returns source)
+   * @returns The value at the specified path
+   */
   function GetPathValue(source: any, path: string) {
     if (path === "") return source;
 
@@ -89,6 +135,12 @@ export function DiffTreeFactory(
     return curr;
   }
 
+  /**
+   * Sets a value in a source object at the specified path.
+   * @param source - The source object
+   * @param path - Array of path segments (strings for keys, numbers for indices)
+   * @param value - The value to set
+   */
   function SetPathValue(
     source: any,
     path: (string | number)[],
@@ -103,6 +155,14 @@ export function DiffTreeFactory(
     curr[path[x]] = value;
   }
 
+  /**
+   * Resolves a path to its keyed root object if applicable.
+   * Searches up the path to find an object with a key from keyFunc.
+   * @param source - The source object
+   * @param path - Dot-separated path
+   * @param keyFunc - Function to extract key from objects
+   * @returns The resolved path (possibly shortened to root key)
+   */
   function ResolveKeyPath(
     source: any,
     path: string,
@@ -135,6 +195,15 @@ export function DiffTreeFactory(
     return path;
   }
 
+  /**
+   * Updates the source with a new value at the specified path and computes diffs.
+   * Also updates any keyed objects that were nested in the value.
+   * @param source - The source object to update
+   * @param path - Dot-separated path to update
+   * @param value - The new value
+   * @param keyFunc - Optional function to extract keys from objects
+   * @returns Diff results showing all changes made
+   */
   function UpdateSource(
     source: any,
     path: string,
@@ -176,11 +245,25 @@ export function DiffTreeFactory(
     return diffResult;
   }
 
+  /**
+   * Internal diff tree implementation.
+   * Maintains root state and computes diffs for path/value updates.
+   * @private
+   */
   class DiffTree implements IDiffTree {
     private rootState: {} = {};
 
+    /**
+     * Creates a DiffTree instance.
+     * @param keyFunc - Optional function to extract a key from objects
+     */
     constructor(private keyFunc?: { (val: any): string }) {}
 
+    /**
+     * Computes diffs for a batch of path/value pairs.
+     * @param data - Array of objects with path and value properties
+     * @returns Combined diff results
+     */
     public DiffBatch(data: Array<{ path: string; value: any }>) {
       const results = data
         .map(({ path, value }) => this.DiffPath(path, value))
@@ -188,10 +271,21 @@ export function DiffTreeFactory(
       return results;
     }
 
+    /**
+     * Computes the diff between a new value and the current value at a path.
+     * @param path - Dot-separated path to the value
+     * @param value - The new value to compare
+     * @returns Diff results showing changes
+     */
     public DiffPath(path: string, value: any) {
       return UpdateSource(this.rootState, path, value, this.keyFunc);
     }
 
+    /**
+     * Retrieves the current value at a path.
+     * @param path - Dot-separated path to the value
+     * @returns The value at the specified path
+     */
     public GetPath(path: string) {
       return GetPathValue(this.rootState, path);
     }
