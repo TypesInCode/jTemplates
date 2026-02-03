@@ -2,7 +2,7 @@ import { expect } from "chai";
 import "mocha";
 import { DiffTreeFactory } from "../../src/Store/Diff/diffTree";
 import { JsonDiffFactory } from "../../src/Utils/json";
-import { JsonType } from "../../src/Utils/jsonType";
+import { JsonType } from "../../src/Utils/json";
 
 const DiffTreeConstructor = DiffTreeFactory(JsonDiffFactory);
 
@@ -29,7 +29,9 @@ describe("Diff Tree Test", () => {
   });
   it("Default Flatten 02", () => {
     const tree = new DiffTreeConstructor(KeyFunc);
-    const result = tree.DiffPath("root", { data: { _id: "test", value: "test" } });
+    const result = tree.DiffPath("root", {
+      data: { _id: "test", value: "test" },
+    });
     expect(result.length).to.eq(2);
   });
   it("Flatten With Update", () => {

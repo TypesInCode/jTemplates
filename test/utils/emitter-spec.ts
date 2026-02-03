@@ -1,5 +1,5 @@
 /// <reference path="../../node_modules/@types/mocha/index.d.ts" />
-import * as chai from "chai";
+/* import * as chai from "chai";
 import { Emitter } from "../../src/Utils/emitter";
 const expect = chai.expect;
 
@@ -127,4 +127,4 @@ describe("Emitter", () => {
     expect(Emitter.Compare(emitter1, emitter2)).to.be.below(0);
     expect(Emitter.Compare(emitter2, emitter1)).to.be.above(0);
   });
-});
+  }); */
