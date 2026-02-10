@@ -34,3 +34,25 @@ Component.Attach(document.body, helloWorld({}));
 ```
 
 [More Examples](https://typesincode.github.io/jTemplates/)
+
+## Documentation
+
+Comprehensive documentation for j-templates framework patterns is available in the `docs/` directory:
+
+- **[Framework Patterns](docs/patterns/index.md)** - Complete guide to all core patterns
+  - [Component Architecture](docs/patterns/01-component-architecture.md)
+  - [Reactive State Management](docs/patterns/02-reactive-state-management.md)
+  - [Decorators](docs/patterns/03-decorators.md)
+  - [Dependency Injection](docs/patterns/04-dependency-injection.md)
+  - [Component Composition](docs/patterns/05-component-composition.md)
+  - [Animation System](docs/patterns/06-animation-system.md)
+  - [Template System](docs/patterns/07-template-system.md)
+  - [Data Modeling](docs/patterns/08-data-modeling.md)
+
+See the Real-Time Dashboard example for practical demonstrations of all patterns:
+
+```bash
+cd examples/real_time_dashboard
+npm install
+npm run dev
+```
