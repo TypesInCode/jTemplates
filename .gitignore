@@ -62,3 +62,6 @@ typings/
 # npm build output
 lib/
 
+**/dist/*
+
+.npmrc
