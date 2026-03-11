@@ -24,6 +24,9 @@ export const aside = vNode.ToFunction("aside");
 export const p = vNode.ToFunction("p");
 export const label = vNode.ToFunction("label");
 export const pre = vNode.ToFunction("pre");
+export const ul = vNode.ToFunction("ul");
+export const ol = vNode.ToFunction("ol");
+export const li = vNode.ToFunction("li");
 
 const textElement = vNode.ToFunction("text");
 export const text = function (callback: () => string) {
