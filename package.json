@@ -1,6 +1,6 @@
 {
   "name": "j-templates",
-  "version": "7.0.75",
+  "version": "7.0.79",
   "description": "j-templates",
   "license": "MIT",
   "repository": "https://github.com/TypesInCode/jTemplates",
@@ -22,6 +22,7 @@
     "testcoverage": "nyc mocha --require ts-node/register --required source-map-support/register --recursive test/**/*-spec.ts"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "^1.1.1",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.2.0",
