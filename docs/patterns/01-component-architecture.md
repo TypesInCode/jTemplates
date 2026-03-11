@@ -48,7 +48,7 @@ Base class for all j-templates components.
 
 ### Function: Component.ToFunction()
 
-Converts a Component class to a function for composition.
+Converts a Component class to a function for composition. This is the primary way to create reusable component factory functions that can be used in templates or composed with other components.
 
 **Signature:**
 ```typescript
@@ -65,6 +65,9 @@ static ToFunction<D, T, E, P = HTMLElement>(
 - `namespace`: Optional namespace for custom elements
 
 **Returns:** Factory function that creates vNodes
+
+**Usage Examples:**
+See [Component Composition](./05-component-composition.md#component-to-function) for detailed usage examples and advanced patterns.
 
 ### Function: Component.Register()
 

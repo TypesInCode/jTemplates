@@ -86,8 +86,6 @@ interface IDestroyable {
 }
 ```
 
-**Purpose:** Used with `@Destroy` decorator for automatic resource cleanup.
-
 ## Usage Examples
 
 ### Basic Dependency Injection
@@ -214,9 +212,9 @@ class App extends Component {
 Dependency Injection integrates with:
 
 - **@Inject decorator**: Declarative injection syntax
-- **@Destroy decorator**: Automatic cleanup of injected services
 - **Component Architecture**: Each component has its own Injector
 - **IDestroyable**: Interface for cleanup-aware services
+- **@Destroy decorator**: For automatic cleanup, see Decorators section
 
 ## Best Practices
 

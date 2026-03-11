@@ -27,6 +27,8 @@ Decorators in j-templates provide a declarative way to add reactive behavior, de
 - **@Bound**: Internal decorator for lifecycle binding (framework use only)
 - **IDestroyable interface**: Cleanup pattern for resource management
 
+**Note:** For detailed cleanup patterns and examples, see the [@Destroy decorator documentation in the Decorators section](./03-decorators.md#decorator-destruct) and the [Dependency Injection section](./04-dependency-injection.md#decorator-destruct) for cleanup of injected services.
+
 ## API Reference
 
 ### Decorator: @Computed

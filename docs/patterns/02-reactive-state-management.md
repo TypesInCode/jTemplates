@@ -11,7 +11,7 @@ Reactive State Management is the core mechanism that enables j-templates applica
 Reactive scopes track dependencies and automatically recompute when dependencies change.
 
 - **ObservableScope**: Creates reactive computation scopes that cache results and update when dependencies change
-- **calc()**: Acts as a gatekeeper that only emits when the calculated value actually changes (=== comparison), blocking unnecessary updates from propagating to dependencies
+- **calc()**: Optional optimization that prevents emissions when parent scope changes but derived value doesn't (uses === check)
 
 ### Observable Nodes
 
@@ -180,19 +180,21 @@ get ActivityData() {
 
 ### Array Change Detection
 
-Using `calc()` for proper array change detection in templates:
+Arrays are reactive by default through `@State` and ObservableNode proxies. `calc()` is optional, used for optimization (batching, primitive gating):
 
 ```typescript
 import { calc } from "j-templates";
 
-// Wrap array data in calc() for proper change detection
-tbody({ data: () => calc(() => this.Data.data) }, (data) =>
+// Without calc() - arrays work fine (reactive via @State)
+tbody({ data: () => this.Data.data }, (data) =>
   tr({}, (item) => td({}, () => item.name))
 );
 
-// calc() memoizes the array reference
-// When the array is modified (push, pop, etc.), calc() detects the change
-// and triggers re-render of the tbody
+// With calc() - optional optimization for batching
+// Only use when parent scope changes but array reference stays same
+tbody({ data: () => calc(() => this.Data.data) }, (data) =>
+  tr({}, (item) => td({}, () => item.name))
+);
 ```
 
 ### Complex Derived State
@@ -356,7 +358,7 @@ Reactive State Management integrates with:
 - **Component Architecture**: `Component.Scope` and `Component.Data` use ObservableScope
 - **Decorators**: `@Computed` and `@Value` use ObservableScope internally
 - **Template System**: Reactive bindings track ObservableScope dependencies
-- **calc()**: Used in templates for array change detection
+- **calc()**: Optional optimization in templates for batching and primitive gating
 - **StoreSync**: Used by services for data management
 
 ## Best Practices
@@ -364,7 +366,7 @@ Reactive State Management integrates with:
 - **Use StoreSync for shared data**: Enables object sharing and efficient updates
 - **Define key functions**: Use key functions to enable object identity and sharing
 - **Compute derived state**: Use ObservableScope for derived state instead of manual caching
-- **Use calc() for arrays**: Wrap array data in `calc()` for proper change detection in templates
+- **Use calc() selectively**: Only when parent scope changes but child derived value doesn't - not required for array reactivity
 - **Clean up scopes**: Destroy scopes in `Destroy()` to prevent memory leaks
 - **Use ObservableNode.Unwrap() carefully**: Only when you need raw values without dependencies
 - **Use Peek for non-reactive reads**: When you need a value without creating dependencies

@@ -10,7 +10,7 @@ The Template System in j-templates provides reactive DOM rendering using virtual
 - **Reactive bindings**: Arrow functions in data props enable automatic reactivity
 - **vNode tree**: Tree structure representing the DOM hierarchy
 - **Template functions**: Functions that render children based on parent data
-- **calc()**: Function for tracking array changes in reactive contexts
+- **calc()**: Optional optimization that prevents emissions when parent scope changes but derived value doesn't
 
 ## API Reference
 
@@ -33,13 +33,17 @@ function element(
 
 ### Function: calc()
 
-Reactive calculation wrapper for array tracking.
+Optional optimization wrapper for derived values.
 
 ```typescript
-calc<T>(fn: () => T): T
+calc<T>(fn: () => T, idOverride?: string): T
 ```
 
-**Purpose:** Ensures proper change detection for array data in reactive contexts.
+**Purpose:** 
+- Prevents emissions when parent scope changes but value doesn't (uses === check)
+- Reuses scopes by ID within single parent evaluation
+
+**Note:** NOT required for array reactivity - `@State` arrays work without it. Use only for primitive derived state or when parent scope aggregates multiple values.
 
 ### Type: vNodeConfig
 
@@ -207,7 +211,7 @@ Template System integrates with:
 
 - **Keep Template pure**: Only return vNodes, no side effects
 - **Use arrow functions for reactivity**: `data: () => this.state`
-- **Use calc() for arrays**: Ensures proper change detection
+- **Use calc() selectively**: Only when parent changes but derived value doesn't - not required for array reactivity
 - **Leverage reactive bindings**: Use functions for dynamic props
 - **Compose components**: Build complex UIs from simple components
 

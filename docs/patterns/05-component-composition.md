@@ -213,24 +213,6 @@ public Fire<P extends keyof E>(event: P, data?: E[P]): void
 
 ### Function: Component.ToFunction()
 
-Converts a Component class to a function for composition.
-
-**Signature:**
-```typescript
-static ToFunction<D, T, E, P = HTMLElement>(
-  type: string,
-  constructor: typeof Component<D, T, E>,
-  namespace?: string
-): (config: vComponentConfig<D, E, P>, templates?: T) => vNodeType
-```
-
-**Parameters:**
-- `type`: String identifier for the component (used for debugging)
-- `constructor`: Component class to convert
-- `namespace`: Optional namespace for custom elements
-
-**Returns:** Factory function that creates vNodes
-
 ### Function: Component.Register()
 
 Registers a Component class as a Web Component.
