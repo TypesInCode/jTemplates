@@ -14,19 +14,34 @@ export type vNodeChildrenFunction<T> =
   | ((data: T) => vNode | vNode[])
   | ((data: T) => string);
 
-export type vNode = {
+export type vStringNode = {
+  type: "string";
+  node: string;
+};
+
+export type vElementNode = {
   type: string;
   definition: vNodeDefinition<any, any, any>;
   injector: Injector;
   node: Node | null;
   children:
-    | [any, vNode[], IObservableScope<string | vNode | vNode[]> | null][]
+    | (readonly [
+        any,
+        vNode[],
+        IObservableScope<string | vNode | vNode[]> | null,
+      ])[]
     | null;
   destroyed: boolean;
   onDestroyed: Emitter | null;
   scopes: IObservableScope<unknown>[];
   component: Component;
 };
+
+export type vNode = vStringNode | vElementNode;
+
+export function isStringNode(vnode: vNode): vnode is vStringNode {
+  return vnode.type === "string";
+}
 
 export type vNodeDefinition<
   P = HTMLElement,
