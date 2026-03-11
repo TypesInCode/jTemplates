@@ -1,6 +1,11 @@
 import { Bound, Destroy } from "../Utils/decorators";
 import { ComponentEvents } from "./component.types";
-import { FunctionOr, vNode as vNodeType, vNodeDefinition } from "./vNode.types";
+import {
+  FunctionOr,
+  vNode as vNodeType,
+  vNodeDefinition,
+  vElementNode,
+} from "./vNode.types";
 import { RecursivePartial } from "../Utils/utils.types";
 import { vNode } from "./vNode";
 import { IObservableScope } from "../Store/Tree/observableScope";
@@ -62,7 +67,7 @@ export class Component<D = void, T = void, E = {}> {
   }
 
   constructor(
-    private vNode: vNodeType,
+    private vNode: vElementNode,
     config: vComponentConfig<D, E>,
     templates: T,
   ) {
@@ -138,8 +143,8 @@ export namespace Component {
     return function (
       config: vComponentConfig<D, E, P>,
       templates?: T,
-    ): vNodeType {
-      function ComponentFactory(vnode: vNodeType) {
+    ): vElementNode {
+      function ComponentFactory(vnode: vElementNode) {
         return new constructor(vnode, config, templates);
       }
 
