@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial 3: Reactive State Basics</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+    }
+    .container {
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+    .section {
+      margin-bottom: 40px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid #eee;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h2 {
+      color: #667eea;
+      margin-top: 0;
+    }
+    .section h3 {
+      color: #555;
+      margin-top: 20px;
+    }
+    /* Counter styles */
+    .counter {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .counter h2 {
+      margin: 0 0 20px 0;
+      color: white;
+    }
+    .counter .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    /* Profile styles */
+    .profile {
+      padding: 20px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border-radius: 8px;
+    }
+    .profile h2 {
+      margin: 0 0 20px 0;
+      color: white;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .preview {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+    }
+    .preview h3 {
+      margin: 0 0 10px 0;
+      color: white;
+    }
+    .preview span {
+      display: block;
+      margin-bottom: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
+    .description {
+      margin-bottom: 15px;
+      color: #666;
+    }
+    .code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 0.9em;
+      color: #d63384;
+    }
+    .notes {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border-left: 3px solid #667eea;
+    }
+    .notes h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 1em;
+    }
+    .notes div {
+      margin-bottom: 5px;
+    }
+    .bullet {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .decision-guide {
+      margin-top: 20px;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    .table-header,
+    .table-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 2fr;
+      gap: 10px;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .table-header {
+      background: #667eea;
+      color: white;
+      font-weight: bold;
+      border-radius: 4px 4px 0 0;
+    }
+    .table-row:nth-child(even) {
+      background: #f8f9fa;
+    }
+    .table-row:hover {
+      background: #e9ecef;
+    }
+    .intro div {
+      margin-bottom: 10px;
+    }
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.2);
+    }
+    .message.warning {
+      background: rgba(255,193,7,0.3);
+      color: #ffc107;
+    }
+    .message.negative {
+      background: rgba(220,53,69,0.3);
+      color: #dc3545;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .actions button {
+      flex: 1;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.3);
+    }
+    .status.success {
+      background: rgba(40,167,69,0.3);
+    }
+    .status.error {
+      background: rgba(220,53,69,0.3);
+    }
+    .status.info {
+      background: rgba(102,126,234,0.3);
+    }
+    input.error {
+      border: 2px solid #dc3545 !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tutorial 3: Reactive State Basics</h1>
+  
+  <div id="app"></div>
+  
+  <script type="module" src="/src/app.ts"></script>
+</body>
+</html>

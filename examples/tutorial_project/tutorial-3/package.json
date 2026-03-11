@@ -1,0 +1,18 @@
+{
+  "name": "tutorial-3",
+  "version": "1.0.0",
+  "description": "Tutorial 3: Reactive State Basics with j-templates",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "j-templates": "^7.0.75"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^7.0.0"
+  }
+}

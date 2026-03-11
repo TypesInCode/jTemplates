@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial 5: Decorators Deep Dive</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+    }
+    .container {
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+    .section {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    .section h2 {
+      color: #667eea;
+      margin-top: 0;
+    }
+    /* Shopping cart styles */
+    .shopping-cart {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+    }
+    .shopping-cart h2 {
+      margin: 0 0 20px 0;
+      color: white;
+    }
+    .cart-items {
+      background: white;
+      color: #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .cart-item:last-child {
+      border-bottom: none;
+    }
+    .item-name {
+      font-weight: bold;
+      flex: 1;
+    }
+    .item-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .item-controls button {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: #667eea;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .item-controls button:hover {
+      background: #5568d3;
+    }
+    .item-quantity {
+      font-weight: bold;
+      min-width: 30px;
+      text-align: center;
+    }
+    .item-price {
+      min-width: 80px;
+      text-align: right;
+      color: #666;
+    }
+    .cart-summary {
+      background: white;
+      color: #333;
+      border-radius: 8px;
+      padding: 15px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .summary-row:last-child {
+      border-bottom: none;
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #667eea;
+    }
+    .summary-row.discount {
+      color: #28a745;
+    }
+    .add-item-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+    .add-item-section select {
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+    .add-item-section button {
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .add-item-section button:hover {
+      background: #218838;
+    }
+    .discount-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+    }
+    .discount-section input {
+      width: 60px;
+      padding: 5px;
+      border: none;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .log-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+      color: #00ff00;
+    }
+    button.remove-btn {
+      background: #dc3545 !important;
+    }
+    button.remove-btn:hover {
+      background: #c82333 !important;
+    }
+    .empty-cart {
+      text-align: center;
+      color: #999;
+      padding: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tutorial 5: Decorators Deep Dive</h1>
+  
+  <div id="app"></div>
+  
+  <script type="module" src="/src/app.ts"></script>
+</body>
+</html>
