@@ -49,6 +49,19 @@ function wrapPriorityUpdates<P extends any[]>(callback: (...args: P) => void) {
   };
 }
 
+function getHTMLNode(from: HTMLElement | string, current?: HTMLElement | null) {
+  if (typeof from === "string") {
+    if (current?.nodeType === Node.TEXT_NODE) {
+      DOMNodeConfig.setText(current, from);
+      return current;
+    }
+
+    return DOMNodeConfig.createTextNode(from);
+  }
+
+  return from;
+}
+
 export const DOMNodeConfig: INodeConfig = {
   createNode(type: string, namespace?: string): Node {
     if (type === "text") return wndw.document.createTextNode("");
@@ -136,9 +149,12 @@ export const DOMNodeConfig: INodeConfig = {
   replaceChildren(target: HTMLElement, children: HTMLElement[]) {
     target.replaceChildren(...children);
   },
-  reconcileChildren(target: HTMLElement, children: HTMLElement[]) {
+  reconcileChildren(target: HTMLElement, children: (HTMLElement | string)[]) {
     if (!target.firstChild) {
-      for (let x = 0; x < children.length; x++) target.appendChild(children[x]);
+      for (let x = 0; x < children.length; x++) {
+        const child = getHTMLNode(children[x]);
+        target.appendChild(child);
+      }
 
       return;
     }
@@ -152,7 +168,8 @@ export const DOMNodeConfig: INodeConfig = {
     let x = 0;
     let removed = false;
     for (; actualNode && x < children.length; x++) {
-      const expectedNode = children[x];
+      const child = children[x];
+      let expectedNode = getHTMLNode(child, actualNode as HTMLElement);
 
       if (!removed && actualNode !== expectedNode) {
         const remove = actualNode;
@@ -172,13 +189,17 @@ export const DOMNodeConfig: INodeConfig = {
     while (target.lastChild !== children[x - 1])
       target.removeChild(target.lastChild);
 
-    for (; x < children.length; x++) target.appendChild(children[x]);
+    for (; x < children.length; x++) {
+      const child = getHTMLNode(children[x]);
+      target.appendChild(child);
+    }
   },
-  reconcileChild(target: HTMLElement, child: HTMLElement) {
-    if (target.firstChild === child) return;
+  reconcileChild(target: HTMLElement, child: HTMLElement | string) {
+    const newChild = getHTMLNode(child, target.firstChild as HTMLElement);
+    if (target.firstChild === newChild) return;
 
-    target.appendChild(child);
-    while (target.firstChild !== child)
+    target.appendChild(newChild);
+    while (target.firstChild !== newChild)
       target.removeChild(target.firstChild);
   },
 };
