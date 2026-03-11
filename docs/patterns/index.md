@@ -67,7 +67,7 @@ Reactive DOM rendering using virtual nodes and DOM element functions. Templates 
 **Key Topics:**
 - DOM element functions (div, span, h1, etc.)
 - Reactive bindings with arrow functions
-- calc() for array change detection
+- calc() for emit gating (optional - arrays work without it)
 - Component composition in templates
 
 ### 8. [Data Modeling](./08-data-modeling.md)
