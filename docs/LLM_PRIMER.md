@@ -89,6 +89,9 @@ class MyComponent extends Component<D, T, E> {
 // Convert to reusable function
 export const myComponent = Component.ToFunction("my-component", MyComponent);
 
+// With optional namespace for SVG components
+export const svgCircle = Component.ToFunction("circle", SvgCircleComponent, "http://www.w3.org/2000/svg");
+
 // Attach to DOM
 Component.Attach(document.body, myComponent({}));
 
@@ -117,6 +120,9 @@ class MyComponent extends Component<D, T, E> {
 
   // Access underlying virtual node
   protected get VNode(): vElementNode { }
+
+  // Access component's scope for advanced reactivity
+  protected get Scope(): ObservableScope { }
 
   // Check if component is destroyed
   public get Destroyed(): boolean { }
@@ -147,13 +153,10 @@ class MyComponent extends Component {
     return this.count * 2;
   }
   
-  // Derived state - when generating new objects
-  @Computed({
-    completedCount: 0,
-    lastCompletedTime: ""
-  })
+  // Derived state - when generating new objects (no default param)
+  @Computed()
   get completedReport() {
-    const items = this.items.filter(i => i.completed);
+    const items = this.Data.items.filter(i => i.completed);
     items.sort((a, b) => a.completedTime < b.completedTime ? 1 : -1);
     
     return {
@@ -175,6 +178,12 @@ class MyComponent extends Component {
   // Auto-cleanup on destroy
   @Destroy()
   timer: Timer = new Timer();
+  
+  // Synchronous computed with async-like caching behavior
+  @ComputedAsync(null)
+  get userData(): User | null {
+    return fetchUserData(this.Data.userId);  // Synchronous getter
+  }
 }
 ```
 
@@ -186,37 +195,90 @@ class MyComponent extends Component {
 | null, undefined | `@Value` | Simple scope |
 | { nested: objects } | `@State` | Deep reactivity |
 | arrays (User[]) | `@State` | Array mutations |
-| getters (expensive) | `@Computed` | Caching + object reuse |
-| getters (cheap) | `@Scope` | Caching only |
+| getters (expensive, no default param) | `@Computed()` | Cached; same ref on update (via ApplyDiff) |
+| getters (cheap) | `@Scope` | Cached; new ref on dependency change |
+| sync getters (StoreAsync backend) | `@ComputedAsync(default)` | Synchronous getter, StoreAsync caching |
+| async functions in @Scope | `@Scope() { return calc(async () => ...) }` | Component async with memoization |
+| async functions (services) | `ObservableScope.Create(async)` | Direct async, new ref, initial null |
+| simple getters | none | Read `this.Data` - reactive without decorator |
 | watch changes | `@Watch` | Callback on change |
 | dependency | `@Inject` | DI from injector |
 | cleanup | `@Destroy` | Auto .Destroy() |
 
-### @Computed vs @Scope (both cache)
+**Simple Getters:**
+```typescript
+// Reactive without decorator - reads this.Data
+get count(): number {
+  return this.Data.items.length;
+}
 
-| Aspect | @Computed | @Scope |
-|--------|-----------|--------|
-| Object identity | ✅ Same reference | ❌ New reference |
-| Overhead | Store + diff | Single scope |
-| Best for | Creating new objects | Returning existing objects |
+// Use @Scope() when you want caching for expensive ops
+@Scope()
+get filtered(): Item[] {
+  return this.Data.items.filter(i => i.active).sort(...);
+}
+```
 
-**Object Reuse:** `@Computed` preserves object identity via `ObservableNode.ApplyDiff`. Critical for NEW objects needing stable identity for DOM reuse.
+### @Computed vs @Scope vs @ComputedAsync (all cache)
 
-**Context: Decorators vs ObservableScope**
+| Aspect | @Computed() | @Scope() | @ComputedAsync(default) |
+|--------|-------------|----------|-------------------------|
+| Object identity | ✅ Same | ❌ New | ✅ Same |
+| Backend | StoreSync | Single scope | StoreAsync |
+| Default param | No | N/A | Required |
+| Best for | Complex objects | Primitives/cheap | Sync + StoreAsync |
+
+**Object Reuse:** `@Computed()` and `@ComputedAsync()` preserve object identity via `ObservableNode.ApplyDiff`. Critical for NEW objects needing stable identity for DOM reuse.
+
+### Async Patterns
+
+**1. Direct async in services:**
+```typescript
+private dataScope = ObservableScope.Create(async () => {
+  return await fetch('/api/data');
+});
+
+get data(): Data | null {
+  return ObservableScope.Value(this.dataScope);  // null while loading
+}
+```
+
+**2. Component async with calc():**
+```typescript
+@Scope()
+get CurrentUser() {
+  return calc(async () => fetchUser(`/api/user/${this.userId}`));
+}
+```
+
+**3. @ComputedAsync for sync with StoreAsync:**
+```typescript
+@ComputedAsync(null)
+get userData(): User | null {
+  return getUserSync(this.Data.userId);  // Must be synchronous
+}
+```
+
+**Async behavior (all patterns):**
+- Async functions detected via `Symbol.toStringTag === "AsyncFunction"`
+- Automatically sets `greedy: true` (batched updates)
+- Initial value: `null` or Promise depending on pattern
+- New reference on each update (no object reuse)
+
+**Component vs Service Patterns:**
 ```typescript
 // Components: Use decorators
 class MyComponent extends Component {
-  @Computed([]) get transformed() { return this.items.map(/* ... */); }
-  @Scope() get filtered() { return this.items.filter(/* ... */); }
+  @Computed() get transformed() { return this.Data.items.map(...); }  // New objects
+  @Scope() get filtered() { return this.Data.items.filter(...); }     // Existing refs
 }
 
 // Services: Use ObservableScope.Create()
 class DataService implements IDestroyable {
   private derived = ObservableScope.Create(() => {
     const data = this.store.Get<Data[]>("data", []);
-    return ObservableNode.Unwrap(data).filter(/* ... */);
+    return ObservableNode.Unwrap(data).filter(...);
   });
-  
   get DerivedData() { return ObservableScope.Value(this.derived); }
 }
 ```
@@ -224,23 +286,6 @@ class DataService implements IDestroyable {
 **Framework Behavior:**
 - Array container identity = micro-optimization (framework handles efficiently)
 - Object identity inside arrays = critical (framework uses this to match DOM elements)
-
-**Component Examples:**
-```typescript
-// ✅ @Computed - Creating NEW objects
-@Computed([])
-get transformedItems() {
-  return this.items.map(i => ({ id: i.id, displayName: `Item: ${i.name}` }));
-}
-
-// ✅ @Scope - Returning EXISTING objects
-@Scope()
-get filteredItems() { return this.items.filter(i => i.active); }
-
-// ✅ @Scope - Primitives
-@Scope()
-get itemCount() { return this.items.length; }
-```
 
 ---
 
@@ -354,6 +399,81 @@ div({ data: () => this.items }, (item) =>
 ---
 
 ## Component Composition
+
+### Data Props for Parent-to-Child Communication
+
+**Data props = parent provides read-only vs @Value() = component internal state:**
+
+```typescript
+// Parent passes data prop
+chatInput({
+  data: () => ({ isSending: this.chatService.isSending }),
+  on: { send: handleSend }
+});
+
+// Child receives via this.Data - read-only from parent
+class ChatInput extends Component<{ isSending: boolean }, {}, ChatInputEvents> {
+  Template() {
+    return button({
+      props: () => ({
+        disabled: this.Data.isSending,  // Access via this.Data
+        className: this.Data.isSending ? "sending" : ""
+      })
+    }, () => this.Data.isSending ? "Sending..." : "Send");
+  }
+}
+
+// vs @Value() for component-internal state
+@Value() localText: string = "";  // Component manages itself
+```
+
+**Key points:**
+- **Data props = parent provides, child reads only**
+- **@Value() = component internal state**
+- **Access via `this.Data` in child component**
+- **Use data props for read-only parent state**
+- **Use @Value() for component-internal mutable state**
+
+### Accessing DOM Elements
+
+```typescript
+class ScrollableComponent extends Component {
+  Template() {
+    return div({ props: { className: "scroll-container" } }, () => [...]);
+  }
+  
+  Bound() {
+    super.Bound();
+    // Access rendered DOM via VNode
+    const container = this.VNode.node as HTMLElement;
+    // container.firstChild, container.scrollHeight, etc.
+  }
+  
+  private scrollToBottom(): void {
+    const container = this.VNode.node as HTMLElement;
+    const scrollElement = container?.firstChild as HTMLElement;
+    if (scrollElement) {
+      scrollElement.scrollTop = scrollElement.scrollHeight;
+    }
+  }
+}
+
+// Alternative: use ref callback (stores in component property)
+div({
+  props: {
+    ref: (el: any) => this.elementRef = el as HTMLElement | null
+  }
+});
+
+// Bound() lifecycle - DOM is attached, safe to access
+```
+
+**Key points:**
+- **`this.VNode.node`** = access to rendered element
+- **`firstChild`** often contains the actual DOM node
+- **ref callback** = store reference in component property
+- **Cast to `HTMLElement`** for type safety
+- **`Bound()` lifecycle** = DOM is attached, safe to access
 
 ### ToFunction Pattern
 
@@ -493,7 +613,41 @@ class ChatComponent extends Component {
 }
 ```
 
-**Benefits:** Decouples components from implementations, enables mocking in tests.
+**TypeScript Requirements:**
+- **@Destroy() requires IDestroyable interface** - TypeScript enforces this
+- **Abstract service classes implement IDestroyable**
+
+```typescript
+// Abstract interface with IDestroyable
+abstract class IService implements IDestroyable {
+  abstract Destroy(): void;
+}
+
+class ChildComponent extends Component {
+  // TypeScript requires IService to implement IDestroyable
+  @Destroy()
+  @Inject(IService)
+  service!: IService;
+}
+
+class ServiceImpl implements IService {
+  Destroy(): void {
+    // Cleanup resources
+  }
+}
+
+class ParentComponent extends Component {
+  @Destroy()
+  @Inject(IService)
+  service = new ServiceImpl();  // Parent can use @Destroy() too
+}
+```
+
+**Key points:**
+- **@Destroy() requires IDestroyable** interface
+- **Abstract service classes implement IDestroyable**
+- **Parent can use @Destroy()** for auto-cleanup
+- **Child uses @Inject()** to receive service
 
 **Injector API:**
 ```typescript
@@ -507,21 +661,41 @@ class Injector {
 
 ## Reactive Data Patterns
 
-### calc() - Optional Optimization
+### Reactive Getters vs Decorators
+
+**Simple getters reading this.Data are reactive without decorators:**
+
+```typescript
+class MyComponent extends Component<{ items: Item[] }> {
+  // No decorator needed - reactive because it reads this.Data
+  get itemCount(): number {
+    return this.Data.items.length;
+  }
+  
+  get firstItem(): Item | undefined {
+    return this.Data.items[0];
+  }
+}
+```
+
+**When to use:**
+- **Simple getter** - Trivial operations (length, direct property access)
+- **@Scope()** - Expensive computations you want cached
+- **@Computed()** - Creating new objects that need identity preservation
+
+### calc() - Computed Scope Optimization
 
 ```typescript
 import { calc } from "j-templates";
 
-// NOT required for array reactivity (@State works fine)
-// Use only when parent scope changes but derived value doesn't
-
-// Optimization: batch updates when parent changes frequently
+// Optimization: batch updates when parent scope changes frequently
+// but derived value doesn't actually change
 tbody({ data: () => calc(() => this.Data.data) }, (item) =>
   tr({}, () => div({}, () => item.name))
 );
 ```
 
-**When to use:** Parent scope aggregates multiple values, or derived primitive unchanged despite parent changes.
+**For async patterns, see: [Async Patterns](#async-patterns)**
 
 ### ObservableScope (Advanced)
 
@@ -535,7 +709,7 @@ import { ObservableScope, StoreAsync } from "j-templates/Store";
 class DataService implements IDestroyable {
   private store = new StoreAsync((value) => value.id);
   
-  // Derived state computation
+  // Sync derived state computation
   private derivedData = ObservableScope.Create(() => {
     const items = this.store.Get<Item[]>("items", []);
     return ObservableNode.Unwrap(items)
@@ -556,6 +730,7 @@ class DataService implements IDestroyable {
   
   Destroy(): void {
     this.store.Destroy();
+    ObservableScope.Destroy(this.derivedData);
   }
 }
 ```
@@ -571,16 +746,20 @@ ObservableScope.Watch(this.counter, (scope) => { });
 ObservableScope.Destroy(this.counter);
 ```
 
+**For async operations, see: [Async Patterns](#async-patterns)**
+
 ### StoreSync - Shared Data
 
 ```typescript
 import { StoreSync } from "j-templates/Store";
 
-// Create store with key function for object sharing
-private store = new StoreSync((value) => value.id);
+// Create store with key function for object sharing (optional but recommended)
+private store = new StoreSync((value: Item) => value.id);
 
-// Write data
-this.store.Write(user, "user-1");
+// Write data - requires key (either explicit or from keyFunc)
+this.store.Write(user, "user-1");  // Explicit key
+// OR if keyFunc provided:
+this.store.Write(user);  // Uses keyFunc to derive key
 
 // Patch
 this.store.Patch("user-1", { name: "Updated" });
@@ -591,6 +770,8 @@ this.store.Push("users", user1, user2);
 
 // Get data (returns read-only observable node)
 const users = this.store.Get<User[]>("users", []);
+
+// Note: Throws error if no key provided and no keyFunc defined
 ```
 
 ### StoreAsync - Async Data
@@ -598,71 +779,108 @@ const users = this.store.Get<User[]>("users", []);
 ```typescript
 import { StoreAsync } from "j-templates/Store";
 
-// With key function for object sharing (recommended)
-private store = new StoreAsync((value) => value.id);
+// Key function is required if not providing explicit keys
+private store = new StoreAsync((value: Item) => value.id);
 
-// Same API as StoreSync
-this.store.Write(data, "data");
-this.store.Push("data", newItem1, newItem2);
-const data = this.store.Get("data", defaultValue);
+// Write requires a key - either explicit or derived from keyFunc
+await this.store.Write({ id: "1", name: "Test" }); // Uses keyFunc
+await this.store.Write({ id: "1", name: "Test" }, "my-key"); // Explicit key overrides keyFunc
+
+// Separate keys for different data states
+await this.store.Write(initialData, "messages");
+await this.store.Write(streamingData, "pending-messages");
+
+// Get returns observable node - cast with generics
+const messages = this.store.Get<Message[]>("messages", []);
+const pending = this.store.Get<Message[]>("pending-messages", []);
+
+// Splice - remove items and get deleted items
+const removed = await this.store.Splice("messages", 0, 1); // Returns Promise<Message[]>
+
+// Note: Throws error if no key provided and keyFunc undefined
 ```
+
+**Key points:**
+- **keyFunc is for aliasing**, not primary key storage
+- **Explicit keys override keyFunc** when provided
+- **Separate keys for separate states** (messages vs pending-messages)
+- **Always await StoreAsync methods** - they return Promise\<void\>
+- **Get() returns observable node** - cast with `Get<Type[]>("key", [])`
+- **Requires a key** - either explicit parameter or keyFunc must derive it
+- **Splice() returns deleted items** - `Promise<T[]>` containing removed elements
 
 **When to use:** Async data loading, background operations, workers. Combine with `ObservableScope.Create()` for derived state.
 
 ### Complete Service Pattern
 
 ```typescript
-// types.ts - Service interface
-export abstract class ActivityDataService {
-  abstract GetActivityData(): ActivityRow[];
-  abstract GetReport(): Report;
+// types.ts - Abstract interface with IDestroyable
+export abstract class IChatService implements IDestroyable {
+  abstract readonly messages: Message[];
+  abstract isSending: boolean;
+  abstract sendMessage(content: string): Promise<void>;
+  abstract Destroy(): void;
 }
 
-// dataService.ts - Implementation
-export class DataService extends ActivityDataService implements IDestroyable {
-  private store = new StoreAsync((value) => value.id);
+// dataService.ts - Concrete implementation
+export class ChatService implements IChatService {
+  private store = new StoreAsync();
+  private _isSending: boolean = false;
   
-  // Reactive derived computations
-  private activityData = ObservableScope.Create(() => {
-    const activities = this.store.Get<Activity[]>("activities", []);
-    return ObservableNode.Unwrap(activities).sort(/* ... */);
-  });
-  
-  private report = ObservableScope.Create(() => {
-    const data = ObservableScope.Value(this.activityData);
-    return computeReport(data);
-  });
-  
-  // Reactive getters
-  get ActivityData() { return ObservableScope.Value(this.activityData); }
-  get Report() { return ObservableScope.Value(this.report); }
-  
-  // Interface implementation
-  GetActivityData(): ActivityRow[] { return this.ActivityData; }
-  GetReport(): Report { return this.Report; }
-  
-  // Mutations
-  RefreshData() {
-    const newActivities = generateActivities();
-    this.store.Push("activities", ...newActivities);
-    // All scopes auto-recompute
+  // Read-only property from store
+  get messages(): Message[] {
+    return this.store.Get<Message[]>("messages", []);
   }
   
-  // Cleanup
-  Destroy(): void { this.store.Destroy(); }
+  // Read-write property with backing field
+  get isSending(): boolean {
+    return this._isSending;
+  }
+  
+  set isSending(value: boolean) {
+    this._isSending = value;
+  }
+  
+  // Async operations with StoreAsync
+  async sendMessage(content: string): Promise<void> {
+    this._isSending = true;
+    try {
+      const newMessage: Message = { id: Date.now().toString(), content };
+      await this.store.Write(newMessage, "messages"); // Separate key for messages
+      // Process message...
+    } finally {
+      this._isSending = false;
+    }
+  }
+  
+  Destroy(): void {
+    this.store.Destroy();
+  }
 }
 
-// app.ts - Usage with DI
-class App extends Component {
+// Usage with DI
+class ChatApp extends Component {
   @Destroy()
-  @Inject(ActivityDataService)
-  dataService = new DataService();
+  @Inject(IChatService)
+  chatService = new ChatService(); // Inline creation in root component
   
   Template() {
-    return div({}, () => this.dataService.GetReport().totalActivities);
+    return div({}, () => [
+      div({ data: () => this.chatService.messages }, (msg) =>
+        div({}, () => msg.content)
+      )
+    ]);
   }
 }
 ```
+
+**Key points:**
+- **Abstract interface defines contract** for DI
+- **Implement IDestroyable** with `Destroy()` method
+- **Private backing fields** for primitive state (`_isSending`)
+- **StoreAsync for complex data** (arrays, objects)
+- **Inline service creation** in root component
+- **Async methods** for all StoreAsync operations
 
 ---
 
@@ -679,10 +897,40 @@ class App extends Component {
 8. Destroy() called - scopes destroyed, @Destroy cleanup (calls Destroy.All(this))
 ```
 
+**Lifecycle Emphasis:**
+- **Bound()** - DOM is attached, safe to access via `this.VNode.node`
+- **Destroy()** - Cleanup resources, stop timers, close connections
+- **Order matters** - Always call `super.Bound()` and `super.Destroy()`
+
+**Async Initialization Pattern:**
+```typescript
+@State() data: Data[] = [];
+@Value() isLoading = false;
+
+Bound() {
+  super.Bound();
+  this.LoadData();  // Safe to access DOM here
+}
+
+async LoadData() {
+  this.isLoading = true;
+  try {
+    const result = await fetchData();
+    await this.store.Write(result, "data");
+  } finally {
+    this.isLoading = false;
+  }
+}
+```
+
 **Lifecycle Methods:**
 ```typescript
-class MyComponent extends Component {
-  constructor(vNode: vElementNode, config: any, templates: any) {
+class MyComponent<D, T, E> extends Component<D, T, E> {
+  constructor(
+    vNode: vElementNode, 
+    config: vComponentConfig<D, E>, 
+    templates: T
+  ) {
     super(vNode, config, templates);
     // Component construction
   }
@@ -715,8 +963,11 @@ class MyComponent extends Component {
 | Raw data store | Service | `StoreAsync`/`StoreSync` | Messages, users |
 | Derived (shared) | Service | `ObservableScope.Create()` | Counts, aggregates |
 | Derived (local) | Component | `@Scope()` | Filtered list |
+| Derived (sync, object reuse) | Component | `@Computed()` | Transformed items |
 | Primitives (local) | Component | `@Value()` | Input text, hover |
 | Complex (local) | Component | `@State()` | Form data object |
+| Async (component) | Component | `@Scope() + calc(async)` | User data fetch |
+| Async (service) | Service | `ObservableScope.Create(async)` | API responses |
 | External resources | Service | `IDestroyable` | WebSocket, timers |
 
 **Templates:**
@@ -741,6 +992,22 @@ class MyComponent extends Component {
 - Access data via `this.Data.prop` or getters for reactivity
 - Don't access `@State`/`@Value` fields directly in templates
 - Use getters to wrap `this.Data` for scoped updates
+
+**Async vs Sync Patterns:**
+
+| Pattern | Use Case | Location |
+|---------|----------|----------|
+| `StoreSync` | Synchronous operations, simple state | Services |
+| `StoreAsync` | Async operations, complex diffs | Services |
+| `ObservableScope.Create()` | Derived state in services | Services |
+| `@Scope()` | Cheap derived state in components | Components |
+| `@Computed()` | Object identity preservation in components | Components |
+
+**StoreSync vs StoreAsync vs ObservableScope.Create():**
+- **StoreSync** - Simple synchronous state, no async operations needed
+- **StoreAsync** - Async data loading, requires `await` on all operations
+- **ObservableScope.Create()** - Derived state computation in services
+- **@Scope()/@Computed()** - Component-specific derived state
 
 ---
 
@@ -936,7 +1203,7 @@ class TodoService {
 ```typescript
 @Value() count: number = 0;  // Scope created when first accessed
 @State() items: Item[] = []; // ObservableNode created when first accessed
-@Scope() /* or */ @Computed([]) get filtered() {} // Scopes created when first accessed
+@Scope() /* or */ @Computed() get filtered() {} // Scopes created when first accessed
 ```
 
 ---
@@ -1264,14 +1531,14 @@ Destroy() {
 }
 ```
 
-### ❌ Don't Use @Computed for Cheap Operations
+### ❌ Don't Use @Computed() for Cheap Operations
 
 ```typescript
 @Value() firstName = "";
 @Value() lastName = "";
 
 // WRONG - Overkill
-@Computed("")
+@Computed()
 get fullName() {
   return this.firstName + " " + this.lastName; // Cheap operation
 }
@@ -1309,7 +1576,7 @@ export const myComponent = Component.ToFunction("my-component", MyComponent);
 ```typescript
 // WRONG - Decorators don't work outside Component classes
 class DataService {
-  @Computed([]) get Report() { }  // Won't work!
+  @Computed() get Report() { }  // Won't work!
 }
 
 // CORRECT - Use ObservableScope.Create() in services
@@ -1334,6 +1601,81 @@ class SocketService implements IDestroyable {
   connect() { this.socket = new WebSocket("..."); }
   Destroy(): void { this.socket?.close(); }
 }
+```
+
+### ❌ StoreAsync.Write Signature Confusion
+
+```typescript
+// WRONG - StoreAsync.Write expects (data, optional_key)
+await store.Write(message, message.id); // Wrong if keyFunc provided
+
+// CORRECT - Separate keys for different data states
+await store.Write(messages, "messages");
+await store.Write(pending, "pending-messages");
+```
+
+### ❌ Using @Scope() for Simple Property Access
+
+```typescript
+// WRONG - Overkill
+@Scope()
+get count(): number { return this.Data.items.length; }
+
+// CORRECT - Simple getter is reactive too
+get count(): number { return this.Data.items.length; }
+```
+
+### ❌ Missing TypeScript Generics on Get()
+
+```typescript
+// WRONG - Type is unknown
+const data = this.store.Get("key");
+
+// CORRECT - Cast to expected type
+const data = this.store.Get<Type[]>("key", []);
+```
+
+### ❌ Not Awaiting StoreAsync Operations
+
+```typescript
+// WRONG - Missing await
+this.store.Write(data, "key");
+
+// CORRECT - Always await StoreAsync methods
+await this.store.Write(data, "key");
+```
+
+### ❌ Missing IDestroyable on @Destroy() Services
+
+```typescript
+// WRONG - TypeScript requires IDestroyable
+abstract class IService {
+  // Missing Destroy() method
+}
+
+class ChildComponent extends Component {
+  @Destroy()
+  @Inject(IService)
+  service!: IService;  // TypeScript error
+}
+
+// CORRECT - Implement IDestroyable
+abstract class IService implements IDestroyable {
+  abstract Destroy(): void;
+}
+```
+
+### ❌ Using @Value() or @State() for Services
+
+```typescript
+// WRONG - Services aren't primitives
+@Value() service = new Service();
+@State() service = new Service();
+
+// CORRECT - Use @Inject() with @Destroy()
+@Destroy()
+@Inject(IService)
+service!: IService;
 ```
 
 ---
@@ -1560,13 +1902,13 @@ class Table<D> extends Component<{ data: D[] }, RowTemplate<D>> {
 
 | Scenario | Use | Reason |
 |----------|-----|--------|
-| Transform objects (.map create new) | `@Computed` | New objects need identity preservation |
-| Aggregations (report objects) | `@Computed` | Complex object should maintain reference |
-| Filter only (.filter existing refs) | `@Scope` | Objects already have identity |
-| Sort existing objects | `@Scope` | Object references unchanged |
-| String concatenation | `@Scope` | Cheap, identity doesn't matter |
-| Math on primitives | `@Scope` | Minimal overhead needed |
-| Boolean logic | `@Scope` | Simple derived value |
+| Transform objects (.map create new) | `@Computed()` | New objects need identity preservation |
+| Aggregations (report objects) | `@Computed()` | Complex object should maintain reference |
+| Filter only (.filter existing refs) | `@Scope()` | Objects already have identity |
+| Sort existing objects | `@Scope()` | Object references unchanged |
+| String concatenation | `@Scope()` | Cheap, identity doesn't matter |
+| Math on primitives | `@Scope()` | Minimal overhead needed |
+| Boolean logic | `@Scope()` | Simple derived value |
 
 ### Lazy Loading Components
 
@@ -1625,7 +1967,7 @@ Template() {
 ```typescript
 import { Component, calc } from "j-templates";
 import { div, button, input } from "j-templates/DOM";
-import { Value, State, Computed, Scope, Watch, Inject, Destroy } from "j-templates/Utils";
+import { Value, State, Computed, ComputedAsync, Scope, Watch, Inject, Destroy } from "j-templates/Utils";
 import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
 import { Animation, AnimationType, IDestroyable } from "j-templates/Utils";
 ```
@@ -1686,10 +2028,63 @@ class App extends Component {
 
 ### StoreSync/Async Operations
 ```
-Write(value, key)   → Set value for key
-Push(key, ...items) → Add items to array
-Patch(key, updates) → Partial update on object
-Get(key, default)   → Read value (observable node)
+Write(value, optional_key) → Set value (keyFunc used if key omitted)
+Push(key, ...items)        → Add items to array
+Patch(key, updates)        → Partial update on object
+Get<Type>(key, default)    → Read value (observable node) - cast with generics
 ```
+
+### Service Pattern (Complete)
+```typescript
+// Abstract interface
+export abstract class IMyService implements IDestroyable {
+  abstract readonly data: DataType[];
+  abstract DoWork(): Promise<void>;
+  abstract Destroy(): void;
+}
+
+// Concrete implementation
+export class MyService implements IMyService {
+  private store = new StoreAsync();
+  private _isLoading = false;
+  
+  get data(): DataType[] {
+    return this.store.Get<DataType[]>("data", []);
+  }
+  
+  get isLoading(): boolean { return this._isLoading; }
+  set isLoading(v: boolean) { this._isLoading = v; }
+  
+  async DoWork(): Promise<void> {
+    this._isLoading = true;
+    try {
+      const result = await fetchData();
+      await this.store.Write(result, "data");
+    } finally {
+      this._isLoading = false;
+    }
+  }
+  
+  Destroy(): void {
+    this.store.Destroy();
+  }
+}
+
+// Usage
+class App extends Component {
+  @Destroy()
+  @Inject(IMyService)
+  service = new MyService();
+}
+```
+
+### Key API Clarifications
+- **`keyFunc` in constructor** = for aliasing, not primary key storage
+- **`Write(data, optional_key)`** = explicit key overrides keyFunc
+- **Separate keys** = use for different states (messages vs pending-messages)
+- **`Get<Type[]>()`** = always use generics to cast observable node
+- **`await` StoreAsync** = all Write/Push/Patch methods are async
+- **Simple getters** = reactive without decorators when reading `this.Data`
+- **`@Destroy()` + `@Inject()`** = requires IDestroyable interface
 
 ---
