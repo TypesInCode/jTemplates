@@ -99,6 +99,32 @@ Component.Attach(document.body, myComponent({}));
 Component.Register("my-component", MyComponent);
 ```
 
+**Custom Element Host:** `Component.ToFunction()` creates a custom element wrapper:
+
+```html
+<my-component>              ← Host element (styled via element selector)
+  <div class="container">   ← Template root (styled via class selector)
+    <!-- content -->
+  </div>
+</my-component>
+```
+
+```css
+/* Host element */
+my-component {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Template root */
+.container {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+}
+```
+
 ### Generic Parameters
 
 - `D`: Data type from parent via `data: () => ({ ... })`. Access via `this.Data`
@@ -118,7 +144,7 @@ class MyComponent extends Component<D, T, E> {
   // Access component's injector
   protected get Injector(): Injector { }
 
-  // Access underlying virtual node
+  // Access underlying virtual node (custom element host, not template root)
   protected get VNode(): vElementNode { }
 
   // Access component's scope for advanced reactivity
@@ -328,7 +354,15 @@ Template() {
     childComponent({ data: () => ({ id: 1 }) }),
     
     // Reactive text node
-    text(() => `Count: ${this.count}`)
+    text(() => `Count: ${this.count}`),
+    
+    // Raw HTML (use innerHTML prop, not { __html: })
+    div({ props: { innerHTML: "<strong>Bold</strong>" } }),
+    
+    // Mixed text + elements (use text() or sibling elements)
+    span({}, () => "Click "),
+    button({}, () => "here"),
+    span({}, () => " to continue")
   ]);
 }
 ```
@@ -345,6 +379,11 @@ interface NodeConfig<P = HTMLElement, E = HTMLElementEventMap, T = never> {
 ```
 
 **Functions are reactive:** When referenced scope values change, vNode re-renders.
+
+**Text and HTML:**
+- **`text(() => "...")`**: Reactive text nodes (required for mixing text with elements in arrays)
+- **`innerHTML` prop**: Insert raw HTML (`div({ props: { innerHTML: html } })`)
+- **Arrays**: Cannot mix plain strings with vNodes—use `text()` or sibling elements
 
 ### data: () => Binding Behavior
 
@@ -444,36 +483,19 @@ class ScrollableComponent extends Component {
   
   Bound() {
     super.Bound();
-    // Access rendered DOM via VNode
-    const container = this.VNode.node as HTMLElement;
-    // container.firstChild, container.scrollHeight, etc.
-  }
-  
-  private scrollToBottom(): void {
-    const container = this.VNode.node as HTMLElement;
-    const scrollElement = container?.firstChild as HTMLElement;
-    if (scrollElement) {
-      scrollElement.scrollTop = scrollElement.scrollHeight;
-    }
+    // Host element is ready, query for template children
+    const host = this.VNode.node as HTMLElement;
+    const scrollEl = host.querySelector('.scroll-container');
+    scrollEl?.scrollTo(0, scrollEl.scrollHeight);
   }
 }
 
-// Alternative: use ref callback (stores in component property)
-div({
-  props: {
-    ref: (el: any) => this.elementRef = el as HTMLElement | null
-  }
-});
-
-// Bound() lifecycle - DOM is attached, safe to access
 ```
 
 **Key points:**
-- **`this.VNode.node`** = access to rendered element
-- **`firstChild`** often contains the actual DOM node
-- **ref callback** = store reference in component property
-- **Cast to `HTMLElement`** for type safety
-- **`Bound()` lifecycle** = DOM is attached, safe to access
+- **`this.VNode.node`** = custom element host (not template root)
+- **Query children**: `this.VNode.node.querySelector('.className')`
+- **Timing**: Safe in `Bound()` but children may need `requestAnimationFrame()`
 
 ### ToFunction Pattern
 
@@ -552,6 +574,34 @@ button({
 });
 ```
 
+**Note:** Component events don't bubble through DOM—only via j-templates `on:` system.
+
+---
+
+## Layout Patterns
+
+### Scrollable Flex Container
+
+**Problem:** Content overflows without scrollbar in flex layouts.
+
+**Solution:** Add `min-height: 0` to nested flex children:
+
+```css
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;          /* Critical for scroll */
+  overflow-y: auto;
+}
+```
+
+**Why:** Flex items default to `min-height: auto`, preventing shrinkage below content size.
+
 ---
 
 ## Dependency Injection
@@ -610,36 +660,6 @@ class ChatComponent extends Component {
   @Destroy()
   @Inject(SocketService)
   socketService!: SocketService;
-}
-```
-
-**TypeScript Requirements:**
-- **@Destroy() requires IDestroyable interface** - TypeScript enforces this
-- **Abstract service classes implement IDestroyable**
-
-```typescript
-// Abstract interface with IDestroyable
-abstract class IService implements IDestroyable {
-  abstract Destroy(): void;
-}
-
-class ChildComponent extends Component {
-  // TypeScript requires IService to implement IDestroyable
-  @Destroy()
-  @Inject(IService)
-  service!: IService;
-}
-
-class ServiceImpl implements IService {
-  Destroy(): void {
-    // Cleanup resources
-  }
-}
-
-class ParentComponent extends Component {
-  @Destroy()
-  @Inject(IService)
-  service = new ServiceImpl();  // Parent can use @Destroy() too
 }
 ```
 
@@ -825,7 +845,7 @@ export abstract class IChatService implements IDestroyable {
 // dataService.ts - Concrete implementation
 export class ChatService implements IChatService {
   private store = new StoreAsync();
-  private _isSending: boolean = false;
+  private state = ObservableNode.Create({ isSending: false });
   
   // Read-only property from store
   get messages(): Message[] {
@@ -834,22 +854,18 @@ export class ChatService implements IChatService {
   
   // Read-write property with backing field
   get isSending(): boolean {
-    return this._isSending;
-  }
-  
-  set isSending(value: boolean) {
-    this._isSending = value;
+    return this.state.isSending;
   }
   
   // Async operations with StoreAsync
   async sendMessage(content: string): Promise<void> {
-    this._isSending = true;
+    this.state.isSending = true;
     try {
       const newMessage: Message = { id: Date.now().toString(), content };
       await this.store.Write(newMessage, "messages"); // Separate key for messages
       // Process message...
     } finally {
-      this._isSending = false;
+      this.state.isSending = false;
     }
   }
   
@@ -887,18 +903,18 @@ class ChatApp extends Component {
 ## Lifecycle
 
 ```
-1. Component.Attach() called
-2. vNode.Init() called
-3. Component constructor runs
-4. Bound() called - @Watch decorators initialized (calls Bound.All(this))
-5. Template rendered, attached to DOM
+1. Component.Attach() called        └─ DOM: Not attached
+2. vNode.Init() called              └─ DOM: Not attached
+3. Component constructor runs       └─ DOM: Not attached
+4. Bound() called                   └─ DOM: Attached ✓ | Children: May not be ready ⚠️
+5. Template rendered, attached      └─ DOM: Fully rendered ✓
 6. ... user interacts, reactivity updates ...
-7. Component.Destroy() called
-8. Destroy() called - scopes destroyed, @Destroy cleanup (calls Destroy.All(this))
+7. Component.Destroy() called       └─ DOM: About to be removed
+8. Destroy() called                 └─ Cleanup: Scopes, @Destroy properties
 ```
 
 **Lifecycle Emphasis:**
-- **Bound()** - DOM is attached, safe to access via `this.VNode.node`
+- **Bound()** - DOM attached, `@Watch` initialized. Query children with `requestAnimationFrame()` if needed
 - **Destroy()** - Cleanup resources, stop timers, close connections
 - **Order matters** - Always call `super.Bound()` and `super.Destroy()`
 
@@ -1603,11 +1619,52 @@ class SocketService implements IDestroyable {
 }
 ```
 
+### ❌ Raw HTML: Wrong Pattern from React
+
+```typescript
+// WRONG - { __html: } is React, not j-templates
+div({}, () => [{ __html: "<strong>Bold</strong>" }])
+
+// CORRECT - Use innerHTML prop
+div({ props: { innerHTML: "<strong>Bold</strong>" } })
+```
+
+### ❌ Mixing Text and Elements in Arrays
+
+```typescript
+// WRONG - Plain strings aren't vNodes
+div({}, () => ["Click ", button({}, () => "here"), " to continue"])
+
+// CORRECT - Use text() or sibling elements
+div({}, () => [
+  text(() => "Click "),
+  button({}, () => "here"),
+  text(() => " to continue")
+])
+```
+
+### ❌ Scroll Not Working in Flex Layout
+
+```css
+/* WRONG - Missing min-height: 0 */
+.content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* CORRECT - Add min-height: 0 */
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+```
+
 ### ❌ StoreAsync.Write Signature Confusion
 
 ```typescript
-// WRONG - StoreAsync.Write expects (data, optional_key)
-await store.Write(message, message.id); // Wrong if keyFunc provided
+// WRONG - keyFunc handles key derivation
+await store.Write(message, message.id); // Redundant if keyFunc provided
 
 // CORRECT - Separate keys for different data states
 await store.Write(messages, "messages");
@@ -1709,13 +1766,15 @@ Template() {
 
 ### Common Symptoms
 
-| Symptom | Likely Cause |
-|---------|--------------|
-| Initial render works, updates don't | Direct array mutation |
-| Template never re-renders | `data:` not a function |
-| Getter value stale | Not using `this.Data` in getter |
-| @Watch never fires | Missing `super.Bound()` |
-| Memory leak | Missing `super.Destroy()` or `@Destroy` |
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| Initial render works, updates don't | Direct array mutation | Replace array, don't mutate |
+| Template never re-renders | `data:` not a function | Use `data: () => this.state` |
+| Getter value stale | Not using `this.Data` | Read from `this.Data` in getter |
+| @Watch never fires | Missing `super.Bound()` | Call in `Bound()` method |
+| Memory leak | Missing cleanup | Use `@Destroy()` + `super.Destroy()` |
+| No scrollbar | Missing `min-height: 0` | Add to flex children |
+| Scroll not working | Querying host element | Query `.className` not host |
 
 ---
 
@@ -2081,10 +2140,58 @@ class App extends Component {
 ### Key API Clarifications
 - **`keyFunc` in constructor** = for aliasing, not primary key storage
 - **`Write(data, optional_key)`** = explicit key overrides keyFunc
-- **Separate keys** = use for different states (messages vs pending-messages)
+- **`Separate keys`** = use for different states (messages vs pending-messages)
 - **`Get<Type[]>()`** = always use generics to cast observable node
 - **`await` StoreAsync** = all Write/Push/Patch methods are async
 - **Simple getters** = reactive without decorators when reading `this.Data`
 - **`@Destroy()` + `@Inject()`** = requires IDestroyable interface
+
+---
+
+## Quick Reference
+
+### Import Paths
+```typescript
+import { Component, calc } from "j-templates";
+import { Value, State, Computed, Scope, Watch, Inject, Destroy, Bound } from "j-templates/Utils";
+import { div, button, input, text } from "j-templates/DOM";
+import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
+```
+
+### Decorator Selection
+| Value | Use | Why |
+|-------|-----|-----|
+| `number`, `string`, `boolean` | `@Value` | Lightweight |
+| `{ nested }`, `[]` | `@State` | Deep reactivity |
+| Cheap getter | `@Scope` | Cached, new ref |
+| Expensive getter | `@Computed` | Cached, same ref |
+| Sync + StoreAsync | `@ComputedAsync` | Cached, same ref |
+
+### Lifecycle Timing
+| Method | DOM | Safe to Query |
+|--------|-----|---------------|
+| Constructor | ❌ | No |
+| Bound() | ✓ Host | ⚠️ Use `requestAnimationFrame()` |
+| After Bound() | ✓ Full | Yes |
+
+### Common Patterns
+```typescript
+// Loading state
+@Value() loading = false;
+div({}, () => this.loading ? "Loading..." : "Ready")
+
+// Form input
+@Value() text = "";
+input({ props: () => ({ value: this.text }), on: { input: e => this.text = e.target.value } })
+
+// Raw HTML
+div({ props: { innerHTML: html } })
+
+// Mixed text/elements
+[text(() => "Text "), button({}, () => "Btn")]
+
+// Scrollable flex
+.content { flex: 1; min-height: 0; overflow-y: auto; }
+```
 
 ---
