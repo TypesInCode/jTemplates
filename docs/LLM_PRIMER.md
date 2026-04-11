@@ -1191,11 +1191,12 @@ class TodoService {
 ## Internal Mechanics (For Debugging)
 
 **Reactivity Flow:**
-1. Decorators create `ObservableScope` or `ObservableNode` instances storing values
-2. `Template()` functions read these scopes via `this.Data`, getters, `@State` access
-3. Scope reads register dependencies in watch context
-4. When scope value changes, watchers fire in microtask batch
-5. `vNode` re-renders affected DOM nodes via scheduled updates
+- **Surgical Reactivity**: Template functions (e.g. `data: () => this.state`) are dependency registration points. They link specific DOM nodes to `observableScopes`, enabling surgical updates without component-wide re-renders.
+- **Object Identity**: `@Computed` uses `ApplyDiff` to merge changes into existing references. This prevents the framework from destroying and recreating the entire DOM subtree when a new object is returned.
+- **StoreAsync Constraints**: Uses Web Workers for diffing; data passed to `Write`/`Patch` must be JSON-serializable (no methods or circular references).
+- **`calc()` as Circuit Breaker**: Prevents reactivity propagation. If the result is the same (`===`), dependents are not notified, avoiding unnecessary child re-renders.
+- **Host vs Root**: `this.VNode.node` is the Custom Element host tag. The Template root is a child of this host.
+- **Execution**: Decorators $\rightarrow$ `ObservableScope` $\rightarrow$ Dependency registration via `WatchFunction` $\rightarrow$ Microtask batch update $\rightarrow$ Scheduled DOM update.
 
 **Scope Types:**
 - `static`: Fixed value, no tracking, zero overhead

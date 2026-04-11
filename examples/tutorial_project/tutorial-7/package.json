@@ -1,0 +1,20 @@
+{
+  "name": "tutorial-7",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "j-templates": "^7.0.75"
+  },
+  "devDependencies": {
+    "jsdom": "^28.1.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.18"
+  }
+}
