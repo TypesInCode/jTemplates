@@ -205,6 +205,9 @@ function RegisterEmitter(emitter: Emitter) {
     case SAME_STRATEGY:
       RegisterSame(watchState, emitter);
       break;
+    case INIT_STRATEGY:
+      watchState.emitters = [];
+      watchState.strategy = PUSH_STRATEGY;
     case PUSH_STRATEGY:
       RegisterPush(watchState, emitter);
       break;
@@ -243,12 +246,14 @@ function GetScopeValue<T>(scope: IObservableScope<T>): T {
  * Each strategy represents a different approach to tracking and deduplicating dependencies.
  */
 const SAME_STRATEGY = 1;
-const PUSH_STRATEGY = 2;
-const DISTINCT_STRATEGY = 3;
-const SHRINK_STRATEGY = 4;
+const INIT_STRATEGY = 2;
+const PUSH_STRATEGY = 3;
+const DISTINCT_STRATEGY = 4;
+const SHRINK_STRATEGY = 5;
 
 type WatchStrategy =
   | typeof SAME_STRATEGY
+  | typeof INIT_STRATEGY
   | typeof PUSH_STRATEGY
   | typeof DISTINCT_STRATEGY
   | typeof SHRINK_STRATEGY;
@@ -279,11 +284,11 @@ function WatchFunction(
   watchState = {
     emitterIndex: 0,
     value: null,
-    emitters: initialEmitters ?? [],
+    emitters: initialEmitters,
     emitterSet: null,
     currentCalc,
     nextCalc: null,
-    strategy: initialEmitters === null ? PUSH_STRATEGY : SAME_STRATEGY,
+    strategy: initialEmitters === null ? INIT_STRATEGY : SAME_STRATEGY,
   };
   watchState.value = callback();
 
@@ -412,6 +417,8 @@ function UpdateEmitters(
   scope: IDynamicObservableScope<unknown>,
   state: typeof watchState,
 ) {
+  if (state.strategy === INIT_STRATEGY) return;
+
   if (scope.emitters === null) {
     for (let x = 0; x < state.emitters.length; x++)
       Emitter.On(state.emitters[x], scope.setCallback);

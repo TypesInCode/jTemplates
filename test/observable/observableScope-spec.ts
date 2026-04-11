@@ -32,10 +32,11 @@ describe("Observable Scope", () => {
   });
 
   it("Should handle null/undefined values properly", () => {
-    const scope = ObservableScope.Create(() => null);
+    const scope = ObservableScope.Create(() => null as any);
     expect(ObservableScope.Value(scope)).to.be.null;
+    expect(scope.type).to.eq("static");
 
-    const scope2 = ObservableScope.Create(() => undefined);
+    const scope2 = ObservableScope.Create(() => undefined as any);
     expect(ObservableScope.Value(scope2)).to.be.undefined;
   });
 
