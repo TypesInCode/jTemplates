@@ -645,6 +645,5 @@ In [Tutorial 4: Template System Deep Dive](./04-template-deep-dive.md), you'll:
 
 ## Further Reading
 
-- [Decorator Patterns](../patterns/03-decorators.md) - Deep dive into all decorators
-- [Reactive State Management](../patterns/02-reactive-state.md) - Advanced state patterns
+- [Reactivity](../patterns/02-reactivity.md) - Deep dive into all decorators and reactive state
 - [Source: decorators.ts](../../src/Utils/decorators.ts) - Implementation details

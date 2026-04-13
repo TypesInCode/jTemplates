@@ -656,8 +656,7 @@ genericList(
 
 ### Patterns Documentation
 
-- **Component Architecture:** `docs/patterns/01-component-architecture.md`
-- **Component Composition:** `docs/patterns/05-component-composition.md`
+- **Components:** `docs/patterns/01-components.md`
 
 ### Source Code
 

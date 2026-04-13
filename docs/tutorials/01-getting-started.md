@@ -384,6 +384,6 @@ In [Tutorial 2: Your First Component](./02-your-first-component.md), you'll:
 
 ## Further Reading
 
-- [Component Architecture Pattern](../patterns/01-component-architecture.md) - Deep dive into components
-- [Template System Pattern](../patterns/07-template-system.md) - All about DOM functions
+- [Components](../patterns/01-components.md) - Deep dive into components
+- [Templates & Data](../patterns/03-templates-and-data.md) - All about DOM functions
 - [j-templates README](../../README.md) - Official documentation

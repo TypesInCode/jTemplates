@@ -1005,9 +1005,8 @@ private timer = setInterval(...);
 ## References
 
 ### Patterns Documentation
-- [03-decorators.md](../../patterns/03-decorators.md) - Complete decorator API reference
-- [02-reactive-state-management.md](../../patterns/02-reactive-state-management.md) - Reactive state patterns
-- [06-animation-system.md](../../patterns/06-animation-system.md) - Animation with @Destroy
+- [Reactivity](../../patterns/02-reactivity.md) - Complete decorator API reference and reactive state patterns
+- [Templates & Data](../../patterns/03-templates-and-data.md) - Animation with @Destroy
 
 ### Source Code
 - `src/Utils/decorators.ts` - Decorator implementations

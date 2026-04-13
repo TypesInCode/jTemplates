@@ -787,9 +787,9 @@ div({ data: () => items }, (item) => ...)
 ## References
 
 ### Patterns Documentation
-- [07-template-system.md](../../patterns/07-template-system.md) - Complete template API reference
-- [02-reactive-state-management.md](../../patterns/02-reactive-state-management.md) - Reactive state patterns
-- [01-component-architecture.md](../../patterns/01-component-architecture.md) - Component basics
+- [Templates & Data](../../patterns/03-templates-and-data.md) - Complete template API reference
+- [Reactivity](../../patterns/02-reactivity.md) - Reactive state patterns
+- [Components](../../patterns/01-components.md) - Component basics
 
 ### Source Code
 - `src/DOM/elements.ts` - DOM element functions

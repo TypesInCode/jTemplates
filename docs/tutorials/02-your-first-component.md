@@ -439,6 +439,6 @@ In [Tutorial 3: Reactive State Basics](./03-reactive-state-basics.md), you'll:
 
 ## Further Reading
 
-- [Component Architecture Pattern](../patterns/01-component-architecture.md) - Deep dive into components
-- [Decorator Patterns](../patterns/03-decorators.md) - Understanding decorators
+- [Components](../patterns/01-components.md) - Deep dive into components
+- [Reactivity](../patterns/02-reactivity.md) - Understanding decorators and reactive state
 - [Example: Real-Time Dashboard](../../examples/real_time_dashboard/src/app.ts) - See components in action

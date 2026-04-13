@@ -1285,7 +1285,7 @@ class App extends Component {
 ### Patterns Documentation
 
 - **Dependency Injection** - Full API reference (`docs/patterns/04-dependency-injection.md`)
-- **Decorators** - @Inject and @Destroy details (`docs/patterns/03-decorators.md`)
+- **Reactivity** - @Inject and @Destroy details (`docs/patterns/02-reactivity.md`)
 
 ### Framework Source
 

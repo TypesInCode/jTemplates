@@ -467,7 +467,7 @@ setCardValue(value: number) {
 5. Template reacts to cardValue changes
 6. User sees smooth animated transition
 
-**See:** `docs/patterns/06-animation-system.md` - Animation patterns
+**See:** `docs/patterns/03-templates-and-data.md` - Animation patterns
 
 ---
 
@@ -925,14 +925,10 @@ Destroy(): void {
 ## References
 
 ### Patterns Documentation
-- [Component Architecture](./patterns/01-component-architecture.md)
-- [Reactive State Management](./patterns/02-reactive-state-management.md)
-- [Decorators](./patterns/03-decorators.md)
-- [Dependency Injection](./patterns/04-dependency-injection.md)
-- [Component Composition](./patterns/05-component-composition.md)
-- [Animation System](./patterns/06-animation-system.md)
-- [Template System](./patterns/07-template-system.md)
-- [Data Modeling](./patterns/08-data-modeling.md)
+- [Components](../patterns/01-components.md)
+- [Reactivity](../patterns/02-reactivity.md)
+- [Templates & Data](../patterns/03-templates-and-data.md)
+- [Dependency Injection](../patterns/04-dependency-injection.md)
 
 ### Syntax Best Practices
 - [Complete Reference](./SYNTAX_BEST_PRACTICES.md)
