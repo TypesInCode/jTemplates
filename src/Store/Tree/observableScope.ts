@@ -476,10 +476,8 @@ function DestroyAllScopes(scopes: IObservableScope<any>[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope || scope.type === "static") return;
 
-  // Emitter.Destroy(scope.emitter);
+  Emitter.Clear(scope.emitter);
   for (const key in scope.calcScopes) DestroyScope(scope.calcScopes[key]);
-
-  scope.calcScopes = null;
 
   for (let x = 0; x < scope.emitters.length; x++)
     Emitter.Remove(scope.emitters[x], scope.setCallback);
