@@ -181,13 +181,17 @@ Template() {
 ### Granular Reactive Scopes
 
 ```typescript
-// With function wrapper — each span has independent scope
-div({}, () => [span({}, () => this.value1), span({}, () => this.value2)]);
-// Changing value1 only updates first span
+// No function wrappers
+div({}, [span({ data: this.value1 }, (value) => value), span({ data: this.value2 }, (value) => value)]);
+// Changing value1 re-renders all elements
 
-// Without function wrapper — both spans share parent scope
-div({}, [span({}, () => this.value1), span({}, () => this.value2)]);
-// Changing value1 re-renders both spans
+// With children function wrapper
+div({}, () => [span({ data: this.value1 }, (value) => value), span({ data: this.value2 }, (value) => value)]);
+// Changing value1 re-renders both spans, div is unaffected
+ 
+// With data function wrappers
+div({}, () => [span({ data: () => this.value1 }, (value) => value), span({ data: () => this.value2 }, (value) => value)]);
+// Changing value1 only updates the text content of the first span, other elements are unaffected
 ```
 
 ---
