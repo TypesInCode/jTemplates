@@ -119,7 +119,7 @@ import { Computed } from "j-templates/Utils";
 class TodoApp extends Component {
   @State() items: Todo[] = [];
 
-  @Computed([])
+  @Computed()
   get completedItems(): Todo[] {
     return this.items.filter(t => t.done);
   }
@@ -361,7 +361,7 @@ anim.Animate(0, 1); // Fades from 0 to 1 over 1000ms
 | `@Value()` | Property | Reactive primitive (number, string, boolean) |
 | `@State()` | Property | Deep reactive object/array via proxy |
 | `@Scope()` | Getter | Cached computed value; new reference on change |
-| `@Computed(default)` | Getter | Cached computed with identity preservation via diff |
+| `@Computed()` | Getter | Cached computed with identity preservation via diff |
 | `@ComputedAsync(default)` | Getter | Async `@Computed` backed by `StoreAsync` |
 | `@Watch(scopeFn)` | Method | Auto-subscribe method to reactive value changes |
 | `@Inject(type)` | Property | Dependency injection from component injector |
