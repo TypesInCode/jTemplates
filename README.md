@@ -404,7 +404,7 @@ anim.Animate(0, 1); // Fades from 0 to 1 over 1000ms
 - [Dependency Injection](docs/patterns/04-dependency-injection.md) — Injector hierarchy, @Inject, @Destroy, IDestroyable
 
 ### Reference
-- [Syntax & Best Practices](docs/SYNTAX_BEST_PRACTICES.md)
+- [Syntax Primer](docs/SYNTAX_PRIMER.md)
 
 ## Examples
 
