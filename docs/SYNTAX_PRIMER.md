@@ -713,6 +713,7 @@ type ConstructorToken<I> = { new (...args: any[]): I } | (abstract new (...args:
 type NonFunctionKeys<T> = { [P in keyof T]: T[P] extends Function ? never : P }[keyof T];
 ```
 
+```typescript
 // Decorator signatures
 function Computed(): PropertyDecorator;           // No default value parameter
 function ComputedAsync<V>(defaultValue: V): PropertyDecorator;  // Default value required
