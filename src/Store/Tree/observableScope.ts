@@ -38,8 +38,8 @@ interface IDynamicObservableScope<T> {
   emitters: (Emitter | null)[];
   /** Emitter for notifying when the scope is destroyed */
   onDestroyed: Emitter | null;
-  /** Map of nested calc scopes created during this scope's execution */
-  calcScopes: { [id: string]: IObservableScope<unknown> | null } | null;
+  /** Map of nested scopes created during this scope's execution */
+  scopes: { [id: string]: IObservableScope<unknown> | null } | null;
 }
 
 /**
@@ -76,7 +76,7 @@ function CreateDynamicScope<T>(
     emitter: Emitter.Create(),
     emitters: null,
     onDestroyed: null,
-    calcScopes: null,
+    scopes: null,
   };
 
   scope.setCallback = OnSet.bind(scope);
@@ -316,23 +316,22 @@ function WatchFunction(
  */
 function ExecuteScope(scope: IDynamicObservableScope<any>) {
   scope.dirty = false;
-  const state = WatchFunction(
-    scope.getFunction,
-    scope.calcScopes,
-    scope.emitters,
-  );
+  const state = WatchFunction(scope.getFunction, scope.scopes, scope.emitters);
 
   UpdateEmitters(scope, state);
 
   const calcScopes = state.currentCalc;
-  scope.calcScopes = state.nextCalc;
+  scope.scopes = state.nextCalc;
   for (const key in calcScopes) DestroyScope(calcScopes[key]);
-  if (scope.async)
-    state.value.then(function (result: any) {
+  if (scope.async) {
+    const promise = state.value;
+    promise.then(function (result: any) {
+      if (state.value !== promise) return;
+
       scope.value = result;
       Emitter.Emit(scope.emitter, scope);
     });
-  else scope.value = state.value;
+  } else scope.value = state.value;
 }
 
 /**
@@ -356,19 +355,41 @@ function ExecuteFunction<T>(
       greedy,
       async ? null : state.value,
     );
-    scope.calcScopes = state.nextCalc;
+    scope.scopes = state.nextCalc;
     UpdateEmitters(scope, state);
-    if (async)
-      state.value.then(function (result: any) {
+    if (async) {
+      const promise = state.value;
+      promise.then(function (result: any) {
+        if (state.value !== promise) return;
+
         scope.value = result;
         Emitter.Emit(scope.emitter, scope);
       });
+    }
 
     return scope;
   }
 
   const value = state.value;
   return CreateStaticScope(value);
+}
+
+function ScopeHelper<T>(
+  callback: () => T,
+  id: string,
+  greedy: boolean,
+): IObservableScope<T> {
+  const nextScopes = (watchState.nextCalc ??= {});
+
+  if (nextScopes[id]) return nextScopes[id] as IObservableScope<T>;
+
+  const currentScopes = watchState.currentCalc;
+
+  nextScopes[id] =
+    currentScopes?.[id] ?? ExecuteFunction(callback, greedy, true);
+  if (currentScopes?.[id]) delete currentScopes[id];
+
+  return nextScopes[id] as IObservableScope<T>;
 }
 
 /**
@@ -389,21 +410,36 @@ function ExecuteFunction<T>(
 export function CalcScope<T>(callback: () => T, idOverride?: string): T {
   if (watchState === null) return callback();
 
-  const nextScopes = (watchState.nextCalc ??= {});
-  const id = idOverride ?? "default";
+  const id = idOverride ?? "calc_default";
+  const scope = ScopeHelper(callback, id, true);
 
-  if (nextScopes[id]) {
-    RegisterScope(nextScopes[id]);
-    return GetScopeValue(nextScopes[id]) as T;
-  }
+  RegisterScope(scope);
+  return GetScopeValue(scope);
+}
 
-  const currentScopes = watchState.currentCalc;
+/**
+ * Creates a computed scope that isn't registered as a dependency with the parent.
+ * Use this function to read reactive data without subscribing to changes
+ * to that data.
+ *
+ * Unlike CalcScope, PeekScope does not register itself as a dependency, meaning
+ * changes to the data accessed within the callback will not trigger recomputation
+ * of the parent scope. The scope is still memoized by ID within the watch context
+ * to avoid redundant computation during the same evaluation.
+ *
+ * Only works within a watch context (during another scope's execution).
+ * @template T The type of value returned by the callback.
+ * @param callback The function to compute the derived value.
+ * @param idOverride Optional custom ID for memoization when using multiple peek scopes.
+ * @returns The computed value, reusing existing scope if available.
+ */
+export function PeekScope<T>(callback: () => T, idOverride?: string): T {
+  if (watchState === null) return callback();
 
-  nextScopes[id] = currentScopes?.[id] ?? ExecuteFunction(callback, true, true);
-  if (currentScopes?.[id]) delete currentScopes[id];
+  const id = idOverride ?? "peek_default";
+  const scope = ScopeHelper(callback, id, false);
 
-  RegisterScope(nextScopes[id]);
-  return GetScopeValue(nextScopes[id]) as T;
+  return GetScopeValue(scope);
 }
 
 /**
@@ -477,13 +513,13 @@ function DestroyScope(scope: IObservableScope<any>) {
   if (!scope || scope.type === "static") return;
 
   Emitter.Clear(scope.emitter);
-  for (const key in scope.calcScopes) DestroyScope(scope.calcScopes[key]);
+  for (const key in scope.scopes) DestroyScope(scope.scopes[key]);
 
   for (let x = 0; x < scope.emitters.length; x++)
     Emitter.Remove(scope.emitters[x], scope.setCallback);
 
   scope.value = undefined;
-  scope.calcScopes = null;
+  scope.scopes = null;
   scope.emitters = null;
   scope.emitter = null;
   scope.getFunction = null;
