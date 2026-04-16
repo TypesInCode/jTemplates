@@ -141,7 +141,7 @@ Template() {
     button({ on: { click: (e: MouseEvent) => this.handleClick(e) } }, () => "Click"),
 
     // Conditional (ternary with string fallback)
-    this.isLoading ? div({}, () => "Loading") : "",
+    this.isLoading ? div({}, () => "Loading") : text(() => ""),
 
     // Child component
     childComponent({ data: () => ({ id: 1 }) }),
@@ -175,7 +175,7 @@ Template() {
 1. **Pass arrays as `data:`** — framework iterates automatically. Don't call `.map()` inside children.
 2. **Wrap children in functions** for separate reactive scopes. Without function wrapper, all children share parent scope.
 3. **Two-way binding requires reactive props**: `props: () => ({ value: this.text })` (not static `props: { value: this.text }` which causes focus loss).
-4. **Conditional rendering**: Use ternary with `""` fallback or `.filter(Boolean)`. Don't use `null` in arrays.
+4. **Conditional rendering**: Use ternary with `text(() => "")` fallback or `.filter(Boolean)`. Don't use `null` in arrays.
 5. **`text()` for reactive text nodes** — no plain strings mixed with vNodes in arrays.
 
 ### Granular Reactive Scopes
@@ -734,8 +734,8 @@ function Destroy(): PropertyDecorator;
 @Value() error: string | null = null;
 Template() {
   return div({}, () => [
-    this.isLoading ? div({}, () => "Loading...") : "",
-    this.error ? div({}, () => this.error) : "",
+    this.isLoading ? div({}, () => "Loading...") : text(() => ""),
+    this.error ? div({}, () => this.error) : text(() => ""),
     div({ data: () => this.items }, (item) => div({}, () => item.name))
   ]);
 }
@@ -826,7 +826,7 @@ Flex items default to `min-height: auto`, preventing shrinkage below content siz
 | `.map()` in children function | Pass array as `data:`, framework iterates |
 | `@Computed()` for array filter/sort of existing refs | Use `@Scope()` — identity already preserved |
 | Overriding constructor | Use field initializers and `Bound()` |
-| `null` in children arrays | Use ternary with `""` or `.filter(Boolean)` |
+| `null` in children arrays | Use ternary with `text(() => "")` or `.filter(Boolean)` |
 | `StoreSync.Patch` on undefined target | Write value before patching |
 
 ---
