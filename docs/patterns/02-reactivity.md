@@ -32,6 +32,8 @@ import { ObservableScope } from "j-templates/Store";
 
 **Greedy scopes** batch updates via `queueMicrotask`. Non-greedy scopes emit immediately. Async scopes are automatically greedy.
 
+**Async limitation:** Dependencies are only captured synchronously. Any reactive reads after an `await` will not be tracked as dependencies. Read all reactive values before the first `await`.
+
 ```typescript
 const scope = ObservableScope.Create(() => counter.value * 2);
 
@@ -95,6 +97,28 @@ tbody({ data: () => this.Data.items }, (item) => tr(...));
 
 // With calc — re-emits only when the array reference changes
 tbody({ data: () => calc(() => this.Data.items) }, (item) => tr(...));
+```
+
+### peek
+
+Memoized computed scope that does **not** register as a dependency with the parent. Use this to read reactive data without subscribing to changes.
+
+```typescript
+import { peek } from "j-templates";
+```
+
+```typescript
+peek<T>(callback: () => T, idOverride?: string): T
+```
+
+`peek` **only works inside a watch context** (during another scope's evaluation). Unlike `calc`, the scope created by `peek` does not register as a dependency — changes to the data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID within the watch context to avoid redundant computation.
+
+```typescript
+// Read reactive data without subscribing
+const timestamp = peek(() => Date.now());
+
+// Useful for reading values that should not drive parent updates
+const id = peek(() => this.Data.id, "id");
 ```
 
 ## Decorators
@@ -351,7 +375,7 @@ ObservableScope.OnDestroyed(scope, () => console.log("destroyed"));
 
 ## Source
 
-- `src/Store/Tree/observableScope.ts` — ObservableScope, CalcScope
+- `src/Store/Tree/observableScope.ts` — ObservableScope, CalcScope, PeekScope
 - `src/Store/Tree/observableNode.ts` — ObservableNode
 - `src/Store/Store/storeSync.ts` — StoreSync
 - `src/Store/Store/storeAsync.ts` — StoreAsync

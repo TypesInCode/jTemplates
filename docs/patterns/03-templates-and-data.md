@@ -328,6 +328,7 @@ this.animator.Enable();
 - **Keep `Template()` pure.** Only return vNodes — no side effects.
 - **Use arrow functions for reactivity.** `props: () => ({ ... })` and `data: () => this.items` create reactive scopes.
 - **Use `calc` selectively.** Only when a parent scope changes but a derived value often stays the same. Not needed for basic array reactivity.
+- **Use `peek` to read without subscribing.** When you need a value during template evaluation but don't want the parent to depend on it.
 - **Use `@Computed` for expensive derived data.** It preserves object identity and prevents unnecessary downstream re-renders.
 - **Define domain interfaces.** TypeScript interfaces ensure type safety through `this.Data` and store operations.
 - **Use key functions with stores.** `new StoreSync((value) => value.id)` enables object identity sharing.

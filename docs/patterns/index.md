@@ -5,7 +5,7 @@
 | Pattern | Description |
 |---|---|
 | [Components](./01-components.md) | Component class, lifecycle, data passing, template functions, events, composition |
-| [Reactivity](./02-reactivity.md) | ObservableScope, ObservableNode, stores, decorators (@Value, @State, @Scope, @Computed, @Watch) |
+| [Reactivity](./02-reactivity.md) | ObservableScope, ObservableNode, stores, decorators (@Value, @State, @Scope, @Computed, @Watch), calc, peek |
 | [Templates & Data](./03-templates-and-data.md) | DOM element functions, reactive bindings, data modeling, stores, animation |
 | [Dependency Injection](./04-dependency-injection.md) | Injector hierarchy, @Inject, @Destroy, IDestroyable, provider/consumer pattern |
 

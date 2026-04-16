@@ -323,6 +323,9 @@ get userData(): User | null { return getUserSync(this.Data.userId); }
 ```
 
 **Async patterns 1 & 2:** Async functions auto-detected. Automatically sets `greedy: true` (batched updates). Initial value: `null` or Promise. New reference on each update.
+
+**Async limitation:** Dependencies are only captured synchronously. Read all reactive values before the first `await`. Reactive reads after `await` are not tracked.
+
 **Pattern 3 (@ComputedAsync):** Getter must be synchronous. Returns default value initially, then computed value with same reference via ApplyDiff.
 
 ### State Location
@@ -522,6 +525,8 @@ namespace ObservableScope {
   Destroy<T>(scope: IObservableScope<T>): void;
   DestroyAll(scopes: IObservableScope<unknown>[]): void;
 }
+
+**Async limitation:** Dependencies are only captured synchronously. Read all reactive values before the first `await`. Reactive reads after `await` are not tracked.
 ```
 
 ### Service Patterns
@@ -598,6 +603,27 @@ calc(() => computeB(), "id-b");
 | Multiple uses in same template | Yes | Scope reuse avoids duplicate work |
 
 **What calc() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
+
+---
+
+## peek() — Read Without Subscribing
+
+`peek()` creates a memoized computed scope that does **not** register as a dependency. Use this to read reactive data without the parent scope subscribing to changes.
+
+**Only works within a watch context** (falls back to direct call outside).
+
+```typescript
+import { peek } from "j-templates";
+
+// Read reactive data without subscribing
+const timestamp = peek(() => Date.now());
+
+// Read with custom ID for multiple uses
+const id = peek(() => this.Data.id, "id");
+const name = peek(() => this.Data.name, "name");
+```
+
+`peek()` differs from `calc()` in that the created scope does not register as a dependency. Changes to data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID to avoid redundant computation within the same evaluation.
 
 ---
 
