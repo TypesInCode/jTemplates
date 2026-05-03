@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import "mocha";
 import {
-  CalcScope,
+  GateScope,
   ObservableScope,
 } from "../../src/Store/Tree/observableScope";
 
@@ -114,7 +114,7 @@ describe("Observable Scope", () => {
     expect(ObservableScope.Value(nestedScope)).to.eq("test");
   });
 
-  it("Simple calc scope test", async () => {
+  it("Simple gate scope test", async () => {
     let temp = "temp1";
 
     const scope = ObservableScope.Create(() => temp, true);
@@ -136,7 +136,7 @@ describe("Observable Scope", () => {
 
     const sourceScope = ObservableScope.Create(() => temp);
     const destScope = ObservableScope.Create(() =>
-      CalcScope(() => ObservableScope.Value(sourceScope)),
+      GateScope(() => ObservableScope.Value(sourceScope)),
     );
 
     expect(ObservableScope.Value(sourceScope)).to.eq("temp1");

@@ -77,41 +77,66 @@ user.name = "Bob"; // Triggers leaf scope update
 const raw = ObservableNode.Unwrap(user); // { name: "Bob", age: 30 }
 ```
 
-### calc
+### scope
 
-Memoized computed gatekeeper. Only re-emits when the derived value changes by `===` comparison. Reuses scopes by ID across evaluations.
+Inline computed scope registered as a dependency of the parent. Emits on every recomputation — no `===` gating. Accepts async callbacks — the Promise is resolved and the resolved value is emitted.
 
 ```typescript
-import { calc } from "j-templates";
+import { scope } from "j-templates";
 ```
 
 ```typescript
-calc<T>(callback: () => T, idOverride?: string): T
+scope<T>(callback: () => T | Promise<T>, idOverride?: string): T
 ```
 
-`calc` **only works inside a watch context** (during another scope's evaluation). It is **not** required for array reactivity — `@State` arrays work without it. Use it when a parent scope changes frequently but a derived value often stays the same.
+`scope` **only works inside a watch context** (during another scope's evaluation). Creates non-greedy scopes that emit immediately.
 
 ```typescript
-// Without calc — always re-emits
+// Inline computed value
+tbody({ data: () => scope(() => this.Data.items) }, (item) => tr(...));
+
+// Async data fetching in a getter
+@Scope()
+get userData(): User {
+  return scope(async () => fetchUser(`/api/user/${this.userId}`));
+}
+```
+
+### gate
+
+Memoized computed gatekeeper. Like `scope()`, but only emits when the derived value changes by `===` comparison. Reuses scopes by ID across evaluations. Accepts async callbacks — the Promise is resolved and the resolved value is gated.
+
+```typescript
+import { gate } from "j-templates";
+```
+
+```typescript
+gate<T>(callback: () => T | Promise<T>, idOverride?: string): T
+```
+
+`gate` **only works inside a watch context** (during another scope's evaluation). It is **not** required for array reactivity — `@State` arrays work without it. Use it when a parent scope changes frequently but a derived value often stays the same. Creates greedy scopes that batch updates via microtask queue.
+
+```typescript
+// Without gate — always re-emits
 tbody({ data: () => this.Data.items }, (item) => tr(...));
 
-// With calc — re-emits only when the array reference changes
-tbody({ data: () => calc(() => this.Data.items) }, (item) => tr(...));
+// With gate — re-emits only when the array reference changes
+tbody({ data: () => gate(() => this.Data.items) }, (item) => tr(...));
 ```
 
 ### peek
 
-Memoized computed scope that does **not** register as a dependency with the parent. Use this to read reactive data without subscribing to changes.
+Memoized computed scope that does **not** register as a dependency with the parent. Use this to read reactive data without subscribing to changes. Accepts async callbacks.
 
 ```typescript
 import { peek } from "j-templates";
 ```
 
 ```typescript
-peek<T>(callback: () => T, idOverride?: string): T
+peek<T>(callback: () => T | Promise<T>, idOverride?: string): T
 ```
 
-`peek` **only works inside a watch context** (during another scope's evaluation). Unlike `calc`, the scope created by `peek` does not register as a dependency — changes to the data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID within the watch context to avoid redundant computation.
+`peek` **only works inside a watch context** (during another scope's evaluation). Unlike `gate`, the scope created by `peek` does not register as a dependency — changes to the data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID within the watch context to avoid redundant computation.
 
 ```typescript
 // Read reactive data without subscribing
@@ -120,6 +145,14 @@ const timestamp = peek(() => Date.now());
 // Useful for reading values that should not drive parent updates
 const id = peek(() => this.Data.id, "id");
 ```
+
+#### Comparison
+
+| Function | Registers dependency | Gates on `===` | Use when |
+|---|---|---|---|
+| `scope()` | Yes | No | Full reactivity needed |
+| `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
+| `peek()` | No | N/A | One-time reads, display-only values |
 
 ## Decorators
 
@@ -367,7 +400,7 @@ ObservableScope.OnDestroyed(scope, () => console.log("destroyed"));
 - **Use `@State` for objects and arrays.** Proxy-based deep tracking handles nested mutations automatically.
 - **Use `@Scope` for cheap computed values.** Returns a new reference, which is fine for primitives and small arrays.
 - **Use `@Computed` for expensive or reference-sensitive computed values.** Preserves object identity via diff, which prevents unnecessary downstream re-renders.
-- **Use `calc` selectively.** Only when a parent scope changes frequently but a derived value often stays the same. Not needed for basic array reactivity.
+- **Use `gate` selectively.** Only when a parent scope changes frequently but a derived value often stays the same. Not needed for basic array reactivity.
 - **Always clean up scopes.** Inside components, `Destroy()` handles this automatically. Outside components, call `ObservableScope.Destroy()` or `ObservableScope.DestroyAll()`.
 - **Use `Peek` for non-reactive reads.** When you need a value without creating a dependency.
 - **Use `StoreSync`/`StoreAsync` for shared data.** Key functions enable object sharing and efficient diff-based updates.

@@ -17,7 +17,7 @@ npm install j-templates
 **File naming:** Components: kebab-case (`todo-list.ts`). Services: kebab-case + `-service` suffix. Exports: lowercase matching filename.
 
 ```typescript
-import { Component, calc } from "j-templates";
+import { Component, scope, gate, peek } from "j-templates";
 import { div, button, input, span, h1, text, _var } from "j-templates/DOM";  // _var for <var>
 import { Value, State, Computed, ComputedAsync, Scope, Watch, Inject, Destroy, Bound, Animation, AnimationType, IDestroyable, Injector } from "j-templates/Utils";
 import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
@@ -247,7 +247,7 @@ get userData(): User | null {
 }
 ```
 
-Requires default value parameter. Same reference preservation as `@Computed`. The getter **must be synchronous** — the "Async" in the name refers to the internal `StoreAsync` diffing mechanism, not the getter signature. For async data fetching, use `@Scope() + calc(async)` or `ObservableScope.Create(async)`.
+Requires default value parameter. Same reference preservation as `@Computed`. The getter **must be synchronous** — the "Async" in the name refers to the internal `StoreAsync` diffing mechanism, not the getter signature. For async data fetching, use `@Scope() + scope(async)` or `ObservableScope.Create(async)`.
 
 ### @Watch — Property Change Handler
 
@@ -313,9 +313,9 @@ Calls `.Destroy()` on marked properties during component teardown. Requires `IDe
 private dataScope = ObservableScope.Create(async () => fetch('/api/data'));
 get data(): Data | null { return ObservableScope.Value(this.dataScope); }
 
-// 2. Component async with calc() (new reference on each update)
+// 2. Component async with scope() (new reference on each update)
 @Scope()
-get CurrentUser() { return calc(async () => fetchUser(`/api/user/${this.userId}`)); }
+get CurrentUser() { return scope(async () => fetchUser(`/api/user/${this.userId}`)); }
 
 // 3. @ComputedAsync — sync getter only, StoreAsync backend (same reference via ApplyDiff)
 @ComputedAsync(null)
@@ -338,7 +338,7 @@ get userData(): User | null { return getUserSync(this.Data.userId); }
 | Derived (local, new objects) | Component | `@Computed()` |
 | Primitives (local) | Component | `@Value()` |
 | Complex (local) | Component | `@State()` |
-| Async (component) | Component | `@Scope() + calc(async)` |
+| Async (component) | Component | `@Scope() + scope(async)` |
 | Async (service) | Service | `ObservableScope.Create(async)` |
 | External resources | Service | `IDestroyable` |
 
@@ -571,29 +571,50 @@ namespace ObservableNode {
 
 ---
 
-## calc() — Circuit Breaker for Derived Values
+## Inline Computed Scopes: scope(), gate(), peek()
 
-`calc()` prevents unnecessary reactivity propagation. If result is unchanged (`===`), dependents are not notified.
+Three functions for creating memoized computed scopes inline within a watch context (template functions, `@Scope` getters, etc.). All three accept `() => T | Promise<T>` — async callbacks are resolved and the resolved value is emitted.
 
-**Only works within a watch context** (falls back to direct call outside).
+**Only works within a watch context** — throws if called outside.
+
+### scope() — Full Reactivity
+
+Creates an inline computed scope registered as a dependency of the parent. Emits on every recomputation — no `===` gating.
 
 ```typescript
-import { calc } from "j-templates";
+import { scope } from "j-templates";
 
-// Primitive gating — prevents emission when result unchanged
-calc(() => this.Data.count > 10);
+// Inline computed value
+tbody({ data: () => scope(() => this.Data.items) }, (item) => tr({}, () => td({}, () => item.name)));
 
-// Parent scope with child optimization
-tbody({ data: () => calc(() => this.Data.items) }, (item) => tr({}, () => td({}, () => item.name)));
-
-// Multiple calc scopes with custom IDs
-calc(() => computeA(), "id-a");
-calc(() => computeB(), "id-b");
+// Async data fetching in a getter
+@Scope()
+get userData(): User {
+  return scope(async () => fetchUser(`/api/user/${this.userId}`));
+}
 ```
 
-### When to Use calc()
+### gate() — Emission Gatekeeper
 
-| Scenario | Use calc()? | Why |
+Like `scope()`, but only emits when the value actually changes (`===` comparison). Prevents unnecessary downstream re-evaluations.
+
+```typescript
+import { gate } from "j-templates";
+
+// Primitive gating — prevents emission when result unchanged
+gate(() => this.Data.count > 10);
+
+// Parent scope with child optimization
+tbody({ data: () => gate(() => this.Data.items) }, (item) => tr({}, () => td({}, () => item.name)));
+
+// Multiple gate scopes with custom IDs
+gate(() => computeA(), "id-a");
+gate(() => computeB(), "id-b");
+```
+
+#### When to Use gate()
+
+| Scenario | Use gate()? | Why |
 |----------|-------------|-----|
 | Direct `@State` array access | Optional | Value gating when parent changes |
 | Static constant array | No | Never changes, adds overhead |
@@ -602,15 +623,11 @@ calc(() => computeB(), "id-b");
 | Array transformations (filter/map) | No | Always new references, never helps |
 | Multiple uses in same template | Yes | Scope reuse avoids duplicate work |
 
-**What calc() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
+**What gate() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
 
----
+### peek() — Read Without Subscribing
 
-## peek() — Read Without Subscribing
-
-`peek()` creates a memoized computed scope that does **not** register as a dependency. Use this to read reactive data without the parent scope subscribing to changes.
-
-**Only works within a watch context** (falls back to direct call outside).
+Creates a memoized computed scope that does **not** register as a dependency. Use this to read reactive data without the parent scope subscribing to changes.
 
 ```typescript
 import { peek } from "j-templates";
@@ -623,7 +640,15 @@ const id = peek(() => this.Data.id, "id");
 const name = peek(() => this.Data.name, "name");
 ```
 
-`peek()` differs from `calc()` in that the created scope does not register as a dependency. Changes to data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID to avoid redundant computation within the same evaluation.
+`peek()` differs from `gate()` in that the created scope does not register as a dependency. Changes to data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID to avoid redundant computation within the same evaluation.
+
+#### Comparison
+
+| Function | Registers dependency | Gates on `===` | Use when |
+|----------|---------------------|----------------|----------|
+| `scope()` | Yes | No | Full reactivity needed |
+| `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
+| `peek()` | No | N/A | One-time reads, display-only values |
 
 ---
 
@@ -782,8 +807,8 @@ input({
 // Framework iterates automatically — don't use .map()
 div({ data: () => this.items }, (item) => div({}, () => item.name));
 
-// With optional calc() optimization
-tbody({ data: () => calc(() => this.Data.items) }, (item) => tr({}, () => td({}, () => item.name)));
+// With optional gate() optimization
+tbody({ data: () => gate(() => this.Data.items) }, (item) => tr({}, () => td({}, () => item.name)));
 ```
 
 ### Derived State
@@ -877,7 +902,7 @@ Flex items default to `min-height: auto`, preventing shrinkage below content siz
 - **Surgical Reactivity:** Template functions (`data: () => this.state`) are dependency registration points linking DOM nodes to observableScopes for surgical updates.
 - **Object Identity:** `@Computed` uses `ApplyDiff` to merge changes into existing references, preventing DOM subtree recreation.
 - **StoreAsync Constraints:** Uses Web Workers for diffing; data must be JSON-serializable (no methods or circular references).
-- **`calc()` as Circuit Breaker:** Prevents reactivity propagation when result is unchanged (`===`).
+- **`gate()` as Circuit Breaker:** Prevents reactivity propagation when result is unchanged (`===`).
 - **Scope Types:** `static` (fixed, zero overhead), `dynamic` (tracks deps, caches, emits on change), `greedy` (batched via microtask queue — used for watch callbacks, async).
 - **Lazy Initialization:** Scopes created on first access, not construction.
 - **Memory Management:** All scopes tracked via WeakMap. `Destroy()` calls `ObservableScope.DestroyAll()` + `@Destroy` properties auto-cleaned.

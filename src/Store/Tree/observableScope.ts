@@ -272,7 +272,7 @@ let watchState: {
  * Executes a callback while tracking all scope and emitter dependencies.
  * Creates a watch context that records what was accessed during execution.
  * @param callback The function to execute while tracking dependencies.
- * @param currentCalc Optional map of existing calc scopes to reuse.
+ * @param currentCalc Optional map of existing inline scopes to reuse.
  * @returns The watch state containing tracked dependencies and result.
  */
 function WatchFunction(
@@ -375,7 +375,7 @@ function ExecuteFunction<T>(
 }
 
 function ScopeHelper<T>(
-  callback: () => T,
+  callback: () => T | Promise<T>,
   id: string,
   greedy: boolean,
 ): IObservableScope<T> {
@@ -393,24 +393,63 @@ function ScopeHelper<T>(
 }
 
 /**
- * Creates a computed scope that acts as a gatekeeper for parent scope emissions.
- * If this scope's value doesn't change (=== comparison) it won't emit.
+ * Creates an inline computed scope registered as a dependency of the parent.
+ * The scope is memoized by ID and reused across reads within the same parent evaluation.
+ * Emits on every recomputation — no === gating.
  *
- * Useful for optimizing expensive operations driven by key values (e.g., sort keys).
- * Scopes are memoized by ID and reused across multiple reads within a single parent scope evaluation.
- * Defaults to "default" ID - provide custom IDs when using multiple calc scopes.
+ * Supports async callbacks — Promise<T> is resolved and the resolved value is emitted.
  *
  * Only works within a watch context (during another scope's execution).
- * Always creates greedy scopes that batch updates via microtask queue.
- * @template T The type of value returned by the callback.
+ * Throws if called outside a watch context.
+ * Creates non-greedy scopes that emit immediately without === gating.
+ * @template T The type of value returned by the callback (extracted from Promise if async).
  * @param callback The function to compute the derived value.
- * @param idOverride Optional custom ID for memoization when using multiple calc scopes.
+ * @param idOverride Optional custom ID for memoization when using multiple scope calls.
  * @returns The computed value, reusing existing scope if available.
+ * @throws Error if called outside a watch context.
  */
-export function CalcScope<T>(callback: () => T, idOverride?: string): T {
-  if (watchState === null) return callback();
+export function InlineScope<T>(
+  callback: () => T | Promise<T>,
+  idOverride?: string,
+): T {
+  if (watchState === null) {
+    throw new Error("scope() must be called within a watch context");
+  }
 
-  const id = idOverride ?? "calc_default";
+  const id = idOverride ?? "scope_default";
+  const scope = ScopeHelper(callback, id, false);
+
+  RegisterScope(scope);
+  return GetScopeValue(scope);
+}
+
+/**
+ * Creates a gatekeeper scope that only emits when the value actually changes (===).
+ * Prevents unnecessary downstream re-evaluations when the derived value stays the same.
+ *
+ * Useful for optimizing expensive operations driven by frequently-changing parent state.
+ * Scopes are memoized by ID and reused across reads within the same parent evaluation.
+ *
+ * Supports async callbacks — Promise<T> is resolved and the resolved value is gated.
+ *
+ * Only works within a watch context (during another scope's execution).
+ * Throws if called outside a watch context.
+ * Always creates greedy scopes that batch updates via microtask queue.
+ * @template T The type of value returned by the callback (extracted from Promise if async).
+ * @param callback The function to compute the derived value.
+ * @param idOverride Optional custom ID for memoization when using multiple gate calls.
+ * @returns The computed value, reusing existing scope if available.
+ * @throws Error if called outside a watch context.
+ */
+export function GateScope<T>(
+  callback: () => T | Promise<T>,
+  idOverride?: string,
+): T {
+  if (watchState === null) {
+    throw new Error("gate() must be called within a watch context");
+  }
+
+  const id = idOverride ?? "gate_default";
   const scope = ScopeHelper(callback, id, true);
 
   RegisterScope(scope);
@@ -422,19 +461,28 @@ export function CalcScope<T>(callback: () => T, idOverride?: string): T {
  * Use this function to read reactive data without subscribing to changes
  * to that data.
  *
- * Unlike CalcScope, PeekScope does not register itself as a dependency, meaning
+ * Unlike GateScope, PeekScope does not register itself as a dependency, meaning
  * changes to the data accessed within the callback will not trigger recomputation
  * of the parent scope. The scope is still memoized by ID within the watch context
  * to avoid redundant computation during the same evaluation.
  *
+ * Supports async callbacks — Promise<T> is resolved and the resolved value is returned.
+ *
  * Only works within a watch context (during another scope's execution).
- * @template T The type of value returned by the callback.
+ * Throws if called outside a watch context.
+ * @template T The type of value returned by the callback (extracted from Promise if async).
  * @param callback The function to compute the derived value.
- * @param idOverride Optional custom ID for memoization when using multiple peek scopes.
+ * @param idOverride Optional custom ID for memoization when using multiple peek calls.
  * @returns The computed value, reusing existing scope if available.
+ * @throws Error if called outside a watch context.
  */
-export function PeekScope<T>(callback: () => T, idOverride?: string): T {
-  if (watchState === null) return callback();
+export function PeekScope<T>(
+  callback: () => T | Promise<T>,
+  idOverride?: string,
+): T {
+  if (watchState === null) {
+    throw new Error("peek() must be called within a watch context");
+  }
 
   const id = idOverride ?? "peek_default";
   const scope = ScopeHelper(callback, id, false);

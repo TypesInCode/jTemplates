@@ -1,5 +1,9 @@
 import { ObservableScope } from "../Store";
-import { CalcScope, IObservableScope } from "../Store/Tree/observableScope";
+import {
+  GateScope,
+  InlineScope,
+  IObservableScope,
+} from "../Store/Tree/observableScope";
 import { Emitter } from "../Utils/emitter";
 import { IsAsync } from "../Utils/functions";
 import { Injector } from "../Utils/injector";
@@ -224,7 +228,7 @@ function CreateChildrenScope(
   if (IsAsync(data)) {
     const asyncData = data;
     data = function () {
-      return CalcScope(async function () {
+      return InlineScope(async function () {
         return asyncData();
       });
     };

@@ -106,7 +106,7 @@ class SimpleList extends Component<SimpleListData, void, SimpleListEvents> {
     return div({ props: { className: "simple-list" } }, () => [
       p({}, () => `Items: ${items.length}`),
       // Use framework data iteration - passes single item to children function
-      div({ data: () => calc(() => items) }, (item: string) => {
+      div({ data: () => gate(() => items) }, (item: string) => {
         const index = items.indexOf(item);
         return div({
           props: () => ({
@@ -130,7 +130,7 @@ class SimpleList extends Component<SimpleListData, void, SimpleListEvents> {
 
 1. **`<Component<D, T, E>>`** - Generic parameters for Data, Templates, Events
 2. **`this.Data`** - Accesses the passed data props
-3. **`data: () => calc(() => items)`** - Framework iterates array automatically
+3. **`data: () => gate(() => items)`** - Framework iterates array automatically
 4. **`this.Fire("select", ...)`** - Fires event to parent handler
 5. **Framework iteration** - Children function receives single item, not array
 
@@ -201,7 +201,7 @@ class GenericList<T> extends Component<GenericListData<T>, GenericListTemplate<T
     }
 
     return div({ props: { className: "generic-list" } }, () => [
-      div({ data: () => calc(() => items) }, (item: T) => {
+      div({ data: () => gate(() => items) }, (item: T) => {
         const index = items.indexOf(item);
         return div({
           props: () => ({
@@ -303,8 +303,8 @@ class SimpleTable extends Component<TableData> {
           headers.map((header) => th({}, () => header))
         )
       ),
-      // Data rows - use framework iteration with calc()
-      tbody({ data: () => calc(() => rows) }, (row: string[]) =>
+      // Data rows - use framework iteration with gate()
+      tbody({ data: () => gate(() => rows) }, (row: string[]) =>
         tr({}, () =>
           // Cells are static for each row - use map
           row.map((cell) => td({}, () => cell))
@@ -317,17 +317,17 @@ class SimpleTable extends Component<TableData> {
 const simpleTable = Component.ToFunction("simple-table", SimpleTable);
 ```
 
-**Important: Using calc()**
+**Important: Using gate()**
 
-Arrays are reactive by default through `@State` and ObservableNode. `calc()` is optional:
+Arrays are reactive by default through `@State` and ObservableNode. `gate()` is optional:
 
 ```typescript
-// Without calc() - works fine, arrays are reactive via @State
+// Without gate() - works fine, arrays are reactive via @State
 tbody({ data: () => rows }, ...)
 
-// With calc() - optional optimization that gates emissions
+// With gate() - optional optimization that gates emissions
 // Only emits if array reference changes (=== check)
-tbody({ data: () => calc(() => rows) }, ...)
+tbody({ data: () => gate(() => rows) }, ...)
 // Only beneficial when parent scope changes but array reference stays same
 ```
 
@@ -428,7 +428,7 @@ class App extends Component {
   Template() {
     return div({}, () => [
       // User list using framework iteration
-      div({ data: () => calc(() => users) }, (user: User) =>
+      div({ data: () => gate(() => users) }, (user: User) =>
         div({
           props: () => ({
             className: this.selectedUser?.id === user.id ? "user-selected" : "user-item"
@@ -458,7 +458,7 @@ class App extends Component {
 1. **`@Value()`** stores selected state in parent
 2. **`this.selectedUser?.id`** - Optional chaining prevents errors
 3. **`this.selectedUser!`** - Non-null assertion after conditional check
-4. **Framework iteration** - `data: () => calc(() => users)` passes single user
+4. **Framework iteration** - `data: () => gate(() => users)` passes single user
 5. Conditional rendering shows/hides details panel
 
 ---
@@ -526,9 +526,9 @@ Modify the `SimpleList` component to add a text filter:
 1. Add a `filterText` @Value() for the current filter
 2. Add an input field for the filter
 3. Filter items based on the filter text
-4. Use `calc()` for the filtered items (optional - though filtering always creates new array)
+4. Use `gate()` for the filtered items (optional - though filtering always creates new array)
 
-**Hint:** Create a computed filtered list in the Template. Note: filtering creates a new array each time, so calc()'s === check won't help, but it's still valid syntax.
+**Hint:** Create a computed filtered list in the Template. Note: filtering creates a new array each time, so gate()'s === check won't help, but it's still valid syntax.
 
 ### Exercise 2: Add Delete Button to Cards
 
@@ -594,10 +594,10 @@ simpleList({
 @State()
 items: Item[] = [];
 
-div({ data: () => this.items }, ...)  // Works without calc()
+div({ data: () => this.items }, ...)  // Works without gate()
 
-// Optional: add calc() for batching optimization
-div({ data: () => calc(() => this.items) }, ...)
+// Optional: add gate() for batching optimization
+div({ data: () => gate(() => this.items) }, ...)
 ```
 
 **Note:** If using a plain array constant, reactivity won't work - must use @State or ObservableNode.Create()
@@ -695,7 +695,7 @@ In this tutorial, you learned:
 
 ✅ **Template Functions** - Customizing child rendering via templates as second parameter
 
-✅ **Framework Data Iteration** - Using `data: () => calc(() => array)` for automatic list iteration
+✅ **Framework Data Iteration** - Using `data: () => gate(() => array)` for automatic list iteration
 
 ✅ **Component Patterns** - Building reusable, composable components
 

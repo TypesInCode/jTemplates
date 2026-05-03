@@ -21,7 +21,7 @@
  * | getters only (expensive)  | @Computed | Cached + object reuse via Store |
  * | getters only (simple)     | @Scope  | Cached, but new reference on update |
  * | getters only (sync, StoreAsync) | @ComputedAsync | Sync getter, StoreAsync caching + object reuse |
-* | async functions (direct scope) | ObservableScope.Create(async) | Direct async, new reference, initial null |
+ * | async functions (direct scope) | ObservableScope.Create(async) | Direct async, new reference, initial null |
  * | subscribe to changes      | @Watch  | Calls method when scope value changes |
  * | dependency injection      | @Inject | Gets value from component injector |
  * | cleanup on destroy        | @Destroy| Calls .Destroy() on component teardown |
@@ -155,13 +155,16 @@ function CreateComputedScope(
   const getterScope = ObservableScope.Create(getter, true);
 
   ObservableScope.Watch(getterScope, (scope) => {
-    const data = ObservableScope.Value(scope);
+    const data = ObservableScope.Peek(scope);
     store.Write(data, "root");
   });
 
-  const propertyScope = ObservableScope.Create(() =>
-    store.Get("root", defaultValue),
-  );
+  const data = ObservableScope.Peek(getterScope);
+  store.Write(data, "root");
+
+  const propertyScope = ObservableScope.Create(() => {
+    return store.Get("root", defaultValue);
+  });
   ObservableScope.OnDestroyed(propertyScope, function () {
     ObservableScope.Destroy(getterScope);
     if (store instanceof StoreAsync) store.Destroy();
@@ -397,7 +400,7 @@ function ComputedDecorator<
  * Both use synchronous getters and provide object identity preservation.
  *
  * **Comparison**:
- * | Aspect | @Scope | @Computed | @ComputedAsync | calc(async) + @Scope |
+ * | Aspect | @Scope | @Computed | @ComputedAsync | scope(async) + @Scope |
  * |--------|--------|-----------|----------------|----------------------|
  * | Caches value | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (memoized) |
  * | Getter type | Sync | Sync | Sync | Async supported |
@@ -765,15 +768,15 @@ function ValueDecorator<T extends WeakKey, K extends string>(
  * - Object identity matters (array/object references used in templates)
  * - You need DOM reference preservation to avoid re-renders
  *
- * **Async pattern with @Scope**: Use `calc(async () => ...)` for async operations:
+ * **Async pattern with @Scope**: Use `scope(async () => ...)` for async operations:
  * ```typescript
  * @Scope()
  * get CurrentUser() {
- *   return calc(async () => fetchUser(`/api/user/${this.userId}`));
+ *   return scope(async () => fetchUser(`/api/user/${this.userId}`));
  * }
  * ```
- * - `calc` memoizes async operations with ID-based caching
- * - Returns Promise initially, resolves when complete
+ * - `scope` creates an inline computed scope that resolves the async operation
+ * - Returns the resolved value (not a Promise)
  * - Automatically batches updates via microtask queue
  * - New reference on each update (no object reuse)
  *
@@ -790,7 +793,7 @@ function ValueDecorator<T extends WeakKey, K extends string>(
  * @see {@link ComputedAsync} for sync getters with StoreAsync backend
  * @see {@link ObservableNode.ApplyDiff} for how @Computed maintains object identity
  * @see {@link ObservableScope} for the scope-based reactivity system
- * @see {@link calc} for memoized async operations within @Scope
+ * @see {@link scope} for inline computed scopes within @Scope
  */
 export function Scope() {
   return ScopeDecorator;

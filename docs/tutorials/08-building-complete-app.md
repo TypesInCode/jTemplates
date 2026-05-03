@@ -288,7 +288,7 @@ class DataTable<D> extends Component<Data<D>, CellTemplate<D>> {
       thead({ data: () => this.Data.columns }, (column) =>
         th({}, () => column.name),
       ),
-      tbody({ data: () => calc(() => this.Data.data) }, (data) =>
+      tbody({ data: () => gate(() => this.Data.data) }, (data) =>
         tr({ data: () => this.Data.columns }, (column) =>
           td({ props: () => ({ className: column.class }) }, () =>
             this.Templates.cell(data, column),
@@ -326,18 +326,18 @@ interface CellTemplate<D> {
 - Allows customization without modifying component
 - Enables domain-specific rendering logic
 
-#### calc() for Optimization
+#### gate() for Optimization
 
 ```typescript
-tbody({ data: () => calc(() => this.Data.data) }, (data) => ...)
+tbody({ data: () => gate(() => this.Data.data) }, (data) => ...)
 ```
 
-**What calc() Does:**
+**What gate() Does:**
 - Prevents unnecessary emissions when array reference hasn't changed
 - Important when parent scope aggregates multiple values
 - Optional for direct @State access (arrays are reactive by default)
 
-**See:** `SYNTAX_BEST_PRACTICES.md` - "calc() - Gatekeeper for Derived Values"
+**See:** `docs/SYNTAX_PRIMER.md` - "gate() — Emission Gatekeeper"
 
 ---
 
@@ -889,14 +889,14 @@ updateValue(newValue: number) {
 DataService returns new data, but table still shows old rows
 
 **Possible Causes:**
-1. Not using `calc()` or reactive binding in tbody data
+1. Not using `gate()` or reactive binding in tbody data
 2. Array mutation instead of store.Push
 3. Missing reactive data binding in component
 
 **Solution:**
 Check this pattern:
 ```typescript
-tbody({ data: () => calc(() => this.Data.data) }, (data) => ...)
+tbody({ data: () => gate(() => this.Data.data) }, (data) => ...)
 ```
 
 ---

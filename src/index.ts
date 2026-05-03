@@ -1,2 +1,2 @@
 export { Component } from './Node/component';
-export { CalcScope as calc, PeekScope as peek } from './Store/Tree/observableScope';
+export { InlineScope as scope, GateScope as gate, PeekScope as peek } from './Store/Tree/observableScope';
