@@ -494,7 +494,10 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
     vnode.children[0][1].length === 1 &&
     vnode.children[0][1][0].node
   ) {
-    NodeConfig.reconcileChild(vnode.node, vnode.children[0][1][0].node);
+    NodeConfig.reconcileChildren(
+      vnode.node,
+      vnode.children.flatMap((row) => row[1].map((vnode) => vnode.node)),
+    );
     return;
   }
 
@@ -518,26 +521,18 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
       if (vnode.destroyed || children !== vnode.children) return;
 
       if (init || !async) {
-        if (vnode.children.length === 1 && vnode.children[0][1].length === 1)
-          NodeConfig.reconcileChild(vnode.node, vnode.children[0][1][0].node);
-        else
-          NodeConfig.reconcileChildren(
-            vnode.node,
-            vnode.children.flatMap((row) => row[1].map((vnode) => vnode.node)),
-          );
+        NodeConfig.reconcileChildren(
+          vnode.node,
+          vnode.children.flatMap((row) => row[1].map((vnode) => vnode.node)),
+        );
       } else
         NodeConfig.scheduleUpdate(function () {
           if (vnode.destroyed || children !== vnode.children) return;
 
-          if (vnode.children.length === 1 && vnode.children[0][1].length === 1)
-            NodeConfig.reconcileChild(vnode.node, vnode.children[0][1][0].node);
-          else
-            NodeConfig.reconcileChildren(
-              vnode.node,
-              vnode.children.flatMap((row) =>
-                row[1].map((vnode) => vnode.node),
-              ),
-            );
+          NodeConfig.reconcileChildren(
+            vnode.node,
+            vnode.children.flatMap((row) => row[1].map((vnode) => vnode.node)),
+          );
         });
     });
   });

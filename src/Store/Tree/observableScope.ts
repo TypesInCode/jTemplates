@@ -563,8 +563,9 @@ function DestroyScope(scope: IObservableScope<any>) {
   Emitter.Clear(scope.emitter);
   for (const key in scope.scopes) DestroyScope(scope.scopes[key]);
 
-  for (let x = 0; x < scope.emitters.length; x++)
-    Emitter.Remove(scope.emitters[x], scope.setCallback);
+  if (scope.emitters !== null)
+    for (let x = 0; x < scope.emitters.length; x++)
+      Emitter.Remove(scope.emitters[x], scope.setCallback);
 
   scope.value = undefined;
   scope.scopes = null;

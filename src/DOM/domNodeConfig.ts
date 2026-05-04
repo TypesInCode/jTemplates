@@ -186,20 +186,12 @@ export const DOMNodeConfig: INodeConfig = {
       }
     }
 
-    while (target.lastChild !== children[x - 1])
+    while (target.lastChild && target.lastChild !== children[x - 1])
       target.removeChild(target.lastChild);
 
     for (; x < children.length; x++) {
       const child = getHTMLNode(children[x]);
       target.appendChild(child);
     }
-  },
-  reconcileChild(target: HTMLElement, child: HTMLElement | string) {
-    const newChild = getHTMLNode(child, target.firstChild as HTMLElement);
-    if (target.firstChild === newChild) return;
-
-    target.appendChild(newChild);
-    while (target.firstChild !== newChild)
-      target.removeChild(target.firstChild);
   },
 };
