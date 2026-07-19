@@ -207,7 +207,9 @@ Template() {
 }
 ```
 
-### data: Binding Behavior
+### data: Binding Behavior — DOM Elements
+
+The behavior described below applies **only to DOM elements** (`div`, `span`, `button`, etc.). Component data handling differs — see [Component Composition](#component-composition).
 
 | Return Value | Behavior |
 |--------------|----------|
@@ -221,6 +223,28 @@ Template() {
 **Also accepts** `Promise<T>` and `Promise<T[]>` for async data.
 
 The `false`/`true` behavior makes `data:` a clean conditional rendering mechanism: `data: () => this.isLoading` renders its child once when true and nothing when false, with its own isolated reactive scope.
+
+### data: Binding Behavior — Components
+
+Components receive the raw return value as `this.Data` — no iteration, no wrapping, no `false`/`null` short-circuit.
+
+| Return Value | `this.Data` in component |
+|--------------|--------------------------|
+| `[a, b, c]` | `[a, b, c]` — component must iterate itself |
+| `{ id: 1 }` | `{ id: 1 }` — passed as-is |
+| `"text"` | `"text"` — passed as-is |
+| `false` / `null` / `undefined` | The actual value — component decides how to handle |
+
+```typescript
+// DOM element: framework iterates and renders a child per item
+div({ data: () => this.tasks }, (task) => div({}, () => task.name));
+
+// Component: data passes through as this.Data — no framework iteration
+taskList({ data: () => ({ tasks: this.tasks }) });
+// Inside TaskList: this.Data.tasks — component manages its own iteration
+```
+
+**Why the difference:** DOM elements are leaf nodes — the framework owns their rendering. Components have their own `Template()` method and full control over how data is consumed, so the framework treats `data:` as a reactive property passthrough, not an iteration instruction.
 
 ### Key Template Rules
 
@@ -284,6 +308,34 @@ Template() {
 ```
 
 7. **Read `@Scope` getters at the point of use** — reading a `@Scope` at the top of `Template()` registers it as a dependency of the entire Template. Reading it inside a children function or `data:` binding keeps the subscription scoped to that subtree.
+
+8. **Same applies to `this.Data` in components** — reading `this.Data` at the top of `Template()` subscribes the entire component to the parent's data scope. Any parent data change rebuilds the entire Template. Read `this.Data` inside children functions, `props:` functions, or `data:` bindings to scope reactivity to specific DOM subtrees.
+
+```typescript
+// Anti-pattern — this.Data read at top of Template()
+Template() {
+  const task = this.Data;              // Subscribes entire Template
+  return div({}, () => [
+    span({}, () => task.name),         // Any parent data change rebuilds ALL
+    span({}, () => task.status),
+  ]);
+}
+
+// Correct — this.Data read inside children function
+Template() {
+  return div({}, () => [
+    span({}, () => this.Data.name),    // Only this subtree re-renders
+    span({}, () => this.Data.status),  // Only this subtree re-renders
+  ]);
+}
+
+// Also correct — in props: reactive function
+Template() {
+  return div({ props: () => ({ className: this.Data.active ? "active" : "" }) }, () =>
+    "Content"
+  );
+}
+```
 
 ```typescript
 // Anti-pattern — scope read at top of Template
@@ -484,6 +536,8 @@ Calls `.Destroy()` on marked properties during component teardown. Requires `IDe
 | Composite object for multiple consumers | Yes — same ref, sub-property mutations tracked | No — new ref invalidates all consumers | Yes |
 
 **Key:** `@Computed` preserves object identity across updates. Critical when DOM reuse depends on reference stability (e.g., iterating arrays with `data:`).
+
+**Dependency tracking note:** `@Computed` (via `StoreSync`) registers dependencies based on what properties the getter accesses through the proxy. If the getter returns `this.tasks` without iterating or reading individual item properties, per-item mutations (e.g., `task.completed = true`) won't trigger re-evaluation. The getter must touch every reactive property it intends to track — `.filter()`, `.map()`, `.reduce()`, and manual property reads all register deps. Returning the array reference alone only tracks array-level mutations (push, splice, reassignment).
 
 ### Async Patterns
 
@@ -1023,10 +1077,12 @@ function Destroy(): PropertyDecorator;
 | `@State()` for primitives | Use `@Value()` |
 | `@Computed()` for cheap ops | Use `@Scope()` or plain getter |
 | `@Computed()` for array filter/sort of existing refs | Use `@Scope()` — identity already preserved |
+| `@Computed()` getter returning `this.tasks` without reading item props | Use plain getter or iterate items in the getter — per-item mutations won't re-trigger else |
 | Single `@Scope` for multiple independent UI regions | One `@Scope` per region |
 | `gate()` wrapping `@Scope` getter | Use `@Computed` or remove `gate()` |
 | `data:` binding inside helper function called from `Template()` | Inline in `Template()` with `@Scope` data source |
 | `@Scope` read at top of `Template()` | Read inside children function or `data:` binding |
+| `this.Data` read at top of `Template()` | Read inside children function, `props:` function, or `data:` binding |
 | Render callback for items needing state/events | Use dedicated component |
 | Child `@Value` not synced with parent `Data` | Use `@Watch((self) => self.Data.prop)` |
 | `.filter(Boolean)` for conditional rendering | Use ternary with `text(() => "")` fallback |
@@ -1068,6 +1124,9 @@ function Destroy(): PropertyDecorator;
 ## Scope Selection Decision Tree
 
 Need derived data?
+  -> Is it a simple read from `this.Data` without computation?
+     - Yes -> No decorator needed — plain getter. Reading `this.Data` is already reactive.
+        - Read it inside children function, `props:` function, or `data:` binding for scoped subscriptions
   -> Consumed by one UI region?
      - Yes -> `@Scope()` per region, read inside children function
      - No, multiple regions need different slices?

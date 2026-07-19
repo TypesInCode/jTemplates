@@ -2,6 +2,7 @@ import { expect } from "chai";
 import "mocha";
 import {
   GateScope,
+  IObservableScope,
   ObservableScope,
 } from "../../src/Store/Tree/observableScope";
 
@@ -157,5 +158,51 @@ describe("Observable Scope", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sourceFired).to.eq(true);
     expect(destFired).to.eq(true);
+  });
+
+  it("Debounced observable scope test", async () => {
+    let temp = "temp1";
+    let sourceScope = ObservableScope.Create(() => temp, false, true);
+
+    let debouncedScope = ObservableScope.Create(
+      async () =>
+        new Promise<string>((resolve) => {
+          let sourceValue = ObservableScope.Value(sourceScope);
+          console.log("calculating", sourceValue);
+          setTimeout(() => {
+            console.log("resolving", sourceValue);
+            resolve(sourceValue);
+          }, 10);
+        }),
+    );
+
+    const promise = new Promise<string>((resolve) => {
+      const watchFn = (scope: IObservableScope<string>) => {
+        ObservableScope.Unwatch(scope, watchFn);
+        const value = ObservableScope.Peek(scope);
+        console.log("watchFn", value);
+        resolve(value);
+      };
+
+      ObservableScope.Watch(debouncedScope, watchFn);
+    });
+
+    let currValue = ObservableScope.Value(debouncedScope);
+    expect(currValue).to.eq(null);
+
+    temp = "temp2";
+    ObservableScope.Update(sourceScope);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    currValue = ObservableScope.Value(debouncedScope);
+    expect(currValue).to.eq(null);
+
+    temp = "temp3";
+    ObservableScope.Update(sourceScope);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    currValue = ObservableScope.Value(debouncedScope);
+    expect(currValue).to.eq(null);
+
+    const result = await promise;
+    expect(result).to.eq("temp3");
   });
 });
