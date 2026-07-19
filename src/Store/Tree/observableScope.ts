@@ -20,6 +20,7 @@ interface IDynamicObservableScope<T> {
   type: "dynamic";
   /** Whether the scope's getter function is async */
   async: boolean;
+  pending: Promise<T> | null;
   /** Whether updates are batched (true) or immediate (false) */
   greedy: boolean;
   /** Whether the scope needs recomputation */
@@ -67,6 +68,7 @@ function CreateDynamicScope<T>(
   const scope: IDynamicObservableScope<T> = {
     type: "dynamic",
     async,
+    pending: null,
     greedy: greedy || async,
     dirty: false,
     destroyed: false,
@@ -134,7 +136,7 @@ function OnSetQueued(scope: IDynamicObservableScope<any>) {
  * @returns true if the scope is static or destroyed, false if queued or non-greedy scope emitted.
  */
 function OnSet(this: IDynamicObservableScope<any>) {
-  if (this.dirty) return;
+  if (this.dirty || this.destroyed) return;
 
   this.dirty = true;
   if (this.greedy) {
@@ -324,10 +326,11 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
   scope.scopes = state.nextCalc;
   for (const key in calcScopes) DestroyScope(calcScopes[key]);
   if (scope.async) {
-    const promise = state.value;
+    const promise = (scope.pending = state.value);
     promise.then(function (result: any) {
-      if (state.value !== promise) return;
+      if (scope.destroyed || scope.pending !== promise) return;
 
+      scope.pending = null;
       scope.value = result;
       Emitter.Emit(scope.emitter, scope);
     });
@@ -358,10 +361,12 @@ function ExecuteFunction<T>(
     scope.scopes = state.nextCalc;
     UpdateEmitters(scope, state);
     if (async) {
-      const promise = state.value;
+      console.log("resolving async scope");
+      const promise = (scope.pending = state.value);
       promise.then(function (result: any) {
-        if (state.value !== promise) return;
+        if (scope.destroyed || scope.pending !== promise) return;
 
+        scope.pending = null;
         scope.value = result;
         Emitter.Emit(scope.emitter, scope);
       });
@@ -560,12 +565,13 @@ function DestroyAllScopes(scopes: IObservableScope<any>[]) {
 function DestroyScope(scope: IObservableScope<any>) {
   if (!scope || scope.type === "static") return;
 
-  Emitter.Clear(scope.emitter);
   for (const key in scope.scopes) DestroyScope(scope.scopes[key]);
 
+  // Emitter.Destroy(scope.emitter);
+  Emitter.DestroyCallback(scope.setCallback);
   if (scope.emitters !== null)
     for (let x = 0; x < scope.emitters.length; x++)
-      Emitter.Remove(scope.emitters[x], scope.setCallback);
+      Emitter.Compact(scope.emitters[x]);
 
   scope.value = undefined;
   scope.scopes = null;
@@ -645,7 +651,7 @@ export namespace ObservableScope {
    */
   export function Watch<T>(
     scope: IObservableScope<T>,
-    callback: EmitterCallback<[IObservableScope<T>]>,
+    callback: (scope: IObservableScope<T>) => void,
   ) {
     if (!scope || scope.type === "static") return;
 
@@ -660,7 +666,7 @@ export namespace ObservableScope {
    */
   export function Unwatch<T>(
     scope: IObservableScope<T>,
-    callback: EmitterCallback<[IObservableScope<T>]>,
+    callback: (scope: IObservableScope<T>) => void,
   ) {
     if (!scope || scope.type === "static") return;
 
@@ -674,7 +680,7 @@ export namespace ObservableScope {
    */
   export function OnDestroyed(
     scope: IObservableScope<unknown>,
-    callback: EmitterCallback,
+    callback: { (): void },
   ) {
     if (scope.type === "static") return;
 
