@@ -72,9 +72,12 @@ function UnwrapProxy(
       const keys = Object.keys(value);
       for (let x = 0; x < keys.length; x++)
         value[keys[x]] = UnwrapProxy(value[keys[x]]);
+
+      break;
     }
     case "array": {
       for (let x = 0; x < value.length; x++) value[x] = UnwrapProxy(value[x]);
+      break;
     }
   }
 
