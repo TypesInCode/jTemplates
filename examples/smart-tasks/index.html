@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Tasks — j-templates Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 40px 20px;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    #app { display: flex; flex-direction: column; gap: 16px; }
+    h1 { font-size: 1.5rem; color: #222; }
+    h1 small { font-weight: 400; font-size: 0.85rem; color: #777; display: block; }
+    .task-input { display: flex; gap: 8px; }
+    .task-input input {
+      flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: 0.95rem; outline: none; transition: border-color 0.15s;
+    }
+    .task-input input:focus { border-color: #4f8ef7; }
+    .task-input button {
+      padding: 8px 20px; background: #4f8ef7; color: #fff; border: none;
+      border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .task-input button:disabled { background: #b0c4de; cursor: default; }
+    .task-input button:hover:not(:disabled) { background: #3b7be5; }
+    .stats-bar {
+      display: flex; gap: 16px; font-size: 0.85rem; color: #666;
+    }
+    .stats-bar span { background: #fff; padding: 4px 12px; border-radius: 12px; }
+    .filter-bar { display: flex; gap: 6px; }
+    .filter-bar button {
+      padding: 4px 14px; border: 1px solid #ccc; border-radius: 16px;
+      background: #fff; font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-bar button.active { background: #4f8ef7; color: #fff; border-color: #4f8ef7; }
+    .filter-bar button:hover:not(.active) { background: #eef3fc; }
+    .task-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .task-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; background: #fff; border-radius: 6px;
+      border: 1px solid #eee; transition: box-shadow 0.15s;
+    }
+    .task-item:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .task-item.completed .task-text { text-decoration: line-through; color: #aaa; }
+    .task-item .task-check {
+      width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 50%;
+      background: #fff; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; transition: all 0.15s;
+    }
+    .task-item .task-check.checked { background: #4f8ef7; border-color: #4f8ef7; }
+    .task-item .task-check.checked::after {
+      content: "✓"; color: #fff; font-size: 11px; line-height: 1;
+    }
+    .task-item .task-text { flex: 1; font-size: 0.95rem; }
+    .task-item .task-delete {
+      background: none; border: none; color: #ccc; font-size: 1rem;
+      cursor: pointer; padding: 2px 4px; border-radius: 4px; line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+    .task-item .task-delete:hover { color: #e55; background: #fef0f0; }
+    .empty-state {
+      text-align: center; padding: 32px 16px; color: #aaa; font-size: 0.9rem;
+    }
+    .empty-state strong { display: block; font-size: 1.1rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/app.ts"></script>
+</body>
+</html>
