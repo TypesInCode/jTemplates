@@ -150,48 +150,36 @@ export const DOMNodeConfig: INodeConfig = {
     target.replaceChildren(...children);
   },
   reconcileChildren(target: HTMLElement, children: (HTMLElement | string)[]) {
-    if (!target.firstChild) {
-      for (let x = 0; x < children.length; x++) {
-        const child = getHTMLNode(children[x]);
-        target.appendChild(child);
-      }
+    let lastChild: HTMLElement = null;
+    switch (children.length) {
+      case 0:
+        target.replaceChildren();
+        break;
+      case 1:
+        lastChild = getHTMLNode(children[0], target.firstChild as HTMLElement);
+        if (target.firstChild !== lastChild)
+          target.insertBefore(lastChild, target.firstChild);
+        break;
+      default:
+        let actualChild = target.firstChild as HTMLElement;
+        let nextChild: HTMLElement = null;
 
-      return;
+        for (let x = 0; x < children.length; x++) {
+          nextChild = getHTMLNode(children[x], actualChild);
+          while (actualChild && nextChild !== actualChild) {
+            const nextSibling = actualChild.nextSibling as HTMLElement;
+            target.removeChild(actualChild);
+            actualChild = nextSibling;
+          }
+
+          if (actualChild) actualChild = actualChild.nextSibling as HTMLElement;
+          else target.appendChild(nextChild);
+        }
+
+        lastChild = nextChild;
+        break;
     }
 
-    if (children.length === 0) {
-      target.replaceChildren();
-      return;
-    }
-
-    let actualNode = target.firstChild;
-    let x = 0;
-    let removed = false;
-    for (; actualNode && x < children.length; x++) {
-      const child = children[x];
-      let expectedNode = getHTMLNode(child, actualNode as HTMLElement);
-
-      if (!removed && actualNode !== expectedNode) {
-        const remove = actualNode;
-        actualNode = actualNode.nextSibling;
-        target.removeChild(remove);
-        removed = true;
-      }
-
-      if (actualNode !== expectedNode) {
-        target.insertBefore(expectedNode, actualNode);
-      } else {
-        actualNode = actualNode.nextSibling;
-        removed = false;
-      }
-    }
-
-    while (target.lastChild && target.lastChild !== children[x - 1])
-      target.removeChild(target.lastChild);
-
-    for (; x < children.length; x++) {
-      const child = getHTMLNode(children[x]);
-      target.appendChild(child);
-    }
+    while (target.lastChild !== lastChild) target.removeChild(target.lastChild);
   },
 };
