@@ -1,11 +1,13 @@
-import { Component } from "j-templates";
-import { Value, State, Computed } from "j-templates/Utils";
-import { div, h1, span, text } from "j-templates/DOM";
+import { Component, gate } from "j-templates";
+import { Value, State } from "j-templates/Utils";
+import { div, h1, header, text } from "j-templates/DOM";
 import { taskInput } from "./task-input";
 import { taskItem } from "./task-item";
 import { filterBar } from "./filter-bar";
 import { statsBar } from "./stats-bar";
 import { Task, FilterType } from "./types";
+import "./styles.scss";
+import "./app.scss";
 
 let nextId = 1;
 
@@ -13,6 +15,7 @@ class App extends Component {
   @State() tasks: Task[] = [];
   @Value() filter: FilterType = "all";
 
+  // Plain getter — reactive because it reads @State/@Value values.
   get filteredTasks(): Task[] {
     switch (this.filter) {
       case "active":
@@ -25,11 +28,7 @@ class App extends Component {
   }
 
   private handleAdd(payload: { text: string }): void {
-    this.tasks.push({
-      id: String(nextId++),
-      text: payload.text,
-      completed: false,
-    });
+    this.tasks.push({ id: String(nextId++), text: payload.text, completed: false });
   }
 
   private handleToggle(id: string): void {
@@ -42,85 +41,52 @@ class App extends Component {
     if (idx !== -1) this.tasks.splice(idx, 1);
   }
 
+  Bound() {
+    super.Bound();
+    console.log("[smart-tasks] App mounted and ready.");
+  }
+
   Template() {
     return div({ props: { className: "app" } }, () => [
-      h1({}, () => [
-        span({}, () => "Smart Tasks"),
-        span(
-          {
-            props: {
-              style:
-                "font-size: 0.85rem; color: #888; font-weight: 400; display: block;",
-            },
-          },
-          () => "j-templates reactivity demo",
-        ),
+      header({ props: { className: "app-header" } }, () => [
+        h1({}, () => "Smart Tasks"),
+        text(() => "A reactive task manager built with j-templates"),
       ]),
 
+      // Parent → child data (read-only in child)
       statsBar({ data: () => ({ tasks: this.tasks }) }),
 
+      // Child → parent event
       taskInput({ on: { add: (p) => this.handleAdd(p) } }),
 
       filterBar({
         data: () => ({ activeFilter: this.filter }),
-        on: {
-          filterChange: (p) => {
-            this.filter = p.filter;
-          },
-        },
+        on: { filterChange: (p) => { this.filter = p.filter; } },
       }),
 
-      // Conditional area — isolated from always-present siblings above.
-      // Each child has its own scoped children function so reactivity is
-      // fine-grained: the outer function reads nothing and never re-runs.
-
-      // Empty state — isolated scope. Only this div re-evaluates when
-      // tasks/filteredTasks/filter changes. Siblings are unaffected.
-      div({}, () => {
-        if (this.tasks.length === 0) {
-          return div({ props: { className: "empty-state" } }, () => [
-            span(
-              { props: { style: "font-weight: 600" } },
-              () => "No tasks yet",
+      // Either the task list or the empty state is rendered — never both.
+      // gate() only re-evaluates this ternary when the boolean flips, so
+      // upstream emissions that keep the list non-empty don't rebuild this
+      // subtree. The task-list still updates via its own data: binding scope.
+      div({}, () =>
+        gate(() => this.filteredTasks.length === 0)
+          ? div({ props: { className: "empty-state" } }, () => {
+              if (this.tasks.length === 0)
+                return "No tasks yet — Add one above to get started.";
+              return `No tasks match the ${this.filter} filter.`;
+            })
+          : div({ props: { className: "task-list" }, data: () => this.filteredTasks },
+              (task: Task) =>
+                taskItem({
+                  data: () => task,
+                  on: {
+                    toggle: () => this.handleToggle(task.id),
+                    delete: () => this.handleDelete(task.id),
+                  },
+                }),
             ),
-            text(() => " Add one above to get started."),
-          ]);
-        }
-        if (this.filteredTasks.length === 0) {
-          return div({ props: { className: "empty-state" } }, () => [
-            text(() => "No tasks match the "),
-            span({ props: { style: "font-weight: 600" } }, () => this.filter),
-            text(() => " filter."),
-          ]);
-        }
-        return text(() => "");
-      }),
-
-      // Task list — isolated data: binding.
-      // Each item gets its own reactive scope — toggling one doesn't
-      // re-render others.
-      div(
-        {
-          props: { className: "task-list" },
-          data: () => this.filteredTasks
-        },
-        (task: Task) =>
-          taskItem({
-            data: () => task,
-            on: {
-              toggle: () => this.handleToggle(task.id),
-              delete: () => this.handleDelete(task.id),
-            },
-          }),
       ),
     ]);
-  }
-
-  Bound() {
-    super.Bound();
-    console.log(
-      "Smart Tasks ready — try adding, toggling, and filtering tasks.",
-    );
   }
 }
 

@@ -1,0 +1,36 @@
+filter-bar {
+  display: block;
+  margin-top: 16px;
+
+  .filter-bar__segmented {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .filter-bar__btn {
+    flex: 1;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+      color: var(--text);
+    }
+
+    &.active {
+      color: var(--accent);
+      background: var(--surface);
+      box-shadow: 0 2px 8px rgba(31, 36, 48, 0.08);
+    }
+  }
+}

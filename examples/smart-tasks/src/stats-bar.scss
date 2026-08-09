@@ -1,0 +1,34 @@
+stats-bar {
+  display: block;
+
+  .stats-bar {
+    display: flex;
+    gap: 10px;
+  }
+
+  .stats-bar__stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 14px 10px;
+    background: var(--accent-soft);
+    border-radius: 12px;
+  }
+
+  .stats-bar__value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+
+  .stats-bar__label {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+}

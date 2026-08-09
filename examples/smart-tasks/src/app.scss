@@ -1,0 +1,47 @@
+app {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+
+  .app {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 32px;
+  }
+
+  .app-header {
+    margin-bottom: 24px;
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    & > span {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+  }
+
+  .task-list {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .empty-state {
+    margin-top: 20px;
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--surface-soft);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+}

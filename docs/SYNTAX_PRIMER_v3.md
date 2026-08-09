@@ -74,6 +74,8 @@ div({ data: () => this.isLoading }, () => div({}, () => "Loading"));
 gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content");
 ```
 
+> **⚠️ `data:` boolean controls *children*, not element existence.** When the value is falsy, the element itself is still created — it just has no children. A styled container (padding, background, border) will still occupy space as an empty box. To remove an element entirely, use pattern 1 (nested children function) or pattern 3 (`gate()`).
+
 **The inline scope functions**
 | Function | Registers dependency | Gates on `===` | Use when |
 |----------|---------------------|----------------|----------|
@@ -361,7 +363,7 @@ Meta: `template`, `slot`
 
 Text node: `text`
 
-No SVG-specific elements are exported (the `svgElements` module is commented out in `src/DOM/index.ts`). Use `Component.ToFunction` with a namespace for custom SVG components.
+No SVG-specific elements are exported (the `svgElements` module is commented out in `src/DOM/index.ts`). Use `Component.ToFunction` with a namespace for custom SVG components. Note that the `svg` element function itself creates an **HTML-namespace** `<svg>` element (no SVG namespace), so it is not suitable for inline SVG rendering — use a namespaced `Component.ToFunction` instead.
 
 ---
 
@@ -730,7 +732,14 @@ When a reactive scope emits, the framework:
 1. Re-runs the children function that read the scope, producing a new vNode tree.
 2. Patches the DOM from the old vNode tree to the new vNode tree.
 
-The framework does **not** diff two vNode trees against each other. There is no vNode reconciliation. The "surgical" aspect comes from scoping — only the children functions that subscribed to the changed scope re-run. Everything else is untouched.
+The framework does **not** diff two vNode trees against each other. There is no vNode-to-vNode reconciliation — no keyed diffing, no positional matching of old vNodes to new vNodes. The "surgical" aspect comes from scoping — only the children functions that subscribed to the changed scope re-run. Everything else is untouched.
+
+**What actually happens at the DOM level:** when a children function re-runs, it produces a fresh array of vNodes. Each vNode maps to a DOM node, and `reconcileChildren` (in `src/DOM/domNodeConfig.ts`) reconciles the element's real DOM children against that list. Reuse is purely by **reference identity**:
+- A vNode that is the *same object* as before (which is what per-item `MappedScope` reuse produces) keeps its existing DOM node — no rebuild.
+- A *new* vNode object creates a *new* DOM node (`createNode`); the old node is removed.
+- Text nodes are special-cased: if the incoming child is a string and the current child is a text node, the text node is **reused and its value updated** (`setText`) rather than replaced.
+
+So "no vNode diffing" is precise: there is no keyed reconciliation and no vNode-to-vNode matching. But there *is* a cheap DOM-node reconciliation that reuses nodes by `===` reference. This is exactly why `@Computed` (same reference across updates) avoids DOM churn while `@Scope` (new reference) forces node recreation, and why per-item identity reuse is the framework's only mechanism for stable DOM.
 
 This means:
 - A scope read at the top of `Template()` rebuilds the entire component vNode tree.
@@ -1028,6 +1037,34 @@ gate(() => computeB(), "id-b");
 | Array transformations (filter/map) | No | Always new references, never helps |
 | Multiple uses in same template | Yes | Scope reuse avoids duplicate work |
 | Wrapping `@Scope` getter | No | `@Scope` always returns new ref; `===` always differs |
+
+#### Empty state vs. list — the canonical `gate()` pattern
+
+The most common real-world use of `gate()` is choosing between an empty-state
+message and a `data:` list, where the two must be mutually exclusive (never both
+in the DOM):
+
+```typescript
+div({}, () =>
+  gate(() => this.visibleTodos.length === 0)
+    ? div({}, () => "No items")
+    : div({ data: () => this.visibleTodos }, (item) => div({}, () => item.name)),
+)
+```
+
+**Why `gate()` and not a nested children function?** The wrapper children
+function reads `this.visibleTodos.length`. Without `gate()`, *every* change to
+`visibleTodos` (e.g. toggling one item while the list stays non-empty) re-runs
+the wrapper and rebuilds the whole subtree. `gate()` only emits when the boolean
+flips, so the ternary is not re-evaluated on those upstream emissions. The list
+still updates correctly because its `data: () => this.visibleTodos` binding has
+its own reactive scope that subscribes to `visibleTodos` directly — independent
+of the wrapper.
+
+**Why not `data:` boolean?** `data:` boolean only controls the element's
+*children*; the element itself stays in the DOM. A styled empty-state container
+would remain visible as an empty box. `gate()` (or a nested children function)
+actually removes the element.
 
 **What gate() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
 
@@ -1412,18 +1449,21 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 1. **No vNode diffing.** The framework never reconciles vNode trees. A scope emission re-runs the children function and rebuilds its subtree. Optimize by minimizing emission frequency, not re-run cost.
 2. **Async dependencies are captured synchronously only.** Read all reactive values before the first `await`. Reads after `await` are not tracked.
 3. **`data:` collapses ALL falsy non-array values to `[]`** — `false`, `null`, `undefined`, **and `0`, `""`, `NaN`**. Only truthy non-array values wrap as `[value]`.
-4. **`@ComputedAsync` is a *sync* getter.** The "Async" refers to the `StoreAsync` backend, not the getter signature. For real async, use `@Scope() + scope(async)` or `ObservableScope.Create(async)`.
-5. **`gate()` is incompatible with `@Scope`.** `@Scope` returns a new reference every update, so `gate()`'s `===` always sees a change. Use `@Computed()` for reference stability.
-6. **Per-item scope reuse is identity-based, not key-based.** The same data object reference reuses its scope; a new reference creates a new scope.
-7. **`@Watch` fires immediately on `Bound()`** with the initial value — not just on changes. Missing `super.Bound()` means `@Watch` never fires.
-8. **`@State` arrays support direct mutation** (`push`, `splice`, item property writes) because they're proxies. Plain arrays require reassignment.
-9. **`@Computed` only tracks what the getter touches.** Returning `this.tasks` without reading item properties won't re-trigger on per-item mutations. Touch every property you track.
-10. **`scope()`/`gate()`/`peek()`/`mapped()` throw outside a watch context.** They must be called inside a template function, `@Scope` getter, or other watch context.
-11. **`Injector` is not publicly exported.** Use `@Inject` and `this.Injector` on components.
-12. **StoreAsync data must be JSON-serialisable** and `keyFunc` must be self-contained (no closed-over variables). Always `await` StoreAsync writes before reading.
-13. **Two-way binding needs reactive props** (`props: () => ({ value })`). A static `props: { value }` object causes input focus loss.
-14. **Reading a scope at the top of `Template()` subscribes the whole component.** Read scopes inside children functions or `data:` bindings for fine-grained updates.
-15. **`scope()`/`gate()`/`peek()` ID collisions are per-scope.** Multiple calls to the same helper in one watch context without IDs silently resolve to the first scope. Provide distinct IDs when calling the same helper more than once in a single ObservableScope definition.
+4. **`data:` boolean renders the element, not nothing.** A falsy `data:` value removes the element's *children*, but the element itself stays in the DOM. A styled container (padding/background/border) will still show as an empty box. To remove an element entirely, use a nested children function or `gate()`.
+5. **`@ComputedAsync` is a *sync* getter.** The "Async" refers to the `StoreAsync` backend, not the getter signature. For real async, use `@Scope() + scope(async)` or `ObservableScope.Create(async)`.
+6. **`gate()` is incompatible with `@Scope`.** `@Scope` returns a new reference every update, so `gate()`'s `===` always sees a change. Use `@Computed()` for reference stability.
+7. **Per-item scope reuse is identity-based, not key-based.** The same data object reference reuses its scope; a new reference creates a new scope.
+8. **`@Watch` fires immediately on `Bound()`** with the initial value — not just on changes. Missing `super.Bound()` means `@Watch` never fires.
+9. **`@State` arrays support direct mutation** (`push`, `splice`, item property writes) because they're proxies. Plain arrays require reassignment.
+10. **`@Computed` only tracks what the getter touches.** Returning `this.tasks` without reading item properties won't re-trigger on per-item mutations. Touch every property you track.
+11. **`scope()`/`gate()`/`peek()`/`mapped()` throw outside a watch context.** They must be called inside a template function, `@Scope` getter, or other watch context.
+12. **`Injector` is not publicly exported.** Use `@Inject` and `this.Injector` on components.
+13. **StoreAsync data must be JSON-serialisable** and `keyFunc` must be self-contained (no closed-over variables). Always `await` StoreAsync writes before reading.
+14. **Two-way binding needs reactive props** (`props: () => ({ value })`). A static `props: { value }` object causes input focus loss.
+15. **Reading a scope at the top of `Template()` subscribes the whole component.** Read scopes inside children functions or `data:` bindings for fine-grained updates.
+16. **`scope()`/`gate()`/`peek()` ID collisions are per-scope.** Multiple calls to the same helper in one watch context without IDs silently resolve to the first scope. Provide distinct IDs when calling the same helper more than once in a single ObservableScope definition.
+17. **`IsAsync` only detects the `async` keyword.** A function that *returns* a Promise but is not declared `async` (e.g. `() => fetch(...)`) is treated as synchronous — the scope stores the Promise as its value instead of resolving it. Always write `async () => ...` for async scopes.
+18. **`@State`/`ObservableNode` only deep-tracks plain objects and arrays.** `JsonType` classifies values by prototype; class instances, `Date`, `Map`, `Set`, and other non-plain objects are treated as opaque primitives — nested mutations won't be tracked. Use plain objects/arrays for reactive state.
 
 ---
 
@@ -1444,7 +1484,10 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 | Child `@Value` not synced with parent `Data` | Use `@Watch((self) => self.Data.prop)` |
 | `.filter(Boolean)` for conditional rendering | Use ternary with `text(() => "")` fallback |
 | Condition and sibling `data:` list in same children function | Wrap condition in nested children function, use `data:` boolean, or use `gate()` |
+| `data:` boolean for a styled container that should disappear | Use nested children function or `gate()` — `data:` boolean keeps the element in the DOM (empty) |
 | Assuming framework diffs vNode trees | It doesn't — optimize by minimizing scope emission frequency |
+| `@State()` on class instances / `Date` / `Map` / `Set` | Use plain objects/arrays — non-plain objects are treated as primitives (no deep reactivity) |
+| Promise-returning arrow without `async` keyword in an async scope | Use `async () => ...` — `IsAsync` only detects `async` functions |
 
 ---
 
@@ -1465,10 +1508,12 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 | Child form controls don't reflect parent changes | No sync from `this.Data` to `@Value` | Add `@Watch((self) => self.Data.prop)` |
 | Conditional re-renders when sibling list updates | Condition and list share same children function scope | Isolate condition into nested children function, `data:` boolean, or `gate()` |
 | Expensive Template re-runs on every change | Large vNode subtree subscribed to frequently-changing scope | Split into smaller scopes to reduce rebuild surface |
+| Async scope resolves to a Promise instead of a value | Callback not declared `async` | Use `async () => ...` so `IsAsync` detects it |
 
 ### Internal Mechanics
 
 - **No vNode Diffing:** The framework does not diff vNode trees. When a scope emits, the children function re-runs, producing new vNodes. The DOM is patched from old to new. Per-item scopes are reused when the same data object reference reappears (identity-based, not key-based).
+- **DOM-node reconciliation by reference:** `reconcileChildren` reuses a DOM node only when the vNode object reference is identical (per-item reuse); a new vNode creates a new DOM node. Text nodes are reused and updated in place (`setText`) rather than replaced. There is no keyed or positional vNode matching.
 - **Object Identity:** `@Computed` uses `ApplyDiff` to merge changes into existing references, preventing DOM subtree recreation.
 - **StoreAsync Constraints:** Uses Web Workers for diffing; data must be JSON-serializable (no methods or circular references).
 - **`gate()` as Circuit Breaker:** Prevents reactivity propagation when result is unchanged (`===`). Ineffective with `@Scope` (always new ref).

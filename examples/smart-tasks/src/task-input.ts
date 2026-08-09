@@ -1,6 +1,7 @@
 import { Component } from "j-templates";
 import { Value } from "j-templates/Utils";
 import { div, input, button } from "j-templates/DOM";
+import "./task-input.scss";
 
 export interface TaskInputEvents {
   add: { text: string };
@@ -42,5 +43,4 @@ class TaskInput extends Component<void, void, TaskInputEvents> {
 }
 
 const taskInput = Component.ToFunction("task-input", TaskInput);
-
 export { taskInput };
