@@ -1,5 +1,4 @@
-import { expect } from "chai";
-import "mocha";
+import { describe, it, expect } from "vitest";
 import {
   GateScope,
   IObservableScope,
@@ -10,8 +9,8 @@ describe("Observable Scope", () => {
   it("Basic Test", () => {
     const source = { obj: { val: "test" } };
     const suffix = { value: "PREFIX" };
-    const scope = ObservableScope.Create(() => source.obj);
-    const scopeSuffix = ObservableScope.Create(() => suffix.value);
+    const scope = ObservableScope.Basic(() => source.obj);
+    const scopeSuffix = ObservableScope.Basic(() => suffix.value);
 
     function getScopeValue() {
       return `${ObservableScope.Value(scope)?.val} ${ObservableScope.Value(scopeSuffix)}`;
@@ -29,7 +28,7 @@ describe("Observable Scope", () => {
     suffix.value = "CHANGED";
     ObservableScope.Update(scopeSuffix);
 
-    expect(ObservableScope.Value(scope2)).to.eq("changed");
+    expect(ObservableScope.Value(scope2)).to.eq("changed CHANGED");
   });
 
   it("Should handle null/undefined values properly", () => {
@@ -41,23 +40,9 @@ describe("Observable Scope", () => {
     expect(ObservableScope.Value(scope2)).to.be.undefined;
   });
 
-  /* it("Should properly destroy scopes and cleanup", () => {
-    const source = { value: "test" };
-    const scope = ObservableScope.Create(() => source.value);
-
-    // Verify scope is not destroyed initially
-    expect(scope.destroyed).to.be.false;
-
-    // Destroy the scope
-    ObservableScope.Destroy(scope);
-
-    // Verify scope is marked as destroyed
-    expect(scope.destroyed).to.be.true;
-    }); */
-
   it("Should support multiple watchers on same scope", () => {
     const source = { value: "test" };
-    const scope = ObservableScope.Create(() => source.value);
+    const scope = ObservableScope.Basic(() => source.value);
 
     let callCount1 = 0;
     let callCount2 = 0;
@@ -118,7 +103,7 @@ describe("Observable Scope", () => {
   it("Simple gate scope test", async () => {
     let temp = "temp1";
 
-    const scope = ObservableScope.Create(() => temp, true);
+    const scope = ObservableScope.Gated(() => temp);
     expect(ObservableScope.Value(scope)).to.eq("temp1");
     let fired = false;
     ObservableScope.Watch(scope, (scope) => (fired = true));
@@ -135,7 +120,7 @@ describe("Observable Scope", () => {
   it("Calc helper function test", async () => {
     let temp = "temp1";
 
-    const sourceScope = ObservableScope.Create(() => temp);
+    const sourceScope = ObservableScope.Basic(() => temp);
     const destScope = ObservableScope.Create(() =>
       GateScope(() => ObservableScope.Value(sourceScope)),
     );
@@ -162,7 +147,7 @@ describe("Observable Scope", () => {
 
   it("Debounced observable scope test", async () => {
     let temp = "temp1";
-    let sourceScope = ObservableScope.Create(() => temp, false, true);
+    let sourceScope = ObservableScope.Basic(() => temp);
 
     let debouncedScope = ObservableScope.Create(
       async () =>

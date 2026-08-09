@@ -5,16 +5,14 @@
  * This file demonstrates jTemplates advanced template composition:
  * - Generic components with type parameters
  * - Template functions for custom cell rendering
- * - Reactive data binding with calc() function
+ * - Reactive data binding
  * - Complex component composition
  * 
  * @purpose Shows how to create flexible, reusable table components
  * @see Component - Base component class
- * @see calc - Reactive calculation function
- * @see src/Utils/functions.ts - calc implementation
  */
 
-import { calc, Component } from "j-templates";
+import { Component } from "j-templates";
 import { tbody, td, th, thead, tr } from "j-templates/DOM";
 import { vNode } from "j-templates/Node/vNode.types";
 
@@ -114,9 +112,9 @@ class DataTable<D> extends Component<Data<D>, CellTemplate<D>> {
         th({}, () => column.name),
       ),
       // Table body section
-      // calc(() => this.Data.data) creates a reactive calculation
-      // This ensures proper change detection for array data
-      tbody({ data: () => calc(() => this.Data.data) }, (data) =>
+      // data: () => this.Data.data creates a reactive binding to the data array.
+      // The framework iterates the array and renders a row per item.
+      tbody({ data: () => this.Data.data }, (data) =>
         // For each data item, create a table row
         tr({ data: () => this.Data.columns }, (column) =>
           // For each column, create a table cell

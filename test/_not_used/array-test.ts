@@ -1,7 +1,5 @@
-/// <reference path="../../node_modules/@types/mocha/index.d.ts" />
-import * as chai from "chai";
-import { InsertionSortTuples, RemoveNulls } from "../../src/Utils/array";
-const expect = chai.expect;
+import { describe, it, expect } from "vitest";
+import { InsertionSortTuples, RemoveNulls } from "../../src/_not_used/array";
 
 describe("Array Remove Nulls", () => {
   it("Basic Remove Nulls 01", () => {

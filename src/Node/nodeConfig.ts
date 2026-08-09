@@ -21,10 +21,13 @@ export interface INodeConfig {
   removeChild(root: any, child: any): void;
   remove(target: any): void;
   fireEvent(target: any, event: string, data: any): void;
+  propertyAssignment(target: any, next: any): void;
   createPropertyAssignment(target: any): { (next: any): void };
+  eventAssignment(target: any, next: any): void;
   createEventAssignment(target: any): {
     (next: { [event: string]: (event: Event) => void }): void;
   };
+  attributeAssignment(target: any, next: any): void;
   createAttributeAssignment(target: any): {
     (next: { [attribute: string]: string }): void;
   };

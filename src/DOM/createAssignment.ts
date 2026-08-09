@@ -1,5 +1,11 @@
 const DEFAULT_ASSIGNMENT = {};
 
+export function Assignment(target: any, next: any, assignment: {(target: any, key: string, value: any): void}) {
+  for (const key in next) {
+    assignment(target, key, next[key]);
+  }
+}
+
 export function CreateAssignment(target: any, createAssignment: {(target: any, key: string): (next: any) => void }) {
     let last: any | undefined;
     let writeTo: {[key: string]: (next: any) => void} = {};

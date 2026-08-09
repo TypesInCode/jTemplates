@@ -58,6 +58,7 @@
  */
 
 import {
+    IBasicObservableScope,
   IObservableScope,
   ObservableScope,
 } from "../Store/Tree/observableScope";
@@ -81,7 +82,7 @@ const nodeInstanceMap = new WeakMap<
  */
 const scopeInstanceMap = new WeakMap<
   WeakKey,
-  { [prop: string]: [IObservableScope<unknown>, unknown] }
+  { [prop: string]: [IObservableScope<unknown> | IBasicObservableScope<unknown>, unknown] }
 >();
 
 const boundPrototypeMap = new WeakMap<WeakKey, ((instance: any) => void)[]>();
@@ -152,7 +153,10 @@ function CreateComputedScope(
   store: StoreSync | StoreAsync,
   defaultValue?: any,
 ) {
-  const getterScope = ObservableScope.Create(getter, true);
+  const getterScope = ObservableScope.Gated(function () {
+    const value = getter();
+    return ObservableNode.Clone(value);
+  });
 
   ObservableScope.Watch(getterScope, (scope) => {
     const data = ObservableScope.Peek(scope);
@@ -634,12 +638,10 @@ export function Value(): any {
  * @returns An observable scope created from the tuple's value.
  */
 function CreateValueScope(tuple: [unknown, any]) {
-  return ObservableScope.Create(
+  return ObservableScope.Basic(
     function () {
       return tuple[1];
-    },
-    false,
-    true,
+    }
   );
 }
 
@@ -916,7 +918,7 @@ function WatchDecorator<T, K extends string>(
       return scopeFunction(instance);
     }
 
-    const scope = ObservableScope.Create(scopeFunctionWrapper, true);
+    const scope = ObservableScope.Gated(scopeFunctionWrapper);
     const propertyMap = GetScopeMapForInstance(this);
     propertyMap[propertyKey as string] = [scope, undefined];
     ObservableScope.Watch(scope, function (scope) {

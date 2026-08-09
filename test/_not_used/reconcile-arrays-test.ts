@@ -1,7 +1,5 @@
-/// <reference path="../../node_modules/@types/mocha/index.d.ts" />
-import * as chai from "chai";
-import { ReconcileSortedEmitters, ReconcileSortedArrays } from "../../src/Utils/array";
-const expect = chai.expect;
+import { describe, it, expect } from "vitest";
+import { ReconcileSortedEmitters, ReconcileSortedArrays } from "../../src/_not_used/array";
 
 describe("Reconcile sorted emitters", () => {
   it("Basic Reconcile", () => {

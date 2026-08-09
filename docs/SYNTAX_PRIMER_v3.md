@@ -1,31 +1,91 @@
-# j-templates Syntax Primer
+# j-templates Syntax Primer — v3
 
-Complete reference for j-templates framework syntax. For pattern-oriented guides, see `docs/patterns/`.
+Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.90** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
 
 > **Core concepts:** Components define UI via `Template()`. State decorators (`@Value`, `@State`, `@Computed`) enable reactivity. DOM functions (`div()`, `button()`) create virtual nodes. No compile step, minimal dependencies.
 
 ---
 
-## Prerequisites
+## How to Use This Document (for LLMs)
 
-This document assumes familiarity with:
-- **TypeScript** — classes, generics, decorators, type annotations
-- **DOM API** — elements, events, attributes, properties
-- **Reactive programming concepts** — observables, subscriptions, dependency tracking
-- **npm / ES modules** — imports, package installation
+- **Read the Mental Model and Cheat Sheet first.** They encode the single most important idea (no vNode diffing) and a compact summary you can get right from.
+- **The Traps section is mandatory reading.** It consolidates the subtle behaviors that cause the most bugs.
+- **The Anti-Patterns and Debugging tables are the highest-value reference.** Consult them before writing any component.
+- **The complete worked example (Smart Tasks)** exercises the whole stack together — read it once to anchor every concept.
+- Internal implementation types are intentionally omitted; you build with DOM functions and decorators, never with raw `vNode` objects.
 
 ---
 
-## Reading Guide
+## Mental Model
 
-| If you need to... | Read these sections first |
-|---|---|
-| Create a component | Quick Start → Component → Template System → Component Composition |
-| Understand reactivity | State Decorators → How Updates Propagate → Inline Computed Scopes |
-| Debug a performance issue | How Updates Propagate → Anti-Patterns → Debugging Reactivity |
-| Set up data flow | Component Composition → Store → ObservableScope API |
-| Choose a decorator | State Decorators → Scope Selection Decision Tree |
-| Understand the rendering model | Template System → How Updates Propagate → Internal Mechanics |
+> **The framework does not diff vNode trees.** When a reactive scope emits, the children function that read it re-runs and produces a brand-new vNode tree. The DOM is then patched from the old tree to the new tree. There is no vNode-to-vNode reconciliation (unlike React's diffing).
+
+This one fact drives every design decision in this framework:
+
+- **Optimization = minimize how often scopes emit**, not how cheap the re-run is.
+- A scope read at the top of `Template()` rebuilds the **entire** component tree.
+- A scope read inside a children function rebuilds **only that subtree**.
+- A scope read inside a `data:` binding rebuilds **only that iteration's vNode**.
+- Per-item scopes are **reused by object identity** (not by key) when the same data reference reappears.
+
+**The core loop:** `@Value` → `Template()` → `Component.ToFunction` → `Component.Attach`. Everything else is a refinement.
+
+---
+
+## Cheat Sheet
+
+**Imports**
+```typescript
+import { Component, scope, gate, peek, mapped } from "j-templates";
+import { div, button, input, span, h1, text, _var } from "j-templates/DOM";
+import { Value, State, Computed, ComputedAsync, Scope, Watch, Inject, Destroy, Bound, Animation, AnimationType, IDestroyable } from "j-templates/Utils";
+import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
+import { CreateRootPropertyAssignment, CreateEventAssignment } from "j-templates/DOM";
+```
+
+**The core loop**
+```typescript
+const MyComp = Component.ToFunction("my-comp", MyComponent);   // class → function
+Component.Attach(document.body, MyComp({}));                    // mount
+Component.Register("my-comp", MyComponent);                     // Web Component (open shadow DOM)
+```
+
+**Decorators — one line each**
+| Decorator | Use for | Backend | Identity |
+|-----------|---------|---------|----------|
+| `@Value()` | primitives (`number`/`string`/`boolean`/`null`/`undefined`) | basic scope | — |
+| `@State()` | objects & arrays (deep proxy) | ObservableNode proxy | — |
+| `@Scope()` | cheap getters, filter/sort of existing refs | single scope | **new ref** |
+| `@Computed()` | new composite objects | StoreSync | **same ref** (ApplyDiff) |
+| `@ComputedAsync(default)` | sync getter + StoreAsync backend | StoreAsync | **same ref** |
+| `@Watch(fn)` | run on property change (fires immediately on `Bound()`) | greedy scope | — |
+| `@Inject(Type)` | DI from component injector | — | — |
+| `@Destroy()` | auto `.Destroy()` on teardown (needs `IDestroyable`) | — | — |
+
+**The 3 conditional patterns**
+```typescript
+// 1. Nested children function — isolated scope, use when an "else" branch is needed
+div({}, () => this.isLoading ? div({}, () => "Loading") : text(() => ""));
+
+// 2. data: boolean — falsy renders nothing, truthy renders child (no "else")
+div({ data: () => this.isLoading }, () => div({}, () => "Loading"));
+
+// 3. gate() — only re-evaluates when boolean flips; shares scope with siblings
+gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content");
+```
+
+**The inline scope functions**
+| Function | Registers dependency | Gates on `===` | Use when |
+|----------|---------------------|----------------|----------|
+| `scope(fn)` | Yes | No | Full reactivity |
+| `gate(fn)` | Yes | Yes | Prevent unnecessary downstream updates |
+| `peek(fn)` | No | N/A | One-time reads, display-only values |
+| `mapped(data, fn)` | Yes (per item) | No | Per-item scopes (advanced; used internally by `data:`) |
+
+**The 3 golden rules**
+1. Pass arrays as `data:` — the framework iterates. Don't call `.map()` inside children.
+2. Wrap children in functions for separate reactive scopes.
+3. Read scopes at the point of use (inside children functions / `data:` bindings), never at the top of `Template()`.
 
 ---
 
@@ -54,7 +114,205 @@ const CounterFn = Component.ToFunction("my-counter", Counter);
 Component.Attach(document.body, CounterFn({}));
 ```
 
-**The core loop:** `@Value` → `Template()` → `Component.ToFunction` → `Component.Attach`. Everything else is a refinement.
+---
+
+## Complete Worked Example — Smart Tasks
+
+> This is a trimmed version of the real example at `examples/smart-tasks/src/`. It exercises the full stack: `@State`, `@Value`, `@Scope`, `@Computed`, plain reactive getters, parent→child data, child→parent events, `data:` iteration, conditional rendering, and two-way binding. Read it once to anchor every concept below.
+
+**`types.ts`**
+```typescript
+export interface Task { id: string; text: string; completed: boolean; }
+export type FilterType = "all" | "active" | "completed";
+```
+
+**`app.ts`** — the root component
+```typescript
+import { Component } from "j-templates";
+import { Value, State } from "j-templates/Utils";
+import { div, h1, span, text } from "j-templates/DOM";
+import { taskInput } from "./task-input";
+import { taskItem } from "./task-item";
+import { filterBar } from "./filter-bar";
+import { statsBar } from "./stats-bar";
+import { Task, FilterType } from "./types";
+
+let nextId = 1;
+
+class App extends Component {
+  @State() tasks: Task[] = [];          // complex state → deep proxy
+  @Value() filter: FilterType = "all";  // primitive state → lightweight
+
+  // Plain getter — reactive because it reads @State/@Value values.
+  // No decorator needed for simple derived reads.
+  get filteredTasks(): Task[] {
+    switch (this.filter) {
+      case "active": return this.tasks.filter((t) => !t.completed);
+      case "completed": return this.tasks.filter((t) => t.completed);
+      default: return this.tasks;
+    }
+  }
+
+  private handleAdd(payload: { text: string }): void {
+    this.tasks.push({ id: String(nextId++), text: payload.text, completed: false });
+  }
+  private handleToggle(id: string): void {
+    const task = this.tasks.find((t) => t.id === id);
+    if (task) task.completed = !task.completed;   // @State proxy → direct mutation works
+  }
+  private handleDelete(id: string): void {
+    const idx = this.tasks.findIndex((t) => t.id === id);
+    if (idx !== -1) this.tasks.splice(idx, 1);
+  }
+
+  Template() {
+    return div({ props: { className: "app" } }, () => [
+      h1({}, () => "Smart Tasks"),
+
+      // Parent → child data (read-only in child)
+      statsBar({ data: () => ({ tasks: this.tasks }) }),
+
+      // Child → parent event
+      taskInput({ on: { add: (p) => this.handleAdd(p) } }),
+
+      filterBar({
+        data: () => ({ activeFilter: this.filter }),
+        on: { filterChange: (p) => { this.filter = p.filter; } },
+      }),
+
+      // Conditional rendering — isolated scope. Only this div re-evaluates
+      // when tasks/filteredTasks/filter change. Siblings are unaffected.
+      div({}, () => {
+        if (this.tasks.length === 0) return div({}, () => "No tasks yet");
+        if (this.filteredTasks.length === 0) return div({}, () => "No tasks match this filter.");
+        return text(() => "");
+      }),
+
+      // data: binding — framework iterates. Each item gets its own scope,
+      // so toggling one task does not re-render the others.
+      div({ props: { className: "task-list" }, data: () => this.filteredTasks },
+        (task: Task) =>
+          taskItem({
+            data: () => task,
+            on: {
+              toggle: () => this.handleToggle(task.id),
+              delete: () => this.handleDelete(task.id),
+            },
+          }),
+      ),
+    ]);
+  }
+}
+
+const app = Component.ToFunction("app", App);
+Component.Attach(document.getElementById("app")!, app({}));
+```
+
+**`task-item.ts`** — child component with events
+```typescript
+import { Component } from "j-templates";
+import { div, span } from "j-templates/DOM";
+import { Task } from "./types";
+
+export interface TaskItemEvents { toggle: { id: string }; delete: { id: string }; }
+
+class TaskItem extends Component<Task, void, TaskItemEvents> {
+  Template() {
+    return div({
+      props: () => ({ className: this.Data.completed ? "task-item completed" : "task-item" }),
+    }, () => [
+      div({
+        props: () => ({ className: this.Data.completed ? "task-check checked" : "task-check" }),
+        on: { click: () => this.Fire("toggle", { id: this.Data.id }) },
+      }),
+      span({ props: { className: "task-text" } }, () => this.Data.text),
+      div({
+        props: { className: "task-delete" },
+        on: { click: () => this.Fire("delete", { id: this.Data.id }) },
+      }, () => "\u00d7"),
+    ]);
+  }
+}
+const taskItem = Component.ToFunction("task-item", TaskItem);
+export { taskItem };
+```
+
+**`task-input.ts`** — two-way binding via reactive props
+```typescript
+import { Component } from "j-templates";
+import { Value } from "j-templates/Utils";
+import { div, input, button } from "j-templates/DOM";
+
+export interface TaskInputEvents { add: { text: string }; }
+
+class TaskInput extends Component<void, void, TaskInputEvents> {
+  @Value() text: string = "";
+
+  private handleAdd(): void {
+    const trimmed = this.text.trim();
+    if (!trimmed) return;
+    this.Fire("add", { text: trimmed });
+    this.text = "";
+  }
+
+  Template() {
+    return div({ props: { className: "task-input" } }, () => [
+      input({
+        props: () => ({ value: this.text, placeholder: "What needs doing?", type: "text" as const }),
+        on: {
+          input: (e: Event) => { this.text = (e.target as HTMLInputElement).value; },
+          keydown: (e: KeyboardEvent) => { if (e.key === "Enter") this.handleAdd(); },
+        },
+      }),
+      button({ props: () => ({ disabled: this.text.trim() === "" }), on: { click: () => this.handleAdd() } }, () => "Add"),
+    ]);
+  }
+}
+const taskInput = Component.ToFunction("task-input", TaskInput);
+export { taskInput };
+```
+
+**`stats-bar.ts`** — `@Scope` vs `@Computed`
+```typescript
+import { Component } from "j-templates";
+import { Scope, Computed } from "j-templates/Utils";
+import { div, span } from "j-templates/DOM";
+import { Task } from "./types";
+
+interface StatsBarData { tasks: Task[]; }
+
+class StatsBar extends Component<StatsBarData> {
+  // @Scope — cheap derived values, new reference each update.
+  @Scope() get total(): number { return this.Data.tasks.length; }
+  @Scope() get activeCount(): number { return this.Data.tasks.filter((t) => !t.completed).length; }
+  @Scope() get completedCount(): number { return this.Data.tasks.filter((t) => t.completed).length; }
+
+  // @Computed — composite object, SAME reference preserved via ApplyDiff.
+  @Computed()
+  get summary(): { active: number; completed: number; total: number; pct: string } {
+    const t = this.total;
+    const c = this.completedCount;
+    return { total: t, active: this.activeCount, completed: c, pct: t === 0 ? "0%" : `${Math.round((c / t) * 100)}%` };
+  }
+
+  Template() {
+    return div({ props: { className: "stats-bar" } }, () => [
+      span({}, () => `${this.activeCount} active`),
+      span({}, () => `${this.completedCount} completed`),
+      span({}, () => `${this.summary.pct} done`),
+    ]);
+  }
+}
+const statsBar = Component.ToFunction("stats-bar", StatsBar);
+export { statsBar };
+```
+
+**What to notice:**
+- `@State` arrays support **direct mutation** (`push`, `splice`, `task.completed = ...`) because they're proxies. Plain arrays would need reassignment.
+- The plain getter `filteredTasks` needs **no decorator** — it's reactive because it reads `@State`/`@Value` values.
+- `@Scope` for cheap per-region derived values; `@Computed` for a composite object consumed by multiple spans.
+- `data:` is passed **raw** to components (`this.Data`), but **iterated** for DOM elements.
+- Events flow child→parent via `Fire()` + `on:`; data flows parent→child via `data:`.
 
 ---
 
@@ -68,13 +326,16 @@ npm install j-templates
 
 **File naming:** Components: kebab-case (`todo-list.ts`). Services: kebab-case + `-service` suffix. Exports: lowercase matching filename.
 
-```typescript
-import { Component, scope, gate, peek } from "j-templates";
-import { div, button, input, span, h1, text, _var } from "j-templates/DOM";
-import { Value, State, Computed, ComputedAsync, Scope, Watch, Inject, Destroy, Bound, Animation, AnimationType, IDestroyable, Injector } from "j-templates/Utils";
-import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
-import { CreateRootPropertyAssignment, CreateEventAssignment } from "j-templates/DOM";
-```
+**Public entry points** (verified against `src/index.ts`, `src/DOM/index.ts`, `src/Utils/index.ts`, `src/Store/index.ts`):
+
+| Import path | Exports |
+|-------------|---------|
+| `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped` |
+| `j-templates/DOM` | all DOM functions (`div`, `span`, `text`, `_var`, …), `CreateRootPropertyAssignment`, `CreateEventAssignment` |
+| `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `IDestroyable` |
+| `j-templates/Store` | `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode` |
+
+> ⚠️ **`Injector` is NOT exported from any public entry point.** It is defined in `src/Utils/injector.ts` but never re-exported. Use `@Inject` and `this.Injector` on components instead of importing `Injector` directly.
 
 ### DOM Functions
 
@@ -100,7 +361,7 @@ Meta: `template`, `slot`
 
 Text node: `text`
 
-No SVG-specific elements exported; use `Component.ToFunction` with namespace for custom SVG components.
+No SVG-specific elements are exported (the `svgElements` module is commented out in `src/DOM/index.ts`). Use `Component.ToFunction` with a namespace for custom SVG components.
 
 ---
 
@@ -171,6 +432,8 @@ type FunctionOr<T> = { (): T | Promise<T> } | T;
 
 `this.VNode.node` is the custom element host, not the template root. Query template children via `this.VNode.node.querySelector('.className')`.
 
+> **Components don't own the host.** There is no framework support for interacting with the host element. To attach native DOM listeners (focus, scroll, resize, etc.), attach them to a root element you define in `Template()` — not to `this.VNode.node`.
+
 ```html
 <my-component>              <!-- Host (styled via element selector) -->
   <div class="container">   <!-- Template root (styled via class selector) -->
@@ -234,56 +497,6 @@ function element<P, E, T>(
 
 **Functions are reactive:** When referenced scope values change, the vNode re-renders.
 
-### Core Type Definitions
-
-```typescript
-// vNode types
-type vNode = vStringNode | vElementNode;
-
-type vStringNode = {
-  type: "string";
-  node: string;
-};
-
-type vElementNode = {
-  type: string;
-  definition: vNodeDefinition | null;  // null after initialization
-  injector: Injector;
-  node: Node | null;
-  children: (readonly [any, vNode[], IObservableScope<string | vNode | vNode[]> | null])[] | null;
-  destroyed: boolean;
-  onDestroyed: Emitter | null;
-  scopes: IObservableScope<unknown>[];
-  component: Component;  // non-nullable on element nodes
-};
-
-interface vNodeDefinition<P = HTMLElement, E extends { [event: string]: any } = any, T = never> {
-  type: string;
-  namespace: string | null;
-  props?: FunctionOr<RecursivePartial<P>>;
-  attrs?: FunctionOr<{ [name: string]: string }>;
-  on?: FunctionOr<vNodeEvents<E>>;
-  data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
-  children?: vNodeChildrenFunction<T>;
-  childrenArray?: vNode[];
-  componentFactory?: (vnode: vNode) => Component<any, any, any>;
-  node?: Node;
-}
-
-type vNodeChildrenFunction<T> =
-  | ((data: T) => vNode | vNode[])
-  | ((data: T) => string);
-
-type FunctionOr<T> = { (): T | Promise<T> } | T;
-type RecursivePartial<T> = { [P in keyof Pick<T, NonFunctionKeys<T>>]?: T[P] extends Function ? never : T[P] extends object ? RecursivePartial<T[P]> : T[P]; };
-type vNodeEvents<E extends { [event: string]: any } = any> = { [P in keyof E]?: { (events: E[P]): void } };
-type ComponentEvents<E = void> = E extends void ? void : { [P in keyof E]?: { (data: E[P]): void } };
-interface IObservableScope<T> { type: "static" | "dynamic"; value: T; /* ...dynamic fields when type="dynamic" */ }
-interface IDestroyable { Destroy(): void; }
-type ConstructorToken<I> = { new (...args: any[]): I } | (abstract new (...args: any[]): I);
-type NonFunctionKeys<T> = { [P in keyof T]: T[P] extends Function ? never : P }[keyof T];
-```
-
 ### Template Patterns
 
 ```typescript
@@ -312,8 +525,8 @@ Template() {
     // 2. data: boolean — falsy renders nothing, truthy renders child, no "else" needed
     div({ data: () => this.isLoading }, () => div({}, () => "Loading")),
 
-    // 3. gate() — only re-evaluates when boolean flips; use when source changes frequently
-    //    and the condition shares a children function with other reactive siblings
+    // 3. gate() — only re-evaluates when boolean flips; use when the condition
+    //    shares a children function with other reactive siblings
     gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content"),
 
     // Child component
@@ -324,7 +537,6 @@ Template() {
 
     // Bare string as the sole children-function return value — valid per
     // vNodeChildrenFunction<T>, and equivalent to using text() as the only child.
-    // This is different from mixing a plain string into an array (see below).
     div({}, () => `Count: ${this.count}`),
 
     // Raw HTML (use innerHTML prop, NOT { __html: })
@@ -338,7 +550,7 @@ Template() {
 
 ### data: Binding Behavior
 
-> **🔑 Key Insight:** `data:` binding behavior differs fundamentally between DOM elements and components. DOM elements: framework iterates/wraps/short-circuits. Components: raw passthrough as `this.Data`.
+> **🔑 Key Insight:** `data:` binding behavior differs fundamentally between DOM elements and components. **DOM elements:** framework iterates/wraps/short-circuits. **Components:** raw passthrough as `this.Data`.
 
 #### DOM Elements
 
@@ -351,9 +563,11 @@ Template() {
 | `true` | Wraps as `[true]`, renders child once |
 | `false` / `null` / `undefined` | Returns `[]`, no children rendered |
 
-**Also accepts** `Promise<T>` and `Promise<T[]>` for async data.
+> ⚠️ **Falsy edge case:** the wrapping logic is `if (!result) return [];` (see `ToArray` in `src/Node/vNode.ts`). So **`0`, `""`, and `NaN` also collapse to `[]`** — not just `false`/`null`/`undefined`. Only *truthy* non-array values are wrapped as `[value]`.
 
-The `false`/`true` behavior makes `data:` a clean conditional rendering mechanism: `data: () => this.isLoading` renders its child once when true and nothing when false, with its own isolated reactive scope.
+**Also accepts** `Promise<T>` and `Promise<T[]>` for async data. While a Promise is pending, the scope evaluates to `null` (falsy), so the element renders nothing until resolved — there is no built-in placeholder; implement one yourself if needed.
+
+The `false`/`true` behavior makes `data:` a clean conditional rendering mechanism. **The child function is invoked with the truthy value as its data argument** — e.g. `data: () => this.isLoading` calls the child with `true` when loading. It renders its child once when true and nothing when false, with its own isolated reactive scope.
 
 #### Components
 
@@ -365,6 +579,7 @@ Components receive the raw return value as `this.Data` — no iteration, no wrap
 | `{ id: 1 }` | `{ id: 1 }` — passed as-is |
 | `"text"` | `"text"` — passed as-is |
 | `false` / `null` / `undefined` | The actual value — component decides how to handle |
+| `Promise<T>` | Resolved by the scope — `this.Data` is the resolved value, or `null` while pending |
 
 ```typescript
 // DOM element: framework iterates and renders a child per item
@@ -386,7 +601,6 @@ taskList({ data: () => ({ tasks: this.tasks }) });
 
 ```typescript
 // Anti-pattern: condition and list share a children function scope.
-// Any change to isEmpty OR visibleTodos re-runs the entire block.
 div({}, () => [
   this.isEmpty ? div({}, () => "No items") : text(() => ""),
   div({ data: () => this.visibleTodos }, (item) => ...)
@@ -439,7 +653,6 @@ Template() {
 ```
 
 7. **Read `@Scope` getters at the point of use** — reading a `@Scope` at the top of `Template()` registers it as a dependency of the entire Template. Reading it inside a children function or `data:` binding keeps the subscription scoped to that subtree.
-
 8. **Same applies to `this.Data` in components** — reading `this.Data` at the top of `Template()` subscribes the entire component to the parent's data scope. Any parent data change rebuilds the entire Template. Read `this.Data` inside children functions, `props:` functions, or `data:` bindings to scope reactivity to specific DOM subtrees.
 
 ```typescript
@@ -540,7 +753,9 @@ All decorators are for **Component classes only**. Services must use `Observable
 @Value() isLoading: boolean = false;
 ```
 
-Lightweight, no proxy. For `number`, `string`, `boolean`, `null`, `undefined`.
+Lightweight, no proxy. For `number`, `string`, `boolean`, `null`, `undefined`. Backed by a `basic` scope (`ObservableScope.Basic`).
+
+**When NOT to use:** for objects or arrays — use `@State()` instead (deep reactivity).
 
 ### @State — Complex State
 
@@ -549,7 +764,9 @@ Lightweight, no proxy. For `number`, `string`, `boolean`, `null`, `undefined`.
 @State() items: Item[] = [];
 ```
 
-Deep reactivity via proxy. For objects with nested properties and arrays.
+Deep reactivity via proxy (`ObservableNode.Create`). For objects with nested properties and arrays. **Array mutations (`push`, `splice`, item property writes) are tracked** — see the Smart Tasks example.
+
+**When NOT to use:** for primitives — `@State()` creates a proxy, leaf scopes, and caches for no benefit; use `@Value()`.
 
 ### @Scope — Cached Getter (New Reference)
 
@@ -558,9 +775,11 @@ Deep reactivity via proxy. For objects with nested properties and arrays.
 get fullName() { return `${this.firstName} ${this.lastName}`; }
 ```
 
-Cached, re-executes getter on dependency change. For cheap computations, primitives, simple array operations that maintain object identity (filter, sort).
+Cached, re-executes getter on dependency change. For cheap computations, primitives, simple array operations that maintain object identity (filter, sort). Backed by a non-greedy single scope (`ObservableScope.Create`).
 
-**Emission behavior:** `@Scope` creates a non-greedy scope that emits immediately when dependencies change, without `===` gating. Downstream consumers re-execute regardless of whether the getter returned the same value. The getter returns whatever it computes — `return this.items` preserves reference, `return this.items.filter(...)` produces a new reference. Downstream `data:` bindings use identity-based scope reuse: when the same data object reference appears in the array, its per-item scope is reused and only re-renders if that scope's dependencies changed.
+**Emission behavior:** `@Scope` creates a non-greedy scope. When a dependency changes, the scope **emits** (notifies consumers) but does **not** re-evaluate the getter immediately — the getter re-runs lazily on the **next read** of the scope. There is no `===` gating: downstream consumers re-execute regardless of whether the getter returns the same value. The getter returns whatever it computes — `return this.items` preserves reference, `return this.items.filter(...)` produces a new reference. Downstream `data:` bindings use identity-based scope reuse: when the same data object reference appears in the array, its per-item scope is reused and only re-renders if that scope's dependencies changed.
+
+> **Emit ≠ recompute.** An `@Scope` emit only notifies consumers; the value is recomputed on the next read. This differs from `@Computed`, whose `StoreSync` backend recomputes eagerly on emit (pulling from the source) so it can `ApplyDiff` in place. Both are created lazily on first read.
 
 **Granularity matters:** Each `@Scope` getter creates a single cached value. When its dependencies change, ALL downstream consumers re-execute. If the getter creates a new object (filter, composite, etc.), all downstream `data:` bindings see a new reference and update. Use separate `@Scope` getters per independent UI region:
 
@@ -584,6 +803,8 @@ get grouped() {
 // Each region reads its own scope. Only affected regions re-render.
 ```
 
+**When NOT to use:** for composite objects consumed by multiple regions (new ref invalidates all consumers) — use `@Computed()`; and never wrap a `@Scope` in `gate()` (always-new-ref defeats `===`).
+
 ### @Computed — Cached Getter (Same Reference)
 
 ```typescript
@@ -593,9 +814,17 @@ get summary() {
 }
 ```
 
-Cached, preserves object identity via `ApplyDiff`. No default value parameter. For creating new objects in getter (filtering/sorting/aggregating data into new structures).
+Cached, preserves object identity via `ApplyDiff`. No default value parameter. For creating new objects in getter (filtering/sorting/aggregating data into new structures). Backed by `StoreSync`.
 
 `@Computed` uses `ApplyDiff` to merge changes into the existing object reference. Downstream consumers using `===` comparison (like `gate()` or `data:` bindings) only see a change when actual structure differs, not when the getter re-runs. Use `@Computed` when returning composite objects consumed by multiple UI regions. Prefer per-region `@Scope` when you need granular updates.
+
+> **`@Computed` returns a copy, not the source reference.** The getter's result is copied into a new reactive object whose identity is preserved across updates via `ApplyDiff`. It is a distinct object from whatever the getter read. Consequently, changes to the *source* object do not fire on the copy — the copy only re-evaluates when its own source dependencies change. If you need downstream consumers to observe mutations to an existing reactive object directly, use `@Scope` (which passes the existing reference through) instead.
+
+> **Recompute timing.** `@Computed`'s `StoreSync` is created lazily on first read; after that it recomputes eagerly on emit (pulling from the source) so it can `ApplyDiff`. This contrasts with `@Scope`, which re-evaluates lazily on the next read.
+
+**Dependency tracking note:** `@Computed` (via `StoreSync`) registers dependencies based on what properties the getter accesses through the proxy. If the getter returns `this.tasks` without iterating or reading individual item properties, per-item mutations (e.g., `task.completed = true`) won't trigger re-evaluation. The getter must touch every reactive property it intends to track — `.filter()`, `.map()`, `.reduce()`, and manual property reads all register deps. Returning the array reference alone only tracks array-level mutations (push, splice, reassignment).
+
+**When NOT to use:** for cheap ops or array filter/sort of existing refs — use `@Scope()` or a plain getter (identity already preserved, less overhead).
 
 ### @ComputedAsync — Sync Getter with StoreAsync Backend
 
@@ -624,7 +853,9 @@ syncFromParent(newFilter: FilterType): void {
 }
 ```
 
-Fires immediately with initial value when `Bound()` runs, then on each change. Subscription auto-cleaned on `Destroy()`. Uses greedy (batched) scope.
+Fires immediately with initial value when `Bound()` runs, then on each change. Subscription auto-cleaned on `Destroy()`. Uses greedy (batched) scope (`ObservableScope.Greedy`).
+
+**When NOT to use:** for values you only read in `Template()` — reading a scope there is already reactive; `@Watch` is for side effects (syncing state, logging, triggering external calls).
 
 ### @Inject — Dependency Injection
 
@@ -671,8 +902,6 @@ Calls `.Destroy()` on marked properties during component teardown. Requires `IDe
 | Composite object for multiple consumers | Yes — same ref, sub-property mutations tracked | No — new ref invalidates all consumers | Yes |
 
 **Key:** `@Computed` preserves object identity across updates. Critical when DOM reuse depends on reference stability (e.g., iterating arrays with `data:`).
-
-**Dependency tracking note:** `@Computed` (via `StoreSync`) registers dependencies based on what properties the getter accesses through the proxy. If the getter returns `this.tasks` without iterating or reading individual item properties, per-item mutations (e.g., `task.completed = true`) won't trigger re-evaluation. The getter must touch every reactive property it intends to track — `.filter()`, `.map()`, `.reduce()`, and manual property reads all register deps. Returning the array reference alone only tracks array-level mutations (push, splice, reassignment).
 
 ### Async Patterns
 
@@ -735,6 +964,126 @@ Need conditional rendering?
   - No "else" branch needed -> `data:` boolean (`data: () => this.condition`)
   - "Else" branch needed, condition isolated from siblings -> nested children function with ternary
   - "Else" branch needed, condition shares scope with frequently-changing siblings -> `gate()` ternary
+
+---
+
+## Inline Computed Scopes: scope(), gate(), peek(), mapped()
+
+Four functions for creating memoized computed scopes inline within a watch context (template functions, `@Scope` getters, etc.). All accept `() => T | Promise<T>` — async callbacks are resolved and the resolved value is emitted. They live in `src/Store/Tree/observableScope.ts` and are re-exported from the root (`src/index.ts`).
+
+**Only works within a watch context** — throws if called outside (e.g. `scope() must be called within a watch context`).
+
+### scope() — Full Reactivity
+
+Creates an inline computed scope registered as a dependency of the parent. Emits on every recomputation — no `===` gating.
+
+```typescript
+import { scope } from "j-templates";
+
+// Inline computed value
+div({ data: () => scope(() => this.Data.items) }, (item) => div({}, () => item.name));
+
+// Async data fetching in a getter
+@Scope()
+get userData(): User {
+  return scope(async () => fetchUser(`/api/user/${this.userId}`));
+}
+```
+
+### gate() — Emission Gatekeeper
+
+Like `scope()`, but only emits when the value actually changes (`===` comparison). Prevents unnecessary downstream re-evaluations.
+
+```typescript
+import { gate } from "j-templates";
+
+// Primitive gating — prevents emission when result unchanged
+gate(() => this.Data.count > 10);
+
+// Array reference gating
+div({ data: () => gate(() => this.Data.items) }, (item) => div({}, () => item.name));
+
+// Conditional rendering — only re-evaluates when boolean flips, not on every upstream emission.
+gate(() => this.visibleTodos.length === 0)
+  ? div({}, () => "No items")
+  : div({ data: () => this.visibleTodos }, (item) => ...),
+
+// Multiple gate scopes with custom IDs
+gate(() => computeA(), "id-a");
+gate(() => computeB(), "id-b");
+
+> **⚠️ ID collision is per-scope.** The custom ID only disambiguates multiple `scope()`/`gate()`/`peek()` calls **within the same ObservableScope definition** (one watch context). If you call the same helper twice in one watch context without IDs, the second call silently resolves to the first scope. IDs are not global — two calls in different components/scopes never collide.
+```
+
+#### When to Use gate()
+
+| Scenario | Use gate()? | Why |
+|----------|-------------|-----|
+| Condition shares scope with reactive siblings | Yes | Prevents sibling re-render when boolean doesn't flip |
+| Conditional rendering (boolean flip) | Yes | Re-evaluates ternary only when value changes true↔false |
+| Direct `@State` array access | Optional | Value gating when parent changes |
+| Static constant array | No | Never changes, adds overhead |
+| Primitive derived state | Yes | `===` prevents unnecessary emissions |
+| Parent aggregates multiple values | Yes | Child only cares about specific parts |
+| Array transformations (filter/map) | No | Always new references, never helps |
+| Multiple uses in same template | Yes | Scope reuse avoids duplicate work |
+| Wrapping `@Scope` getter | No | `@Scope` always returns new ref; `===` always differs |
+
+**What gate() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
+
+`gate()` and `@Scope` are incompatible: `@Scope` returns a new reference on every update, so `gate()`'s `===` comparison always sees a change. If you need both caching and reference stability, use `@Computed()` instead.
+
+### peek() — Read Without Subscribing
+
+Creates a memoized computed scope that does **not** register as a dependency. Use this to read reactive data without the parent scope subscribing to changes.
+
+```typescript
+import { peek } from "j-templates";
+
+// Read reactive data without subscribing
+const timestamp = peek(() => Date.now());
+
+// Read with custom ID for multiple uses
+const id = peek(() => this.Data.id, "id");
+const name = peek(() => this.Data.name, "name");
+```
+
+`peek()` differs from `gate()` in that the created scope does not register as a dependency. Changes to data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID to avoid redundant computation within the same evaluation.
+
+### mapped() — Per-Item Scopes (Advanced)
+
+`mapped(data, callback, onUpdated?, onDestroyed?)` creates a per-item scope for a single data value. This is the mechanism `data:` uses internally. Only needed for advanced manual per-item scoping.
+
+```typescript
+import { mapped } from "j-templates";
+
+mapped(data, (d) => /* ... */, (lastValue, scope) => /* onUpdated */, (lastValue) => /* onDestroyed */);
+```
+
+Signature (see `MappedScope` in `src/Store/Tree/observableScope.ts`):
+
+```typescript
+function mapped<D, T>(
+  data: D,
+  callback: (data: D) => T | Promise<T>,
+  onUpdated?: (lastValue: T, scope: IObservableScope<T>) => void,
+  onDestroyed?: (lastValue: T) => void
+): T
+```
+
+- `data` is a **single** value — there is no array-iterating form. Iterate arrays with `data:` on a DOM element instead.
+- `onUpdated` fires when the per-item scope's value changes.
+- `onDestroyed` fires when the per-item scope is torn down.
+- Like the other inline scopes, `mapped()` must be called within a watch context.
+
+#### Comparison
+
+| Function | Registers dependency | Gates on `===` | Use when |
+|----------|---------------------|----------------|----------|
+| `scope()` | Yes | No | Full reactivity needed |
+| `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
+| `peek()` | No | N/A | One-time reads, display-only values |
+| `mapped()` | Yes (per item) | No | Per-item scopes (advanced) |
 
 ---
 
@@ -817,6 +1166,8 @@ Bound() {
 ## Dependency Injection
 
 ### Injector API
+
+> ⚠️ The `Injector` class is **not exported** from the package's public entry points. The API below documents its behavior for understanding `@Inject` and `this.Injector`; do not import `Injector` directly.
 
 ```typescript
 class Injector {
@@ -1054,131 +1405,25 @@ namespace ObservableNode {
 
 ---
 
-## Inline Computed Scopes: scope(), gate(), peek()
+## Traps & Gotchas
 
-Three functions for creating memoized computed scopes inline within a watch context (template functions, `@Scope` getters, etc.). All three accept `() => T | Promise<T>` — async callbacks are resolved and the resolved value is emitted.
+These are the subtle behaviors that cause the most bugs. Read this before writing components.
 
-**Only works within a watch context** — throws if called outside.
-
-### scope() — Full Reactivity
-
-Creates an inline computed scope registered as a dependency of the parent. Emits on every recomputation — no `===` gating.
-
-```typescript
-import { scope } from "j-templates";
-
-// Inline computed value
-div({ data: () => scope(() => this.Data.items) }, (item) => div({}, () => item.name));
-
-// Async data fetching in a getter
-@Scope()
-get userData(): User {
-  return scope(async () => fetchUser(`/api/user/${this.userId}`));
-}
-```
-
-### gate() — Emission Gatekeeper
-
-Like `scope()`, but only emits when the value actually changes (`===` comparison). Prevents unnecessary downstream re-evaluations.
-
-```typescript
-import { gate } from "j-templates";
-
-// Primitive gating — prevents emission when result unchanged
-gate(() => this.Data.count > 10);
-
-// Array reference gating
-div({ data: () => gate(() => this.Data.items) }, (item) => div({}, () => item.name));
-
-// Conditional rendering — only re-evaluates when boolean flips, not on every upstream emission.
-// Use when the condition shares a children function with other reactive siblings.
-gate(() => this.visibleTodos.length === 0)
-  ? div({}, () => "No items")
-  : div({ data: () => this.visibleTodos }, (item) => ...),
-
-// Multiple gate scopes with custom IDs
-gate(() => computeA(), "id-a");
-gate(() => computeB(), "id-b");
-```
-
-#### When to Use gate()
-
-| Scenario | Use gate()? | Why |
-|----------|-------------|-----|
-| Condition shares scope with reactive siblings | Yes | Prevents sibling re-render when boolean doesn't flip |
-| Conditional rendering (boolean flip) | Yes | Re-evaluates ternary only when value changes true↔false |
-| Direct `@State` array access | Optional | Value gating when parent changes |
-| Static constant array | No | Never changes, adds overhead |
-| Primitive derived state | Yes | `===` prevents unnecessary emissions |
-| Parent aggregates multiple values | Yes | Child only cares about specific parts |
-| Array transformations (filter/map) | No | Always new references, never helps |
-| Multiple uses in same template | Yes | Scope reuse avoids duplicate work |
-| Wrapping `@Scope` getter | No | `@Scope` always returns new ref; `===` always differs |
-
-**What gate() does NOT do:** Make arrays reactive (`@State` already does that). Prevent emissions for array transformations (always new refs). Provide object reuse (that's `@Computed`).
-
-`gate()` and `@Scope` are incompatible: `@Scope` returns a new reference on every update, so `gate()`'s `===` comparison always sees a change. If you need both caching and reference stability, use `@Computed()` instead.
-
-### peek() — Read Without Subscribing
-
-Creates a memoized computed scope that does **not** register as a dependency. Use this to read reactive data without the parent scope subscribing to changes.
-
-```typescript
-import { peek } from "j-templates";
-
-// Read reactive data without subscribing
-const timestamp = peek(() => Date.now());
-
-// Read with custom ID for multiple uses
-const id = peek(() => this.Data.id, "id");
-const name = peek(() => this.Data.name, "name");
-```
-
-`peek()` differs from `gate()` in that the created scope does not register as a dependency. Changes to data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID to avoid redundant computation within the same evaluation.
-
-#### Comparison
-
-| Function | Registers dependency | Gates on `===` | Use when |
-|----------|---------------------|----------------|----------|
-| `scope()` | Yes | No | Full reactivity needed |
-| `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
-| `peek()` | No | N/A | One-time reads, display-only values |
-
----
-
-## Animation
-
-```typescript
-enum AnimationType { Linear, EaseIn }  // EaseIn = cubic bezier
-
-class Animation implements IDestroyable {
-  constructor(type: AnimationType, duration: number, update: (next: number) => void);
-  get Running(): boolean;
-  get Start(): number;      // null if not running
-  get End(): number;        // null if not running
-  get Enabled(): boolean;
-  Animate(start: number, end: number): Promise<void> | undefined;  // undefined if disabled or diff=0
-  Disable(): void;
-  Enable(): void;
-  Cancel(): void;
-  Destroy(): void;   // Calls Disable()
-}
-```
-
----
-
-## Decorator Signatures
-
-```typescript
-function Computed(): PropertyDecorator;           // No default value parameter
-function ComputedAsync<V>(defaultValue: V): PropertyDecorator;  // Default value required
-function Value(): PropertyDecorator;
-function State(): PropertyDecorator;
-function Scope(): PropertyDecorator;
-function Watch<S extends (instance: T) => any, T>(scope: S): MethodDecorator;
-function Inject<I, T extends Record<K, I>>(type: ConstructorToken<I>): PropertyDecorator;
-function Destroy(): PropertyDecorator;
-```
+1. **No vNode diffing.** The framework never reconciles vNode trees. A scope emission re-runs the children function and rebuilds its subtree. Optimize by minimizing emission frequency, not re-run cost.
+2. **Async dependencies are captured synchronously only.** Read all reactive values before the first `await`. Reads after `await` are not tracked.
+3. **`data:` collapses ALL falsy non-array values to `[]`** — `false`, `null`, `undefined`, **and `0`, `""`, `NaN`**. Only truthy non-array values wrap as `[value]`.
+4. **`@ComputedAsync` is a *sync* getter.** The "Async" refers to the `StoreAsync` backend, not the getter signature. For real async, use `@Scope() + scope(async)` or `ObservableScope.Create(async)`.
+5. **`gate()` is incompatible with `@Scope`.** `@Scope` returns a new reference every update, so `gate()`'s `===` always sees a change. Use `@Computed()` for reference stability.
+6. **Per-item scope reuse is identity-based, not key-based.** The same data object reference reuses its scope; a new reference creates a new scope.
+7. **`@Watch` fires immediately on `Bound()`** with the initial value — not just on changes. Missing `super.Bound()` means `@Watch` never fires.
+8. **`@State` arrays support direct mutation** (`push`, `splice`, item property writes) because they're proxies. Plain arrays require reassignment.
+9. **`@Computed` only tracks what the getter touches.** Returning `this.tasks` without reading item properties won't re-trigger on per-item mutations. Touch every property you track.
+10. **`scope()`/`gate()`/`peek()`/`mapped()` throw outside a watch context.** They must be called inside a template function, `@Scope` getter, or other watch context.
+11. **`Injector` is not publicly exported.** Use `@Inject` and `this.Injector` on components.
+12. **StoreAsync data must be JSON-serialisable** and `keyFunc` must be self-contained (no closed-over variables). Always `await` StoreAsync writes before reading.
+13. **Two-way binding needs reactive props** (`props: () => ({ value })`). A static `props: { value }` object causes input focus loss.
+14. **Reading a scope at the top of `Template()` subscribes the whole component.** Read scopes inside children functions or `data:` bindings for fine-grained updates.
+15. **`scope()`/`gate()`/`peek()` ID collisions are per-scope.** Multiple calls to the same helper in one watch context without IDs silently resolve to the first scope. Provide distinct IDs when calling the same helper more than once in a single ObservableScope definition.
 
 ---
 
@@ -1207,7 +1452,7 @@ function Destroy(): PropertyDecorator;
 
 | Symptom | Likely Cause | Fix |
 |---------|--------------|-----|
-| Initial render works, updates don't | Direct array mutation | Replace array, don't mutate |
+| Initial render works, updates don't | Direct array mutation | Replace array, don't mutate (or use `@State` proxy) |
 | Template never re-renders | `data:` not a function | Use `data: () => this.state` |
 | Getter value stale | Not using `this.Data` | Read from `this.Data` in getter |
 | `@Watch` never fires | Missing `super.Bound()` | Call in `Bound()` method |
@@ -1227,7 +1472,7 @@ function Destroy(): PropertyDecorator;
 - **Object Identity:** `@Computed` uses `ApplyDiff` to merge changes into existing references, preventing DOM subtree recreation.
 - **StoreAsync Constraints:** Uses Web Workers for diffing; data must be JSON-serializable (no methods or circular references).
 - **`gate()` as Circuit Breaker:** Prevents reactivity propagation when result is unchanged (`===`). Ineffective with `@Scope` (always new ref).
-- **Scope Types:** `static` (fixed, zero overhead), `dynamic` (tracks deps, caches, emits on change), `greedy` (batched via microtask queue — used for watch callbacks, async).
+- **Scope Types:** `static` (fixed, zero overhead), `basic` (used by `@Value`), `dynamic` (tracks deps, caches, emits on change), `greedy` (batched via microtask queue — used for watch callbacks, async).
 - **Lazy Initialization:** Scopes created on first access, not construction.
 - **Memory Management:** All scopes tracked via WeakMap. `Destroy()` calls `ObservableScope.DestroyAll()` + `@Destroy` properties auto-cleaned.
 
@@ -1240,18 +1485,21 @@ function Destroy(): PropertyDecorator;
 | **vNode** | Virtual node — the internal representation of a DOM element or text node |
 | **Scope** | A reactive unit that tracks dependencies, caches a value, and emits on change |
 | **Static scope** | A scope with a fixed value — no dependency tracking, zero overhead |
+| **Basic scope** | A lightweight scope used by `@Value` — direct value storage, no proxy |
 | **Dynamic scope** | A scope with a getter function — tracks dependencies, re-evaluates on change |
 | **Greedy scope** | A dynamic scope that batches updates via microtask queue (used for `@Watch`, async) |
 | **Children function** | The function passed as the second argument to a DOM function (e.g., `div({}, () => ...)`) |
 | **ApplyDiff** | Deep merge that preserves object identity — used by `@Computed` to update existing references in-place |
 | **ObservableNode** | A reactive proxy wrapper around objects/arrays that tracks property-level mutations |
-| **Injector** | Scoped dependency injection container with parent-chain resolution |
+| **Injector** | Scoped dependency injection container with parent-chain resolution (not publicly exported) |
 | **keyFunc** | A function passed to Store that extracts an ID from objects for automatic flattening |
 
 ---
 
-## For detailed patterns and examples, see:
-- `docs/patterns/01-components.md`
-- `docs/patterns/02-reactivity.md`
-- `docs/patterns/03-templates-and-data.md`
-- `docs/patterns/04-dependency-injection.md`
+## References
+
+- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.90).
+- **Pattern guides:** `docs/patterns/01-components.md`, `docs/patterns/02-reactivity.md`, `docs/patterns/03-templates-and-data.md`, `docs/patterns/04-dependency-injection.md`.
+- **Tutorials:** `docs/tutorials/` (01-getting-started through 08-building-complete-app).
+- **Worked example:** `examples/smart-tasks/src/` (the Smart Tasks app used above).
+- **Capstone project:** `examples/tutorial_project/tutorial-8/src/`.

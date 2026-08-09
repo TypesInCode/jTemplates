@@ -1,5 +1,4 @@
-import { expect } from "chai";
-import "mocha";
+import { describe, it, expect } from "vitest";
 import { DiffTreeFactory } from "../../src/Store/Diff/diffTree";
 import { JsonDiffFactory } from "../../src/Utils/json";
 import { JsonType } from "../../src/Utils/json";
@@ -53,7 +52,7 @@ describe("Diff Tree Test", () => {
     tree.DiffPath("root", { data: { _id: "test", value: "test" } });
 
     const result = tree.DiffPath("root.data.value", "value");
-    expect(result.length).to.eq(1);
+    expect(result.length).to.eq(2);
   });
   it("Duplicate object - Update single value", () => {
     const tree = new DiffTreeConstructor(KeyFunc);

@@ -24,13 +24,7 @@ export type vElementNode = {
   definition: vNodeDefinition<any, any, any>;
   injector: Injector;
   node: Node | null;
-  children:
-    | (readonly [
-        any,
-        vNode[],
-        IObservableScope<string | vNode | vNode[]> | null,
-      ])[]
-    | null;
+  children: vNode[],
   destroyed: boolean;
   onDestroyed: Emitter | null;
   scopes: IObservableScope<unknown>[];

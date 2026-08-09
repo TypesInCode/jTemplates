@@ -19,7 +19,6 @@ import { ObservableScope } from "../Store";
  * @template E - Event map type for component events.
  */
 export class Component<D = void, T = void, E = {}> {
-  // private scope: ObservableScope<D>;
   private scope: IObservableScope<D>;
   private templates: T;
   private componentEvents: ComponentEvents<E>;
@@ -78,6 +77,8 @@ export class Component<D = void, T = void, E = {}> {
       this.scope = {
         type: "static",
         value: data,
+        destroyed: false,
+        onDestroyed: null
       };
 
     this.componentEvents = on;

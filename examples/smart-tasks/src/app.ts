@@ -102,7 +102,7 @@ class App extends Component {
       div(
         {
           props: { className: "task-list" },
-          data: () => this.filteredTasks,
+          data: () => this.filteredTasks
         },
         (task: Task) =>
           taskItem({

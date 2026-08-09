@@ -67,9 +67,11 @@ export function JsonDiffFactory() {
       case "array": {
         const typedSource = source as unknown[];
         const typedPatch = patch as unknown[];
-        const result = typedPatch.map(function (patch, index): unknown {
-          return JsonMerge(typedSource[index], patch);
-        });
+
+        const result = new Array(typedPatch.length);
+
+        for (let x = 0; x < typedPatch.length; x++)
+          result[x] = JsonMerge(typedSource[x], typedPatch[x]);
 
         return result;
       }
@@ -106,8 +108,7 @@ export function JsonDiffFactory() {
    * @param value - The value to clone
    * @returns A deep clone of the value
    */
-  function JsonDeepClone<T>(value: T): T {
-    const type = JsonType(value);
+  function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
     switch (type) {
       case "array": {
         const typed = value as unknown[];

@@ -1,32 +1,32 @@
 import { JsonMerge, JsonDeepClone } from "../../Utils/json";
 import { DiffSync } from "../Diff/diffSync";
-import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
+import { ObservableNode } from "../Tree/observableNode";
 import { Store } from "./store";
 
 /**
  * StoreSync class extends the base Store class to provide synchronous data management operations.
  * This class handles writing, patching, pushing, and splicing data in a synchronous manner.
- * 
+ *
  * StoreSync is designed to work with observable data structures, allowing for efficient updates
  * and notifications when data changes. It is particularly useful for scenarios where synchronous
  * operations are preferred or required.
- * 
+ *
  * @example
  * // Creating a StoreSync instance
  * const store = new StoreSync();
- * 
+ *
  * // Writing data to the store
  * store.Write({ name: "John", age: 30 }, "user");
- * 
+ *
  * // Patching existing data
  * store.Patch("user", { age: 31 });
- * 
+ *
  * // Pushing data into an array
  * store.Push("user.array", { id: 1 }, { id: 2 });
- * 
+ *
  * // Splicing an array
  * const deletedItems = store.Splice("user.array", 0, 1, { id: 3 });
- * 
+ *
  * @see Store
  * @see StoreAsync
  * @see DiffSync
@@ -55,11 +55,11 @@ export class StoreSync extends Store {
    * @throws Will throw an error if no key is provided for the data.
    */
   Write(data: unknown, key?: string) {
-    data = JsonDeepClone(data);
     key = key || this.keyFunc?.(data);
 
     if (!key) throw "No key provided for data";
 
+    data = ObservableNode.Unwrap(data);
     const diffResult = this.diff.DiffPath(key, data);
 
     this.UpdateRootMap(diffResult);
@@ -75,7 +75,7 @@ export class StoreSync extends Store {
     const value = this.Get(key);
     if (value === undefined) throw "Unable to patch undefined value";
 
-    const json = (value as any).toJSON();
+    const json = ObservableNode.Unwrap(value);
     const mergedJson = JsonMerge(json, patch);
 
     const diffResult = this.diff.DiffPath(key, mergedJson);
@@ -116,7 +116,7 @@ export class StoreSync extends Store {
     ...items: unknown[]
   ) {
     const arr = this.Get(key) as any[];
-    const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
+    const arrValue = ObservableNode.Unwrap(arr); // (arr as any)[GET_OBSERVABLE_VALUE] as any[];
     const arrCopy = arrValue.slice();
 
     const spliceResult = JsonDeepClone(

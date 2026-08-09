@@ -1,5 +1,4 @@
-import { expect } from "chai";
-import "mocha";
+import { describe, it, expect } from "vitest";
 import { StoreSync } from "../../src/Store/Store/storeSync";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 

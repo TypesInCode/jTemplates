@@ -73,7 +73,7 @@ export class App extends Component {
   /**
    * Computed property that provides dashboard report data.
    * 
-   * @Computed({ ... }) - Creates a reactive derived state property.
+   * @Computed() - Creates a reactive derived state property.
    * The decorator creates a StoreSync instance that caches the computed value
    * and automatically updates when dependencies change.
    * 
@@ -88,20 +88,7 @@ export class App extends Component {
    * @see src/Utils/decorators.ts:148 - Computed decorator implementation
    * @see src/Store/Store/storeSync.ts - StoreSync implementation
    */
-  @Computed({
-    topUrl: "",
-    topUser: "",
-    totalActivities: 0,
-    uniqueUsers: 0,
-    totalTime: 0,
-    avgTimePerActivity: 0,
-    topUserByVisits: 0,
-    topUserByTime: "",
-    topUserTimeSpent: 0,
-    topUrlByVisits: 0,
-    topUrlByTime: "",
-    topUrlTimeSpent: 0,
-  })
+  @Computed()
   get Report() {
     return this.dataService.GetReport();
   }

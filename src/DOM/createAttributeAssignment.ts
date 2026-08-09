@@ -1,5 +1,9 @@
+export function AttributeAssignment(target: HTMLElement, attribute: string, next: any) {
+  target.setAttribute(attribute, next);
+}
+
 export function CreateAttributeAssignment(target: HTMLElement, attribute: string) {
-    let lastValue: any;  
+    let lastValue: any;
     return function(next: any) {
         const nextValue = next && next[attribute];
         if(nextValue === lastValue)
@@ -9,7 +13,7 @@ export function CreateAttributeAssignment(target: HTMLElement, attribute: string
             target.removeAttribute(attribute);
         else
             target.setAttribute(attribute, nextValue);
-        
+
         lastValue = nextValue;
     }
 }

@@ -1,10 +1,10 @@
 import { wndw } from "./window";
 import { INodeConfig } from "../Node/nodeConfig";
 import { List } from "../Utils/list";
-import { CreateRootPropertyAssignment } from "./createPropertyAssignment";
-import { CreateEventAssignment } from "./createEventAssignment";
-import { CreateAssignment } from "./createAssignment";
-import { CreateAttributeAssignment } from "./createAttributeAssignment";
+import { CreateRootPropertyAssignment, PropertyAssignment } from "./createPropertyAssignment";
+import { CreateEventAssignment, EventAssignment } from "./createEventAssignment";
+import { Assignment, CreateAssignment } from "./createAssignment";
+import { AttributeAssignment, CreateAttributeAssignment } from "./createAttributeAssignment";
 
 let pendingUpdates = List.Create<{ (): void }>();
 let updateScheduled = false;
@@ -124,11 +124,20 @@ export const DOMNodeConfig: INodeConfig = {
   setAttribute(target: HTMLElement, attribute: string, value: string) {
     target.setAttribute(attribute, value);
   },
+  propertyAssignment(target: HTMLElement, next: any) {
+    Assignment(target, next, PropertyAssignment);
+  },
   createPropertyAssignment(target: HTMLElement) {
     return CreateAssignment(target, CreateRootPropertyAssignment);
   },
+  eventAssignment(target: HTMLElement, next: any) {
+    Assignment(target, next, EventAssignment);
+  },
   createEventAssignment(target: HTMLElement) {
     return CreateAssignment(target, CreateEventAssignment);
+  },
+  attributeAssignment(target: HTMLElement, next: any) {
+    Assignment(target, next, AttributeAssignment);
   },
   createAttributeAssignment(target: HTMLElement) {
     return CreateAssignment(target, CreateAttributeAssignment);
@@ -150,6 +159,16 @@ export const DOMNodeConfig: INodeConfig = {
     target.replaceChildren(...children);
   },
   reconcileChildren(target: HTMLElement, children: (HTMLElement | string)[]) {
+    if (!target.hasChildNodes()) {
+      for (let x = 0; x < children.length; x++) {
+        const nextChild = getHTMLNode(children[x], null);
+
+        target.appendChild(nextChild);
+      }
+
+      return;
+    }
+
     let lastChild: HTMLElement = null;
     switch (children.length) {
       case 0:
@@ -160,26 +179,33 @@ export const DOMNodeConfig: INodeConfig = {
         if (target.firstChild !== lastChild)
           target.insertBefore(lastChild, target.firstChild);
         break;
-      default:
-        let actualChild = target.firstChild as HTMLElement;
-        let nextChild: HTMLElement = null;
-
+      default: {
+        let currentChild = target.firstChild as HTMLElement;
+        let inNextChildren = false;
         for (let x = 0; x < children.length; x++) {
-          nextChild = getHTMLNode(children[x], actualChild);
-          while (actualChild && nextChild !== actualChild) {
-            const nextSibling = actualChild.nextSibling as HTMLElement;
-            target.removeChild(actualChild);
-            actualChild = nextSibling;
-          }
+          const nextChild = (lastChild = getHTMLNode(
+            children[x],
+            currentChild,
+          ));
 
-          if (actualChild) actualChild = actualChild.nextSibling as HTMLElement;
-          else target.appendChild(nextChild);
+          if (!currentChild) target.appendChild(nextChild);
+          else if (nextChild !== currentChild) {
+            while(currentChild && (!(inNextChildren = inNextChildren || children.indexOf(currentChild, x + 1) >= 0))) {
+              const toRemove = currentChild;
+              currentChild = currentChild.nextSibling as HTMLElement;
+              target.removeChild(toRemove);
+            }
+
+            nextChild !== currentChild &&
+              target.insertBefore(nextChild, currentChild);
+          } else inNextChildren = false;
+
+          currentChild = nextChild.nextSibling as HTMLElement;
         }
-
-        lastChild = nextChild;
         break;
+      }
     }
 
     while (target.lastChild !== lastChild) target.removeChild(target.lastChild);
-  },
+  }
 };

@@ -1,37 +1,37 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonDeepClone, JsonMerge } from "../../Utils/json";
 import { DiffAsync } from "../Diff/diffAsync";
-import { GET_OBSERVABLE_VALUE } from "../Tree/observableNode";
+import { ObservableNode } from "../Tree/observableNode";
 import { Store } from "./store";
 
 /**
  * StoreAsync class extends the base Store class to provide asynchronous data management operations.
  * This class handles writing, patching, pushing, and splicing data in an asynchronous manner.
- * 
+ *
  * StoreAsync is designed to work with observable data structures, allowing for efficient updates
  * and notifications when data changes. It is particularly useful for scenarios where asynchronous
  * operations are preferred or required, such as handling large datasets or performing complex diffs
  * without blocking the main thread.
- * 
+ *
  * @example
  * // Creating a StoreAsync instance
  * const store = new StoreAsync();
- * 
+ *
  * // Writing data to the store asynchronously
  * await store.Write({ name: "John", age: 30 }, "user");
- * 
+ *
  * // Patching existing data asynchronously
  * await store.Patch("user", { age: 31 });
- * 
+ *
  * // Pushing data into an array asynchronously
  * await store.Push("user.array", { id: 1 }, { id: 2 });
- * 
+ *
  * // Splicing an array asynchronously
  * const deletedItems = await store.Splice("user.array", 0, 1, { id: 3 });
- * 
+ *
  * // Cleaning up resources
  * store.Destroy();
- * 
+ *
  * @see Store
  * @see StoreSync
  * @see DiffAsync
@@ -137,7 +137,7 @@ export class StoreAsync extends Store {
   ) {
     return await this.queue.Next(async () => {
       const arr = this.Get(key) as any[];
-      const arrValue = (arr as any)[GET_OBSERVABLE_VALUE] as any[];
+      const arrValue = ObservableNode.Unwrap(arr); // (arr as any)[GET_OBSERVABLE_VALUE] as any[];
       const arrCopy = arrValue.slice();
 
       const spliceResult = JsonDeepClone(

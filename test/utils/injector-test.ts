@@ -1,5 +1,5 @@
+import { describe, it, expect } from "vitest";
 import { Injector } from "../../src/Utils/injector";
-import { expect } from "chai";
 
 describe("Injector", () => {
   it("should create scope with single value", () => {

@@ -1,62 +1,67 @@
-import { JsonDiff, JsonDiffResult } from "../../Utils/json";
+import { JsonDeepClone, JsonDiff, JsonDiffResult, JsonMerge } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
-import { IObservableScope, ObservableScope } from "./observableScope";
+import { IBasicObservableScope, ObservableScope } from "./observableScope";
 
-/**
- * Symbol to identify observable nodes.
- * Used to check if a value is an observable node proxy.
- */
-export const IS_OBSERVABLE_NODE = Symbol("isObservableNode");
+const NODE_VALUE = Symbol("NODE_VALUE");
+const NODE_PROXY = Symbol("NODE_PROXY");
+const toJSON = "toJSON";
+const IS_NODE = Symbol("IS_NODE");
+const OBJECT_SCOPE = Symbol("ARRAY_SCOPE");
 
-/**
- * Symbol to get the raw underlying value from an observable node.
- * Returns the unwrapped, non-proxied value.
- */
-export const GET_OBSERVABLE_VALUE = Symbol("getObservableValue");
+function Identity<T>(value: T): T {
+  return value;
+}
 
-/**
- * Symbol for the toJSON method on observable nodes.
- * Used to serialize observable nodes to plain JSON.
- */
-export const GET_TO_JSON = Symbol("toJSON");
+function Property(value: any, prop: string) {
+  return value[prop];
+}
 
-const proxyCache = new WeakMap<any, unknown | unknown[]>();
-const scopeCache = new WeakMap<any, IObservableScope<unknown | unknown[]>>();
-const leafScopeCache = new WeakMap<
-  any,
-  { [prop: string]: IObservableScope<unknown> }
->();
+type ObservableNodeWrapper = {
+  [NODE_VALUE]: any,
+  [NODE_PROXY]: any,
+  [prop: string | symbol]: IBasicObservableScope<any>
+}
 
-function getOwnPropertyDescriptor(target: any, prop: string | symbol) {
-  const descriptor = Object.getOwnPropertyDescriptor(target, prop);
+const wrapperCache = new WeakMap<any, ObservableNodeWrapper>();
+
+function getOwnPropertyDescriptor(target: ObservableNodeWrapper, prop: string | symbol) {
+  const descriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
   return {
     ...descriptor,
     configurable: true,
   } as PropertyDescriptor;
 }
 
-function getOwnPropertyDescriptorArray(target: any, prop: string | symbol) {
-  const descriptor = Object.getOwnPropertyDescriptor(target, prop);
+function getOwnPropertyDescriptorArray(target: ObservableNodeWrapper, prop: string | symbol) {
+  const descriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
   return {
     ...descriptor,
     configurable: true,
   } as PropertyDescriptor;
 }
 
-function has(value: any, prop: string | symbol) {
-  return Object.hasOwn(value, prop);
+function has(value: ObservableNodeWrapper, prop: string | symbol) {
+  return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
-function hasArray(value: any, prop: string | symbol) {
-  return Object.hasOwn(value, prop);
+function hasArray(value: ObservableNodeWrapper, prop: string | symbol) {
+  return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
-function ownKeys(value: any) {
-  return Object.keys(value);
+function ownKeys(value: ObservableNodeWrapper) {
+  return Object.keys(value[NODE_VALUE]);
 }
 
-function ownKeysArray(value: any) {
-  return Object.keys(value);
+function ownKeysArray(value: ObservableNodeWrapper) {
+  return Object.keys(value[NODE_VALUE]);
+}
+
+function TouchValue(value: unknown, prop: string | number | symbol = OBJECT_SCOPE) {
+  const wrapper = wrapperCache.get(value);
+  if (wrapper) {
+    const scope = wrapper[prop] ?? wrapper[OBJECT_SCOPE];
+    ObservableScope.Touch(scope);
+  }
 }
 
 function UnwrapProxy(
@@ -65,7 +70,10 @@ function UnwrapProxy(
 ) {
   if (type === "value") return value;
 
-  if (value[IS_OBSERVABLE_NODE]) return value[GET_OBSERVABLE_VALUE];
+  if (value[IS_NODE]) {
+    const nodeValue = value[NODE_VALUE];
+    return nodeValue;
+  }
 
   switch (type) {
     case "object": {
@@ -84,11 +92,34 @@ function UnwrapProxy(
   return value;
 }
 
-function CreateProxyFactory(alias?: (value: any) => any | undefined) {
-  function CreateProxy<T>(value: T): T {
-    value = UnwrapProxy(value);
-    return CreateProxyFromValue(value);
+function CloneProxy(
+  value: any,
+  type: "value" | "array" | "object" = JsonType(value)
+) {
+  if (type === "value") return value;
+
+  if (value[IS_NODE]) {
+    return JsonDeepClone(value);
   }
+
+  switch (type) {
+    case "object": {
+      const keys = Object.keys(value);
+      for (let x = 0; x < keys.length; x++)
+        value[keys[x]] = CloneProxy(value[keys[x]]);
+
+      break;
+    }
+    case "array": {
+      for (let x = 0; x < value.length; x++) value[x] = CloneProxy(value[x]);
+      break;
+    }
+  }
+
+  return value;
+}
+
+function CreateProxyFactory(alias?: (value: any) => any | undefined) {
 
   function ToJsonCopy(value: unknown): any {
     const type = JsonType(value);
@@ -120,49 +151,49 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   const ToJson = alias !== undefined ? ToJsonCopy : ToJsonDefault;
   const readOnly = alias !== undefined;
 
+  function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
+    object[NODE_VALUE][prop] = value;
+    ObservableScope.Update(object[prop]);
+  }
+
+  function SetArrayValue(object: ObservableNodeWrapper, prop: number, value: any) {
+    object[NODE_VALUE][prop] = value;
+    ObservableScope.Update(object[OBJECT_SCOPE]);
+  }
+
+  function CreateProxy<T>(value: T): T {
+    value = UnwrapProxy(value);
+    return CreateProxyFromValue(value);
+  }
+
   function CreateArrayProxy(value: any[]) {
-    const scope = ObservableScope.Create(() => value, false, true);
-    const proxy = new Proxy(value, {
+    const wrapper: ObservableNodeWrapper = Object.assign([] as any as ObservableNodeWrapper, {
+      [NODE_VALUE]: value,
+      [NODE_PROXY]: null,
+      [OBJECT_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
+    });
+
+    const proxy = wrapper[NODE_PROXY] = new Proxy(wrapper, {
       get: ArrayProxyGetter,
       set: ArrayProxySetter,
       has: hasArray,
       ownKeys: ownKeysArray,
       getOwnPropertyDescriptor: getOwnPropertyDescriptorArray,
-    }) as unknown[];
+    });
 
-    scopeCache.set(value, scope);
-    proxyCache.set(value, proxy);
-
+    wrapperCache.set(value, wrapper);
     return proxy;
   }
 
-  function CreateObjectProxy(value: any) {
-    const proxy = new Proxy(value, {
-      get: ObjectProxyGetter,
-      set: ObjectProxySetter,
-      has,
-      ownKeys,
-      getOwnPropertyDescriptor,
-    }) as unknown;
-
-    leafScopeCache.set(value, {});
-    proxyCache.set(value, proxy);
-
-    return proxy;
-  }
-
-  function ArrayProxySetter(array: unknown[], prop: string, value: any) {
+  function ArrayProxySetter(object: ObservableNodeWrapper, prop: string | symbol | number, value: any) {
     if (readOnly) throw `Object is readonly`;
 
     value = UnwrapProxy(value);
-    array[prop as any] = value;
-
-    const scope = scopeCache.get(array);
-    ObservableScope.Update(scope);
+    SetArrayValue(object, prop as number, value);
     return true;
   }
 
-  function ArrayProxyGetter(array: unknown[], prop: string | symbol | number) {
+  function ArrayProxyGetter(object: ObservableNodeWrapper, prop: string | symbol | number) {
     if (readOnly)
       switch (prop) {
         case "push":
@@ -176,17 +207,17 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
       }
 
     switch (prop) {
-      case IS_OBSERVABLE_NODE:
+      case IS_NODE:
         return true;
-      case GET_TO_JSON:
+      case toJSON:
         return function () {
-          return ToJson(array);
+          return ToJson(object[NODE_VALUE]);
         };
-      case GET_OBSERVABLE_VALUE:
-        return array;
+      case NODE_VALUE:
+        return object[NODE_VALUE];
       default: {
-        const scope = scopeCache.get(array) as IObservableScope<unknown[]>;
-        array = ObservableScope.Value(scope);
+        const scope = object[OBJECT_SCOPE];
+        const array = ObservableScope.Value(scope);
         const arrayValue = (array as any)[prop];
 
         if (typeof prop === "symbol") return arrayValue;
@@ -194,9 +225,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         if (typeof arrayValue === "function")
           return function ArrayFunction(...args: any[]) {
             const proxyArray =
-              prop === "slice" ? array.slice(...args) : array.slice();
-            for (let x = 0; x < proxyArray.length; x++)
-              proxyArray[x] = CreateProxyFromValue(proxyArray[x]);
+              prop === "slice" ? array.slice(...args).map(CreateProxyFromValue) : array.map(CreateProxyFromValue);
 
             let result =
               prop === "slice"
@@ -228,87 +257,77 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     }
   }
 
-  function SetPropertyValue(object: any, prop: string | number, value: any) {
-    object[prop] = value;
-    const leafScopes = leafScopeCache.get(object);
-    ObservableScope.Update(
-      (leafScopes && leafScopes[prop]) || scopeCache.get(object),
-    );
+  function CreateObjectProxy(value: any) {
+    const wrapper: ObservableNodeWrapper = {
+      [NODE_VALUE]: value,
+      [NODE_PROXY]: null
+    };
+
+    const proxy = wrapper[NODE_PROXY] = new Proxy(wrapper, {
+      get: ObjectProxyGetter,
+      set: ObjectProxySetter,
+      has,
+      ownKeys,
+      getOwnPropertyDescriptor,
+    });
+
+    wrapperCache.set(value, wrapper);
+    return proxy;
   }
 
-  function ObjectProxySetter(object: any, prop: string, value: any) {
+  function ObjectProxySetter(object: ObservableNodeWrapper, prop: string, value: any) {
     if (readOnly) throw `Object is readonly`;
 
-    const jsonType = JsonType(value);
-    if (jsonType === "value") {
-      value !== object[prop] && SetPropertyValue(object, prop, value);
-    } else {
-      value = UnwrapProxy(value, jsonType);
-      const diff = JsonDiff(value, object[prop]);
-
-      for (let x = 0; x < diff.length; x++) {
-        if (diff[x].path.length === 0) {
-          SetPropertyValue(object, prop, diff[x].value);
-        } else {
-          const path = diff[x].path;
-          let curr = object[prop];
-          let y = 0;
-          for (; y < path.length - 1; y++) curr = curr[path[y]];
-
-          SetPropertyValue(curr, path[y], diff[x].value);
-        }
-      }
-    }
+    value = UnwrapProxy(value);
+    SetObjectValue(object, prop, value);
 
     return true;
   }
 
-  function ObjectProxyGetter(object: unknown, prop: string | symbol) {
+  function ObjectProxyGetter(object: ObservableNodeWrapper, prop: string | symbol) {
     switch (prop) {
-      case IS_OBSERVABLE_NODE:
+      case IS_NODE:
         return true;
-      case GET_TO_JSON:
+      case toJSON:
         return function () {
           return ToJson(object);
         };
-      case GET_OBSERVABLE_VALUE:
-        return object;
+      case NODE_VALUE:
+        return object[NODE_VALUE];
       default: {
         return GetAccessorValue(object, prop);
       }
     }
   }
 
-  function GetAccessorValue(parent: any, prop: any) {
-    const leafScopes = leafScopeCache.get(parent);
-
-    leafScopes[prop] ??= ObservableScope.Create(
-      function () {
-        const value = parent[prop];
-        return CreateProxyFromValue(value);
-      },
-      false,
-      true,
+  function GetAccessorValue(object: ObservableNodeWrapper, prop: any) {
+    const scope = object[prop] ??= ObservableScope.Basic(
+      Property.bind(null, object[NODE_VALUE], prop)
     );
 
-    return ObservableScope.Value(leafScopes[prop]);
+    const value = ObservableScope.Value(scope);
+    return CreateProxyFromValue(value);
   }
 
   function CreateProxyFromValue<T>(value: T): T {
     const type = JsonType(value);
     switch (type) {
       case "object": {
-        let proxy: any = proxyCache.get(value) ?? CreateObjectProxy(value);
+        const wrapper = wrapperCache.get(value);
+        let proxy = wrapper?.[NODE_PROXY] ?? CreateObjectProxy(value);
         if (alias !== undefined) {
           const aliasValue = alias(proxy);
-          if (aliasValue !== undefined)
-            proxy = proxyCache.get(aliasValue) ?? CreateObjectProxy(aliasValue);
+          if (aliasValue !== undefined && aliasValue !== value) {
+            const wrapper = wrapperCache.get(aliasValue);
+            proxy = wrapper?.[NODE_PROXY] ?? CreateObjectProxy(aliasValue);
+          }
         }
         return proxy as T;
       }
       case "array": {
-        const proxy = proxyCache.get(value) ?? CreateArrayProxy(value as any[]);
-        ObservableScope.Touch(scopeCache.get(value));
+        const wrapper = wrapperCache.get(value);
+        const proxy = wrapper?.[NODE_PROXY] ?? CreateArrayProxy(value as any[]);
+        ObservableScope.Touch(wrapper?.[OBJECT_SCOPE]);
         return proxy as T;
       }
       default:
@@ -316,7 +335,10 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
     }
   }
 
-  return CreateProxy;
+  return function CreateProxy<T>(value: T): T {
+    value = UnwrapProxy(value);
+    return CreateProxyFromValue(value);
+  }
 }
 
 const DefaultCreateProxy = CreateProxyFactory();
@@ -331,6 +353,10 @@ export namespace ObservableNode {
    */
   export function Unwrap<T>(value: T): T {
     return UnwrapProxy(value);
+  }
+
+  export function Clone<T>(value: T): T {
+    return CloneProxy(value);
   }
 
   /**
@@ -350,14 +376,18 @@ export namespace ObservableNode {
    * @param value The observable node to touch.
    * @param prop Optional property name or index to touch a specific nested property.
    */
-  export function Touch(value: unknown, prop?: string | number) {
-    let scope: IObservableScope<unknown>;
-    if (prop !== undefined) {
-      const leafScopes = leafScopeCache.get(value);
-      scope = leafScopes?.[prop];
+  export function Update(value: unknown, prop: string | number | symbol = OBJECT_SCOPE) {
+    const wrapper = wrapperCache.get(value);
+    if (wrapper) {
+      const scope = wrapper[prop] ?? wrapper[OBJECT_SCOPE];
+      ObservableScope.Update(scope);
     }
-    scope ??= scopeCache.get(value);
-    ObservableScope.Update(scope);
+  }
+
+  export function Apply(rootNode: any, update: any) {
+    const root = rootNode[NODE_VALUE];
+    const diff = JsonDiff(update, root);
+    ApplyDiff(rootNode, diff);
   }
 
   /**
@@ -367,7 +397,42 @@ export namespace ObservableNode {
    * @param diffResult The diff result from JsonDiff containing path-value pairs of changes.
    */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
-    const root = rootNode[GET_OBSERVABLE_VALUE];
+    const root = rootNode[NODE_VALUE];
+    if (diffResult.length === 1 && diffResult[0].path.length === 0) {
+      // Replacing rootNode
+      const rootPatch = diffResult[0].value;
+
+      const rootType = JsonType(root);
+      const rootPatchType = JsonType(root);
+
+      if (rootType !== rootPatchType)
+        throw new Error("Unable to change type of Root ObservableNode: " + rootType);
+
+      switch (rootType) {
+        case "array": {
+          (root as any[]).splice(0, root.length, ...(rootPatch as any[]));
+          ObservableNode.Update(root);
+          break;
+        }
+        case "object": {
+          const keys = Object.keys(root);
+          const patchKeys = Object.keys(rootPatch);
+          for (let x = 0; x < keys.length; x++)
+            if (!patchKeys.includes(keys[x]))
+              delete root[keys[x]];
+
+          Object.assign(root, rootPatch);
+          for (let x = 0; x < keys.length; x++)
+            ObservableNode.Update(root, keys[x]);
+          break;
+        }
+        case "value":
+          throw new Error("Unable to replace value type: " + root);
+      }
+
+      return;
+    }
+
     const pathTuples: [string | number, unknown][] = [["", root]];
     for (let x = 0; x < diffResult.length; x++) {
       const { path, value } = diffResult[x];
@@ -391,7 +456,7 @@ export namespace ObservableNode {
 
       const assignValue = pathTuples[y][1];
       (assignValue as any)[path[y]] = value;
-      ObservableNode.Touch(assignValue, path[y]);
+      ObservableNode.Update(assignValue, path[y]);
     }
   }
 

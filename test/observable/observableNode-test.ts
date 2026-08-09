@@ -1,6 +1,5 @@
-import { expect } from 'chai';
-import 'mocha';
-import { ObservableNode } from '../../src/Store/Tree/observableNode';
+import { describe, it, expect } from "vitest";
+import { ObservableNode } from "../../src/Store/Tree/observableNode";
 
 describe("Observable Node", () => {
     it('Create - Basic Object', () => {
@@ -15,10 +14,10 @@ describe("Observable Node", () => {
     });
 
     it('Create - Nested Object', () => {
-        const proxy = ObservableNode.Create({ 
-            child: { 
-                test: "value" 
-            } 
+        const proxy = ObservableNode.Create({
+            child: {
+                test: "value"
+            }
         });
         expect(proxy.child.test).to.eq("value");
     });
@@ -31,19 +30,19 @@ describe("Observable Node", () => {
                 value: "changed"
             }
         ];
-        
+
         // Apply the diff
         ObservableNode.ApplyDiff(proxy, diffResult);
-        
+
         // Value should be updated
         expect(proxy.test).to.eq("changed");
     });
 
     it('ApplyDiff - Nested Object Update', () => {
-        const proxy = ObservableNode.Create({ 
-            child: { 
-                test: "value" 
-            } 
+        const proxy = ObservableNode.Create({
+            child: {
+                test: "value"
+            }
         });
         const diffResult = [
             {
@@ -51,12 +50,53 @@ describe("Observable Node", () => {
                 value: "changed"
             }
         ];
-        
+
         // Apply the diff
         ObservableNode.ApplyDiff(proxy, diffResult);
-        
+
         // Value should be updated
         expect(proxy.child.test).to.eq("changed");
+    });
+
+    it('Apply - Basic Object Update', () => {
+        const proxy = ObservableNode.Create({ test: "value" });
+        ObservableNode.Apply(proxy, { test: "changed" });
+        expect(proxy.test).to.eq("changed");
+    });
+
+    it('Apply - Nested Object Update', () => {
+        const proxy = ObservableNode.Create({
+            child: {
+                test: "value"
+            }
+        });
+        ObservableNode.Apply(proxy, { child: { test: "changed" } });
+        expect(proxy.child.test).to.eq("changed");
+    });
+
+    it('Apply - Add New Property', () => {
+        const proxy = ObservableNode.Create({ test: "value" });
+        ObservableNode.Apply(proxy, { test: "value", newProp: "new" });
+        expect(proxy.newProp).to.eq("new");
+    });
+
+    it('Apply - Array Element Update', () => {
+        const proxy = ObservableNode.Create({ items: [1, 2, 3] });
+        ObservableNode.Apply(proxy, { items: [1, 2, 4] });
+        expect(proxy.items[2]).to.eq(4);
+    });
+
+    it('Apply - Remove Property (Root Replacement)', () => {
+        const proxy = ObservableNode.Create({ a: 1, b: 2 });
+        ObservableNode.Apply(proxy, { a: 1 });
+        expect(proxy.a).to.eq(1);
+        expect((proxy as any).b).to.be.undefined;
+    });
+
+    it('Apply - No Change is a No-Op', () => {
+        const proxy = ObservableNode.Create({ test: "value" });
+        ObservableNode.Apply(proxy, { test: "value" });
+        expect(proxy.test).to.eq("value");
     });
 
     it('CreateFactory - With Alias Function', () => {
@@ -67,10 +107,10 @@ describe("Observable Node", () => {
             }
             return undefined;
         };
-        
+
         const factory = ObservableNode.CreateFactory(aliasFn);
         const proxy = factory({ id: "test-id", name: "test-name" });
-        
+
         // Should create proxy from the aliased object
         expect((proxy as any).aliased).to.eq("test-id");
     });
@@ -79,7 +119,7 @@ describe("Observable Node", () => {
         // Create an alias function that maps objects to a nested property
         const aliasFn = (value: any) => {
             if (value && typeof value === 'object' && 'data' in value) {
-                return { 
+                return {
                     wrapper: {
                         id: value.data.id
                     }
@@ -87,10 +127,10 @@ describe("Observable Node", () => {
             }
             return undefined;
         };
-        
+
         const factory = ObservableNode.CreateFactory(aliasFn);
         const proxy = factory({ data: { id: "nested-id", name: "test" } });
-        
+
         // Should create proxy from the aliased object with nested structure
         expect((proxy as any).wrapper.id).to.eq("nested-id");
     });
@@ -99,7 +139,7 @@ describe("Observable Node", () => {
         const strProxy = ObservableNode.Create("string");
         const numProxy = ObservableNode.Create(42);
         const boolProxy = ObservableNode.Create(true);
-        
+
         expect(strProxy).to.eq("string");
         expect(numProxy).to.eq(42);
         expect(boolProxy).to.eq(true);
@@ -114,7 +154,7 @@ describe("Observable Node", () => {
                 array: [1, 2, 3]
             }
         });
-        
+
         expect(proxy.level1.level2.value).to.eq("deep");
         expect(proxy.level1.array[0]).to.eq(1);
     });

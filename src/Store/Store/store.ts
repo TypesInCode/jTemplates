@@ -1,10 +1,10 @@
 import { JsonDiffResult } from "../../Utils/json";
-import { GET_OBSERVABLE_VALUE, ObservableNode } from "../Tree/observableNode";
+import { ObservableNode } from "../Tree/observableNode";
 
 /**
  * Base class for observable data store management.
  * Stores root objects as ObservableNode instances and manages updates through diff operations.
- * 
+ *
  * @see StoreSync
  * @see StoreAsync
  */
@@ -28,7 +28,7 @@ export class Store {
         if (rootObject === undefined)
           throw `No root object found for key: ${key}`;
 
-        const rootValue = rootObject[GET_OBSERVABLE_VALUE];
+        const rootValue = ObservableNode.Unwrap(rootObject); // rootObject[GET_OBSERVABLE_VALUE];
         const alias = rootValue[key];
         return alias;
       });

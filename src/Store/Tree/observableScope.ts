@@ -1,6 +1,10 @@
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
 
+function Invoke(param: any, callback: (arg1: any) => any) {
+  return callback(param);
+}
+
 /**
  * Represents a static (non-reactive) observable scope.
  * Static scopes are immutable and do not track dependencies or emit updates.
@@ -9,6 +13,15 @@ import { IsAsync } from "../../Utils/functions";
 interface IStaticObservableScope<T> {
   type: "static";
   value: T;
+  onDestroyed: Emitter | null;
+  destroyed: boolean;
+}
+
+export interface IBasicObservableScope<T> {
+  type: "basic";
+  emitter: Emitter;
+  getFunction: () => T;
+  destroyed: boolean;
 }
 
 /**
@@ -37,10 +50,15 @@ interface IDynamicObservableScope<T> {
   emitter: Emitter;
   /** Array of emitters this scope listens to for dependency changes */
   emitters: (Emitter | null)[];
+
+  onUpdated: Emitter | null;
+
   /** Emitter for notifying when the scope is destroyed */
   onDestroyed: Emitter | null;
+
+  scopes: [any, IObservableScope<any>][] | null;
   /** Map of nested scopes created during this scope's execution */
-  scopes: { [id: string]: IObservableScope<unknown> | null } | null;
+  mappedScopes: Map<any, IObservableScope<unknown>[]> | null;
 }
 
 /**
@@ -77,13 +95,26 @@ function CreateDynamicScope<T>(
     value,
     emitter: Emitter.Create(),
     emitters: null,
+    onUpdated: null,
     onDestroyed: null,
     scopes: null,
+    mappedScopes: null,
   };
 
   scope.setCallback = OnSet.bind(scope);
 
   return scope;
+}
+
+function CreateBasicScope<T>(
+  getFunction: () => T
+): IBasicObservableScope<T> {
+  return {
+    type: "basic",
+    getFunction,
+    emitter: Emitter.Create(),
+    destroyed: false
+  };
 }
 
 /**
@@ -97,6 +128,8 @@ function CreateStaticScope<T>(initialValue: T): IStaticObservableScope<T> {
   return {
     type: "static",
     value: initialValue,
+    onDestroyed: null,
+    destroyed: false
   };
 }
 
@@ -223,7 +256,7 @@ function RegisterEmitter(emitter: Emitter) {
  * Registers a scope as a dependency for the current watch context.
  * @param scope The scope to register as a dependency.
  */
-function RegisterScope(scope: IObservableScope<any>) {
+function RegisterScope(scope: IObservableScope<any> | IBasicObservableScope<any>) {
   if (watchState === null || scope.type === "static") return;
 
   RegisterEmitter(scope.emitter);
@@ -235,7 +268,10 @@ function RegisterScope(scope: IObservableScope<any>) {
  * @param scope The scope to get the value from.
  * @returns The scope's current value.
  */
-function GetScopeValue<T>(scope: IObservableScope<T>): T {
+function GetScopeValue<T>(scope: IObservableScope<T> | IBasicObservableScope<T>): T {
+  if (scope.type === "basic")
+    return scope.getFunction();
+
   if (scope.type === "static" || !scope.dirty || scope.destroyed)
     return scope.value as T;
 
@@ -265,8 +301,10 @@ let watchState: {
   emitterIndex: number;
   emitters: Emitter[];
   emitterSet: Set<Emitter> | null;
-  currentCalc: { [id: string]: IObservableScope<unknown> | null } | null;
-  nextCalc: { [id: string]: IObservableScope<unknown> } | null;
+  currentScopes: ([any, IObservableScope<any>] | null)[],
+  nextScopes: [any, IObservableScope<any>][],
+  currentMappedScopes: Map<any, IObservableScope<any>[]> | null,
+  nextMappedScopes: Map<any, IObservableScope<any>[]> | null,
   strategy: WatchStrategy;
 } = null;
 
@@ -279,7 +317,8 @@ let watchState: {
  */
 function WatchFunction(
   callback: () => any,
-  currentCalc: { [id: string]: IObservableScope<any> | null } | null,
+  currentScopes: [any, IObservableScope<any>][] | null,
+  currentMappedScopes: Map<any, IObservableScope<any>[]> | null,
   initialEmitters: Emitter[] | null,
 ) {
   const parent = watchState;
@@ -288,8 +327,10 @@ function WatchFunction(
     value: null,
     emitters: initialEmitters,
     emitterSet: null,
-    currentCalc,
-    nextCalc: null,
+    currentScopes,
+    nextScopes: null,
+    currentMappedScopes: currentMappedScopes,
+    nextMappedScopes: null,
     strategy: initialEmitters === null ? INIT_STRATEGY : SAME_STRATEGY,
   };
   watchState.value = callback();
@@ -318,23 +359,39 @@ function WatchFunction(
  */
 function ExecuteScope(scope: IDynamicObservableScope<any>) {
   scope.dirty = false;
-  const state = WatchFunction(scope.getFunction, scope.scopes, scope.emitters);
+  const state = WatchFunction(scope.getFunction, scope.scopes, scope.mappedScopes, scope.emitters);
 
   UpdateEmitters(scope, state);
 
-  const calcScopes = state.currentCalc;
-  scope.scopes = state.nextCalc;
-  for (const key in calcScopes) DestroyScope(calcScopes[key]);
+  const currentScopes = state.currentScopes;
+  scope.scopes = state.nextScopes;
+
+  const currentMappedScopes = state.currentMappedScopes;
+  scope.mappedScopes = state.nextMappedScopes;
+
+  if (currentScopes)
+    for (let x = 0; x < currentScopes.length; x++)
+      currentScopes[x] && DestroyScope(currentScopes[x][1]);
+
+  if (currentMappedScopes && currentMappedScopes.size > 0)
+    for (const scopes of currentMappedScopes.values()) DestroyAllScopes(scopes);
+
   if (scope.async) {
     const promise = (scope.pending = state.value);
     promise.then(function (result: any) {
       if (scope.destroyed || scope.pending !== promise) return;
 
       scope.pending = null;
+      const lastValue = scope.value;
       scope.value = result;
+      scope.onUpdated && Emitter.Emit(scope.onUpdated, lastValue, scope);
       Emitter.Emit(scope.emitter, scope);
     });
-  } else scope.value = state.value;
+  } else {
+    const lastValue = scope.value;
+    scope.value = state.value;
+    scope.onUpdated && Emitter.Emit(scope.onUpdated, lastValue, scope);
+  }
 }
 
 /**
@@ -347,21 +404,22 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
  */
 function ExecuteFunction<T>(
   callback: () => Promise<T> | T,
-  greedy: boolean,
-  allowStatic: boolean,
+  greedy: boolean
 ): IObservableScope<T> {
   const async = IsAsync(callback);
-  const state = WatchFunction(callback, null, null);
-  if (!allowStatic || async || state.emitters !== null) {
+  const state = WatchFunction(callback, null, null, null);
+  if (greedy || async || state.emitters !== null) {
     const scope: IDynamicObservableScope<T> = CreateDynamicScope(
       callback,
       greedy,
       async ? null : state.value,
     );
-    scope.scopes = state.nextCalc;
+
+    scope.scopes = state.nextScopes;
+    scope.mappedScopes = state.nextMappedScopes;
+
     UpdateEmitters(scope, state);
     if (async) {
-      console.log("resolving async scope");
       const promise = (scope.pending = state.value);
       promise.then(function (result: any) {
         if (scope.destroyed || scope.pending !== promise) return;
@@ -381,21 +439,76 @@ function ExecuteFunction<T>(
 
 function ScopeHelper<T>(
   callback: () => T | Promise<T>,
-  id: string,
+  key: any,
   greedy: boolean,
 ): IObservableScope<T> {
-  const nextScopes = (watchState.nextCalc ??= {});
+  const nextScopes = (watchState.nextScopes ??= []);
+  const currentScopes = watchState.currentScopes;
 
-  if (nextScopes[id]) return nextScopes[id] as IObservableScope<T>;
+  let x = 0;
+  if (currentScopes)
+    for (; x < currentScopes.length && (currentScopes[x] === null || currentScopes[x][0] !== key); x++) { }
 
-  const currentScopes = watchState.currentCalc;
+  if (!currentScopes || x === currentScopes.length) {
+    const nextScope = ExecuteFunction(callback, greedy);
+    nextScopes.push([key, nextScope]);
+    return nextScope;
+  }
 
-  nextScopes[id] =
-    currentScopes?.[id] ?? ExecuteFunction(callback, greedy, true);
-  if (currentScopes?.[id]) delete currentScopes[id];
+  const nextScopePair = currentScopes[x];
+  currentScopes[x] = null;
 
-  return nextScopes[id] as IObservableScope<T>;
+  nextScopes.push(nextScopePair);
+  return nextScopePair[1];
 }
+
+function MappedScopeHelper<D, T>(
+  callback: (data: D) => T | Promise<T>,
+  data: D,
+  onUpdated?: (lastValue: T, scope: IObservableScope<T>) => void,
+  onDestroyed?: (lastValue: T) => void
+): IObservableScope<T> {
+  const nextScopes = (watchState.nextMappedScopes ??= new Map<any, IObservableScope<any>[]>());
+  const currentScopes = watchState.currentMappedScopes;
+
+  if (currentScopes?.has(data)) {
+    const nextScopeArray = currentScopes.get(data);
+    if (nextScopeArray.length === 1) {
+      currentScopes.delete(data);
+      nextScopes.set(data, nextScopeArray);
+      return nextScopeArray[0];
+    }
+
+    const nullIndex = nextScopeArray.lastIndexOf(null);
+    const valueIndex = nullIndex < 0 ? 0 : nullIndex + 1;
+    if (valueIndex === nextScopeArray.length - 1)
+      currentScopes.delete(data);
+    else {
+      const scope = nextScopeArray[valueIndex];
+      nextScopeArray[valueIndex] = null;
+
+      const scopes = nextScopes.get(data) ?? [];
+      scopes.push(scope);
+      nextScopes.set(data, scopes);
+      return scope;
+    }
+  }
+
+  const getFunction = Invoke.bind(null, data, callback);
+
+  const scope = ExecuteFunction<T>(getFunction, false);
+  onUpdated && ObservableScope.OnUpdated(scope, onUpdated);
+  onDestroyed && ObservableScope.OnDestroyed(scope, onDestroyed);
+
+  const scopes = nextScopes.get(data) ?? [];
+  scopes.push(scope);
+  nextScopes.set(data, scopes);
+  return scope;
+}
+
+const SCOPE_DEFAULT = Symbol("SCOPE_DEFAULT");
+const GATE_DEFAULT = Symbol("GATE_DEFAULT");
+const PEEK_DEFAULT = Symbol("PEEK_DEFAULT");
 
 /**
  * Creates an inline computed scope registered as a dependency of the parent.
@@ -421,8 +534,24 @@ export function InlineScope<T>(
     throw new Error("scope() must be called within a watch context");
   }
 
-  const id = idOverride ?? "scope_default";
+  const id = idOverride ?? SCOPE_DEFAULT;
   const scope = ScopeHelper(callback, id, false);
+
+  RegisterScope(scope);
+  return GetScopeValue(scope);
+}
+
+export function MappedScope<D, T>(
+  data: D,
+  callback: (data: D) => T | Promise<T>,
+  onUpdated?: (lastValue: T, scope: IObservableScope<T>) => void,
+  onDestroyed?: (lastValue: T) => void
+) {
+  if (watchState === null) {
+    throw new Error("scope() must be called within a watch context");
+  }
+
+  const scope = MappedScopeHelper(callback, data, onUpdated, onDestroyed);
 
   RegisterScope(scope);
   return GetScopeValue(scope);
@@ -454,7 +583,7 @@ export function GateScope<T>(
     throw new Error("gate() must be called within a watch context");
   }
 
-  const id = idOverride ?? "gate_default";
+  const id = idOverride ?? GATE_DEFAULT;
   const scope = ScopeHelper(callback, id, true);
 
   RegisterScope(scope);
@@ -489,7 +618,7 @@ export function PeekScope<T>(
     throw new Error("peek() must be called within a watch context");
   }
 
-  const id = idOverride ?? "peek_default";
+  const id = idOverride ?? PEEK_DEFAULT;
   const scope = ScopeHelper(callback, id, false);
 
   return GetScopeValue(scope);
@@ -562,26 +691,43 @@ function DestroyAllScopes(scopes: IObservableScope<any>[]) {
  * Unsubscribes from emitters, destroys nested scopes, and clears references.
  * @param scope The scope to destroy.
  */
-function DestroyScope(scope: IObservableScope<any>) {
-  if (!scope || scope.type === "static") return;
-
-  for (const key in scope.scopes) DestroyScope(scope.scopes[key]);
-
-  // Emitter.Destroy(scope.emitter);
-  Emitter.DestroyCallback(scope.setCallback);
-  if (scope.emitters !== null)
-    for (let x = 0; x < scope.emitters.length; x++)
-      Emitter.Compact(scope.emitters[x]);
-
-  scope.value = undefined;
-  scope.scopes = null;
-  scope.emitters = null;
-  scope.emitter = null;
-  scope.getFunction = null;
-  scope.setCallback = null;
+function DestroyScope(scope: IObservableScope<any> | IBasicObservableScope<any>) {
+  if (!scope || scope.destroyed)
+    return;
 
   scope.destroyed = true;
-  scope.onDestroyed && Emitter.Emit(scope.onDestroyed, scope);
+  switch (scope.type) {
+    case "basic": {
+      scope.emitter = null;
+      break;
+    }
+    case "dynamic": {
+      if (scope.scopes)
+        for (let x = 0; x < scope.scopes.length; x++)
+          DestroyScope(scope.scopes[x][1]);
+
+      if (scope.mappedScopes && scope.mappedScopes.size > 0)
+        for (const childScopes of scope.mappedScopes.values()) DestroyAllScopes(childScopes);
+
+      if (scope.emitters !== null)
+        for (let x = 0; x < scope.emitters.length; x++)
+          Emitter.Remove(scope.emitters[x], scope.setCallback);
+
+
+      scope.scopes = null;
+      scope.mappedScopes = null;
+      scope.emitters = null;
+      scope.emitter = null;
+      scope.getFunction = null;
+      scope.setCallback = null;
+    }
+    case "static": {
+      const lastValue = scope.value;
+      scope.value = undefined;
+      scope.onDestroyed && Emitter.Emit(scope.onDestroyed, lastValue);
+      break;
+    }
+  }
 }
 
 export namespace ObservableScope {
@@ -589,16 +735,24 @@ export namespace ObservableScope {
    * Creates a new observable scope from a value function.
    * @template T The type of value returned by the function.
    * @param valueFunction Function that returns the scope's value. Can be async.
-   * @param greedy Whether updates should be batched via microtask queue. Defaults to false.
-   * @param force If true, always creates a dynamic scope even without dependencies. Defaults to false.
    * @returns A new observable scope.
    */
   export function Create<T>(
-    valueFunction: { (): T | Promise<T> },
-    greedy = false,
-    force = false,
+    valueFunction: { (): T | Promise<T> }
   ): IObservableScope<T> {
-    return ExecuteFunction(valueFunction, greedy, !force);
+    return ExecuteFunction(valueFunction, false);
+  }
+
+  export function Gated<T>(
+    valueFunction: { (): T | Promise<T> }
+  ): IObservableScope<T> {
+    return ExecuteFunction(valueFunction, true);
+  }
+
+  export function Basic<T>(
+    valueFunction: { (): T }
+  ): IBasicObservableScope<T> {
+    return CreateBasicScope(valueFunction);
   }
 
   /**
@@ -615,7 +769,7 @@ export namespace ObservableScope {
    * @param scope The scope to peek at.
    * @returns The scope's current value.
    */
-  export function Peek<T>(scope: IObservableScope<T>): T {
+  export function Peek<T>(scope: IObservableScope<T> | IBasicObservableScope<T>): T {
     return GetScopeValue(scope);
   }
 
@@ -625,8 +779,8 @@ export namespace ObservableScope {
    * @param scope The scope to get the value from.
    * @returns The scope's current value.
    */
-  export function Value<T>(scope: IObservableScope<T>): T {
-    if (!scope) return undefined;
+  export function Value<T>(scope: IObservableScope<T> | IBasicObservableScope<T>): T {
+    if (!scope || scope.destroyed) return undefined;
 
     Touch(scope);
     return Peek(scope);
@@ -637,8 +791,8 @@ export namespace ObservableScope {
    * @template T The type of value stored in the scope.
    * @param scope The scope to register as a dependency.
    */
-  export function Touch<T>(scope: IObservableScope<T>) {
-    if (!scope) return;
+  export function Touch<T>(scope: IObservableScope<T> | IBasicObservableScope<T>) {
+    if (!scope || scope.destroyed) return;
 
     RegisterScope(scope);
   }
@@ -650,10 +804,10 @@ export namespace ObservableScope {
    * @param callback Function to invoke when the scope's value changes.
    */
   export function Watch<T>(
-    scope: IObservableScope<T>,
+    scope: IObservableScope<T> | IBasicObservableScope<T>,
     callback: (scope: IObservableScope<T>) => void,
   ) {
-    if (!scope || scope.type === "static") return;
+    if (!scope || scope.destroyed || scope.type === "static") return;
 
     Emitter.On(scope.emitter, callback);
   }
@@ -668,9 +822,20 @@ export namespace ObservableScope {
     scope: IObservableScope<T>,
     callback: (scope: IObservableScope<T>) => void,
   ) {
-    if (!scope || scope.type === "static") return;
+    if (!scope || scope.destroyed || scope.type === "static") return;
 
     Emitter.Remove(scope.emitter, callback);
+  }
+
+  export function OnUpdated<T>(
+    scope: IObservableScope<T>,
+    callback: { (lastValue: T, scope: IObservableScope<T>): void }
+  ) {
+    if (scope.type !== "dynamic")
+      return;
+
+    scope.onUpdated ??= Emitter.Create();
+    Emitter.On(scope.onUpdated, callback);
   }
 
   /**
@@ -678,12 +843,10 @@ export namespace ObservableScope {
    * @param scope The scope to monitor for destruction.
    * @param callback Function to invoke when the scope is destroyed.
    */
-  export function OnDestroyed(
-    scope: IObservableScope<unknown>,
-    callback: { (): void },
+  export function OnDestroyed<T>(
+    scope: IObservableScope<T>,
+    callback: { (lastValue: T): void },
   ) {
-    if (scope.type === "static") return;
-
     scope.onDestroyed ??= Emitter.Create();
     Emitter.On(scope.onDestroyed, callback);
   }
@@ -692,10 +855,14 @@ export namespace ObservableScope {
    * Marks a scope as dirty, triggering recomputation on next access or batch.
    * @param scope The scope to mark for update.
    */
-  export function Update(scope: IObservableScope<any>) {
-    if (!scope || scope.type === "static") return;
+  export function Update(scope: IObservableScope<any> | IBasicObservableScope<any>) {
+    if (!scope || scope.destroyed || scope.type === "static") return;
 
-    // OnSet(scope);
+    if (scope.type === "basic") {
+      Emitter.Emit(scope.emitter, scope);
+      return;
+    }
+
     scope.setCallback();
   }
 
@@ -704,7 +871,7 @@ export namespace ObservableScope {
    * @template T The type of value stored in the scope.
    * @param scope The scope to destroy.
    */
-  export function Destroy<T>(scope: IObservableScope<T>) {
+  export function Destroy<T>(scope: IObservableScope<T> | IBasicObservableScope<T>) {
     DestroyScope(scope);
   }
 

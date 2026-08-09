@@ -1,5 +1,34 @@
 import { JsonType } from "../Utils/json";
-import { CreateAssignment } from "./createAssignment";
+import { Assignment, CreateAssignment } from "./createAssignment";
+
+export function PropertyAssignment(target: HTMLElement, property: string, next: any) {
+  switch (property) {
+    case "nodeValue": {
+      AssignNodeValue(target, next);
+      break;
+    }
+    case "className": {
+      AssignClassName(target, next);
+      break;
+    }
+    case "value": {
+      AssignValue(target, next);
+      break;
+    }
+    default: {
+      const jsonType = JsonType(next);
+      switch (jsonType) {
+        case "value":
+          (target as any)[property] = next;
+          break;
+        default: {
+          const childTarget = (target as any)[property];
+          Assignment(childTarget, next, PropertyAssignment);
+        }
+      }
+    }
+  }
+}
 
 function CreatePropertyAssignment(target: any, property: string) {
   let lastValue: any;
