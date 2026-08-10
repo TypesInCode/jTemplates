@@ -47,8 +47,6 @@ class ActivityFeed extends Component<void, void, void> {
   }
 
   Template() {
-    const grouped = this.grouped;
-
     const renderActivity = (activity: Activity) =>
       li({ props: { className: "activity-item" } }, () => [
         span(
@@ -68,12 +66,12 @@ class ActivityFeed extends Component<void, void, void> {
       div({ props: { className: "feed-section" } }, () => [
         span(
           { props: { className: "section-title" } },
-          () => `Today (${grouped.today.length})`,
+          () => `Today (${this.grouped.today.length})`,
         ),
         ul(
           {
             props: { className: "activity-list" },
-            data: () => grouped.today,
+            data: () => this.grouped.today,
           },
           renderActivity,
         ),
@@ -81,12 +79,12 @@ class ActivityFeed extends Component<void, void, void> {
       div({ props: { className: "feed-section" } }, () => [
         span(
           { props: { className: "section-title" } },
-          () => `Earlier (${grouped.earlier.length})`,
+          () => `Earlier (${this.grouped.earlier.length})`,
         ),
         ul(
           {
             props: { className: "activity-list" },
-            data: () => grouped.earlier,
+            data: () => this.grouped.earlier,
           },
           renderActivity,
         ),

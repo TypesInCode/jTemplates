@@ -8,10 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run"
   },
-  "dependencies": {
-    "j-templates": "^7.0.75"
-  },
   "devDependencies": {
+    "j-templates": "^7.0.94",
     "jsdom": "^28.1.0",
     "typescript": "^5.0.0",
     "vite": "^7.0.0",

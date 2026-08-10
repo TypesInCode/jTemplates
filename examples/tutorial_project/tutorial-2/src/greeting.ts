@@ -64,9 +64,9 @@ import { div, h2, p } from "j-templates/DOM";
 //
 // Components have lifecycle methods that are called at different stages:
 //
-// 1. Constructor() - Component is instantiated
-// 2. Bound() - Component is attached to DOM, called once
-// 3. Template() - Returns the vNode to render
+// 1. Constructor() - Component is instantiated (DOM not yet attached)
+// 2. Bound() - Called after the component is attached to the DOM
+// 3. Template() - Returns the vNode to render (rendered after Bound())
 //
 // Bound() is perfect for:
 // - Initializing non-reactive state
@@ -122,10 +122,12 @@ class GreetingComponent extends Component<GreetingData> {
   }
 
   /**
-   * Bound() is called when the component is attached to the DOM
-   * Use this for initialization that needs the component to be "bound"
+   * Bound() is called after the component is attached to the DOM.
+   * Always call super.Bound() first so @Watch decorators initialize.
+   * Use this for initialization that needs the component to be "bound".
    */
   Bound() {
+    super.Bound();
     console.log(`GreetingComponent bound: Welcome ${this.displayName}`);
   }
 

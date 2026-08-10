@@ -71,6 +71,7 @@ class App extends Component {
   }
 
   Bound() {
+    super.Bound();
     console.log("App component bound to DOM");
   }
 }

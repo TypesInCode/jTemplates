@@ -1,6 +1,5 @@
 import { Component } from "j-templates";
 import { div, button, span } from "j-templates/DOM";
-import { State } from "j-templates/Utils";
 
 export interface CartItemData {
   id: number;
@@ -16,9 +15,6 @@ interface CartItemEvents {
 }
 
 class CartItem extends Component<CartItemData, {}, CartItemEvents> {
-  @State()
-  private isHovered: boolean = false;
-
   Template() {
     return div(
       {

@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DataService, RealDataService } from "../services/data-service";
 import { LoggerService } from "../services/logger-service";
+// NOTE: Injector is an internal path, not a public export. It is used here
+// only to set up a scoped injector for testing DI. Production code should rely
+// on @Inject / this.Injector instead of importing Injector directly.
 import { Injector } from "j-templates/Utils/injector";
 import { dataViewer } from "./data-viewer";
 import { div } from "j-templates/DOM";

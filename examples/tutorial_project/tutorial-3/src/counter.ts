@@ -97,16 +97,19 @@ class Counter extends Component {
    * - When count changes, this function re-runs automatically
    */
    Template() {
-    return div({ props: { className: "counter" } }, [
+    // Children are wrapped in functions so each subtree gets its own
+    // reactive scope — only the region that reads a changed value re-renders,
+    // not the whole component.
+    return div({ props: { className: "counter" } }, () => [
       h2({}, () => `Counter: ${this.count}`),
 
       // Show current count with reactive binding
-      span({ props: { className: "count-display" } }, [
+      span({ props: { className: "count-display" } }, () => [
         span({}, () => `Current: ${this.count}`),
         span({}, () => ` (min: ${this.min}, max: ${this.max})`),
       ]),
 
-      div({ props: { className: "buttons" } }, [
+      div({ props: { className: "buttons" } }, () => [
         // Decrement button - disabled when at minimum
         button(
           {
@@ -154,31 +157,36 @@ class Counter extends Component {
         ),
       ]),
 
-      // Show count-based message
-      this.count === 0
-        ? span({ props: { className: "message" } }, () => "Count is zero!")
-        : this.count === this.max
-          ? span(
-              { props: { className: "message warning" } },
-              () => "Maximum reached!",
-            )
-          : this.count < 0
+      // Show count-based message — isolated in its own children function so
+      // only this subtree re-renders when count changes.
+      div({}, () =>
+        this.count === 0
+          ? span({ props: { className: "message" } }, () => "Count is zero!")
+          : this.count === this.max
             ? span(
-                { props: { className: "message negative" } },
-                () => "Negative count!",
+                { props: { className: "message warning" } },
+                () => "Maximum reached!",
               )
-            : span(
-                { props: { className: "message" } },
-                () => `Count is ${this.count}`,
-              ),
+            : this.count < 0
+              ? span(
+                  { props: { className: "message negative" } },
+                  () => "Negative count!",
+                )
+              : span(
+                  { props: { className: "message" } },
+                  () => `Count is ${this.count}`,
+                ),
+      ),
     ]);
   }
 
   /**
-   * Bound() is called when component is attached to DOM
-   * Good for logging and initialization
+   * Bound() is called when component is attached to DOM.
+   * Always call super.Bound() first so the framework initializes reactive
+   * bindings (@Watch, etc.) before any custom logic runs.
    */
   Bound() {
+    super.Bound();
     console.log("Counter component bound");
     console.log(`Initial count: ${this.count}`);
   }

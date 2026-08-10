@@ -37,16 +37,12 @@ class SimpleList extends Component<SimpleListData, void, SimpleListEvents> {
   @Value() selectedIndex: number = -1;
 
   Template() {
-    const { items } = this.Data;
-
     return div({ props: { className: "simple-list" } }, () => [
-      p({}, () => `Items: ${items.length}`),
-      // Framework data iteration - passes single item to children function
-      // No calc() needed - array is already reactive via @State, and items reference doesn't change
-      // Note: indexOf() works for primitives but is O(n). For dynamic arrays with identity tracking,
-      // consider using calc() when parent scope changes but array reference stays the same.
-      div({ data: () => items }, (item: string) => {
-        const index = items.indexOf(item);
+      p({}, () => `Items: ${this.Data.items.length}`),
+      // Framework data iteration - passes a single item to the children function.
+      // The framework iterates the array; no .map() or calc() needed.
+      div({ data: () => this.Data.items }, (item: string) => {
+        const index = this.Data.items.indexOf(item);
         return div({
           props: () => ({
             className: this.selectedIndex === index ? "selected list-item" : "list-item"
@@ -78,12 +74,12 @@ interface CardData {
 
 class Card extends Component<CardData> {
   Template() {
-    const { title, content, footer } = this.Data;
-
     return div({ props: { className: "card" } }, () => [
-      div({ props: { className: "card-header" } }, () => title),
-      div({ props: { className: "card-content" } }, () => content),
-      footer ? div({ props: { className: "card-footer" } }, () => footer) : div({}, () => "")
+      div({ props: { className: "card-header" } }, () => this.Data.title),
+      div({ props: { className: "card-content" } }, () => this.Data.content),
+      this.Data.footer
+        ? div({ props: { className: "card-footer" } }, () => this.Data.footer ?? "")
+        : div({}, () => "")
     ]);
   }
 }
@@ -101,18 +97,15 @@ interface TableData {
 
 class SimpleTable extends Component<TableData> {
   Template() {
-    const { headers, rows } = this.Data;
-
-    return table({ props: { className: "simple-table" } }, [
+    return table({ props: { className: "simple-table" } }, () => [
       thead({}, () =>
         tr({}, () =>
           // Headers are static - use map in children array
-          headers.map((header) => th({}, () => header))
+          this.Data.headers.map((header) => th({}, () => header))
         )
       ),
-      // Use framework data iteration for rows
-      // No calc() needed - rows reference from parent data doesn't change
-      tbody({ data: () => rows }, (row: string[]) =>
+      // Use framework data iteration for rows — the framework iterates; no .map() or calc() needed.
+      tbody({ data: () => this.Data.rows }, (row: string[]) =>
         tr({}, () =>
           // Cells are static for each row - use map
           row.map((cell) => td({}, () => cell))
@@ -146,18 +139,15 @@ class GenericList<T> extends Component<GenericListData<T>, GenericListTemplate<T
   @Value() selectedIndex: number = -1;
 
   Template() {
-    const { items, emptyMessage } = this.Data;
-    const templates = this.Templates;
-
-    if (!items || items.length === 0) {
-      return div({ props: { className: "list-empty" } }, () => emptyMessage || "No items");
+    if (!this.Data.items || this.Data.items.length === 0) {
+      return div({ props: { className: "list-empty" } }, () => this.Data.emptyMessage || "No items");
     }
 
     return div({ props: { className: "generic-list" } }, () => [
-      p({}, () => `Items: ${items.length}`),
-      // No calc() needed - items reference from parent data doesn't change
-      div({ data: () => items }, (item: T) => {
-        const index = items.indexOf(item);
+      p({}, () => `Items: ${this.Data.items.length}`),
+      // Framework data iteration — the framework iterates; no .map() or calc() needed.
+      div({ data: () => this.Data.items }, (item: T) => {
+        const index = this.Data.items.indexOf(item);
         return div({
           props: () => ({
             className: this.selectedIndex === index ? "selected list-item" : "list-item"
@@ -168,7 +158,7 @@ class GenericList<T> extends Component<GenericListData<T>, GenericListTemplate<T
               this.Fire("select", { index, data: item });
             }
           }
-        }, () => templates.item(item, index));
+        }, () => this.Templates.item(item, index));
       })
     ]);
   }

@@ -62,8 +62,8 @@ export class App extends Component {
    * 2. Storing the instance in the injector's type map
    * 3. Allowing child components to access the same instance via @Inject
    * 
-   * @see src/Utils/decorators.ts:504 - Inject decorator implementation
-   * @see src/Utils/injector.ts:20 - Injector.Get method
+   * @see src/Utils/decorators.ts:1015 - Inject decorator implementation
+   * @see src/Utils/injector.ts:19 - Injector.Get method
    * @see services/dataService.ts - DataService implementation
    */
   @Destroy()
@@ -85,7 +85,7 @@ export class App extends Component {
    * 
    * @returns Dashboard report object with statistics
    * 
-   * @see src/Utils/decorators.ts:148 - Computed decorator implementation
+   * @see src/Utils/decorators.ts:277 - Computed decorator implementation
    * @see src/Store/Store/storeSync.ts - StoreSync implementation
    */
   @Computed()
@@ -100,7 +100,7 @@ export class App extends Component {
    * preventing memory leaks from setInterval.
    * 
    * @see services/refreshTimer.ts - RefreshTimer implementation
-   * @see src/Utils/decorators.ts:537 - Destroy decorator implementation
+   * @see src/Utils/decorators.ts:1117 - Destroy decorator implementation
    */
   @Destroy()
   refreshTimer = new RefreshTimer(() => this.dataService.RefreshData(), 500);
@@ -120,7 +120,7 @@ export class App extends Component {
    * 
    * @returns Array of virtual nodes representing the dashboard UI
    * 
-   * @see src/Node/component.ts:105 - Template method definition
+   * @see src/Node/component.ts:95 - Template method definition
    * @see src/DOM/elements.ts - DOM element functions
    */
   Template() {
@@ -177,10 +177,11 @@ export class App extends Component {
    * 4. Bound() method is called
    * 5. Template is rendered and attached to DOM
    * 
-   * @see src/Node/component.ts:113 - Bound method definition
-   * @see src/Node/vNode.ts:178 - Component instantiation in InitNode
+   * @see src/Node/component.ts:103 - Bound method definition
+   * @see src/Node/vNode.ts:129 - Component instantiation in InitNode
    */
   Bound(): void {
+    super.Bound();
     this.refreshTimer.start();
   }
 }
@@ -199,6 +200,6 @@ export class App extends Component {
  * 2. Returns a virtual node definition
  * 3. Enables component composition
  * 
- * @see src/Node/component.ts:158 - ToFunction implementation
+ * @see src/Node/component.ts:139 - ToFunction implementation
  */
 export const app = Component.ToFunction("app-component", App);

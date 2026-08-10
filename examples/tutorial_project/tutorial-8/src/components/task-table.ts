@@ -1,4 +1,4 @@
-import { Component, gate } from "j-templates";
+import { Component } from "j-templates";
 import { div, table, thead, tbody, tr, th, td, button, span, text } from "j-templates/DOM";
 import { Inject, Scope } from "j-templates/Utils";
 import { Task } from "../data/types";
@@ -70,9 +70,9 @@ class TaskTable extends Component<TaskTableData, void, TaskTableEvents> {
             th({}, () => "Actions"),
           ])
         ),
-        // gate() gates the filtered tasks array — prevents re-emission when the
-        // parent scope changes but the filtered result reference stays the same.
-        tbody({ data: () => gate(() => this.filteredTasks) }, (task: Task) =>
+        // filteredTasks is a @Scope getter that returns a NEW array from .filter(),
+        // so gate()'s === check would never gate anything — read it directly.
+        tbody({ data: () => this.filteredTasks }, (task: Task) =>
           tr({
             props: () => ({
               className: `task-row status-${task.status}`,

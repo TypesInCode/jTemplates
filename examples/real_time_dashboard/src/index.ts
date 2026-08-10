@@ -7,8 +7,8 @@
  * 
  * @purpose Shows how to initialize and mount a jTemplates application
  * @see app.ts - The main application component
- * @see src/Node/component.ts:214 - Component.Attach implementation
- * @see src/Node/vNode.ts:116 - vNode.Attach implementation
+ * @see src/Node/component.ts:192 - Component.Attach implementation
+ * @see src/Node/vNode.ts:118 - vNode.Attach implementation
  */
 
 import { Component } from "j-templates";

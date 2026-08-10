@@ -129,7 +129,7 @@ class ActivityDataTable extends Component {
    * - Enables easy testing with mock services
    * - Follows dependency inversion principle
    * 
-   * @see src/Utils/decorators.ts:504 - Inject decorator implementation
+   * @see src/Utils/decorators.ts:1015 - Inject decorator implementation
    * @see app.ts:70 - Service registration in parent component
    */
   @Inject(ActivityDataService)
@@ -173,7 +173,7 @@ class ActivityDataTable extends Component {
  * // Usage in parent component:
  * activityDataTable({})
  * 
- * @see src/Node/component.ts:158 - ToFunction implementation
+ * @see src/Node/component.ts:139 - ToFunction implementation
  */
 export const activityDataTable = Component.ToFunction(
   "activity-data-table",

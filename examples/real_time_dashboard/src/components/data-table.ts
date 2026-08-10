@@ -178,7 +178,7 @@ interface TableFunction {
  * // Type-safe usage
  * dataTable({ data: () => ({ columns, data: users }) }, cellTemplate);
  * 
- * @see src/Node/component.ts:158 - ToFunction implementation
+ * @see src/Node/component.ts:139 - ToFunction implementation
  */
 export const dataTable = Component.ToFunction(
   "table",

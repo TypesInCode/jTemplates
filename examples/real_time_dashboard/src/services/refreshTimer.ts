@@ -72,7 +72,7 @@ export class RefreshTimer implements IDestroyable {
    * 2. Cleans up interval resources
    * 3. Prevents memory leaks
    * 
-   * @see src/Utils/decorators.ts:537 - @Destroy decorator implementation
+   * @see src/Utils/decorators.ts:1117 - @Destroy decorator implementation
    */
   Destroy(): void {
     this.stop();

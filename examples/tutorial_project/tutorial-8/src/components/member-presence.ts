@@ -12,9 +12,6 @@ class MemberPresence extends Component<void, void, void> {
   @Inject(CollaborationService)
   collaborationService!: CollaborationService;
 
-  // Plain property — not reactive state, just internal data for cleanup.
-  private refreshIntervalId: ReturnType<typeof setInterval> | null = null;
-
   // @Watch detects when online members change — useful for triggering side effects
   // like updating a notification badge or logging presence changes.
   @Watch((self) => self.collaborationService.GetOnlineMembers())
@@ -71,11 +68,6 @@ class MemberPresence extends Component<void, void, void> {
 
   Destroy(): void {
     super.Destroy();
-    // Cleanup interval timer — @Destroy only works on IDestroyable objects,
-    // not primitive values like timer IDs. Manual cleanup is required here.
-    if (this.refreshIntervalId !== null) {
-      clearInterval(this.refreshIntervalId);
-    }
   }
 }
 

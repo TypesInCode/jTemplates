@@ -30,32 +30,31 @@ class TaskCard extends Component<TaskCardData, void, TaskCardEvents> {
   }
 
   Template() {
-    const task = this.Data.task;
     return div({ props: { className: "kanban-card" } }, () => [
       div({ props: { className: "kanban-card-header" } }, () => [
-        span({ props: { className: "kanban-card-title" } }, () => task.title),
+        span({ props: { className: "kanban-card-title" } }, () => this.Data.task.title),
         span({
-          props: {
+          props: () => ({
             className: "priority-dot",
-            style: `background: ${this.priorityColors[task.priority]};`,
-          },
+            style: `background: ${this.priorityColors[this.Data.task.priority]};`,
+          }),
         }),
       ]),
-      div({ props: { className: "kanban-card-desc" } }, () => task.description),
+      div({ props: { className: "kanban-card-desc" } }, () => this.Data.task.description),
       div({ props: { className: "kanban-card-footer" } }, () => [
-        span({ props: { className: "kanban-card-assignee" } }, () => this.getMemberName(task.assigneeId)),
+        span({ props: { className: "kanban-card-assignee" } }, () => this.getMemberName(this.Data.task.assigneeId)),
         div({ props: { className: "kanban-card-actions" } }, () => [
-          task.status !== "todo" ? button({
+          this.Data.task.status !== "todo" ? button({
             props: { className: "btn-move" },
-            on: { click: () => this.Fire("statusChange", { taskId: task.id, status: "todo" }) },
+            on: { click: () => this.Fire("statusChange", { taskId: this.Data.task.id, status: "todo" }) },
           }, () => "← Todo") : text(() => ""),
-          task.status !== "in-progress" ? button({
+          this.Data.task.status !== "in-progress" ? button({
             props: { className: "btn-move" },
-            on: { click: () => this.Fire("statusChange", { taskId: task.id, status: "in-progress" }) },
+            on: { click: () => this.Fire("statusChange", { taskId: this.Data.task.id, status: "in-progress" }) },
           }, () => "← WIP →") : text(() => ""),
-          task.status !== "done" ? button({
+          this.Data.task.status !== "done" ? button({
             props: { className: "btn-move" },
-            on: { click: () => this.Fire("statusChange", { taskId: task.id, status: "done" }) },
+            on: { click: () => this.Fire("statusChange", { taskId: this.Data.task.id, status: "done" }) },
           }, () => "Done →") : text(() => ""),
         ]),
       ]),

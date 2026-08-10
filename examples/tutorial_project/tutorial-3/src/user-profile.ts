@@ -164,11 +164,14 @@ class UserProfile extends Component {
    * - () => this.user.age - Updates when age changes
    */
    Template() {
-    return div({ props: { className: "profile" } }, [
+    // Children are wrapped in functions so each subtree gets its own
+    // reactive scope — only the region that reads a changed value re-renders,
+    // not the whole component.
+    return div({ props: { className: "profile" } }, () => [
       h2({}, () => "User Profile"),
 
       // Form section
-      div({ props: { className: "form" } }, [
+      div({ props: { className: "form" } }, () => [
         // Name field
         div({ props: { className: "form-group" } }, [
           label({}, () => "Name:"),
@@ -236,7 +239,7 @@ class UserProfile extends Component {
       ]),
 
       // Preview section - shows reactive updates in real-time
-      div({ props: { className: "preview" } }, [
+      div({ props: { className: "preview" } }, () => [
         h3({}, () => "Live Preview:"),
 
         // Name preview - updates as you type
@@ -251,29 +254,35 @@ class UserProfile extends Component {
           () => `Age: ${this.user.age > 0 ? this.user.age : "(not set)"}`,
         ),
 
-        // Validation status
-        this.isSubmitted
-          ? this.isFormValid
-            ? span(
-                { props: { className: "status success" } },
-                () => "✓ Valid profile!",
-              )
+        // Validation status — isolated in its own children function so only
+        // this subtree re-renders when isSubmitted / isFormValid change.
+        div({}, () =>
+          this.isSubmitted
+            ? this.isFormValid
+              ? span(
+                  { props: { className: "status success" } },
+                  () => "✓ Valid profile!",
+                )
+              : span(
+                  { props: { className: "status error" } },
+                  () => "✗ Please fix validation errors",
+                )
             : span(
-                { props: { className: "status error" } },
-                () => "✗ Please fix validation errors",
-              )
-          : span(
-              { props: { className: "status info" } },
-              () => "Fill out the form to save",
-            ),
+                { props: { className: "status info" } },
+                () => "Fill out the form to save",
+              ),
+        ),
       ]),
     ]);
   }
 
   /**
-   * Bound() is called when component is attached to DOM
+   * Bound() is called when component is attached to DOM.
+   * Always call super.Bound() first so the framework initializes reactive
+   * bindings (@Watch, etc.) before any custom logic runs.
    */
   Bound() {
+    super.Bound();
     console.log("UserProfile component bound");
     console.log("Initial user data:", this.user);
   }

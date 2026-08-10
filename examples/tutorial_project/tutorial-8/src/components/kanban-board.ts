@@ -1,4 +1,4 @@
-import { Component, gate } from "j-templates";
+import { Component } from "j-templates";
 import { div, span } from "j-templates/DOM";
 import { Inject, Scope } from "j-templates/Utils";
 import { Task } from "../data/types";

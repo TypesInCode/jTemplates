@@ -51,6 +51,8 @@ class ShoppingCart extends Component {
   @Destroy()
   logger: ReactiveLogger = new ReactiveLogger();
 
+  // @Watch fires immediately on Bound() with the initial value, then on each
+  // change — so the first log entries appear as soon as the cart mounts.
   @Watch((comp) => comp.items.length)
   onItemCountChanged(count: number) {
     this.logger.log(`Cart now has ${count} item(s)`);
@@ -161,6 +163,9 @@ class ShoppingCart extends Component {
           select(
             {
               props: () => ({ value: this.selectedProduct }),
+              // data: iteration over the static product list — the framework
+              // iterates, so no .map() is needed.
+              data: () => this.availableProducts,
               on: {
                 change: (e: Event) => {
                   const target = e.target as HTMLSelectElement;
@@ -168,10 +173,8 @@ class ShoppingCart extends Component {
                 },
               },
             },
-            () =>
-              this.availableProducts.map((product) =>
-                option({ props: { value: product.id } }, () => product.name),
-              ),
+            (product) =>
+              option({ props: { value: product.id } }, () => product.name),
           ),
           button(
             {

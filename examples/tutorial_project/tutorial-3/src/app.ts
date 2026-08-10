@@ -209,6 +209,7 @@ class App extends Component {
    * Bound() is called when component is attached to DOM
    */
   Bound() {
+    super.Bound();
     console.log("App component bound");
     console.log("Tutorial 3: Reactive State Basics");
     console.log("Try the counter and user profile demos above!");

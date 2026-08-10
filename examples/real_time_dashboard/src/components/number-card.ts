@@ -81,7 +81,7 @@ class NumberCard extends Component<{ title: string; value: number }> {
    * 3. Updates the scope when the value changes
    * 4. Triggers dependent computations and re-renders
    * 
-   * @see src/Utils/decorators.ts:333 - Value decorator implementation
+   * @see src/Utils/decorators.ts:630 - Value decorator implementation
    */
   @Value()
   cardValue = 0;
@@ -100,7 +100,7 @@ class NumberCard extends Component<{ title: string; value: number }> {
    * 2. When the watched property changes, the method is called with the new value
    * 3. The scope is automatically managed and cleaned up
    * 
-   * @see src/Utils/decorators.ts:338 - Watch decorator implementation
+   * @see src/Utils/decorators.ts:897 - Watch decorator implementation
    */
   @Watch((comp) => comp.Data.value)
   setCardValue(value: number) {
@@ -144,6 +144,6 @@ class NumberCard extends Component<{ title: string; value: number }> {
  *   data: () => ({ title: "Total Visits", value: 42 })
  * })
  * 
- * @see src/Node/component.ts:158 - ToFunction implementation
+ * @see src/Node/component.ts:139 - ToFunction implementation
  */
 export const numberCard = Component.ToFunction("number-card", NumberCard);

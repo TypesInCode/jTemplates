@@ -4,13 +4,13 @@
  * This file demonstrates:
  * - Reactive state with @Value and @State
  * - Conditional rendering
- * - List rendering with map()
+ * - List rendering with data: iteration (framework iterates; no .map())
  * - Event handling
  * - Two-way data binding
  * - Computed properties
  */
 
-import { Component } from "j-templates";
+import { Component, gate } from "j-templates";
 import { Value, State } from "j-templates/Utils";
 import { div, h1, input, button, span } from "j-templates/DOM";
 import { todoItem, TodoItemData } from "./todo-item.js";
@@ -142,7 +142,10 @@ class TodoList extends Component<void> {
       // Header
       h1({}, () => "Tutorial 4: Todo List"),
 
-      // Input section with two-way data binding
+      // Input section with two-way data binding.
+      // props must be a reactive function (props: () => ({ value })) — a static
+      // props object would reset the input's value on every render and cause
+      // focus loss while typing.
       div({ props: { className: "input-section" } }, () => [
         input({
           props: () => ({
@@ -185,23 +188,27 @@ class TodoList extends Component<void> {
         }, () => "Completed"),
       ]),
 
-      // Todo list - use data prop for list rendering (framework handles iteration)
-      // Each todo item gets its own scope via children function
-      this.todos.length === 0
-        ? div({ props: { className: "empty-state" } }, () =>
-            "No todos yet. Add one above!"
-          )
-        : div(
-            {
-              props: { className: "todo-list" },
-              data: () => this.filteredTodos,
-            },
-            (todo) =>
-              todoItem(todo, {
-                onToggle: (id) => this.toggleTodo(id),
-                onDelete: (id) => this.deleteTodo(id),
-              })
-          ),
+      // Empty state vs. list — canonical gate() pattern. gate() only re-evaluates
+      // this ternary when the boolean flips, so upstream emissions that keep the
+      // list non-empty don't rebuild this subtree. The list still updates via its
+      // own data: binding scope.
+      div({}, () =>
+        gate(() => this.todos.length === 0)
+          ? div({ props: { className: "empty-state" } }, () =>
+              "No todos yet. Add one above!"
+            )
+          : div(
+              {
+                props: { className: "todo-list" },
+                data: () => this.filteredTodos,
+              },
+              (todo) =>
+                todoItem(todo, {
+                  onToggle: (id) => this.toggleTodo(id),
+                  onDelete: (id) => this.deleteTodo(id),
+                })
+            ),
+      ),
 
       // Stats footer - wrapped in function for separate scope
       div({ props: { className: "stats" } }, () => [

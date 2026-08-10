@@ -48,24 +48,11 @@ import { IDestroyable } from "j-templates/Utils";
  */
 export class DataService implements ActivityDataService, IDestroyable {
   /**
-   * StoreAsync instance with key function for object sharing.
+   * StoreAsync with a key function for object sharing.
    * 
-   * @StoreAsync - Asynchronous store that:
-   * 1. Manages activity data with automatic change detection
-   * 2. Uses key function (value => value.id) for object identity
-   * 3. Enables object sharing - same user objects are shared across activities
-   * 4. Provides asynchronous Write/Push operations
-   * 
-   * @keyFunction (value) => value.id - Extracts ID from objects for sharing
-   * When objects with the same ID are stored, they reference the same instance.
-   * 
-   * @example
-   * // Two activities with same user will share the user object:
-   * const activity1 = { id: "act-1", user: { id: "usr-1", name: "John" } };
-   * const activity2 = { id: "act-2", user: { id: "usr-1", name: "John" } };
-   * store.Write(activity1);
-   * store.Write(activity2);
-   * // activity1.user === activity2.user (same instance!)
+   * The key function (value => value.id) extracts an identity from each stored
+   * object, so objects with the same ID reference the same instance — e.g. two
+   * activities with the same user share one user object.
    * 
    * @see src/Store/Store/storeAsync.ts:39 - StoreAsync class
    * @see src/Store/Store/store.ts - Base Store class
@@ -75,18 +62,10 @@ export class DataService implements ActivityDataService, IDestroyable {
   /**
    * Reactive scope for sorted activity data.
    * 
-   * @ObservableScope.Create() - Creates a reactive computation that:
-   * 1. Tracks dependencies (store.Get("activities"))
-   * 2. Automatically re-computes when dependencies change
-   * 3. Returns sorted activity data
+   * ObservableScope.Create tracks the observables read inside the callback and
+   * re-computes (and caches) the result whenever a dependency changes.
    * 
-   * @jTemplates How ObservableScope works:
-   * - Creates a scope that tracks accessed observables
-   * - Re-computes when any dependency changes
-   * - Caches the result until dependencies change
-   * - Provides Value property to access current result
-   * 
-   * @see src/Store/Tree/observableScope.ts:52 - ObservableScope class
+   * @see src/Store/Tree/observableScope.ts:733 - ObservableScope class
    */
   private activityData = ObservableScope.Create(() => {
     const activities = this.store.Get<Activity[]>("activities", []);
@@ -156,17 +135,10 @@ export class DataService implements ActivityDataService, IDestroyable {
   }
 
   /**
-   * Reactive scope for comprehensive activity report.
+   * Reactive scope for the comprehensive activity report.
    * 
-   * Computes various statistics about user activities:
-   * - Top user by visit count
-   * - Top user by time spent
-   * - Top URL by visit count
-   * - Top URL by time spent
-   * - Total activities, unique users, averages
-   * 
-   * @complexity O(n) - Single pass through activity data
-   * @performance Optimized with object maps for counting
+   * Computes top user/URL by visits and time, plus totals and averages, in a
+   * single O(n) pass using object maps for counting.
    */
   private report = ObservableScope.Create(() => {
     let topUser = "";
@@ -263,22 +235,26 @@ export class DataService implements ActivityDataService, IDestroyable {
    * - Returns Promise<void>
    */
   constructor() {
+    // Fire-and-forget StoreAsync write: the constructor can't be async, and the
+    // UI tolerates the eventual consistency because scopes resolve to an empty
+    // array until the write lands, then re-render with data. If you needed the
+    // data before rendering, await the write in an async init() instead.
     this.store.Write(generateActivities(2), "activities");
   }
 
   /**
    * Refresh data with new random activities.
    * 
-   * @RefreshData - Demonstrates Store.Push operation:
-   * 1. Generates new random activities
-   * 2. Pushes them to the activities array
-   * 3. Automatically triggers all reactive computations
-   * 4. UI updates automatically through reactivity
+   * Store.Push appends to the activities array; dependent scopes re-compute and
+   * the UI updates automatically through reactivity.
    * 
    * @see src/Store/Store/storeAsync.ts:106 - StoreAsync.Push method
    */
   RefreshData() {
     const nextActivities = generateActivities();
+    // Fire-and-forget StoreAsync push — the reactive scopes re-compute once the
+    // worker applies the diff, so the UI updates asynchronously. No need to await
+    // here because nothing reads the pushed data back in this same call.
     this.store.Push("activities", ...nextActivities);
   }
 
