@@ -1,12 +1,10 @@
+import { _requestIdleCallback } from "./scheduling";
+
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => void;
 export type Emitter = [number, ...EmitterCallback[]]; // [number, ...EmitterCallback[]];
 
-const scheduleCallback =
-  typeof requestIdleCallback !== "undefined"
-    ? requestIdleCallback
-    : setTimeout;
 const pendingCompactEmitters = new Set<Emitter>();
 
 function Compact(emitter: Emitter) {
@@ -21,7 +19,7 @@ function ScheduleCompact() {
   if (compactScheduled) return;
 
   compactScheduled = true;
-  scheduleCallback(PerformCompact);
+  _requestIdleCallback(PerformCompact);
 }
 
 function PerformCompact() {

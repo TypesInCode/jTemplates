@@ -1,6 +1,6 @@
-import { wndw } from "./window";
 import { INodeConfig } from "../Node/nodeConfig";
 import { List } from "../Utils/list";
+import { _queueMicrotask, _requestAnimationFrame } from "../Utils/scheduling";
 import { CreateRootPropertyAssignment, PropertyAssignment } from "./createPropertyAssignment";
 import { CreateEventAssignment, EventAssignment } from "./createEventAssignment";
 import { Assignment, CreateAssignment } from "./createAssignment";
@@ -20,7 +20,7 @@ function processUpdates() {
   if (pendingUpdates.size === 0) updateScheduled = false;
   else {
     frameStart = Date.now();
-    wndw.requestAnimationFrame(processUpdates);
+    _requestAnimationFrame(processUpdates);
   }
 }
 
@@ -32,10 +32,10 @@ function scheduleUpdate(callback: () => void) {
   if (!updateScheduled) {
     const now = Date.now();
     updateScheduled = true;
-    if (now - frameStart < frameTime) queueMicrotask(processUpdates);
+    if (now - frameStart < frameTime) _queueMicrotask(processUpdates);
     else {
       frameStart = now;
-      wndw.requestAnimationFrame(processUpdates);
+      _requestAnimationFrame(processUpdates);
     }
   }
 }
@@ -64,14 +64,12 @@ function getHTMLNode(from: HTMLElement | string, current?: HTMLElement | null) {
 
 export const DOMNodeConfig: INodeConfig = {
   createNode(type: string, namespace?: string): Node {
-    if (type === "text") return wndw.document.createTextNode("");
-
     return namespace
-      ? wndw.document.createElementNS(namespace, type)
-      : wndw.document.createElement(type);
+      ? document.createElementNS(namespace, type)
+      : document.createElement(type);
   },
   createTextNode(value: string = "") {
-    return wndw.document.createTextNode(value);
+    return document.createTextNode(value);
   },
   isTextNode(target: Node) {
     return target?.nodeType === Node.TEXT_NODE;
@@ -162,7 +160,6 @@ export const DOMNodeConfig: INodeConfig = {
     if (!target.hasChildNodes()) {
       for (let x = 0; x < children.length; x++) {
         const nextChild = getHTMLNode(children[x], null);
-
         target.appendChild(nextChild);
       }
 
@@ -207,5 +204,44 @@ export const DOMNodeConfig: INodeConfig = {
     }
 
     while (target.lastChild !== lastChild) target.removeChild(target.lastChild);
+  },
+  // start is exclusive (null for beginning), end is also exclusive (null for end)
+  reconcileRange(target: HTMLElement, start: HTMLElement | null, end: HTMLElement | null, children: (HTMLElement | string)[]) {
+    if ((start && start.parentNode !== target) || (end && end.parentNode !== target))
+      throw new Error("Can't reconcile range against elements that are not children of the provided parent");
+
+    if (start && end && start === end)
+      throw new Error("Can't reconcile zero element range. Provided elements are equal.");
+
+    let currentChild = (start?.nextSibling ?? target.firstChild) as HTMLElement | null;
+    let inNextChildren = false;
+
+    for (let x = 0; x < children.length; x++) {
+      const nextAddedChild = getHTMLNode(children[x], currentChild);
+
+      if (!currentChild)
+        target.appendChild(nextAddedChild);
+      else if (currentChild === end)
+        target.insertBefore(nextAddedChild, currentChild);
+      else if (nextAddedChild !== currentChild) {
+        while (currentChild && currentChild !== end && (!(inNextChildren = inNextChildren || children.indexOf(currentChild, x + 1) >= 0))) {
+          const toRemove = currentChild;
+          currentChild = currentChild.nextSibling as HTMLElement;
+          target.removeChild(toRemove);
+        }
+
+        nextAddedChild !== currentChild &&
+          target.insertBefore(nextAddedChild, currentChild);
+      }
+      else inNextChildren = false;
+
+      currentChild = nextAddedChild.nextSibling;
+    }
+
+    while (currentChild !== end) {
+      const toRemove = currentChild;
+      currentChild = currentChild.nextSibling as HTMLElement;
+      target.removeChild(toRemove);
+    }
   }
 };

@@ -1,4 +1,5 @@
 import { vNode } from "../Node/vNode";
+import { FRAGMENT_NODE, TEXT_NODE, vNodeChildrenFunction, vNodeConfig } from "../Node/vNode.types";
 
 // Layout
 export const div = vNode.ToFunction("div");
@@ -116,8 +117,13 @@ export const area = vNode.ToFunction("area");
 export const template = vNode.ToFunction("template");
 export const slot = vNode.ToFunction("slot");
 
+const fragmentElement = vNode.ToFunction(FRAGMENT_NODE);
+export const fragment = function <T>(config: Pick<vNodeConfig<void, void, T>, "data">, children: vNodeChildrenFunction<T>) {
+  return fragmentElement(config, children);
+}
+
 // Text node
-const textElement = vNode.ToFunction("text");
+const textElement = vNode.ToFunction(TEXT_NODE);
 export const text = function (callback: () => string) {
   return textElement({ props: () => ({ nodeValue: callback() }) });
 };

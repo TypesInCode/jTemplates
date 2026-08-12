@@ -8,25 +8,19 @@ import { Emitter } from "../Utils/emitter";
 import { IsAsync } from "../Utils/functions";
 import { Injector } from "../Utils/injector";
 import { Schedule, Thread } from "../Utils/thread";
-import { RecursivePartial } from "../Utils/utils.types";
 import { Component } from "./component";
 import { NodeConfig } from "./nodeConfig";
 import {
   vNode as vNodeType,
   vNodeDefinition,
-  FunctionOr,
-  vNodeEvents,
   vNodeChildrenFunction,
   isStringNode,
   vElementNode,
+  vNodeConfig,
+  TEXT_NODE,
+  FRAGMENT_NODE,
+  STRING_NODE,
 } from "./vNode.types";
-
-type vNodeConfig<P = HTMLElement, E = HTMLElementEventMap, T = never> = {
-  props?: FunctionOr<RecursivePartial<P>>;
-  attrs?: FunctionOr<{ [name: string]: string }>;
-  on?: FunctionOr<vNodeEvents<E>>;
-  data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
-};
 
 export namespace vNode {
   export function Create<P = HTMLElement, E = HTMLElementEventMap, T = never>(
@@ -40,6 +34,7 @@ export namespace vNode {
             return new Injector();
           })
         : (Injector.Current() ?? new Injector()),
+      parentNode: null,
       node: definition.node ?? null,
       children: null,
       destroyed: false,
@@ -49,28 +44,14 @@ export namespace vNode {
     };
   }
 
-  export function CreateText(text: string): vNodeType {
-    return {
-      definition: null,
-      type: "text",
-      injector: null,
-      node: NodeConfig.createTextNode(text),
-      children: null,
-      destroyed: false,
-      onDestroyed: null,
-      component: null,
-      scopes: [],
-    };
-  }
-
-  export function Init(vnode: vNodeType) {
+  export function Init(vnode: vNodeType, parentNode: vElementNode = null) {
     if (isStringNode(vnode) || vnode.definition === null) return;
 
-    InitNode(vnode);
+    InitNode(vnode, parentNode);
   }
 
-  export function InitAll(vnodes: vNodeType[]) {
-    for (let x = 0; x < vnodes.length; x++) Init(vnodes[x]);
+  export function InitAll(vnodes: vNodeType[], parentNode: vElementNode = null) {
+    for (let x = 0; x < vnodes.length; x++) Init(vnodes[x], parentNode);
   }
 
   export function Destroy(vnode: vNodeType) {
@@ -89,7 +70,7 @@ export namespace vNode {
   }
 
   export function ToFunction<P = HTMLElement, E = HTMLElementEventMap>(
-    type: string,
+    type: string | typeof TEXT_NODE | typeof FRAGMENT_NODE,
     namespace?: string,
   ) {
     return function <T>(
@@ -109,13 +90,19 @@ export namespace vNode {
         },
         config,
         childrenConfig,
-      );
+      ) as vNodeDefinition<P, E, T>;
 
       return Create(definition);
     };
   }
 
   export function Attach(node: any, vnode: vNodeType) {
+    if (vnode.type === FRAGMENT_NODE)
+      throw new Error(
+        "Cannot attach a fragment directly. A fragment has no DOM node — " +
+          "wrap it in a real element (e.g. div) before attaching.",
+      );
+
     Init(vnode);
     NodeConfig.addChild(node, vnode.node);
     return vnode;
@@ -126,7 +113,7 @@ function ComponentChildren(this: Component) {
   return this.Template();
 }
 
-function InitNode(vnode: vElementNode) {
+function InitNode(vnode: vElementNode, parentNode: vElementNode) {
   const {
     type,
     namespace,
@@ -138,9 +125,21 @@ function InitNode(vnode: vElementNode) {
     children,
     childrenArray,
   } = vnode.definition;
-  const node = (vnode.node =
-    vnode.definition.node ?? NodeConfig.createNode(type, namespace));
+
+  let node = null as Node;
+  switch (vnode.type) {
+    case FRAGMENT_NODE:
+      break;
+    case TEXT_NODE:
+      vnode.node = node = vnode.definition.node ?? NodeConfig.createTextNode();
+      break;
+    default:
+      vnode.node = node = vnode.definition.node ?? NodeConfig.createNode(type, namespace);
+      break;
+  }
+
   vnode.definition = null;
+  vnode.parentNode = parentNode;
 
   if (props) {
     if (typeof props === "function") {
@@ -178,7 +177,7 @@ function InitNode(vnode: vElementNode) {
     Children(vnode, ComponentChildren.bind(vnode.component));
   } else if (childrenArray) {
     vnode.children = childrenArray;
-    vNode.InitAll(childrenArray);
+    vNode.InitAll(childrenArray, vnode);
   } else if (children) {
     Children(vnode, children, data);
   }
@@ -230,6 +229,12 @@ function CreateChildrenScope(
   return ObservableScope.Create<vNodeType[]>(DynamicChildrenFunction.bind(null, vnode.injector, children, data));
 }
 
+function ToVNodeType(
+  children: string | vNodeType | vNodeType[],
+): vNodeType | vNodeType[] {
+  return typeof children === "string" ? { type: STRING_NODE, node: children } : children;
+}
+
 function GetNextNodes(injector: Injector, children: (data: any) => string | vNodeType | vNodeType[], data: any) {
   return ToVNodeType(Injector.Scope(injector, children, data));
 }
@@ -270,14 +275,13 @@ function ToArray(result: any) {
   return [result];
 }
 
-function ToVNodeType(
-  children: string | vNodeType | vNodeType[],
-): vNodeType | vNodeType[] {
-  return typeof children === "string" ? { type: "string", node: children } : children;
-}
-
-function GetNode(vnode: vNodeType) {
-  return vnode.node;
+function GetNode(vnode: vNodeType): string | Node | (string | Node)[] {
+  switch (vnode.type) {
+    case FRAGMENT_NODE:
+      return vnode.children.flatMap(GetNode);
+    default:
+      return vnode.node;
+  }
 }
 
 function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
@@ -293,7 +297,7 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
         Schedule(function () {
           if (vnode.destroyed || children !== vnode.children) return;
 
-          vNode.Init(childNode);
+          vNode.Init(childNode, vnode);
         })
       }
     }
@@ -301,20 +305,36 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
     Thread(function (async) {
       if (vnode.destroyed || children !== vnode.children) return;
 
-      if (init || !async) {
+      if (init) {
+        if (vnode.node !== null)
+          NodeConfig.reconcileChildren(
+            vnode.node,
+            vnode.children.flatMap(GetNode),
+          );
+      }
+      else if (!async) {
+        let reconcileNode = vnode;
+        while (reconcileNode.node === null)
+          reconcileNode = reconcileNode.parentNode;
+
         NodeConfig.reconcileChildren(
-          vnode.node,
-          vnode.children.map(GetNode),
+          reconcileNode.node,
+          reconcileNode.children.flatMap(GetNode),
         );
-      } else
+      } else {
         NodeConfig.scheduleUpdate(function () {
           if (vnode.destroyed || children !== vnode.children) return;
 
+          let reconcileNode = vnode;
+          while (reconcileNode.node === null)
+            reconcileNode = reconcileNode.parentNode;
+
           NodeConfig.reconcileChildren(
-            vnode.node,
-            vnode.children.map(GetNode),
+            reconcileNode.node,
+            reconcileNode.children.flatMap(GetNode),
           );
         });
+      }
     });
   });
 }

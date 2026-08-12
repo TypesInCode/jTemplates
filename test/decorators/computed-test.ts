@@ -42,7 +42,7 @@ class TestComponent3 extends Component {
     { value: "first" },
     { value: "second" }
   ];
-  
+
   @Computed()
   get State() {
     return this.state.slice().sort((a, b) => a.value < b.value ? -1 : a.value === b.value ? 0 : 1);
@@ -56,11 +56,9 @@ class TestComponent3 extends Component {
 const testComponent3 = Component.ToFunction("test-component", TestComponent3);
 
 describe("Computed Decorator", () => {
-  it("Should initialize correctly and bind to the DOM", async () => {
+  it("Should initialize correctly and bind to the DOM", () => {
     // attach vnode to JSDOM element and validate behavior
     Component.Attach(document.body, testComponent({}));
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify component rendered
     expect(document.body.innerHTML).toContain("test-component");
@@ -70,36 +68,30 @@ describe("Computed Decorator", () => {
     document.body.innerHTML = "";
   });
 
-  it("Testing ObservableNode written to @Computed", async () => {
+  it("Testing ObservableNode written to @Computed", () => {
     // attach vnode to JSDOM element and validate behavior
     const node = testComponent2({});
     Component.Attach(document.body, node);
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Verify component rendered
     expect(document.body.innerHTML).toContain("test-component");
     expect(document.body.innerHTML).toContain("string value");
 
     (node.component as TestComponent2).state.value = "string changed";
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(document.body.innerHTML).toContain("string changed");
     // Clean up
     document.body.innerHTML = "";
   });
 
-  it("Testing sorted ObservableNode array writte to @Computed", async () => {
+  it("Testing sorted ObservableNode array writte to @Computed", () => {
     const node = testComponent3({});
 
     Component.Attach(document.body, node);
 
-    await new Promise(resolve => setTimeout(resolve, 0));
-
     expect(document.body.innerHTML).toContain("first");
 
     (node.component as TestComponent3).state[0].value = "zounds";
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(document.body.innerHTML).toContain("second");
     expect(document.body.innerHTML).toContain("zounds");

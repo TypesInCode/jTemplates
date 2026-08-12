@@ -1,5 +1,6 @@
 import { Emitter, EmitterCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
+import { _queueMicrotask } from "../../Utils/scheduling";
 
 function Invoke(param: any, callback: (arg1: any) => any) {
   return callback(param);
@@ -158,9 +159,8 @@ function ProcessScopeQueue() {
  * @param scope The scope to queue for update.
  */
 function OnSetQueued(scope: IDynamicObservableScope<any>) {
-  if (scopeQueue.length === 0) queueMicrotask(ProcessScopeQueue);
-
   scopeQueue.push(scope);
+  if (scopeQueue.length === 1) _queueMicrotask(ProcessScopeQueue);
 }
 
 /**

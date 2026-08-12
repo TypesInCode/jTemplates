@@ -100,7 +100,7 @@ describe("Observable Scope", () => {
     expect(ObservableScope.Value(nestedScope)).to.eq("test");
   });
 
-  it("Simple gate scope test", async () => {
+  it("Simple gate scope test", () => {
     let temp = "temp1";
 
     const scope = ObservableScope.Gated(() => temp);
@@ -108,16 +108,16 @@ describe("Observable Scope", () => {
     let fired = false;
     ObservableScope.Watch(scope, (scope) => (fired = true));
     ObservableScope.Update(scope);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(fired).to.eq(false);
 
     temp = "temp2";
     ObservableScope.Update(scope);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(fired).to.eq(true);
   });
 
-  it("Calc helper function test", async () => {
+  it("Calc helper function test", () => {
     let temp = "temp1";
 
     const sourceScope = ObservableScope.Basic(() => temp);
@@ -134,13 +134,11 @@ describe("Observable Scope", () => {
     ObservableScope.Watch(destScope, () => (destFired = true));
 
     ObservableScope.Update(sourceScope);
-    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sourceFired).to.eq(true);
     expect(destFired).to.eq(false);
 
     temp = "temp2";
     ObservableScope.Update(sourceScope);
-    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sourceFired).to.eq(true);
     expect(destFired).to.eq(true);
   });

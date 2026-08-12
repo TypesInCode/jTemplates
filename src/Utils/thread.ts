@@ -1,4 +1,5 @@
 import { IList, INode, List } from "./list";
+import { _queueMicrotask, _setTimeout } from "./scheduling";
 
 /**
  * A threading utility for managing asynchronous and synchronous callbacks
@@ -84,10 +85,6 @@ const contextQueue: IList<IThreadContext> = List.Create();
 let threadContext: IThreadContext = null;
 let timeoutRunning = false;
 
-// Callback scheduling functions
-const scheduleInitialCallback = queueMicrotask;
-const scheduleCallback = setTimeout;
-
 /**
  * Calculates the remaining time until the deadline
  * @param this - The deadline object
@@ -117,7 +114,7 @@ function ProcessQueue(deadline: IdleDeadline = createDeadline()) {
   while (deadline.timeRemaining() > 0 && (ctx = List.Pop(contextQueue)))
     DoWork(ctx, deadline);
 
-  if (contextQueue.size > 0) scheduleCallback(ProcessQueue);
+  if (contextQueue.size > 0) _setTimeout(ProcessQueue);
   else timeoutRunning = false;
 }
 
@@ -131,7 +128,7 @@ function ScheduleWork(ctx: IThreadContext) {
   if (timeoutRunning) return;
 
   timeoutRunning = true;
-  scheduleInitialCallback(ProcessQueue);
+  _queueMicrotask(ProcessQueue);
 }
 
 /**

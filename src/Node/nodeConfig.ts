@@ -36,6 +36,7 @@ export interface INodeConfig {
   getNextSibling(target: any): any;
   replaceChildren(target: any, children: any[]): void;
   reconcileChildren(target: any, children: any[]): void;
+  reconcileRange(target: any, start: any, end: any, children: any[]): void;
 }
 
 export const NodeConfig = DOMNodeConfig as INodeConfig;
