@@ -290,7 +290,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
         return true;
       case toJSON:
         return function () {
-          return ToJson(object);
+          return ToJson(object[NODE_VALUE]);
         };
       case NODE_VALUE:
         return object[NODE_VALUE];
