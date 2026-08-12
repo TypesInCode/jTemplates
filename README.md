@@ -49,8 +49,8 @@ Component.Attach(document.body, helloWorld({}));
 
 | Module | Import Path | Exports |
 |---|---|---|
-| Core | `j-templates` | `Component`, `calc` |
-| DOM | `j-templates/DOM` | 70+ HTML element factories (`div`, `button`, `table`, …), `text` |
+| Core | `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped` |
+| DOM | `j-templates/DOM` | 70+ HTML element factories (`div`, `button`, `table`, …), `text`, `fragment` |
 | Store | `j-templates/Store` | `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode` |
 | Utils | `j-templates/Utils` | `@Value`, `@State`, `@Scope`, `@Computed`, `@ComputedAsync`, `@Watch`, `@Inject`, `@Destroy`, `Animation`, `IDestroyable` |
 
@@ -192,6 +192,41 @@ ul({ data: () => this.items }, (item) =>
 );
 ```
 
+Use `fragment()` when you want conditional rendering **without a wrapper DOM node** — its children reconcile directly into the real ancestor:
+
+```typescript
+fragment({ data: () => this.isLoading }, () => div({}, () => "Loading"));
+```
+
+Use `gate()` when the condition shares a children function with frequently-changing siblings — it only re-evaluates when the boolean flips:
+
+```typescript
+gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content");
+```
+
+### Fragment elements
+
+`fragment()` creates a container with **no DOM node** — its children are inserted directly into the nearest real ancestor element. Use it when you need a reactive scope or a `data:` iteration but don't want an extra wrapper element in the DOM.
+
+```typescript
+import { fragment } from "j-templates/DOM";
+
+// Iteration with no wrapper node
+fragment({ data: () => this.items }, (item) => div({}, () => item.name));
+
+// Nested fragments flatten into the real ancestor
+fragment({}, () => [
+  div({}, () => "OUTER"),
+  fragment({}, () => (this.showExtra ? div({}, () => "EXTRA") : div({}, () => "BASE"))),
+]);
+```
+
+Key behaviors:
+- **No DOM node** — a falsy `data:` value renders *nothing* (no empty wrapper box left behind).
+- **`data:` behaves like any DOM element** — iterates arrays, wraps truthy scalars, collapses falsy values.
+- **Nesting is fine** — fragments inside fragments flatten into the real ancestor.
+- **Cannot be attached directly** — a fragment has no node to attach; wrap it in a real element (e.g. `div`) first.
+
 ## Component Architecture
 
 Components are class-based with three generic type parameters:
@@ -332,13 +367,24 @@ obj.a = 10;            // Triggers reactive update on leaf scope
 const raw = ObservableNode.Unwrap(obj);  // { a: 10, b: { c: 2 } }
 ```
 
-### `calc` — Memoized computed gatekeeper
+### Inline computed scopes — `scope()`, `gate()`, `peek()`, `mapped()`
+
+Memoized computed scopes you can create inline within a watch context (template functions, `@Scope` getters, etc.). All accept `() => T | Promise<T>`.
 
 ```typescript
-import { calc } from "j-templates";
+import { scope, gate, peek, mapped } from "j-templates";
 
-// Inside a scope evaluation, only re-emits when value changes by ===
-const memoized = calc(() => expensiveTransform(data));
+// Full reactivity — emits on every recomputation
+scope(() => this.Data.items);
+
+// Emission gatekeeper — only emits when the value changes by ===
+gate(() => this.count > 10);
+
+// Read without subscribing — no dependency registered
+peek(() => Date.now());
+
+// Per-item scope (the mechanism `data:` uses internally)
+mapped(item, (d) => /* ... */);
 ```
 
 ## Animation
@@ -404,7 +450,7 @@ anim.Animate(0, 1); // Fades from 0 to 1 over 1000ms
 - [Dependency Injection](docs/patterns/04-dependency-injection.md) — Injector hierarchy, @Inject, @Destroy, IDestroyable
 
 ### Reference
-- [Syntax Primer](docs/SYNTAX_PRIMER.md)
+- [Syntax Primer v3](docs/SYNTAX_PRIMER_v3.md)
 
 ## Examples
 

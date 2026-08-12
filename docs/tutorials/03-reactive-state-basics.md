@@ -263,10 +263,10 @@ class UserProfile extends Component {
       div({ props: { className: "form-group" } }, () => [
         label({}, () => "Name:"),
         input({
-          props: { 
+          props: () => ({ 
             value: this.user.name,
             placeholder: "Enter your name"
-          },
+          }),
           on: {
             input: (e: Event) => {
               const target = e.target as HTMLInputElement;
@@ -279,10 +279,10 @@ class UserProfile extends Component {
       div({ props: { className: "form-group" } }, () => [
         label({}, () => "Email:"),
         input({
-          props: { 
+          props: () => ({ 
             value: this.user.email,
             placeholder: "Enter your email"
-          },
+          }),
           on: {
             input: (e: Event) => {
               const target = e.target as HTMLInputElement;
@@ -519,7 +519,7 @@ class ItemList extends Component {
   Template() {
     return div({}, () => [
       input({
-        props: { value: this.newItem },
+        props: () => ({ value: this.newItem }),
         on: { 
           input: (e: Event) => {
             const target = e.target as HTMLInputElement;
@@ -537,15 +537,14 @@ class ItemList extends Component {
         }}
       }, () => "Add"),
       
-      ul({}, () => 
-        this.items.map((item, index) => 
-          li({}, () => [
-            span({}, () => item),
-            button({
-              on: { click: () => this.items.splice(index, 1) }
-            }, () => "×")
-          ])
-        )
+      // Use data: for list rendering — the framework iterates the array
+      ul({ data: () => this.items }, (item) =>
+        li({}, () => [
+          span({}, () => item),
+          button({
+            on: { click: () => this.items.splice(this.items.indexOf(item), 1) }
+          }, () => "×")
+        ])
       )
     ]);
   }
@@ -633,7 +632,7 @@ class ItemList extends Component {
 
 ## Next Steps
 
-In [Tutorial 4: Template System Deep Dive](./04-template-deep-dive.md), you'll:
+In [Tutorial 4: Template System Deep Dive](./04-template-system-deep-dive.md), you'll:
 
 - Master DOM element functions (div, span, input, button, etc.)
 - Create reactive bindings with arrow functions

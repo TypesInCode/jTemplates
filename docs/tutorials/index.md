@@ -17,10 +17,10 @@ Welcome to the j-templates tutorial series. These tutorials will guide you from 
 | 2 | [Your First Component](./02-your-first-component.md) | 45 min | Greeting component | ✅ Complete |
 | 3 | [Reactive State Basics](./03-reactive-state-basics.md) | 60 min | Counter and profile components | ✅ Complete |
 | 4 | [Template System Deep Dive](./04-template-system-deep-dive.md) | 60 min | Todo list application | ✅ Complete |
-| 5 | [Decorators Deep Dive](./05-decorators-deep-dive.md) | 75 min | Shopping cart with computed values | ⏳ Next |
-| 6 | [Component Composition](./06-component-composition.md) | 75 min | Generic list and table components | 📋 Planned |
-| 7 | [Dependency Injection](./07-dependency-injection.md) | 60 min | Service-architected component | 📋 Planned |
-| 8 | [Building a Complete App](./08-advanced-patterns.md) | 90 min | Real-Time Dashboard | 📋 Planned |
+| 5 | [Decorators Deep Dive](./05-decorators-deep-dive.md) | 75 min | Shopping cart with computed values | ✅ Complete |
+| 6 | [Component Composition](./06-component-composition.md) | 75 min | Generic list and table components | ✅ Complete |
+| 7 | [Dependency Injection](./07-dependency-injection.md) | 60 min | Service-architected component | ✅ Complete |
+| 8 | [Building a Complete App](./08-building-complete-app.md) | 90 min | Real-Time Dashboard | ✅ Complete |
 
 ## Prerequisites
 

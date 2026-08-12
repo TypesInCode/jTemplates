@@ -440,7 +440,7 @@ class TextInput extends Component {
 **Important:** The `value` prop must be wrapped in a function `() => this.text` for two-way binding to work properly. Without the function wrapper, the input will lose focus after each keystroke because the DOM element gets recreated instead of updated.
 
 **How it works:**
-1. `props: { value: this.text }` - Sets the input's value from state
+1. `props: () => ({ value: this.text })` - Sets the input's value from state (reactive)
 2. `on: { input: ... }` - Updates state when user types
 3. Result: State and input stay in sync
 
@@ -525,8 +525,7 @@ class TodoItem extends Component<TodoItemData, {}, TodoItemEvents> {
     }, [
       // Checkbox
       input({
-        type: 'checkbox',
-        props: { checked: this.Data.completed },
+        props: { type: 'checkbox', checked: this.Data.completed },
         on: { change: () => this.Fire('onToggle', this.Data.id) }
       }),
       
@@ -547,7 +546,8 @@ export const todoItem = Component.ToFunction('todo-item', TodoItem);
 ### Component 2: TodoList
 
 ```typescript
-import { Component, Value, State } from 'j-templates';
+import { Component } from 'j-templates';
+import { Value, State } from 'j-templates/Utils';
 import { div, h1, input, button, span } from 'j-templates/DOM';
 import { todoItem } from './todo-item.js';
 
@@ -622,7 +622,7 @@ class TodoList extends Component {
       // Input with two-way binding
       div({}, [
         input({
-          props: { value: this.newInput, placeholder: 'Add a todo...' },
+          props: () => ({ value: this.newInput, placeholder: 'Add a todo...' }),
           on: {
             input: (e: Event) => {
               const target = e.target as HTMLInputElement;
@@ -683,8 +683,8 @@ class App extends Component {
   }
 }
 
-const app = new App();
-Component.Attach(app, document.getElementById('app')!);
+const app = Component.ToFunction('app', App);
+Component.Attach(document.getElementById('app')!, app({}));
 ```
 
 ---
@@ -787,9 +787,9 @@ div({ data: () => items }, (item) => ...)
 ## References
 
 ### Patterns Documentation
-- [Templates & Data](../../patterns/03-templates-and-data.md) - Complete template API reference
-- [Reactivity](../../patterns/02-reactivity.md) - Reactive state patterns
-- [Components](../../patterns/01-components.md) - Component basics
+- [Templates & Data](../patterns/03-templates-and-data.md) - Complete template API reference
+- [Reactivity](../patterns/02-reactivity.md) - Reactive state patterns
+- [Components](../patterns/01-components.md) - Component basics
 
 ### Source Code
 - `src/DOM/elements.ts` - DOM element functions

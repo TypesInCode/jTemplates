@@ -122,6 +122,34 @@ Use ternary expressions inside reactive functions:
 div({}, () => this.isLoading ? "Loading…" : "Content");
 ```
 
+### Fragment elements
+
+`fragment()` creates a container with **no DOM node** — its children are reconciled directly into the nearest real ancestor element. Use it when you need a reactive scope or a `data:` iteration but don't want an extra wrapper element in the DOM.
+
+```typescript
+import { fragment } from "j-templates/DOM";
+
+// Conditional rendering with no wrapper node — the ternary is its own scope
+fragment({ data: () => this.show }, (show) =>
+  show === "admin" ? div({}, () => "ADMIN") : div({}, () => "LOGIN"),
+);
+
+// Iteration with no wrapper node
+fragment({ data: () => this.items }, (item) => div({}, () => item.name));
+
+// Nested fragments flatten into the real ancestor
+fragment({}, () => [
+  div({}, () => "OUTER"),
+  fragment({}, () => (this.showExtra ? div({}, () => "EXTRA") : div({}, () => "BASE"))),
+]);
+```
+
+Key behaviors:
+- **No DOM node** — a falsy `data:` value renders *nothing* (no empty wrapper box left behind, unlike a `div` with a `data:` boolean).
+- **`data:` behaves like any DOM element** — iterates arrays, wraps truthy scalars, collapses falsy values.
+- **Nesting is fine** — fragments inside fragments flatten into the real ancestor.
+- **Cannot be attached directly** — a fragment has no node to attach; wrap it in a real element (e.g. `div`) first.
+
 ### Two-way binding
 
 Combine `props` and `on` to create two-way data binding:

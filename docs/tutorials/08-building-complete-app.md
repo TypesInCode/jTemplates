@@ -337,7 +337,7 @@ tbody({ data: () => gate(() => this.Data.data) }, (data) => ...)
 - Important when parent scope aggregates multiple values
 - Optional for direct @State access (arrays are reactive by default)
 
-**See:** `docs/SYNTAX_PRIMER.md` - "gate() — Emission Gatekeeper"
+**See:** `docs/SYNTAX_PRIMER_v3.md` - "gate() — Emission Gatekeeper"
 
 ---
 
@@ -483,12 +483,7 @@ export class App extends Component {
   @Inject(ActivityDataService)
   dataService = new DataService();
 
-  @Computed({
-    topUrl: "",
-    topUser: "",
-    totalActivities: 0,
-    // ... more fields
-  })
+  @Computed()
   get Report() {
     return this.dataService.GetReport();
   }
@@ -516,12 +511,7 @@ Order matters: `@Destroy` must come before `@Inject`
 ### @Computed for Derived State
 
 ```typescript
-@Computed({
-  topUrl: "",
-  topUser: "",
-  totalActivities: 0,
-  // ...
-})
+@Computed()
 get Report() {
   return this.dataService.GetReport();
 }
@@ -532,22 +522,32 @@ get Report() {
 - `@Scope` - For cheap primitive calculations
 - Both cache results and re-evaluate on dependency changes
 
-**See:** `SYNTAX_BEST_PRACTICES.md` - "@Computed vs @Scope" table
+**See:** `docs/SYNTAX_PRIMER_v3.md` - "@Computed vs @Scope" table
 
-### @Computed Async Alternative
+### @ComputedAsync Alternative
+
+`@ComputedAsync` requires a **synchronous** getter — the "Async" refers to the internal `StoreAsync` backend, not the getter signature. For real async fetching, use `@Scope() + scope(async)` instead:
 
 ```typescript
+// ✅ @ComputedAsync — sync getter, StoreAsync backend, same reference via ApplyDiff
 @ComputedAsync(null)
-async getUserData(): Promise<User | null> {
-  const response = await fetch(`/api/users/${this.userId}`);
-  return response.json();
+get userData(): User | null {
+  return getUserSync(this.userId);
+}
+
+// ✅ Real async — use @Scope() + scope(async)
+@Scope()
+get userData(): User | null {
+  return scope(async () => {
+    const res = await fetch(`/api/users/${this.userId}`);
+    return res.json();
+  });
 }
 ```
 
 **When to Use:**
-- API calls that depend on other state
-- Automatic loading state handling
-- Returns default value while pending
+- `@ComputedAsync` — sync derived value that benefits from `StoreAsync` diffing and object reuse
+- `@Scope() + scope(async)` — actual async fetching that depends on other state
 
 ### Auto-Refresh Timer
 
@@ -601,7 +601,7 @@ Component.Attach(root, app({}));
 6. Attaches DOM to root element
 7. Sets up reactive bindings
 
-**See:** `SYNTAX_BEST_PRACTICES.md` - "Component lifecycle"
+**See:** `docs/SYNTAX_PRIMER_v3.md` - "Component lifecycle"
 
 ---
 
@@ -930,8 +930,8 @@ Destroy(): void {
 - [Templates & Data](../patterns/03-templates-and-data.md)
 - [Dependency Injection](../patterns/04-dependency-injection.md)
 
-### Syntax Best Practices
-- [Complete Reference](./SYNTAX_BEST_PRACTICES.md)
+### Syntax Primer
+- [Syntax Primer v3](../SYNTAX_PRIMER_v3.md)
 
 ### Source Code
 - `examples/real_time_dashboard/` - Working reference implementation

@@ -81,17 +81,17 @@ class ShoppingCart extends Component {
   @Value()
   discount: number = 0;
   
-  @Computed(0)  // 0 is the default value
+  @Computed()
   get subtotal(): number {
     return this.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }
   
-  @Computed(0)
+  @Computed()
   get discountAmount(): number {
     return this.subtotal * (this.discount / 100);
   }
   
-  @Computed(0)
+  @Computed()
   get total(): number {
     return this.subtotal - this.discountAmount;
   }
@@ -109,29 +109,29 @@ class ShoppingCart extends Component {
 3. **Automatic Tracking:** Dependencies are automatically tracked - no manual dependency arrays needed
 4. **Lazy Evaluation:** Only computes when accessed in the template
 
-### Default Value Parameter
+### No Default Value Parameter
 
-The first parameter to `@Computed` is the default value returned before the first computation:
+`@Computed` takes **no** arguments — the type is inferred from the getter's return type. (Only `@ComputedAsync` requires a default value parameter.)
 
 ```typescript
 // For numbers
-@Computed(0)
+@Computed()
 get total(): number { ... }
 
 // For strings
-@Computed("")
+@Computed()
 get displayName(): string { ... }
 
 // For arrays
-@Computed([])
+@Computed()
 get completedItems(): Item[] { ... }
 
 // For objects
-@Computed({ count: 0, total: 0 })
+@Computed()
 get stats(): Stats { ... }
 
 // For null/undefined
-@Computed(null)
+@Computed()
 get selectedUser(): User | null { ... }
 ```
 
@@ -141,7 +141,7 @@ get selectedUser(): User | null { ... }
 @State()
 todos: Todo[] = [];
 
-@Computed([])
+@Computed()
 get completedTodos(): Todo[] {
   // Returns a new filtered array, but @Computed caches it
   // and preserves object identity for efficient DOM updates
@@ -163,7 +163,7 @@ Template() {
 @State()
 items: Product[] = [];
 
-@Computed({ total: 0, average: 0, count: 0 })
+@Computed()
 get stats(): { total: number; average: number; count: number } {
   const total = this.items.reduce((sum, item) => sum + item.price, 0);
   return {
@@ -387,7 +387,7 @@ The `@Destroy` decorator automatically calls `.Destroy()` on marked properties w
 
 ```typescript
 import { Destroy, Value } from "j-templates/Utils";
-import { Animation, AnimationType } from "j-templates/Utils/animation";
+import { Animation, AnimationType } from "j-templates/Utils";
 
 class AnimatedCounter extends Component {
   @Value()
@@ -457,7 +457,7 @@ class DataComponent extends Component {
 #### Basic IDestroyable Service
 
 ```typescript
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 class RefreshTimer implements IDestroyable {
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -494,7 +494,7 @@ For services that need to expose reactive data to components:
 
 ```typescript
 import { ObservableScope } from "j-templates/Store";
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 class ReactiveLogger implements IDestroyable {
   // Create reactive scope for logs array
@@ -644,7 +644,7 @@ import { Component } from "j-templates";
 import { div, button, select, option, input, span, label } from "j-templates/DOM";
 import { Value, State, Scope, Watch, Destroy } from "j-templates/Utils";
 import { ObservableScope } from "j-templates/Store";
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 import { cartItem, CartItemData } from "./cart-item";
 
 // Reactive logger service using ObservableScope
@@ -873,10 +873,10 @@ onTotalExceedsThousand(total: number) {
 
 ### Exercise 2: Add Average Price Computation
 
-Add a `@Computed` that calculates the average item price:
+Add a computed that calculates the average item price. Since it returns a primitive `number`, use `@Scope` (not `@Computed`, which is for new composite objects):
 
 ```typescript
-@Computed(0)
+@Scope()
 get averagePrice(): number {
   if (this.itemCount === 0) return 0;
   return this.subtotal / this.itemCount;
@@ -981,9 +981,9 @@ onItemCountChanged(count: number) { ... }
 // ❌ Won't be cleaned up
 private timer = setInterval(...);
 
-// ✅ Will be cleaned up automatically
+// ✅ Will be cleaned up automatically — wrap the timer in an IDestroyable
 @Destroy()
-private timer = setInterval(...);
+private timer = new RefreshTimer(() => this.refresh(), 5000);
 ```
 
 ### Issue: @Scope vs @Computed Confusion
@@ -1005,8 +1005,8 @@ private timer = setInterval(...);
 ## References
 
 ### Patterns Documentation
-- [Reactivity](../../patterns/02-reactivity.md) - Complete decorator API reference and reactive state patterns
-- [Templates & Data](../../patterns/03-templates-and-data.md) - Animation with @Destroy
+- [Reactivity](../patterns/02-reactivity.md) - Complete decorator API reference and reactive state patterns
+- [Templates & Data](../patterns/03-templates-and-data.md) - Animation with @Destroy
 
 ### Source Code
 - `src/Utils/decorators.ts` - Decorator implementations

@@ -108,7 +108,7 @@ The `Injector` class is the core of the DI system. It's a scoped container that 
 ### Basic Injector Usage
 
 ```typescript
-import { Injector } from "j-templates/Utils/injector";
+import { Injector } from "j-templates/Utils/injector";  // internal — not re-exported from j-templates/Utils
 
 // Create an injector
 const injector = new Injector();
@@ -282,7 +282,7 @@ export abstract class DataService {
 ```typescript
 import { DataService } from "./data-service";
 import { StoreSync } from "j-templates/Store";
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 // Concrete implementation
 export class RealDataService extends DataService implements IDestroyable {
@@ -301,7 +301,8 @@ export class RealDataService extends DataService implements IDestroyable {
   }
   
   Destroy(): void {
-    this.store.Destroy();
+    // StoreSync has no Destroy() — it needs no cleanup.
+    // (Use StoreAsync if you need a worker-backed store that must be destroyed.)
   }
 }
 ```
@@ -392,7 +393,7 @@ Services that manage resources (timers, subscriptions, stores) should implement 
 ### The IDestroyable Pattern
 
 ```typescript
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 export interface IDestroyable {
   Destroy(): void;
@@ -404,7 +405,7 @@ export interface IDestroyable {
 ```typescript
 import { DataService } from "./data-service";
 import { StoreAsync } from "j-templates/Store";
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 export class DataService implements IDestroyable {
   private store = new StoreAsync();
@@ -512,7 +513,7 @@ export interface Item {
 ```typescript
 // src/services/data-service.ts
 import { ObservableNode } from "j-templates/Store";
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 import { Item } from "../models/item";
 
 // Service contract (abstract class)
@@ -557,7 +558,7 @@ export class RealDataService extends DataService implements IDestroyable {
 
 ```typescript
 // src/services/logger-service.ts
-import { IDestroyable } from "j-templates/Utils/utils.types";
+import { IDestroyable } from "j-templates/Utils";
 
 export abstract class LoggerService {
   abstract Log(message: string): void;
@@ -631,7 +632,7 @@ interface DataViewerTemplate {
   renderItem: (item: Item) => any;
 }
 
-class DataViewer extends Component<{}, DataViewerTemplate, void> {
+class DataViewer extends Component<{}, DataViewerTemplate, {}> {
   @Inject(DataService)
   dataService!: DataService;
   

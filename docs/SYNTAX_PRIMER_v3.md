@@ -1,6 +1,6 @@
 # j-templates Syntax Primer — v3
 
-Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.90** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
+Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.94** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
 
 > **Core concepts:** Components define UI via `Template()`. State decorators (`@Value`, `@State`, `@Computed`) enable reactivity. DOM functions (`div()`, `button()`) create virtual nodes. No compile step, minimal dependencies.
 
@@ -37,7 +37,7 @@ This one fact drives every design decision in this framework:
 **Imports**
 ```typescript
 import { Component, scope, gate, peek, mapped } from "j-templates";
-import { div, button, input, span, h1, text, _var } from "j-templates/DOM";
+import { div, button, input, span, h1, text, fragment, _var } from "j-templates/DOM";
 import { Value, State, Computed, ComputedAsync, Scope, Watch, Inject, Destroy, Bound, Animation, AnimationType, IDestroyable } from "j-templates/Utils";
 import { StoreSync, StoreAsync, ObservableScope, ObservableNode } from "j-templates/Store";
 import { CreateRootPropertyAssignment, CreateEventAssignment } from "j-templates/DOM";
@@ -72,6 +72,9 @@ div({ data: () => this.isLoading }, () => div({}, () => "Loading"));
 
 // 3. gate() — only re-evaluates when boolean flips; shares scope with siblings
 gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content");
+
+// 4. fragment() — conditional rendering with NO wrapper DOM node
+fragment({ data: () => this.isLoading }, () => div({}, () => "Loading"));
 ```
 
 > **⚠️ `data:` boolean controls *children*, not element existence.** When the value is falsy, the element itself is still created — it just has no children. A styled container (padding, background, border) will still occupy space as an empty box. To remove an element entirely, use pattern 1 (nested children function) or pattern 3 (`gate()`).
@@ -363,6 +366,8 @@ Meta: `template`, `slot`
 
 Text node: `text`
 
+Fragment: `fragment` (no DOM node — children reconcile into the real ancestor)
+
 No SVG-specific elements are exported (the `svgElements` module is commented out in `src/DOM/index.ts`). Use `Component.ToFunction` with a namespace for custom SVG components. Note that the `svg` element function itself creates an **HTML-namespace** `<svg>` element (no SVG namespace), so it is not suitable for inline SVG rendering — use a namespaced `Component.ToFunction` instead.
 
 ---
@@ -593,6 +598,34 @@ taskList({ data: () => ({ tasks: this.tasks }) });
 ```
 
 **Why the difference:** DOM elements are leaf nodes — the framework owns their rendering. Components have their own `Template()` method and full control over how data is consumed, so the framework treats `data:` as a reactive property passthrough, not an iteration instruction.
+
+### Fragment Elements
+
+`fragment()` creates a **container with no DOM node**. Its children are reconciled directly into the nearest real ancestor element. Use it when you need a reactive scope or a `data:` iteration but don't want an extra wrapper element in the DOM.
+
+```typescript
+import { fragment } from "j-templates/DOM";
+
+// Conditional rendering with no wrapper node — the ternary is its own scope
+fragment({ data: () => this.show }, (show) =>
+  show === "admin" ? div({}, () => "ADMIN") : div({}, () => "LOGIN"),
+);
+
+// Iteration with no wrapper node
+fragment({ data: () => this.items }, (item) => div({}, () => item.name));
+
+// Nested fragments flatten into the real ancestor
+fragment({}, () => [
+  div({}, () => "OUTER"),
+  fragment({}, () => (this.showExtra ? div({}, () => "EXTRA") : div({}, () => "BASE"))),
+]);
+```
+
+Key behaviors:
+- **No DOM node.** `fragment()` produces no element; its children are inserted directly into the parent. A falsy `data:` value renders *nothing* — there is no empty wrapper box left behind (unlike a `div` with a `data:` boolean, which keeps the element in the DOM).
+- **`data:` behaves like any DOM element** — iterates arrays, wraps truthy scalars, collapses falsy values to nothing.
+- **Nesting is fine** — fragments inside fragments flatten into the real ancestor.
+- **Cannot be attached directly.** A fragment has no node to attach; wrap it in a real element (e.g. `div`) before attaching to the DOM.
 
 ### Key Template Rules
 
@@ -1463,7 +1496,8 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 15. **Reading a scope at the top of `Template()` subscribes the whole component.** Read scopes inside children functions or `data:` bindings for fine-grained updates.
 16. **`scope()`/`gate()`/`peek()` ID collisions are per-scope.** Multiple calls to the same helper in one watch context without IDs silently resolve to the first scope. Provide distinct IDs when calling the same helper more than once in a single ObservableScope definition.
 17. **`IsAsync` only detects the `async` keyword.** A function that *returns* a Promise but is not declared `async` (e.g. `() => fetch(...)`) is treated as synchronous — the scope stores the Promise as its value instead of resolving it. Always write `async () => ...` for async scopes.
-18. **`@State`/`ObservableNode` only deep-tracks plain objects and arrays.** `JsonType` classifies values by prototype; class instances, `Date`, `Map`, `Set`, and other non-plain objects are treated as opaque primitives — nested mutations won't be tracked. Use plain objects/arrays for reactive state.
+18. **`fragment()` has no DOM node.** It cannot be attached directly (wrap it in a real element) and a falsy `data:` value renders *nothing* — no empty wrapper box. Its children reconcile into the nearest real ancestor.
+19. **`@State`/`ObservableNode` only deep-tracks plain objects and arrays.** `JsonType` classifies values by prototype; class instances, `Date`, `Map`, `Set`, and other non-plain objects are treated as opaque primitives — nested mutations won't be tracked. Use plain objects/arrays for reactive state.
 
 ---
 
@@ -1514,6 +1548,8 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 
 - **No vNode Diffing:** The framework does not diff vNode trees. When a scope emits, the children function re-runs, producing new vNodes. The DOM is patched from old to new. Per-item scopes are reused when the same data object reference reappears (identity-based, not key-based).
 - **DOM-node reconciliation by reference:** `reconcileChildren` reuses a DOM node only when the vNode object reference is identical (per-item reuse); a new vNode creates a new DOM node. Text nodes are reused and updated in place (`setText`) rather than replaced. There is no keyed or positional vNode matching.
+- **Fragments reconcile into the ancestor:** `fragment()` has no DOM node; its children are patched into the nearest real ancestor via `reconcileRange` (a range-based sibling reconciliation). Nested fragments flatten into that same ancestor.
+- **Centralized scheduling:** all async callbacks (`requestAnimationFrame`, `queueMicrotask`, `setTimeout`, `requestIdleCallback`) route through `src/Utils/scheduling.ts`. Setting `SYNC_SCHEDULING=true` makes every callback run synchronously — the default vitest project uses this for deterministic tests, while the `*-test-async.ts` project runs without it.
 - **Object Identity:** `@Computed` uses `ApplyDiff` to merge changes into existing references, preventing DOM subtree recreation.
 - **StoreAsync Constraints:** Uses Web Workers for diffing; data must be JSON-serializable (no methods or circular references).
 - **`gate()` as Circuit Breaker:** Prevents reactivity propagation when result is unchanged (`===`). Ineffective with `@Scope` (always new ref).
@@ -1543,7 +1579,7 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 
 ## References
 
-- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.90).
+- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.94).
 - **Pattern guides:** `docs/patterns/01-components.md`, `docs/patterns/02-reactivity.md`, `docs/patterns/03-templates-and-data.md`, `docs/patterns/04-dependency-injection.md`.
 - **Tutorials:** `docs/tutorials/` (01-getting-started through 08-building-complete-app).
 - **Worked example:** `examples/smart-tasks/src/` (the Smart Tasks app used above).

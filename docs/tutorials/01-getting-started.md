@@ -81,6 +81,8 @@ Create `tsconfig.json`:
     "moduleResolution": "bundler",
     "strict": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
@@ -250,7 +252,7 @@ npm run dev
 
 Vite will start a development server (usually at `http://localhost:5173`). Open that URL in your browser.
 
-Open `http://localhost:8080` in your browser. You should see:
+Open `http://localhost:5173` in your browser. You should see:
 
 ```
 Tutorial 1: Getting Started

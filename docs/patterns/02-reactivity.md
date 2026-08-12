@@ -153,6 +153,7 @@ const id = peek(() => this.Data.id, "id");
 | `scope()` | Yes | No | Full reactivity needed |
 | `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
 | `peek()` | No | N/A | One-time reads, display-only values |
+| `mapped()` | Yes (per item) | No | Per-item scopes (advanced; used internally by `data:`) |
 
 ## Decorators
 
@@ -408,7 +409,7 @@ ObservableScope.OnDestroyed(scope, () => console.log("destroyed"));
 
 ## Source
 
-- `src/Store/Tree/observableScope.ts` — ObservableScope, CalcScope, PeekScope
+- `src/Store/Tree/observableScope.ts` — ObservableScope, InlineScope, GateScope, PeekScope, MappedScope
 - `src/Store/Tree/observableNode.ts` — ObservableNode
 - `src/Store/Store/storeSync.ts` — StoreSync
 - `src/Store/Store/storeAsync.ts` — StoreAsync

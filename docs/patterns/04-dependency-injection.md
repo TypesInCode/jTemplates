@@ -8,8 +8,11 @@ j-templates provides a scoped, type-safe dependency injection system. Each compo
 
 ### Class
 
+> ⚠️ The `Injector` class is **not exported** from the package's public entry points. The API below documents its behavior for understanding `@Inject` and `this.Injector`; do not import `Injector` directly.
+
 ```typescript
-import { Injector } from "j-templates/Utils";
+// Internal — not re-exported from j-templates/Utils
+import { Injector } from "j-templates/Utils/injector";
 ```
 
 | Member | Signature | Description |
@@ -49,7 +52,7 @@ This enables two patterns:
 **Provider** — Initialize with `new` to register the service at the current injector:
 
 ```typescript
-@Injectable(MyService)
+@Inject(MyService)
 myService = new MyService();
 ```
 

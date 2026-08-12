@@ -101,13 +101,11 @@ class SimpleList extends Component<SimpleListData, void, SimpleListEvents> {
   @Value() selectedIndex: number = -1;
 
   Template() {
-    const { items } = this.Data;
-
     return div({ props: { className: "simple-list" } }, () => [
-      p({}, () => `Items: ${items.length}`),
+      p({}, () => `Items: ${this.Data.items.length}`),
       // Use framework data iteration - passes single item to children function
-      div({ data: () => gate(() => items) }, (item: string) => {
-        const index = items.indexOf(item);
+      div({ data: () => gate(() => this.Data.items) }, (item: string) => {
+        const index = this.Data.items.indexOf(item);
         return div({
           props: () => ({
             className: this.selectedIndex === index ? "selected list-item" : "list-item"
@@ -193,29 +191,24 @@ class GenericList<T> extends Component<GenericListData<T>, GenericListTemplate<T
   @Value() selectedIndex: number = -1;
 
   Template() {
-    const { items, emptyMessage } = this.Data;
-    const templates = this.Templates;
-
-    if (!items || items.length === 0) {
-      return div({ props: { className: "list-empty" } }, () => emptyMessage || "No items");
-    }
-
-    return div({ props: { className: "generic-list" } }, () => [
-      div({ data: () => gate(() => items) }, (item: T) => {
-        const index = items.indexOf(item);
-        return div({
-          props: () => ({
-            className: this.selectedIndex === index ? "selected list-item" : "list-item"
-          }),
-          on: {
-            click: () => {
-              this.selectedIndex = index;
-              this.Fire("select", { index, data: item });
-            }
-          }
-        }, () => templates.item(item, index));
-      })
-    ]);
+    return div({ props: { className: "generic-list" } }, () =>
+      !this.Data.items || this.Data.items.length === 0
+        ? div({ props: { className: "list-empty" } }, () => this.Data.emptyMessage || "No items")
+        : div({ data: () => gate(() => this.Data.items) }, (item: T) => {
+            const index = this.Data.items.indexOf(item);
+            return div({
+              props: () => ({
+                className: this.selectedIndex === index ? "selected list-item" : "list-item"
+              }),
+              on: {
+                click: () => {
+                  this.selectedIndex = index;
+                  this.Fire("select", { index, data: item });
+                }
+              }
+            }, () => this.Templates.item(item, index));
+          })
+    );
   }
 }
 ```
@@ -294,17 +287,15 @@ interface TableData {
 ```typescript
 class SimpleTable extends Component<TableData> {
   Template() {
-    const { headers, rows } = this.Data;
-
     return table({ props: { className: "simple-table" } }, [
       // Header row - static, use map in children array
       thead({}, () =>
         tr({}, () =>
-          headers.map((header) => th({}, () => header))
+          this.Data.headers.map((header) => th({}, () => header))
         )
       ),
       // Data rows - use framework iteration with gate()
-      tbody({ data: () => gate(() => rows) }, (row: string[]) =>
+      tbody({ data: () => gate(() => this.Data.rows) }, (row: string[]) =>
         tr({}, () =>
           // Cells are static for each row - use map
           row.map((cell) => td({}, () => cell))
@@ -368,12 +359,10 @@ interface CardData {
 ```typescript
 class Card extends Component<CardData> {
   Template() {
-    const { title, content, footer } = this.Data;
-
     return div({ props: { className: "card" } }, () => [
-      div({ props: { className: "card-header" } }, () => title),
-      div({ props: { className: "card-content" } }, () => content),
-      footer ? div({ props: { className: "card-footer" } }, () => footer) : div({}, () => "")
+      div({ props: { className: "card-header" } }, () => this.Data.title),
+      div({ props: { className: "card-content" } }, () => this.Data.content),
+      this.Data.footer ? div({ props: { className: "card-footer" } }, () => this.Data.footer) : div({}, () => "")
     ]);
   }
 }

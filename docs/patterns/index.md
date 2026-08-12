@@ -11,7 +11,7 @@
 
 ## Further Reading
 
-- [Syntax & Best Practices](../SYNTAX_BEST_PRACTICES.md) — Complete API reference and cheat sheet
+- [Syntax Primer v3](../SYNTAX_PRIMER_v3.md) — Complete API reference and cheat sheet
 - [Tutorials](../tutorials/index.md) — Step-by-step guides from getting started to full applications
 
 ## Example Application
