@@ -733,6 +733,9 @@ function DestroyScope(scope: IObservableScope<any> | IBasicObservableScope<any>)
 export namespace ObservableScope {
   /**
    * Creates a new observable scope from a value function.
+   * The scope auto-tracks the reactive dependencies the valueFunction reads. If it reads no
+   * reactive dependencies, `Create` returns a static scope that does not emit on `Update` — use
+   * `Basic` for a manually-updatable scope whose value doesn't derive from reactive state.
    * @template T The type of value returned by the function.
    * @param valueFunction Function that returns the scope's value. Can be async.
    * @returns A new observable scope.
@@ -743,12 +746,29 @@ export namespace ObservableScope {
     return ExecuteFunction(valueFunction, false);
   }
 
+  /**
+   * Creates a greedy observable scope that batches updates via the microtask queue.
+   * Unlike `Create`, a greedy scope does not emit immediately on change — updates are coalesced
+   * and emitted on the next microtask. Used by `@Watch` for batched side effects.
+   * @template T The type of value returned by the function.
+   * @param valueFunction Function that returns the scope's value. Can be async.
+   * @returns A new greedy observable scope.
+   */
   export function Gated<T>(
     valueFunction: { (): T | Promise<T> }
   ): IObservableScope<T> {
     return ExecuteFunction(valueFunction, true);
   }
 
+  /**
+   * Creates a lightweight basic scope that stores a value directly without a proxy.
+   * Used by `@Value` for primitives. Basic scopes do not automatically track dependencies —
+   * after creation, `ObservableScope.Update` must be called for the scope to emit. They also do
+   * not cache a value internally: the valueFunction is invoked on every read.
+   * @template T The type of value stored in the scope.
+   * @param valueFunction Function that returns the scope's value.
+   * @returns A new basic observable scope.
+   */
   export function Basic<T>(
     valueFunction: { (): T }
   ): IBasicObservableScope<T> {
@@ -827,6 +847,13 @@ export namespace ObservableScope {
     Emitter.Remove(scope.emitter, callback);
   }
 
+  /**
+   * Registers a callback to be invoked when the scope's value is updated.
+   * Only applies to dynamic scopes; no-op for static scopes.
+   * @template T The type of value stored in the scope.
+   * @param scope The scope to monitor for updates.
+   * @param callback Function invoked with the last value and the scope on each update.
+   */
   export function OnUpdated<T>(
     scope: IObservableScope<T>,
     callback: { (lastValue: T, scope: IObservableScope<T>): void }
@@ -853,6 +880,8 @@ export namespace ObservableScope {
 
   /**
    * Marks a scope as dirty, triggering recomputation on next access or batch.
+   * No-op for static scopes (created when a `Create` valueFunction reads no reactive
+   * dependencies) — they never emit. Use `Basic` for scopes you drive manually with `Update`.
    * @param scope The scope to mark for update.
    */
   export function Update(scope: IObservableScope<any> | IBasicObservableScope<any>) {

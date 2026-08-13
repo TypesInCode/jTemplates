@@ -895,7 +895,7 @@ syncFromParent(newFilter: FilterType): void {
 }
 ```
 
-Fires immediately with initial value when `Bound()` runs, then on each change. Subscription auto-cleaned on `Destroy()`. Uses greedy (batched) scope (`ObservableScope.Greedy`).
+Fires immediately with initial value when `Bound()` runs, then on each change. Subscription auto-cleaned on `Destroy()`. Uses a greedy (batched) scope (`ObservableScope.Gated`).
 
 **When NOT to use:** for values you only read in `Template()` — reading a scope there is already reactive; `@Watch` is for side effects (syncing state, logging, triggering external calls).
 
@@ -1417,12 +1417,15 @@ If an object has no `id` property (or `keyFunc` returns `undefined`), it is stor
 
 ```typescript
 namespace ObservableScope {
-  Create<T>(valueFunction: { (): T | Promise<T> }, greedy?: boolean, force?: boolean): IObservableScope<T>;
+  Create<T>(valueFunction: { (): T | Promise<T> }): IObservableScope<T>;   // Non-greedy scope
+  Gated<T>(valueFunction: { (): T | Promise<T> }): IObservableScope<T>;    // Greedy scope (batches via microtask)
+  Basic<T>(valueFunction: { (): T }): IBasicObservableScope<T>;            // Direct-value scope; no dep tracking, no cache — Update() to emit
   Value<T>(scope: IObservableScope<T>): T;          // Get value + register dependency
   Peek<T>(scope: IObservableScope<T>): T;           // Get value without registering dependency
   Touch<T>(scope: IObservableScope<T>): void;       // Register as dependency without reading value
   Watch<T>(scope: IObservableScope<T>, callback: EmitterCallback<[IObservableScope<T>]>): void;
   Unwatch<T>(scope: IObservableScope<T>, callback: EmitterCallback<[IObservableScope<T>]>): void;
+  OnUpdated<T>(scope: IObservableScope<T>, callback: (lastValue: T, scope: IObservableScope<T>) => void): void;
   OnDestroyed(scope: IObservableScope<unknown>, callback: EmitterCallback): void;
   Update(scope: IObservableScope<any>): void;       // Mark dirty, triggers recomputation
   Register(emitter: Emitter): void;
@@ -1432,6 +1435,12 @@ namespace ObservableScope {
 ```
 
 **Async limitation:** Dependencies are only captured synchronously. Read all reactive values before the first `await`. Reactive reads after `await` are not tracked.
+
+**Static scope edge case:** `Create` returns a *static* scope when its valueFunction reads no
+reactive dependencies (no `@Value`/`@State`/other scope reads). Static scopes do **not** emit when
+passed to `Update` — reactivity silently breaks with no error. If you need a manually-updatable
+scope whose value doesn't derive from reactive state, use `Basic` instead, which always emits on
+`Update`.
 
 ### Service Patterns
 
@@ -1448,9 +1457,11 @@ class DataService implements IDestroyable {
 }
 
 // Reactive counter via shared service
+// NOTE: _count is a plain field (not reactive), so Create() would yield a static scope that
+// ignores Update(). Use Basic() for manually-updatable scopes.
 class CounterService implements IDestroyable {
   private _count = 0;
-  private countScope = ObservableScope.Create(() => this._count, false, true);
+  private countScope = ObservableScope.Basic(() => this._count);
   get count() { return ObservableScope.Value(this.countScope); }
   increment() { this._count++; ObservableScope.Update(this.countScope); }
   Destroy(): void { ObservableScope.Destroy(this.countScope); }
@@ -1465,11 +1476,22 @@ class CounterService implements IDestroyable {
 namespace ObservableNode {
   Create<T>(value: T): T;                                       // Wrap in reactive proxy
   Unwrap<T>(value: T): T;                                      // Get raw value from proxy
-  Touch(value: unknown, prop?: string | number): void;          // Manually trigger change
-  ApplyDiff(rootNode: any, diffResult: JsonDiffResult): void;   // Apply diff in-place (@Computed uses this)
+  Clone<T>(value: T): T;                                        // Strip proxies into plain data (mutates plain objects in place)
+  Update(value: unknown, prop?: string | number): void;         // Manually trigger change on a node/property
+  Apply(rootNode: any, value: any): void;                       // Merge a full value in-place, preserving identity (public)
+  ApplyDiff(rootNode: any, diffResult: JsonDiffResult): void;   // Apply diff in-place (internal — used by Store/@Computed)
   CreateFactory(alias?: (value: any) => any | undefined): <T>(value: T) => T;  // Factory with aliasing
 }
 ```
+
+**`Apply` vs `ApplyDiff`:** `Apply(rootNode, value)` is the **public** API for merging a full
+replacement value into an observable node in-place while preserving its object identity. It
+computes the diff internally and applies only the changed paths — properties missing from
+`value` are removed from the target object. This is useful when you want to update an observable
+node but keep the same reference (so downstream `===` checks and DOM reuse stay stable), since
+assigning a property directly on an observable node does **not** generate a diff. `ApplyDiff` is
+an **internal** helper used by the Store functionality (`StoreSync`/`StoreAsync`/`@Computed`); it
+requires a pre-computed `JsonDiffResult` and is not intended for outside developers.
 
 **Array operations on ObservableNode proxies:** `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse` — all trigger reactive updates.
 
@@ -1498,6 +1520,7 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 17. **`IsAsync` only detects the `async` keyword.** A function that *returns* a Promise but is not declared `async` (e.g. `() => fetch(...)`) is treated as synchronous — the scope stores the Promise as its value instead of resolving it. Always write `async () => ...` for async scopes.
 18. **`fragment()` has no DOM node.** It cannot be attached directly (wrap it in a real element) and a falsy `data:` value renders *nothing* — no empty wrapper box. Its children reconcile into the nearest real ancestor.
 19. **`@State`/`ObservableNode` only deep-tracks plain objects and arrays.** `JsonType` classifies values by prototype; class instances, `Date`, `Map`, `Set`, and other non-plain objects are treated as opaque primitives — nested mutations won't be tracked. Use plain objects/arrays for reactive state.
+20. **`ObservableScope.Create` with no reactive deps yields a static scope.** If the valueFunction reads no `@Value`/`@State`/other scope, `Create` returns a static scope that silently ignores `ObservableScope.Update` — reactivity breaks with no error. Use `ObservableScope.Basic` for manually-updatable scopes whose value doesn't derive from reactive state.
 
 ---
 

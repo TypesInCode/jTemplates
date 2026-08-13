@@ -56,14 +56,6 @@ function ownKeysArray(value: ObservableNodeWrapper) {
   return Object.keys(value[NODE_VALUE]);
 }
 
-function TouchValue(value: unknown, prop: string | number | symbol = OBJECT_SCOPE) {
-  const wrapper = wrapperCache.get(value);
-  if (wrapper) {
-    const scope = wrapper[prop] ?? wrapper[OBJECT_SCOPE];
-    ObservableScope.Touch(scope);
-  }
-}
-
 function UnwrapProxy(
   value: any,
   type: "value" | "array" | "object" = JsonType(value),
@@ -355,6 +347,28 @@ export namespace ObservableNode {
     return UnwrapProxy(value);
   }
 
+  /**
+   * Produces a plain, non-reactive version of a value by deep-cloning any observable nodes it
+   * contains into plain objects/arrays. Used internally by `@Computed` to strip proxies from a
+   * computed value before it is written to the store.
+   *
+   * Behavior depends on the input:
+   * - If `value` is an observable node, returns a NEW plain deep copy (top-level identity is not
+   *   preserved; nested nodes become plain objects/arrays).
+   * - If `value` is a plain object/array, it is MUTATED in place — nested observable nodes are
+   *   replaced with plain copies — and the SAME reference is returned (not a copy).
+   * - Primitives and non-plain objects (Date, Map, Set, class instances) are passed through by
+   *   reference, unchanged.
+   *
+   * **Dependency tracking side effect:** Cloning an observable node reads every property through
+   * the proxy's getters, so any reactive scope that contains the clone call (e.g. the `@Computed`
+   * getter scope) registers a dependency on each nested property. This is what lets `@Computed`
+   * observe and react to modifications of nested properties, not just top-level reassignment.
+   *
+   * @template T The type of value to clone.
+   * @param value The observable node or value containing observable nodes to convert to plain data.
+   * @returns A plain, non-reactive version of the value.
+   */
   export function Clone<T>(value: T): T {
     return CloneProxy(value);
   }
@@ -376,7 +390,7 @@ export namespace ObservableNode {
    * @param value The observable node to touch.
    * @param prop Optional property name or index to touch a specific nested property.
    */
-  export function Update(value: unknown, prop: string | number | symbol = OBJECT_SCOPE) {
+  export function Update<T>(value: T, prop: keyof T = OBJECT_SCOPE as any) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
       const scope = wrapper[prop] ?? wrapper[OBJECT_SCOPE];
@@ -384,9 +398,27 @@ export namespace ObservableNode {
     }
   }
 
-  export function Apply(rootNode: any, update: any) {
+  /**
+   * Merges a new value into an observable node in-place, preserving the node's object identity.
+   * Computes the diff between the node's current value and the provided value, then applies only
+   * the changed paths to the existing node. This is the public alternative to `ApplyDiff` for
+   * cases where you want to update an observable node while keeping the same reference (so
+   * downstream `===` comparisons and DOM reuse remain stable).
+   *
+   * Unlike assigning a property directly on an observable node (which does not generate a diff),
+   * `Apply` reconciles the full value: properties present in `value` are updated, and properties
+   * missing from `value` are removed from the target object.
+   *
+   * @param rootNode The observable node to update in-place.
+   * @param value The full replacement value to merge into the node. Properties missing from this
+   *              value are removed from the target object.
+   * @throws If the JSON type of `value` differs from the node's current type (e.g. object → array,
+   *         or a primitive root), the node's type cannot be changed.
+   * @remarks No-op when `value` deep-equals the node's current value (empty diff).
+   */
+  export function Apply(rootNode: any, value: any) {
     const root = rootNode[NODE_VALUE];
-    const diff = JsonDiff(update, root);
+    const diff = JsonDiff(value, root);
     ApplyDiff(rootNode, diff);
   }
 
@@ -454,8 +486,8 @@ export namespace ObservableNode {
         }
       }
 
-      const assignValue = pathTuples[y][1];
-      (assignValue as any)[path[y]] = value;
+      const assignValue = pathTuples[y][1] as any;
+      assignValue[path[y]] = value;
       ObservableNode.Update(assignValue, path[y]);
     }
   }
