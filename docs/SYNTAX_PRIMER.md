@@ -1,6 +1,6 @@
 # j-templates Syntax Primer — v4
 
-Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.94** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
+Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.98** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
 
 > **Core concepts:** Components define UI via `Template()`. State decorators (`@Value`, `@State`, `@Computed`) enable reactivity. DOM functions (`div()`, `button()`) create virtual nodes. No compile step, minimal dependencies.
 
@@ -1608,7 +1608,7 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 
 ## References
 
-- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.94).
+- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.98).
 - **Pattern guides:** `docs/patterns/01-components.md`, `docs/patterns/02-reactivity.md`, `docs/patterns/03-templates-and-data.md`, `docs/patterns/04-dependency-injection.md`.
 - **Tutorials:** `docs/tutorials/` (01-getting-started through 08-building-complete-app).
 - **Worked example:** `examples/smart-tasks/src/` (the Smart Tasks app used above).
