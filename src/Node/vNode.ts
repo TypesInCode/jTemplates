@@ -4,6 +4,7 @@ import {
   IObservableScope,
   MappedScope,
 } from "../Store/Tree/observableScope";
+import { RemoveNulls } from "../Utils/array";
 import { Emitter } from "../Utils/emitter";
 import { IsAsync } from "../Utils/functions";
 import { Injector } from "../Utils/injector";
@@ -197,8 +198,11 @@ function Children(
     CreateScheduledCallback(function (scope) {
       if (vnode.destroyed) return;
 
+      const oldChildrenLength = vnode.children.length;
       vnode.children = ObservableScope.Value(scope);
-      UpdateChildren(vnode);
+
+      if (oldChildrenLength !== 0 || vnode.children.length !== 0)
+        UpdateChildren(vnode);
     }),
   );
 
@@ -275,13 +279,19 @@ function ToArray(result: any) {
   return [result];
 }
 
-function GetNode(vnode: vNodeType): string | Node | (string | Node)[] {
+function MapNode(vnode: vNodeType): string | Node | null | (string | Node | null)[] {
   switch (vnode.type) {
     case FRAGMENT_NODE:
-      return vnode.children.flatMap(GetNode);
+      return vnode.children.flatMap(MapNode);
     default:
       return vnode.node;
   }
+}
+
+function CleanupChildrenArray(children: vNodeType[]) {
+  const nodes = children.flatMap(MapNode);
+  RemoveNulls(nodes);
+  return nodes;
 }
 
 function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
@@ -309,7 +319,7 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
         if (vnode.node !== null)
           NodeConfig.reconcileChildren(
             vnode.node,
-            vnode.children.flatMap(GetNode),
+            CleanupChildrenArray(vnode.children)
           );
       }
       else if (!async) {
@@ -319,7 +329,7 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
 
         NodeConfig.reconcileChildren(
           reconcileNode.node,
-          reconcileNode.children.flatMap(GetNode),
+          CleanupChildrenArray(reconcileNode.children)
         );
       } else {
         NodeConfig.scheduleUpdate(function () {
@@ -331,7 +341,7 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
 
           NodeConfig.reconcileChildren(
             reconcileNode.node,
-            reconcileNode.children.flatMap(GetNode),
+            CleanupChildrenArray(reconcileNode.children)
           );
         });
       }
