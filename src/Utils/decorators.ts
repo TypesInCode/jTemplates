@@ -148,7 +148,7 @@ function GetDestroyArrayForPrototype(prototype: WeakKey, create = true) {
   return array;
 }
 
-function CreateComputedScope(
+function CreateStoreScope(
   getter: () => any,
   store: StoreSync | StoreAsync,
   defaultValue?: any,
@@ -175,6 +175,36 @@ function CreateComputedScope(
   });
 
   return propertyScope;
+}
+
+/**
+ * Creates a Gated observable scope that exposes a getter's value through a persistent
+ * observable node, preserving the value's object identity across updates.
+ *
+ * On each re-evaluation the getter's value is cloned and merged into the node in-place
+ * via ObservableNode.Apply:
+ * - Content changes (same structure, changed properties) fire only the affected
+ *   per-property scopes - the top-level scope does not emit.
+ * - Structural changes (type change or removed keys) replace the root value with a new
+ *   identity, which the Gated scope detects and emits for.
+ * - Deep-equal results are suppressed entirely by the Gated ===-gating.
+ *
+ * @param getter Function computing the value. May read reactive dependencies.
+ * @returns The Gated scope whose value is the observable root node.
+ */
+function CreateNodeScope(
+  getter: () => any
+) {
+  const observableNode = ObservableNode.Create({ root: null });
+  const getterScope = ObservableScope.Gated(function () {
+    const value = getter();
+    const clonedValue = ObservableNode.Clone(value);
+    ObservableNode.Apply(observableNode, { root: clonedValue });
+
+    return observableNode.root;
+  });
+
+  return getterScope;
 }
 
 /**
@@ -207,7 +237,7 @@ function CreateComputedScope(
  * @Value()
  * lastName: string = "Doe";
  *
- * @Computed()  // Overhead: creates StoreSync, watch cycle, diff computation
+ * @Computed()  // Overhead: observable node, watch cycle, diff computation
  * get fullName(): string {
  *   return this.firstName + " " + this.lastName;  // Cheap string concat
  * }
@@ -218,15 +248,18 @@ function CreateComputedScope(
  * }
  * ```
  *
- * @param defaultValue The default value to be used if the computed property is not defined.
  * @returns A property decorator that can be applied to a getter method.
  * @throws Will throw an error if the property is not a getter or if it has a setter.
  * @remarks
- * The @Computed decorator uses a two-phase caching system with diff-based updates:
- * 1. Getter scope: Computes value and writes to StoreSync when dependencies change
- * 2. StoreSync: Computes diff between old and new values
- * 3. ObservableNode.ApplyDiff: Updates the EXISTING object with only changed properties
- * 4. Property scope: Reads the updated (but same reference) value from StoreSync
+ * The @Computed decorator uses a Gated getter scope driving a persistent observable node:
+ * 1. Getter scope (Gated): Re-evaluates the getter when dependencies change, batched via
+ *    the microtask queue. If the result deep-equals the previous value, no update is emitted.
+ * 2. ObservableNode.Apply: Diffs the fresh value against the node's current root and applies
+ *    only the changed paths in-place, preserving the node's object identity.
+ * 3. Downstream notification: Per-property scopes are fired for each changed path, so scopes
+ *    reading sub-properties update directly. If the diff collapses to a full root replacement
+ *    (type change or removed keys), the root value gets a new identity and the Gated scope
+ *    emits, notifying top-level subscribers.
  *
  * **Initialization**: @Computed uses lazy initialization - the scopes are created on first access:
  * ```typescript
@@ -271,8 +304,9 @@ function CreateComputedScope(
  * - The diff computation overhead is justified when you need object reuse
  * @see {@link Scope} for simple getter-based reactive properties (caches but new reference)
  * @see {@link ComputedAsync} for async computed properties
- * @see {@link ObservableNode.ApplyDiff} for how diffs are applied to maintain object identity
- * @see {@link StoreSync} for sync store implementation
+ * @see {@link ObservableNode.Apply} for how diffs are applied in-place to maintain object identity
+ * @see {@link ObservableScope} for the Gated scope mechanism (batched, ===-gated updates)
+ * @see {@link StoreSync} for the store-backed variant used by @ComputedAsync
  */
 export function Computed<
   T extends WeakKey,
@@ -290,7 +324,6 @@ export function Computed<
  * @param target The target object.
  * @param prop The property key.
  * @param descriptor The property descriptor.
- * @param defaultValue The default value to be used if the computed property is not defined.
  * @returns A property descriptor that replaces the original descriptor with a computed implementation.
  * @throws Will throw an error if the property is not a getter or if it has a setter.
  */
@@ -314,11 +347,7 @@ function ComputedDecorator<
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const propertyScope = CreateComputedScope(
-          getter.bind(this),
-          new StoreSync(),
-        );
-
+        const propertyScope = CreateNodeScope(getter.bind(this));
         scopeMap[propertyKey] = [propertyScope, undefined];
       }
 
@@ -463,7 +492,7 @@ function ComputedAsyncDecorator<
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
-        const propertyScope = CreateComputedScope(
+        const propertyScope = CreateStoreScope(
           getter.bind(this),
           new StoreAsync(),
           defaultValue,
