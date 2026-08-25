@@ -1,35 +1,31 @@
 # j-templates
 
-A type-safe, fine-grained reactive framework for building browser applications in TypeScript — with no compile step, no virtual DOM diffing, and no framework lock-in.
+A small TypeScript library for building browser UIs that keep themselves in sync. You describe your UI as functions that read your data, and when a piece of data changes, exactly the parts of the page that read it update — nothing else does.
 
-## Why j-templates?
+- Plain TypeScript classes. No JSX, no template files, no extra build step beyond the TypeScript compiler you already have.
+- Updates are surgical: typing in an input, adding to a list, clicking a counter — each only touches the elements involved.
+- Zero runtime dependencies.
 
-- **Fine-grained reactivity** — Updates propagate at the property level, not the component level. Only the DOM nodes that depend on changed state are touched.
-- **Zero compile step** — Pure TypeScript with experimental decorators. Works with any bundler (Vite, Webpack, Rollup).
-- **Object identity preservation** — `@Computed` uses diff-based updates so downstream consumers receive the same reference when data hasn't structurally changed, enabling efficient DOM reuse without key-based reconciliation.
-- **Proxy-based deep reactivity** — `@State` wraps objects and arrays in reactive proxies. Nested property writes and array mutations (`push`, `splice`, etc.) are tracked automatically.
-- **Hierarchical dependency injection** — Components resolve dependencies through a parent-chain injector, making it easy to share services across a component tree.
-- **Minimal dependencies** — Zero runtime dependencies. Only TypeScript as a dev dependency.
+## Getting started
 
-## Install
+Install:
 
 ```bash
 npm install j-templates
 ```
 
-Requires `experimentalDecorators`, `emitDecoratorMetadata`, and `useDefineForClassFields: false` in your `tsconfig.json`:
+j-templates uses TypeScript decorators, so your `tsconfig.json` needs these two flags:
 
 ```json
 {
   "compilerOptions": {
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "useDefineForClassFields": false
   }
 }
 ```
 
-## Hello World
+Your first component:
 
 ```typescript
 import { Component } from "j-templates";
@@ -45,18 +41,346 @@ const helloWorld = Component.ToFunction("hello-world", HelloWorld);
 Component.Attach(document.body, helloWorld({}));
 ```
 
-## Module Structure
+That's the whole model:
 
-| Module | Import Path | Exports |
-|---|---|---|
-| Core | `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped` |
-| DOM | `j-templates/DOM` | 70+ HTML element factories (`div`, `button`, `table`, …), `text`, `fragment` |
-| Store | `j-templates/Store` | `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode` |
-| Utils | `j-templates/Utils` | `@Value`, `@State`, `@Scope`, `@Computed`, `@ComputedAsync`, `@Watch`, `@Inject`, `@Destroy`, `Animation`, `IDestroyable` |
+1. **A component describes its UI in `Template()`.** Element functions like `div` and `button` take a config object and children. When children are a function, they re-run whenever the data they read changes — so the UI stays current without you touching the DOM.
+2. **Reactive data lives on the component.** Fields marked with `@Value()` and `@State()` are the data your UI can depend on.
 
-## Reactive State
+## A task list, start to finish
 
-### `@Value` — Primitive reactive property
+One small app shows the whole component model: a parent that owns the task list, and a child that renders one task. The comments carry the API:
+
+```typescript
+import { Component, gate } from "j-templates";
+import { Value, State, Scope, Watch } from "j-templates/Utils";
+import { div, h1, ul, li, input, button, text, fragment } from "j-templates/DOM";
+
+interface Task {
+  id: number;
+  name: string;
+  done: boolean;
+}
+
+let nextId = 1;
+
+// The child. Component takes three type parameters, in this order:
+//   Data      — what the parent passes in (read as this.Data)
+//   Templates — which parts of the UI the caller customizes (see below)
+//   Events    — what this component reports back to the parent
+interface TaskItemEvents {
+  toggle: { id: number };
+  remove: { id: number };
+}
+
+class TaskItem extends Component<Task, void, TaskItemEvents> {
+  Template() {
+    return li({
+      // props can be a static object, or a function that re-runs when
+      // the data it reads changes.
+      props: () => ({ className: this.Data.done ? "task done" : "task" }),
+    }, () => [
+      // text() renders a string; the function re-runs on change.
+      text(() => this.Data.name),
+      // Fire() reports a typed event to the parent. The child never
+      // touches the list — the parent decides what a toggle means.
+      button({ on: { click: () => this.Fire("toggle", { id: this.Data.id }) } }, () => "✓"),
+      button({ on: { click: () => this.Fire("remove", { id: this.Data.id }) } }, () => "×"),
+    ]);
+  }
+}
+
+// ToFunction turns the class into a function you call from a parent's
+// template to create the child.
+const taskItem = Component.ToFunction("task-item", TaskItem);
+
+// The parent owns the state.
+class TaskApp extends Component {
+  // @State() deeply tracks plain objects and arrays: push, splice, and
+  // editing a nested field all update the UI — no manual re-render.
+  @State() tasks: Task[] = [];
+  // @Value() tracks a raw value. Best for scalars like string, number, or boolean.
+  @Value() draft = "";
+
+  // A plain getter is reactive when it reads reactive state: the UI
+  // reading it re-runs whenever a task changes.
+  get openTasks() {
+    return this.tasks.filter((t) => !t.done);
+  }
+
+  // Cheap derived value: @Scope caches it and re-runs when the input
+  // changes. (For a new composite object read in several places, use
+  // @Computed() instead — see below.)
+  @Scope()
+  get openCount(): number {
+    return this.openTasks.length;
+  }
+
+  // @Watch(fn) runs the method when the value fn reads changes — and
+  // once with the initial value when the component mounts. Use it for
+  // side effects that don't belong in the UI: fetch, log, sync.
+  // openTasks reads every task's done flag, so this fires on add,
+  // remove, and toggle alike.
+  @Watch((self) => self.openTasks)
+  persist() {
+    localStorage.setItem("tasks", JSON.stringify(this.tasks));
+  }
+
+  // Bound() runs once after the component appears in the page: fetch
+  // data, open subscriptions, start timers here.
+  Bound() {
+    super.Bound(); // required — this is what activates @Watch
+    const saved = localStorage.getItem("tasks");
+    if (saved) this.tasks = JSON.parse(saved);
+  }
+
+  // Destroy() runs when the component leaves the page: clean up
+  // whatever Bound() started. Reactive fields are cleaned up for you.
+  Destroy() {
+    super.Destroy();
+  }
+
+  addTask() {
+    const name = this.draft.trim();
+    if (!name) return;
+    this.tasks.push({ id: nextId++, name, done: false });
+    this.draft = "";
+  }
+
+  Template() {
+    return div({}, () => [
+      // A children function re-runs only when the data it reads changes —
+      // typing in the input below never re-runs this line.
+      h1({}, () => `${this.openCount} open`),
+      // For inputs, props must be a function: a static props object
+      // makes the field lose focus as you type.
+      input({
+        props: () => ({ value: this.draft, placeholder: "What needs doing?" }),
+        on: {
+          input: (e: Event) => (this.draft = (e.target as HTMLInputElement).value),
+          keydown: (e: KeyboardEvent) => e.key === "Enter" && this.addTask(),
+        },
+      }),
+      // fragment() creates a dedicated reactive scope without adding another
+      // element to the DOM. This prevents the sibling elements from being rebuilt
+      // when the gate() conditional changes.
+      fragment({}, () =>
+        // gate is an inline scope helper that only emits a change to the parent
+        // scope when the calculated value actually changes (=== comparison).
+        gate(() => this.tasks.length === 0)
+          ? div({}, () => "Nothing yet — add a task.")
+          : ul({ data: () => this.tasks }, (task) =>
+              // data: renders one child per item and keeps the list in
+              // sync as the array grows and shrinks.
+              taskItem({
+                // data: passes the item down as a reactive getter.
+                data: () => task,
+                // on: handles the events the child fires.
+                on: {
+                  toggle: ({ id }) => {
+                    const t = this.tasks.find((x) => x.id === id);
+                    if (t) t.done = !t.done; // editing a nested field updates the UI
+                  },
+                  remove: ({ id }) => {
+                    const i = this.tasks.findIndex((x) => x.id === id);
+                    if (i !== -1) this.tasks.splice(i, 1);
+                  },
+                },
+              })
+            )
+      ),
+    ]);
+  }
+}
+
+const app = Component.ToFunction("task-app", TaskApp);
+// Attach mounts the component into the real DOM.
+Component.Attach(document.body, app({}));
+```
+
+That's the whole component contract: data flows down with `data:`, events flow up with `on:` and `Fire`, and each side only touches its own state.
+
+### Choosing a derived value
+
+| Decorator | Use it when |
+|---|---|
+| plain getter | A simple derived read of reactive state — no caching, no overhead. |
+| `@Scope()` | A cheap derived value: a primitive, or a filter/sort of existing references. Cached, new reference each update. |
+| `@Computed()` | A new composite object read in several places. The same reference is preserved across updates. |
+| `@ComputedAsync(initialValue)` | Same as `@Computed()`, but update work runs off the main thread; getter must be synchronous. |
+
+A value that comes from a promise uses `scope()` (from `j-templates`) inside a `@Scope()` getter — the UI shows nothing until the first result arrives, and keeps the old value while a new one is pending. Read any reactive state before the first `await`; reads after `await` are not tracked:
+
+```typescript
+import { scope } from "j-templates";
+
+@Scope()
+get summary(): string {
+  // this.openCount is read before the await, so the fetch re-runs when it changes.
+  // async keyword is required by the framework to identify async functions.
+  return scope(async () => (await fetch(`/api/summary?open=${this.openCount}`)).text());
+}
+```
+
+## Let callers decide how part of the UI looks
+
+Sometimes a component knows the *structure* (a list, a card, a table) and the caller knows how each piece should *look*:
+
+```typescript
+import { vNode } from "j-templates/Node/vNode.types";
+
+// The second type parameter declares the slots the caller can fill.
+interface CardTemplates {
+  // function can have an arbitrary signature
+  footer: () => vNode;
+}
+
+class Card extends Component<{ title: string }, CardTemplates> {
+  Template() {
+    // Template return type is vNode | vNode[]
+    return [
+      h2({}, () => this.Data.title),
+      // the caller's UI, placed by the component
+      this.Templates.footer(),
+    ];
+  }
+}
+
+const card = Component.ToFunction("card", Card);
+
+// The caller passes data first, slots second.
+card(
+  { data: () => ({ title: "Profile" }) },
+  { footer: () => button({}, () => "Edit") }
+);
+```
+
+## Share services across components
+
+When several components need the same service — an API client, a live connection, a theme provider — declare it with `@Inject`:
+
+```typescript
+import { Inject, Destroy } from "j-templates/Utils";
+
+abstract class Api {
+  abstract fetchTasks(): Promise<Task[]>;
+}
+
+// Provide the service at the top of the app. Every component below can
+// ask for it — no threading the dependency through data:
+class App extends Component {
+  @Destroy() @Inject(Api) api = new ApiClient();
+}
+
+// …and consume it anywhere below.
+class TaskList extends Component {
+  @Inject(Api) api!: Api;
+
+  Bound() {
+    super.Bound();
+    this.api.fetchTasks().then((tasks) => { /* … */ });
+  }
+}
+```
+
+Use `@Destroy` for properties that hold a resource — an open subscription, a timer, a socket. When the component leaves the page, j-templates calls `.Destroy()` on it:
+
+```typescript
+import { Destroy, IDestroyable } from "j-templates/Utils";
+
+class LiveStats extends Component {
+  @Destroy() feed!: IDestroyable;
+
+  Bound() {
+    this.feed = openFeed((stats) => { this.stats = stats; });
+  }
+}
+```
+
+Instead of a wrapper component, you can pre-configure the context a component is created in. `Injector.Provide` binds values to a fresh context and runs the creation inside it — the created component and everything beneath it can inject from it:
+
+```typescript
+import { Injector } from "j-templates/Utils";
+
+// Bind the services once, create the whole app inside that context.
+const root = Injector.Provide(
+  (injector) => {
+    injector.Set(Api, new ApiClient());
+    injector.Set(Theme, "dark");
+  },
+  () => app({}),
+);
+Component.Attach(document.body, root);
+```
+
+A context built inside another inherits from it — an inner binding shadows the outer one. Values in a provided context belong to you, not the component tree: the tree won't destroy them. For a service that must be cleaned up, keep a reference to the injector and call `injector.Destroy()` — it destroys every binding that has a `.Destroy()` method — from your own teardown. The wrapper pattern above does that automatically via `@Destroy()`.
+
+## Keep the page in sync with a server
+
+A store is a keyed collection of records that UI can read. When a record changes, only the parts of the page displaying that record update. Most apps only need `StoreSync`:
+
+```typescript
+import { StoreSync } from "j-templates/Store";
+
+const users = new StoreSync((user) => user.id); // which field identifies a record
+
+users.Write({ id: "1", name: "Alice", role: "dev" });
+const alice = users.Get("1");         // UI reading this updates when the record changes
+users.Patch("1", { name: "Alicia" }); // partial update
+users.Push("1", "tags", "admin");     // append to an array field
+```
+
+For very large or fast-moving data (message feeds, real-time dashboards), use `StoreAsync` — same API, but the page stays responsive while it updates:
+
+```typescript
+import { StoreAsync } from "j-templates/Store";
+
+// Only stores plain JSON data (no class instances, `Date`, `Map`, or the like),
+// and you call `Destroy()` on it when you're done. Writes return promises:
+const metrics = new StoreAsync((m) => m.id);
+await metrics.Write({ id: "cpu", label: "CPU" });
+```
+
+## Animate a value over time
+
+`Animation` calls a function on every frame while a value travels from A to B:
+
+```typescript
+import { Animation, AnimationType } from "j-templates/Utils";
+
+const fade = new Animation(AnimationType.EaseIn, 400, (next) => {
+  box.style.opacity = String(next);
+});
+fade.Animate(0, 1); // 0 → 1 over 400 ms
+```
+
+## Use components in pages that don't use j-templates
+
+`Register` publishes a component as a standard web component:
+
+```typescript
+Component.Register("my-widget", MyWidget);
+```
+
+From then on, `<my-widget></my-widget>` works in any HTML page — a React app, an Angular page, a hand-rolled page, anything. The component renders into its own shadow DOM, so page styles don't leak in and the component's styles don't leak out.
+
+## Test components
+
+Components render into the DOM, so a test mounts one, changes its data, and checks the page. Vitest runs the tests in Node with a fake DOM — no browser needed:
+
+```typescript
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    // a fake DOM — the component renders into it like a real page
+    environment: "jsdom",
+    // apply updates immediately instead of waiting for the next frame
+    env: { SYNC_SCHEDULING: "true" },
+  },
+});
+```
+
+The component under test:
 
 ```typescript
 import { Component } from "j-templates";
@@ -68,394 +392,98 @@ class Counter extends Component {
 
   Template() {
     return div({}, () => [
-      button({ on: { click: () => this.count-- } }, () => "-"),
-      div({}, () => this.count),
-      button({ on: { click: () => this.count++ } }, () => "+"),
+      div({}, () => `Count: ${this.count}`),
+      button({ on: { click: () => this.count++ } }, () => "Add one"),
     ]);
   }
 }
+
+const counter = Component.ToFunction("counter", Counter);
 ```
 
-### `@State` — Deep reactive objects and arrays
+A test is: attach, check, change, check again. The factory's result exposes the component instance, so you can drive the state directly — or find the rendered elements and use them like a user:
 
 ```typescript
-import { State } from "j-templates/Utils";
+import { describe, it, expect } from "vitest";
+import { Component } from "j-templates";
+import { counter } from "./counter";
 
-class TodoList extends Component {
-  @State() items: string[] = [];
+describe("Counter", () => {
+  it("updates the page when the data changes", () => {
+    const vnode = counter({});
+    Component.Attach(document.body, vnode);
 
-  addItem(text: string) {
-    this.items.push(text); // Triggers reactive update automatically
-  }
+    expect(document.body.textContent).toContain("Count: 0");
 
-  removeItem(index: number) {
-    this.items.splice(index, 1); // Also tracked
-  }
-}
-```
+    // drive the state directly through the component
+    (vnode.component as Counter).count = 3;
+    expect(document.body.textContent).toContain("Count: 3");
 
-### `@Scope` — Computed value (new reference on change)
+    // empty the page between tests
+    document.body.innerHTML = "";
+  });
 
-Best for cheap computations that return primitives or new arrays.
+  it("counts clicks", () => {
+    const vnode = counter({});
+    Component.Attach(document.body, vnode);
 
-```typescript
-import { Scope } from "j-templates/Utils";
+    const addButton = document.querySelector("button")!;
+    addButton.click();
+    addButton.click();
 
-class Stats extends Component {
-  @Value() count = 0;
-
-  @Scope()
-  get doubled() { return this.count * 2; }
-}
-```
-
-### `@Computed` — Computed value with object identity preservation
-
-Best for expensive computations or when downstream consumers need stable references. Uses `StoreSync` + diff-based updates so the same object reference is returned when the structure hasn't changed.
-
-```typescript
-import { Computed } from "j-templates/Utils";
-
-class TodoApp extends Component {
-  @State() items: Todo[] = [];
-
-  @Computed()
-  get completedItems(): Todo[] {
-    return this.items.filter(t => t.done);
-  }
-}
-```
-
-### `@Watch` — React to state changes
-
-```typescript
-import { Watch, Value } from "j-templates/Utils";
-
-class Logger extends Component {
-  @Value() message = "";
-
-  @Watch((self) => self.message)
-  onMessageChanged(newValue: string) {
-    console.log("message changed to:", newValue);
-  }
-}
-```
-
-## Template System
-
-Element functions accept a config object and children:
-
-```typescript
-div({
-  props: () => ({ className: "card" }),   // Reactive DOM properties
-  attrs: { "aria-label": "card" },        // Static HTML attributes
-  on: { click: () => handleClick() },      // Event handlers
-  data: () => this.items,                  // Reactive data source
-}, children)
-```
-
-### Reactive children
-
-Pass a function as the second argument to make children reactive:
-
-```typescript
-div({}, () => `Count: ${this.count}`)  // Re-renders when count changes
-```
-
-### List rendering with `data`
-
-The `data` property drives iterative rendering. Each item is mapped to a child via a callback:
-
-```typescript
-tbody({ data: () => this.items }, (item: Todo) =>
-  tr({}, () => [
-    td({}, () => item.text),
-    td({}, () => item.done ? "Done" : "Pending"),
-  ])
-);
-```
-
-### Conditional rendering
-
-Use ternary expressions inside reactive functions:
-
-```typescript
-div({}, () => this.isLoading ? "Loading…" : "Content");
-```
-
-Or use `data` with a falsy value to hide all children (like `*ngIf`):
-
-```typescript
-// When this.items is null/undefined/false, all children are destroyed
-ul({ data: () => this.items }, (item) =>
-  li({}, () => item.name),
-);
-```
-
-Use `fragment()` when you want conditional rendering **without a wrapper DOM node** — its children reconcile directly into the real ancestor:
-
-```typescript
-fragment({ data: () => this.isLoading }, () => div({}, () => "Loading"));
-```
-
-Use `gate()` when the condition shares a children function with frequently-changing siblings — it only re-evaluates when the boolean flips:
-
-```typescript
-gate(() => this.isLoading) ? div({}, () => "Loading") : div({}, () => "Content");
-```
-
-### Fragment elements
-
-`fragment()` creates a container with **no DOM node** — its children are inserted directly into the nearest real ancestor element. Use it when you need a reactive scope or a `data:` iteration but don't want an extra wrapper element in the DOM.
-
-```typescript
-import { fragment } from "j-templates/DOM";
-
-// Iteration with no wrapper node
-fragment({ data: () => this.items }, (item) => div({}, () => item.name));
-
-// Nested fragments flatten into the real ancestor
-fragment({}, () => [
-  div({}, () => "OUTER"),
-  fragment({}, () => (this.showExtra ? div({}, () => "EXTRA") : div({}, () => "BASE"))),
-]);
-```
-
-Key behaviors:
-- **No DOM node** — a falsy `data:` value renders *nothing* (no empty wrapper box left behind).
-- **`data:` behaves like any DOM element** — iterates arrays, wraps truthy scalars, collapses falsy values.
-- **Nesting is fine** — fragments inside fragments flatten into the real ancestor.
-- **Cannot be attached directly** — a fragment has no node to attach; wrap it in a real element (e.g. `div`) first.
-
-## Component Architecture
-
-Components are class-based with three generic type parameters:
-
-```typescript
-class MyComponent extends Component<Data, Templates, Events>
-```
-
-- **`Data`** — Shape of data passed to the component factory
-- **`Templates`** — Interface describing injectable template slots
-- **`Events`** — Interface describing events the component fires
-
-### Lifecycle
-
-1. **Constructor** — Avoid overriding. Use `Bound()` instead.
-2. **`Bound()`** — Called after the component is attached to the DOM. Initialize state, start watchers, fetch data here.
-3. **`Template()`** — Return the component's virtual DOM.
-4. **`Destroy()`** — Cleanup. Automatically destroys all `@Value`/`@State`/`@Scope`/`@Computed` scopes and calls `.Destroy()` on `@Destroy`-decorated properties.
-
-### Creating and mounting components
-
-```typescript
-// Convert class to factory function
-const myComp = Component.ToFunction("my-comp", MyComponent);
-
-// Mount to DOM
-Component.Attach(document.body, myComp({ data: myData }));
-```
-
-### Component events
-
-```typescript
-interface ButtonEvents {
-  click: { x: number; y: number };
-}
-
-class MyButton extends Component<void, void, ButtonEvents> {
-  Template() {
-    return button({
-      on: { click: (e) => this.Fire("click", { x: e.clientX, y: e.clientY }) },
-    }, () => "Click me");
-  }
-}
-```
-
-### Component composition with templates
-
-```typescript
-interface RowTemplate<D> {
-  row: (data: D) => vNode;
-}
-
-class DataTable<D> extends Component<{ items: D[] }, RowTemplate<D>> {
-  Template() {
-    return tbody({ data: () => this.Data.items }, (item: D) =>
-      this.Templates.row(item)
-    );
-  }
-}
-
-// Usage — inject the row template
-const table = Component.ToFunction("data-table", DataTable);
-table({
-  data: { items: myItems },
-  templates: { row: (item) => tr({}, () => td({}, () => item.name)) },
+    expect(document.body.textContent).toContain("Count: 2");
+    document.body.innerHTML = "";
+  });
 });
 ```
 
-## Dependency Injection
+Run them with `npx vitest`, or add a `"test": "vitest run"` script to package.json.
 
-```typescript
-import { Inject, Destroy } from "j-templates/Utils";
-
-abstract class ApiService {
-  abstract fetch(): Promise<Data[]>;
-}
-
-class DataView extends Component {
-  @Inject(ApiService) api!: ApiService;
-  @Destroy() subscription?: IDestroyable;
-
-  Bound() {
-    this.subscription = this.api.fetch();
-  }
-}
-```
-
-Injectors are hierarchical — if a dependency isn't found on the current component, the framework walks up the component tree to parent injectors.
-
-## Stores
-
-### `StoreSync` — Synchronous diff-based store
-
-```typescript
-import { StoreSync } from "j-templates/Store";
-
-const store = new StoreSync((item) => item.id); // Key function for identity
-
-store.Write({ id: "1", name: "Alice" });           // Write & diff
-store.Patch("1", { name: "Bob" });                  // Deep merge patch
-store.Push("1", "tags", "admin");                   // Push to nested array
-const user = store.Get<User>("1");                  // Observable retrieval
-```
-
-### `StoreAsync` — Asynchronous diff-based store
-
-Same API as `StoreSync`, but all mutations return `Promise` and diff computation runs in a Web Worker to keep the main thread free.
-
-```typescript
-import { StoreAsync } from "j-templates/Store";
-
-const store = new StoreAsync((item) => item.id);
-await store.Write({ id: "1", name: "Alice" });
-```
-
-## Observable Primitives
-
-For advanced use cases, the reactive primitives are directly accessible:
-
-### `ObservableScope` — Signal-like reactive scope
-
-```typescript
-import { ObservableScope } from "j-templates/Store";
-
-const scope = ObservableScope.Create(() => count.value * 2);
-const value = ObservableScope.Value(scope);    // Read (registers dependency)
-const peeked = ObservableScope.Peek(scope);     // Read without registering
-ObservableScope.Watch(scope, (v) => console.log(v));
-```
-
-### `ObservableNode` — Proxy-based deep reactivity
-
-```typescript
-import { ObservableNode } from "j-templates/Store";
-
-const obj = ObservableNode.Create({ a: 1, b: { c: 2 } });
-obj.a = 10;            // Triggers reactive update on leaf scope
-const raw = ObservableNode.Unwrap(obj);  // { a: 10, b: { c: 2 } }
-```
-
-### Inline computed scopes — `scope()`, `gate()`, `peek()`, `mapped()`
-
-Memoized computed scopes you can create inline within a watch context (template functions, `@Scope` getters, etc.). All accept `() => T | Promise<T>`.
-
-```typescript
-import { scope, gate, peek, mapped } from "j-templates";
-
-// Full reactivity — emits on every recomputation
-scope(() => this.Data.items);
-
-// Emission gatekeeper — only emits when the value changes by ===
-gate(() => this.count > 10);
-
-// Read without subscribing — no dependency registered
-peek(() => Date.now());
-
-// Per-item scope (the mechanism `data:` uses internally)
-mapped(item, (d) => /* ... */);
-```
-
-## Animation
-
-```typescript
-import { Animation, AnimationType } from "j-templates/Utils";
-
-const anim = new Animation(AnimationType.EaseIn, 1000, (next) => {
-  element.style.opacity = String(next);
-});
-anim.Animate(0, 1); // Fades from 0 to 1 over 1000ms
-```
-
-## API Quick Reference
+## Quick reference
 
 ### Decorators
 
-| Decorator | Target | Description |
+| Decorator | Goes on | What you get |
 |---|---|---|
-| `@Value()` | Property | Reactive primitive (number, string, boolean) |
-| `@State()` | Property | Deep reactive object/array via proxy |
-| `@Scope()` | Getter | Cached computed value; new reference on change |
-| `@Computed()` | Getter | Cached computed with identity preservation via diff |
-| `@ComputedAsync(default)` | Getter | Async `@Computed` backed by `StoreAsync` |
-| `@Watch(scopeFn)` | Method | Auto-subscribe method to reactive value changes |
-| `@Inject(type)` | Property | Dependency injection from component injector |
-| `@Destroy()` | Property | Auto-calls `.Destroy()` on property when component is destroyed |
+| `@Value()` | property | A reactive scalar (number, string, boolean). UI reading it updates when it changes. |
+| `@State()` | property | A reactive plain object or array. Changes anywhere inside it are tracked. |
+| `@Scope()` | getter | A cached cheap derived value — a primitive, or a filter/sort of existing refs. New reference each update. |
+| `@Computed()` | getter | A cached new composite object. The same reference is preserved across updates. |
+| `@ComputedAsync(initial)` | getter | Same as `@Computed()`, but update work runs off the main thread; getter must be synchronous. |
+| `@Watch(fn)` | method | Runs the method when the value read by `fn` changes — and once with the initial value on mount. |
+| `@Inject(service)` | property | Gets a shared service from the component tree. |
+| `@Destroy()` | property | Calls the property's `.Destroy()` when the component is removed. |
 
-### Component API
+### Element config
 
-| Method | Description |
+Every element function takes `(config, children)`:
+
+| Key | What it does |
 |---|---|
-| `Template()` | Return virtual DOM — override in subclass |
-| `Bound()` | Lifecycle hook — called after DOM attachment |
-| `Destroy()` | Lifecycle hook — cleanup (auto-cleans decorators) |
-| `Fire(event, data)` | Emit a component event |
-| `Component.ToFunction(name, Class)` | Convert class to factory function |
-| `Component.Register(name, Class)` | Register as Web Component (custom element) |
-| `Component.Attach(node, vNode)` | Mount a vNode to a real DOM node |
+| `props` | DOM properties. A static object, or a function for properties that depend on reactive data. |
+| `attrs` | HTML attributes (`aria-label`, `data-*`, …). A static object, or a function for reactive values. |
+| `on` | Event handlers: `on: { click: (e) => … }`. |
+| `data` | An array renders one child per item; a single non-array value is passed to the child once; falsy renders no children. |
+| children | A string, an array of elements, or a function that re-runs when the data it reads changes. |
 
-### Store API
+### What's in each import
 
-| Method | StoreSync | StoreAsync |
-|---|---|---|
-| `Write(data, key?)` | Sync | `Promise` |
-| `Patch(key, patch)` | Sync | `Promise` |
-| `Push(key, ...data)` | Sync | `Promise` |
-| `Splice(key, start, del?, ...items)` | Sync | `Promise` |
-| `Get(key)` | Sync | Sync |
-| `Destroy()` | — | Stops async queue |
+| Import | What you get |
+|---|---|
+| `j-templates` | `Component`, plus `gate`, `peek`, `scope`, and `mapped` for advanced cases |
+| `j-templates/DOM` | A function per HTML element — `div`, `button`, `input`, `table`, … — plus `text` and `fragment` |
+| `j-templates/Utils` | The decorators above, plus `Animation`, and `Injector` for setting up services |
+| `j-templates/Store` | `StoreSync` and `StoreAsync`, plus the low-level reactive primitives for advanced use |
 
-## Documentation
+## Learn more
 
-### Tutorials
-- [Getting Started](docs/tutorials/01-getting-started.md)
-- [Your First Component](docs/tutorials/02-your-first-component.md)
-- [Reactive State Basics](docs/tutorials/03-reactive-state-basics.md)
-
-### Patterns
-- [Components](docs/patterns/01-components.md) — Component class, lifecycle, data passing, template functions, events, composition
-- [Reactivity](docs/patterns/02-reactivity.md) — ObservableScope, ObservableNode, stores, decorators (@Value, @State, @Scope, @Computed, @Watch)
-- [Templates & Data](docs/patterns/03-templates-and-data.md) — DOM element functions, reactive bindings, data modeling, animation
-- [Dependency Injection](docs/patterns/04-dependency-injection.md) — Injector hierarchy, @Inject, @Destroy, IDestroyable
-
-### Reference
-- [Syntax Primer v3](docs/SYNTAX_PRIMER_v3.md)
-
-## Examples
-
-- [Real-Time Dashboard](examples/real_time_dashboard/) — Full application example
-- [Tutorial Project](examples/tutorial_project/) — Progressive tutorial series
+- [Tutorials](docs/tutorials/index.md) — eight hands-on lessons, from setup to a complete app
+- [Pattern docs](docs/patterns/index.md) — components, reactivity, templates, and dependency injection in depth
+- [Syntax primer](docs/SYNTAX_PRIMER.md) — the complete reference, including the traps
+- [Examples](examples/)
+  - [smart-tasks](examples/smart-tasks/) — a task manager: components, events, and filtering
+  - [real_time_dashboard](examples/real_time_dashboard/) — a live-updating dashboard with stores and injected services
+  - [tutorial_project](examples/tutorial_project/) — the working projects from the tutorials
 
 ## License
 
