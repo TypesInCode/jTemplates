@@ -594,7 +594,7 @@ Template() {
 
 > ⚠️ **Falsy edge case:** the falsy-collapse rule applies broadly — **`0`, `""`, and `NaN` also collapse to `[]`**, not just `false`/`null`/`undefined`. Only *truthy* non-array values are wrapped as `[value]`.
 
-**Also accepts** `Promise<T>` and `Promise<T[]>` for async data. While a Promise is pending, the scope evaluates to `null` (falsy), so the element renders nothing until resolved — there is no built-in placeholder; implement one yourself if needed.
+**Also accepts** `Promise<T>` and `Promise<T[]>` for async data. While a Promise is pending, the scope evaluates to `null` (falsy), so the element renders nothing until resolved — there is no built-in placeholder; implement one yourself if needed. While a newer promise is pending, the last resolved value is kept.
 
 The `false`/`true` behavior makes `data:` a clean conditional rendering mechanism. **The child function is invoked with the truthy value as its data argument** — e.g. `data: () => this.isLoading` calls the child with `true` when loading. It renders its child once when true and nothing when false, with its own isolated reactive scope.
 
@@ -979,6 +979,8 @@ get userData(): User | null { return getUserSync(this.Data.userId); }
 
 **Pattern 3 (@ComputedAsync):** Getter must be synchronous. Returns default value initially, then computed value with same reference via ApplyDiff.
 
+Shared async-scope behavior — typing, pending/old-value semantics, batching, and `scope()` composition — is covered in [Async Scopes](#async-scopes).
+
 ### State Location
 
 | State Type | Location | API |
@@ -992,6 +994,46 @@ get userData(): User | null { return getUserSync(this.Data.userId); }
 | Async (component) | Component | `@Scope() + scope(async)` |
 | Async (service) | Service | `ObservableScope.Create(async)` |
 | External resources | Service | `IDestroyable` |
+
+---
+
+## Async Scopes
+
+Any function that supplies a scope value can be `async` — a `@Scope()` getter, a `props` or `data` function, or a `scope()`/`gate()`/`peek()`/`mapped()` callback. Services use the same mechanism through `ObservableScope.Create(async)` (see [Async Patterns](#async-patterns)).
+
+**Typing unwraps the resolved value.** The helper signatures declare `() => T | Promise<T>`, so TypeScript infers the resolved value, not the promise:
+
+```typescript
+scope(async () => (await fetch(url)).text());  // typed string, not Promise<string>
+```
+
+The same unwrap applies to config functions — `FunctionOr<T>` for `props`/`attrs`/`on`, and the `Promise<Array<T>> | Promise<T>` union for `data:`. **The `async` keyword is required:** `IsAsync` detects it via `Symbol.toStringTag`. A plain function that merely *returns* a promise (`() => fetch(url)`) is treated as a synchronous scope whose value is the promise itself — it is never resolved (see Traps #17).
+
+**Pending behavior.** An async scope renders nothing until its first result arrives: the initial value is `null`, so async `data:` collapses to no children and an async `props:` function applies nothing (the assignment closures skip null inputs). After the first result, the scope **keeps the last result while a new one is pending** — the value is replaced only when the promise resolves, and a resolution that arrives after a newer re-run has started is discarded.
+
+```typescript
+// Valid: nothing is applied to the element until the promise resolves.
+div({ props: async () => ({ innerHTML: await getMarkup() }) });
+```
+
+**Batching.** Async scopes are greedy — a dependency change marks the scope dirty and queues the re-run on the microtask queue (batched), instead of re-evaluating and propagating synchronously. This is the `greedy: true` behavior noted in Async Patterns.
+
+**Composition with `scope()`.** `scope()` can compose an async value inside a synchronous scope. The inner scope registers as a dependency of the enclosing watch context, so the **outer scope re-runs when the inner one resolves**:
+
+```typescript
+Template() {
+  return div({
+    props: () => ({
+      innerText: scope(async () => (await fetch(`/api/summary?open=${this.openCount}`)).text()),
+      className: "summary-container",
+    }),
+  });
+}
+```
+
+`scope()` must be called inside a watch context — a `@Scope()` getter, a children function, or a `props:`/`data:` function (see Traps #11).
+
+**Dependency capture.** Only reactive reads before the first `await` are tracked — reads after it happen outside the watch context and don't re-run the scope (see Traps #2). Read every reactive value the async scope depends on before the first `await`.
 
 ---
 

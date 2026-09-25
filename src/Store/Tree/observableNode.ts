@@ -435,7 +435,7 @@ export namespace ObservableNode {
       const rootPatch = diffResult[0].value;
 
       const rootType = JsonType(root);
-      const rootPatchType = JsonType(root);
+      const rootPatchType = JsonType(rootPatch);
 
       if (rootType !== rootPatchType)
         throw new Error("Unable to change type of Root ObservableNode: " + rootType);

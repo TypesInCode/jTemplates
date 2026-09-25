@@ -22,7 +22,6 @@ import {
   FRAGMENT_NODE,
   STRING_NODE,
 } from "./vNode.types";
-
 export namespace vNode {
   export function Create<P = HTMLElement, E = HTMLElementEventMap, T = never>(
     definition: vNodeDefinition<P, E, T>,
@@ -31,9 +30,7 @@ export namespace vNode {
       definition,
       type: definition.type,
       injector: definition.componentFactory
-        ? Injector.Scope(Injector.Current(), function () {
-            return new Injector();
-          })
+        ? new Injector()
         : (Injector.Current() ?? new Injector()),
       parentNode: null,
       node: definition.node ?? null,
@@ -173,7 +170,7 @@ function InitNode(vnode: vElementNode, parentNode: vElementNode) {
   }
 
   if (componentFactory) {
-    vnode.component = componentFactory(vnode);
+    vnode.component = Injector.Scope(vnode.injector, componentFactory, vnode);
     vnode.component.Bound();
     Children(vnode, ComponentChildren.bind(vnode.component));
   } else if (childrenArray) {
