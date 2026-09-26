@@ -393,7 +393,7 @@ export namespace ObservableNode {
   export function Update<T>(value: T, prop: keyof T = OBJECT_SCOPE as any) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
-      const scope = wrapper[prop] ?? wrapper[OBJECT_SCOPE];
+      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : wrapper[prop] ?? wrapper[OBJECT_SCOPE];
       ObservableScope.Update(scope);
     }
   }
