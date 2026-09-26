@@ -948,7 +948,7 @@ function WatchDecorator<T, K extends string>(
     }
 
     const scope = ObservableScope.Gated(scopeFunctionWrapper);
-    const propertyMap = GetScopeMapForInstance(this);
+    const propertyMap = GetScopeMapForInstance(instance as WeakKey);
     propertyMap[propertyKey as string] = [scope, undefined];
     ObservableScope.Watch(scope, function (scope) {
       (instance as any)[propertyKey](ObservableScope.Value(scope));
