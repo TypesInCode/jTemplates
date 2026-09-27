@@ -8,7 +8,7 @@ import { ObservableNode } from "../Tree/observableNode";
  * @see StoreSync
  * @see StoreAsync
  */
-export class Store {
+export abstract class Store {
   private rootMap = new Map<string | number, any>();
   private createNode: <T>(data: T) => T;
 
@@ -62,6 +62,11 @@ export class Store {
 
     return result[id] as O | undefined;
   }
+
+  abstract Write(data: unknown, key?: string): Promise<void> | void;
+  abstract Patch(key: string, patch: unknown): Promise<void> | void;
+  abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
+  abstract Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<any[]> | any[];
 
   /**
    * Updates the root map with diff results by grouping changes by root path.
