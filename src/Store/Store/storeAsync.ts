@@ -60,6 +60,13 @@ export class StoreAsync extends Store {
   }
 
   /**
+   * Returns a promise that resolve once all current queued writes have completed
+   */
+  async Flush(): Promise<void> {
+    return this.queue.Flush();
+  }
+
+  /**
    * Writes data to the store asynchronously.
    * This method ensures that write operations are queued and executed in a non-blocking manner.
    * @param data The data to be written. Can be of any type.

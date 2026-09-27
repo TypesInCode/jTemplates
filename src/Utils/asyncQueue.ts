@@ -8,6 +8,15 @@ export class AsyncQueue {
     private running = false;
     private queue = List.Create<() => Promise<void>>();
 
+  Flush(): Promise<void> {
+     const ret = new Promise<void>(resolve => {
+       List.Add(this.queue, resolve)
+     });
+
+    this.Start();
+    return ret;
+  }
+
     /**
      * Adds a callback to the queue and returns a promise that resolves when it executes.
      * @template T - The type the callback promise resolves to
