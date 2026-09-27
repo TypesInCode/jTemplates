@@ -221,12 +221,6 @@ export function JsonDiffFactory() {
 
     let allChildrenChanged = true;
 
-    if (newValue.length !== oldValue.length)
-      resp.push({
-        path: path.concat("length"),
-        value: newValue.length,
-      });
-
     if (newValue.length > 0 || oldValue.length > 0) {
       for (let y = 0; y < newValue.length; y++) {
         const arrayPath = path.concat(y);
@@ -236,6 +230,12 @@ export function JsonDiffFactory() {
           allChildrenChanged;
       }
     } else allChildrenChanged = false;
+
+    if (newValue.length !== oldValue.length)
+      resp.push({
+        path: path.concat("length"),
+        value: newValue.length,
+      });
 
     return allChildrenChanged;
   }

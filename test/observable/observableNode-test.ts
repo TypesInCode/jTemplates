@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
+import { ObservableScope } from "../../src/Store/Tree/observableScope";
 
 describe("Observable Node", () => {
     it('Create - Basic Object', () => {
@@ -97,6 +98,27 @@ describe("Observable Node", () => {
         const proxy = ObservableNode.Create({ test: "value" });
         ObservableNode.Apply(proxy, { test: "value" });
         expect(proxy.test).to.eq("value");
+    });
+
+    it('Apply - Growing a Nested Array Emits Only Valid States', () => {
+        // A growth diff is [{ ...length }, { ...[1] }]. Emitting after the length write let
+        // synchronous readers see [a, <hole>] before the new element was assigned.
+        const proxy = ObservableNode.Create({ root: [{ items: [{ id: "a" }] }] });
+        const reader = ObservableScope.Create(() => {
+            const items = proxy.root[0].items;
+            const ids: (string | undefined)[] = [];
+            for (let x = 0; x < items.length; x++) ids.push(items[x]?.id);
+            return ids;
+        });
+        const seen: (string | undefined)[][] = [];
+        ObservableScope.Watch(reader, (scope) => seen.push(ObservableScope.Peek(scope)));
+        ObservableScope.Value(reader);
+
+        ObservableNode.Apply(proxy, { root: [{ items: [{ id: "a" }, { id: "b" }] }] });
+
+        expect(seen.length).to.be.greaterThan(0);
+        for (const ids of seen) expect(ids).to.not.include(undefined);
+        expect(ObservableScope.Value(reader)).to.deep.eq(["a", "b"]);
     });
 
     it('CreateFactory - With Alias Function', () => {

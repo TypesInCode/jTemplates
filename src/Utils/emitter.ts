@@ -1,9 +1,10 @@
+import { RemoveNulls } from "./array";
 import { _requestIdleCallback } from "./scheduling";
 
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => void;
-export type Emitter = [number, ...EmitterCallback[]]; // [number, ...EmitterCallback[]];
+export type Emitter = [number, ...EmitterCallback[]];
 
 const pendingCompactEmitters = new Set<Emitter>();
 
@@ -50,9 +51,19 @@ export namespace Emitter {
     emitter.push(callback);
   }
 
+  const emitterStack: Emitter[] = [];
+  const modifiedDuringEmit: Set<Emitter> = new Set();
   export function Emit(emitter: Emitter, ...args: any[]) {
+    emitterStack.push(emitter);
+
     for (let x = emitter[0] + 1; x < emitter.length; x++)
-      (emitter[x] as EmitterCallback)(...args);
+      (emitter[x] as EmitterCallback)?.(...args);
+
+    emitterStack.pop();
+    if (modifiedDuringEmit.delete(emitter)) {
+      RemoveNulls(emitter);
+      emitter[0] = 0;
+    }
   }
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
@@ -61,11 +72,19 @@ export namespace Emitter {
 
     const startIndex = emitter[0] + 1;
     const index = emitter.indexOf(callback, startIndex);
-    if (index > 0) {
+    if (index < 1)
+      return;
+
+    const emitterStackIndex = emitterStack.indexOf(emitter);
+    if (emitterStackIndex < 0) {
       emitter[0]++;
       emitter[index] = emitter[startIndex];
       emitter[startIndex] = null;
       Compact(emitter);
+    }
+    else {
+      emitter[index] = null;
+      modifiedDuringEmit.add(emitter);
     }
   }
 
