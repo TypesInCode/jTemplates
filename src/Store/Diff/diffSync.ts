@@ -27,8 +27,8 @@ export class DiffSync implements IDiffTree {
    * @param value - The new value to compare
    * @returns Diff results showing changes
    */
-  public DiffPath(path: string, value: any) {
-    return this.diffTree.DiffPath(path, value);
+  public DiffPath(path: string, value: any, flatten = true) {
+    return this.diffTree.DiffPath(path, value, flatten);
   }
 
   /**

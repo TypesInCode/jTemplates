@@ -99,7 +99,7 @@ export class StoreAsync extends Store {
       const json = (value as any).toJSON();
       const mergedJson = JsonMerge(json, patch);
 
-      const diffResult = await this.diff.DiffPath(key, mergedJson);
+      const diffResult = await this.diff.DiffPath(key, mergedJson, false);
       this.UpdateRootMap(diffResult);
     });
   }

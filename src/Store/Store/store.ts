@@ -1,4 +1,4 @@
-import { JsonDiffResult } from "../../Utils/json";
+import { JsonDeepClone, JsonDiffResult } from "../../Utils/json";
 import { ObservableNode } from "../Tree/observableNode";
 
 /**
@@ -29,6 +29,7 @@ export abstract class Store {
           throw `No root object found for key: ${key}`;
 
         const rootValue = ObservableNode.Unwrap(rootObject); // rootObject[GET_OBSERVABLE_VALUE];
+        ObservableNode.Touch(rootValue, key);
         const alias = rootValue[key];
         return alias;
       });
@@ -101,7 +102,7 @@ export abstract class Store {
       if (results.length > 1 || results[0].path.length > 1)
         throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
 
-      const newRootObject = this.createNode({ [rootPath]: results[0].value });
+      const newRootObject = this.createNode({ [rootPath]: JsonDeepClone(results[0].value) });
       this.rootMap.set(rootPath, newRootObject);
 
       return;

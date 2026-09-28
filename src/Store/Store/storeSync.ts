@@ -78,7 +78,7 @@ export class StoreSync extends Store {
     const json = ObservableNode.Unwrap(value);
     const mergedJson = JsonMerge(json, patch);
 
-    const diffResult = this.diff.DiffPath(key, mergedJson);
+    const diffResult = this.diff.DiffPath(key, mergedJson, false);
     this.UpdateRootMap(diffResult);
   }
 

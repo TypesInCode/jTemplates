@@ -26,7 +26,7 @@ export interface IDiffTree {
    * @param value - The new value to compare
    * @returns Diff results showing changes
    */
-  DiffPath(path: string, value: any): JsonDiffResult;
+  DiffPath(path: string, value: any, flatten?: boolean): JsonDiffResult;
 }
 
 /**
@@ -69,7 +69,7 @@ export function DiffTreeFactory(
           break;
         }
         case "diffpath": {
-          const diff = diffTree.DiffPath(data.arguments[0], data.arguments[1]);
+          const diff = diffTree.DiffPath(data.arguments[0], data.arguments[1], data.arguments[2]);
           ctx.postMessage(diff);
           break;
         }
@@ -208,13 +208,14 @@ export function DiffTreeFactory(
     source: any,
     path: string,
     value: unknown,
+    flatten: boolean,
     keyFunc?: (val: any) => string,
   ) {
     const diffResult: JsonDiffResult = [];
     if (keyFunc) {
       const keyPath = ResolveKeyPath(source, path, keyFunc);
       if (keyPath !== path) {
-        const keyDiffResult = UpdateSource(source, keyPath, value, keyFunc);
+        const keyDiffResult = UpdateSource(source, keyPath, value, flatten, keyFunc);
         diffResult.push(...keyDiffResult);
       }
     }
@@ -222,7 +223,7 @@ export function DiffTreeFactory(
     const sourceValue = GetPathValue(source, path);
     JsonDiff(value, sourceValue, path, diffResult);
 
-    if (keyFunc) {
+    if (flatten && keyFunc) {
       let flattened: any = {};
       flattened = FlattenValue(flattened, value, keyFunc) as any;
       flattened = JsonDeepClone(flattened);
@@ -277,8 +278,8 @@ export function DiffTreeFactory(
      * @param value - The new value to compare
      * @returns Diff results showing changes
      */
-    public DiffPath(path: string, value: any) {
-      return UpdateSource(this.rootState, path, value, this.keyFunc);
+    public DiffPath(path: string, value: any, flatten = true) {
+      return UpdateSource(this.rootState, path, value, flatten, this.keyFunc);
     }
 
     /**

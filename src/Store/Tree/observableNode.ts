@@ -6,7 +6,8 @@ const NODE_VALUE = Symbol("NODE_VALUE");
 const NODE_PROXY = Symbol("NODE_PROXY");
 const toJSON = "toJSON";
 const IS_NODE = Symbol("IS_NODE");
-const OBJECT_SCOPE = Symbol("ARRAY_SCOPE");
+const OBJECT_SCOPE = Symbol("OBJECT_SCOPE");
+const ITERATOR_SCOPE = Symbol("ITERATOR_SCOPE");
 
 function Identity<T>(value: T): T {
   return value;
@@ -41,18 +42,22 @@ function getOwnPropertyDescriptorArray(target: ObservableNodeWrapper, prop: stri
 }
 
 function has(value: ObservableNodeWrapper, prop: string | symbol) {
+  ObservableScope.Touch(value[ITERATOR_SCOPE]);
   return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
 function hasArray(value: ObservableNodeWrapper, prop: string | symbol) {
+  ObservableScope.Touch(value[ITERATOR_SCOPE]);
   return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
 function ownKeys(value: ObservableNodeWrapper) {
+  ObservableScope.Touch(value[ITERATOR_SCOPE]);
   return Object.keys(value[NODE_VALUE]);
 }
 
 function ownKeysArray(value: ObservableNodeWrapper) {
+  ObservableScope.Touch(value[ITERATOR_SCOPE]);
   return Object.keys(value[NODE_VALUE]);
 }
 
@@ -109,6 +114,12 @@ function CloneProxy(
   }
 
   return value;
+}
+
+function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
+  return object[prop] ??= ObservableScope.Basic(
+    Property.bind(null, object[NODE_VALUE], prop)
+  );
 }
 
 function CreateProxyFactory(alias?: (value: any) => any | undefined) {
@@ -252,7 +263,8 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   function CreateObjectProxy(value: any) {
     const wrapper: ObservableNodeWrapper = {
       [NODE_VALUE]: value,
-      [NODE_PROXY]: null
+      [NODE_PROXY]: null,
+      [ITERATOR_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
     };
 
     const proxy = wrapper[NODE_PROXY] = new Proxy(wrapper, {
@@ -277,6 +289,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ObjectProxyGetter(object: ObservableNodeWrapper, prop: string | symbol) {
+    ObservableScope.Touch(object[OBJECT_SCOPE]);
     switch (prop) {
       case IS_NODE:
         return true;
@@ -293,10 +306,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function GetAccessorValue(object: ObservableNodeWrapper, prop: any) {
-    const scope = object[prop] ??= ObservableScope.Basic(
-      Property.bind(null, object[NODE_VALUE], prop)
-    );
-
+    const scope = GetPropertyScope(object, prop);
     const value = ObservableScope.Value(scope);
     return CreateProxyFromValue(value);
   }
@@ -390,10 +400,48 @@ export namespace ObservableNode {
    * @param value The observable node to touch.
    * @param prop Optional property name or index to touch a specific nested property.
    */
-  export function Update<T>(value: T, prop: keyof T = OBJECT_SCOPE as any) {
+  export function Update<T>(value: T, prop?: keyof T) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
-      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : wrapper[prop] ?? wrapper[OBJECT_SCOPE];
+      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : (prop && wrapper[prop]) ?? wrapper[ITERATOR_SCOPE];
+      ObservableScope.Update(scope);
+    }
+  }
+
+  export function Assign<T>(value: T, prop: keyof T, propValue: any) {
+    const propExists = Object.hasOwn(value as Object, prop);
+    value[prop] = propValue;
+    const wrapper = wrapperCache.get(value);
+    if (wrapper) {
+      if (Array.isArray(wrapper))
+        ObservableScope.Update(wrapper[OBJECT_SCOPE]);
+      else {
+        const scope = wrapper[prop];
+        if (scope) {
+          // A prop was just added to the object, fire the iterator scope
+          if (!propExists)
+            ObservableScope.Update(wrapper[ITERATOR_SCOPE]);
+
+          ObservableScope.Update(scope);
+        }
+        else
+          ObservableScope.Update(wrapper[ITERATOR_SCOPE]);
+      }
+    }
+  }
+
+  export function Touch<T>(value: T, prop?: keyof T) {
+    const wrapper = wrapperCache.get(value);
+    if (wrapper) {
+      const scope = prop && GetPropertyScope(wrapper, prop as string) || wrapper[OBJECT_SCOPE];
+      ObservableScope.Touch(scope);
+    }
+  }
+
+  export function Read<T>(value: T, prop: keyof T) {
+    const wrapper = wrapperCache.get(value);
+    if (wrapper) {
+      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : (prop && wrapper[prop]) ?? wrapper[ITERATOR_SCOPE];
       ObservableScope.Update(scope);
     }
   }
@@ -432,7 +480,7 @@ export namespace ObservableNode {
     const root = rootNode[NODE_VALUE];
     if (diffResult.length === 1 && diffResult[0].path.length === 0) {
       // Replacing rootNode
-      const rootPatch = diffResult[0].value;
+      const rootPatch = JsonDeepClone(diffResult[0].value);
 
       const rootType = JsonType(root);
       const rootPatchType = JsonType(rootPatch);
@@ -487,8 +535,7 @@ export namespace ObservableNode {
       }
 
       const assignValue = pathTuples[y][1] as any;
-      assignValue[path[y]] = value;
-      ObservableNode.Update(assignValue, path[y]);
+      ObservableNode.Assign(assignValue, path[y], JsonDeepClone(value));
     }
   }
 

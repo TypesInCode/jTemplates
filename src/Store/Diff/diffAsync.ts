@@ -40,10 +40,10 @@ export class DiffAsync implements IDiffTreeAsync {
    * @param value - The new value to compare
    * @returns Promise that resolves to diff results showing changes
    */
-  public async DiffPath(path: string, value: any) {
+  public async DiffPath(path: string, value: any, flatten = true) {
     return await this.workerQueue.Push({
       method: "diffpath",
-      arguments: [path, value],
+      arguments: [path, value, flatten],
     });
   }
 
