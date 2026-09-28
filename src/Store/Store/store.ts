@@ -20,7 +20,7 @@ export abstract class Store {
   constructor(protected keyFunc?: (value: any) => string | undefined) {
     const aliasFunc =
       keyFunc &&
-      ((value: unknown) => {
+      ((value: unknown, reactive = true) => {
         const key = keyFunc(value);
         if (key === undefined) return undefined;
 
@@ -29,7 +29,7 @@ export abstract class Store {
           throw `No root object found for key: ${key}`;
 
         const rootValue = ObservableNode.Unwrap(rootObject); // rootObject[GET_OBSERVABLE_VALUE];
-        ObservableNode.Touch(rootValue, key);
+        reactive && ObservableNode.Touch(rootValue, key);
         const alias = rootValue[key];
         return alias;
       });

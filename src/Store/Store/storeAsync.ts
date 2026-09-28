@@ -144,13 +144,9 @@ export class StoreAsync extends Store {
   ) {
     return await this.queue.Next(async () => {
       const arr = this.Get(key) as any[];
-      const arrValue = ObservableNode.Unwrap(arr); // (arr as any)[GET_OBSERVABLE_VALUE] as any[];
-      const arrCopy = arrValue.slice();
-
-      const spliceResult = JsonDeepClone(
-        arrCopy.splice(start, deleteCount, ...items),
-      );
-      const diffResult = await this.diff.DiffPath(key, arrCopy);
+      const arrValue = (arr as any).toJSON();
+      const spliceResult = arrValue.splice(start, deleteCount, ...items);
+      const diffResult = await this.diff.DiffPath(key, arrValue);
       this.UpdateRootMap(diffResult);
       return spliceResult;
     });

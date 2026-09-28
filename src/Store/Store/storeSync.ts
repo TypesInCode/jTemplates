@@ -116,13 +116,10 @@ export class StoreSync extends Store {
     ...items: unknown[]
   ) {
     const arr = this.Get(key) as any[];
-    const arrValue = ObservableNode.Unwrap(arr); // (arr as any)[GET_OBSERVABLE_VALUE] as any[];
-    const arrCopy = arrValue.slice();
+    const arrValue = (arr as any).toJSON();
+    const spliceResult = arrValue.splice(start, deleteCount, ...items);
+    const diffResult = this.diff.DiffPath(key, arrValue);
 
-    const spliceResult = JsonDeepClone(
-      arrCopy.splice(start, deleteCount, ...items),
-    );
-    const diffResult = this.diff.DiffPath(key, arrCopy);
     this.UpdateRootMap(diffResult);
     return spliceResult;
   }

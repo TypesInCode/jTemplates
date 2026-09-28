@@ -122,20 +122,20 @@ function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
   );
 }
 
-function CreateProxyFactory(alias?: (value: any) => any | undefined) {
+function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
 
   function ToJsonCopy(value: unknown): any {
     const type = JsonType(value);
     switch (type) {
       case "array": {
         const typedValue = value as any[];
-        const proxy = CreateProxy(typedValue);
-        return proxy.map(ToJsonCopy);
+        const arrayValue = alias(typedValue, false) ?? typedValue;
+        return arrayValue.map(ToJsonCopy);
       }
       case "object": {
         const typedValue: { [prop: string]: unknown } = alias(value) ?? value;
-        const proxy = CreateProxy(typedValue);
-        const keys = Object.keys(proxy);
+        const objectValue = alias(typedValue, false) ?? typedValue;
+        const keys = Object.keys(objectValue);
         const copy: { [prop: string]: unknown } = {};
         for (let x = 0; x < keys.length; x++)
           copy[keys[x]] = ToJsonCopy(typedValue[keys[x]]);
@@ -148,7 +148,7 @@ function CreateProxyFactory(alias?: (value: any) => any | undefined) {
   }
 
   function ToJsonDefault(value: any) {
-    return value;
+    return JsonDeepClone(value);
   }
 
   const ToJson = alias !== undefined ? ToJsonCopy : ToJsonDefault;
@@ -546,7 +546,7 @@ export namespace ObservableNode {
    * @param alias Optional function to transform values before making them observable.
    * @returns A function that creates observable nodes from plain values.
    */
-  export function CreateFactory(alias?: (value: any) => any | undefined) {
+  export function CreateFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
     return CreateProxyFactory(alias);
   }
 }
