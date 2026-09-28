@@ -148,13 +148,14 @@ export class StoreAsync extends Store {
     deleteCount?: number,
     ...items: unknown[]
   ) {
+    items = JsonDeepClone(items)
     return await this.queue.Next(async () => {
       if (!this.Has(key))
         throw "Key not found in store";
 
       const spliceResult = await this.diff.SplicePath(key, start, deleteCount, items);
       this.UpdateRootMap(spliceResult.diffResult);
-      this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, JsonDeepClone(items));
+      this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, items);
 
       return spliceResult.spliceResult;
     });

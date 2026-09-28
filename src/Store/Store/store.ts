@@ -92,7 +92,6 @@ export abstract class Store {
     }
   }
 
-  // protected SpliceRootMap(spliceResult: DiffSpliceResult) {
   protected SpliceRootObject(rootPath: string | number, start: number, deleteCount: number, items: any[]) {
     const rootObject = this.rootMap.get(rootPath);
     ObservableNode.ApplySplice(rootObject[rootPath], start, deleteCount, items, this.cloneData);
