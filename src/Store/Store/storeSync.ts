@@ -72,6 +72,9 @@ export class StoreSync extends Store {
    * @throws Will throw an error if the value to be patched is undefined.
    */
   Patch(key: string, patch: unknown) {
+    if (!this.Has(key))
+      throw "Key not found in store";
+
     const value = this.Get(key);
     if (value === undefined) throw "Unable to patch undefined value";
 
@@ -88,6 +91,9 @@ export class StoreSync extends Store {
    * @param data The data items to be pushed into the array.
    */
   Push(key: string, ...data: unknown[]) {
+    if (!this.Has(key))
+      throw "Key not found in store";
+
     const arr = this.Get(key) as any[];
     const batch = data.map(function (d, i) {
       return {
@@ -115,19 +121,13 @@ export class StoreSync extends Store {
     deleteCount?: number,
     ...items: unknown[]
   ) {
-    const arr = this.Get(key) as any[];
-    const arrNodes = arr.slice(start); // Array starting from the splice start index
-    const spliceResult = arrNodes.splice(0, deleteCount ?? arrNodes.length, ...items);
+    if (!this.Has(key))
+      throw "Key not found in store";
 
-    const diffBatch: { path: string, value: any }[] = new Array(arrNodes.length + 1);
-    for (let x = 0; x < arrNodes.length; x++)
-      diffBatch[x] = { path: `${key}.${x + start}`, value: arrNodes[x]?.toJSON?.() ?? arrNodes[x] };
+    const spliceResult = this.diff.SplicePath(key, start, deleteCount, items);
+    this.UpdateRootMap(spliceResult.diffResult);
+    this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, items);
 
-    diffBatch[diffBatch.length - 1] = { path: `${key}.length`, value: start + arrNodes.length };
-
-    const diffResult = this.diff.DiffBatch(diffBatch);
-    this.UpdateRootMap(diffResult);
-
-    return spliceResult;
+    return JsonDeepClone(spliceResult.spliceResult);
   }
 }

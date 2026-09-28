@@ -1,5 +1,5 @@
 import { JsonDiffFactory } from "../../Utils/json";
-import { DiffTreeFactory, IDiffTree } from "./diffTree";
+import { DiffSpliceResult, DiffTreeFactory, IDiffTree } from "./diffTree";
 
 const diffCnstr = DiffTreeFactory(JsonDiffFactory);
 
@@ -38,5 +38,9 @@ export class DiffSync implements IDiffTree {
    */
   public DiffBatch(data: Array<{ path: string; value: any }>) {
     return this.diffTree.DiffBatch(data);
+  }
+
+  public SplicePath(path: string, start: number, deleteCount: number | undefined, items: any[], flatten?: boolean): DiffSpliceResult {
+    return this.diffTree.SplicePath(path, start, deleteCount, items, flatten);
   }
 }

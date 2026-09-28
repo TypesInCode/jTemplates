@@ -1,4 +1,4 @@
-import { DiffTreeFactory, IDiffMethod, IDiffTree } from "./diffTree";
+import { DiffSpliceResult, DiffTreeFactory, IDiffMethod, IDiffTree } from "./diffTree";
 import { WorkerQueue } from "./workerQueue";
 import { DiffWorker } from "./diffWorker";
 import { JsonDiffResult } from "../../Utils/json";
@@ -20,7 +20,7 @@ type IDiffTreeAsync = {
  * @see DiffSync
  */
 export class DiffAsync implements IDiffTreeAsync {
-  private workerQueue: WorkerQueue<IDiffMethod, JsonDiffResult>;
+  private workerQueue: WorkerQueue<IDiffMethod, JsonDiffResult | DiffSpliceResult>;
 
   /**
    * Creates a DiffAsync instance and initializes the worker.
@@ -44,7 +44,7 @@ export class DiffAsync implements IDiffTreeAsync {
     return await this.workerQueue.Push({
       method: "diffpath",
       arguments: [path, value, flatten],
-    });
+    }) as JsonDiffResult;
   }
 
   /**
@@ -56,7 +56,14 @@ export class DiffAsync implements IDiffTreeAsync {
     return await this.workerQueue.Push({
       method: "diffbatch",
       arguments: [data],
-    });
+    }) as JsonDiffResult;
+  }
+
+  public async SplicePath(path: string, start: number, deleteCount: number, items: any[], flatten?: boolean): Promise<DiffSpliceResult<unknown>> {
+    return await this.workerQueue.Push({
+      method: "splicepath",
+      arguments: [path, start, deleteCount, items, flatten]
+    }) as DiffSpliceResult;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { JsonDeepClone, JsonDiff, JsonDiffResult, JsonMerge } from "../../Utils/json";
+import { JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
 
@@ -468,6 +468,13 @@ export namespace ObservableNode {
     const root = rootNode[NODE_VALUE];
     const diff = JsonDiff(value, root);
     ApplyDiff(rootNode, diff);
+  }
+
+  export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[], cloneData = true) {
+    const root = rootNode[NODE_VALUE];
+    const addItems = cloneData ? JsonDeepClone(items) : items;
+    root.splice(start, deleteCount, ...addItems);
+    ObservableNode.Update(root);
   }
 
   /**

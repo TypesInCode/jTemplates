@@ -5,10 +5,20 @@ import { JsonDiffFactoryResult, JsonDiffResult } from "../../Utils/json";
  */
 export interface IDiffMethod {
   /** The method to call */
-  method: "create" | "diffpath" | "diffbatch" | "updatepath" | "getpath";
+  method: "create" | "diffpath" | "splicepath" | "diffbatch" | "updatepath" | "getpath";
   /** Arguments for the method call */
   arguments: Array<any>;
 }
+
+export type DiffSpliceResult<T = unknown> = {
+  /** Array path segments (strings for object keys, numbers for array indices) */
+  path: (string | number)[];
+  /** Required by the splice operation **/
+  start: number,
+  deleteCount: number,
+  spliceResult: any[],
+  diffResult: JsonDiffResult
+};
 
 /**
  * Interface for diff tree operations.
@@ -27,6 +37,8 @@ export interface IDiffTree {
    * @returns Diff results showing changes
    */
   DiffPath(path: string, value: any, flatten?: boolean): JsonDiffResult;
+
+  SplicePath(path: string, start: number, deleteCount: number | undefined, items: any[], flatten?: boolean): DiffSpliceResult;
 }
 
 /**
@@ -70,6 +82,11 @@ export function DiffTreeFactory(
         }
         case "diffpath": {
           const diff = diffTree.DiffPath(data.arguments[0], data.arguments[1], data.arguments[2]);
+          ctx.postMessage(diff);
+          break;
+        }
+        case "splicepath": {
+          const diff = diffTree.SplicePath(data.arguments[0], data.arguments[1], data.arguments[2], data.arguments[3], data.arguments[4]);
           ctx.postMessage(diff);
           break;
         }
@@ -246,6 +263,55 @@ export function DiffTreeFactory(
     return diffResult;
   }
 
+  function SpliceSource(
+      source: any,
+      path: string,
+      start: number,
+      deleteCount: number | undefined,
+      items: any[],
+      flatten: boolean,
+      keyFunc?: (val: any) => string,
+    ): DiffSpliceResult {
+      const sourceValue = GetPathValue(source, path) as any[];
+      if (!Array.isArray(sourceValue))
+        throw `Value found at path ${path} is not an array`;
+
+      deleteCount ??= sourceValue.length - start;
+      const spliceResult: DiffSpliceResult = {
+        path: path.split("."),
+        start,
+        deleteCount,
+        spliceResult: null,
+        diffResult: [] as JsonDiffResult
+      };
+      spliceResult.spliceResult = sourceValue.splice(start, deleteCount, ...items);
+
+      if (flatten && keyFunc) {
+        // Register the keyed entities the new items carry, diffed against the roots
+        // already held: a new entity is added whole, one re-inserted unchanged (an undo)
+        // produces no diff, so its readers aren't woken.
+        const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc)) as {
+          [key: string]: unknown;
+        };
+        const keys = Object.keys(flattened);
+        for (let x = 0; x < keys.length; x++)
+          JsonDiff(flattened[keys[x]], source[keys[x]], keys[x], spliceResult.diffResult);
+      }
+
+      const filteredDiffResult = spliceResult.diffResult.filter(
+        (diff) => diff.value !== undefined,
+      );
+      for (let x = 0; x < filteredDiffResult.length; x++) {
+        SetPathValue(
+          source,
+          filteredDiffResult[x].path,
+          filteredDiffResult[x].value,
+        );
+      }
+
+      return spliceResult;
+    }
+
   /**
    * Internal diff tree implementation.
    * Maintains root state and computes diffs for path/value updates.
@@ -280,6 +346,10 @@ export function DiffTreeFactory(
      */
     public DiffPath(path: string, value: any, flatten = true) {
       return UpdateSource(this.rootState, path, value, flatten, this.keyFunc);
+    }
+
+    public SplicePath(path: string, start: number, deleteCount: number, items: any[], flatten = true) {
+      return SpliceSource(this.rootState, path, start, deleteCount, items, flatten, this.keyFunc);
     }
 
     /**

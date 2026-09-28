@@ -1,4 +1,5 @@
 import { JsonDeepClone, JsonDiffResult } from "../../Utils/json";
+import { DiffSpliceResult } from "../Diff/diffTree";
 import { ObservableNode } from "../Tree/observableNode";
 
 /**
@@ -64,6 +65,10 @@ export abstract class Store {
     return result[id] as O | undefined;
   }
 
+  Has(id: string) {
+    return this.rootMap.has(id);
+  }
+
   abstract Write(data: unknown, key?: string): Promise<void> | void;
   abstract Patch(key: string, patch: unknown): Promise<void> | void;
   abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
@@ -85,6 +90,12 @@ export abstract class Store {
 
       this.UpdateRootObject(rootGroup[0].path[0], rootGroup);
     }
+  }
+
+  // protected SpliceRootMap(spliceResult: DiffSpliceResult) {
+  protected SpliceRootObject(rootPath: string | number, start: number, deleteCount: number, items: any[]) {
+    const rootObject = this.rootMap.get(rootPath);
+    ObservableNode.ApplySplice(rootObject[rootPath], start, deleteCount, items, this.cloneData);
   }
 
   /**
