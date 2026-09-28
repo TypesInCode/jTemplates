@@ -22,7 +22,7 @@ describe("Store Sync Test", () => {
   });
   it("Write Test", () => {
     const sync = new StoreSync(KeyFunc);
-    
+
     const data = [
       { _id: "first", value: "first" },
       { _id: "second", value: "second" },
@@ -77,7 +77,7 @@ describe("Store Sync Test", () => {
     const data = [{ _id: "first", value: "first" }];
     sync.Write(data, "root");
     expect(ObservableScope.Value(arrayLength)).to.eq(1);
-    
+
     sync.Push("root", { _id: "second", value: "second" });
     expect(ObservableScope.Value(arrayLength)).to.eq(2);
   });
@@ -125,4 +125,25 @@ describe("Store Sync Test", () => {
     expect(root1?.[0].value).to.eq("first changed");
     expect(root2?.[0].value).to.eq("first changed");
   });
+  it("Splice array - remove 1", () => {
+    const sync = new StoreSync(KeyFunc);
+    const data1 = [
+      { _id: "first", value: "first" },
+      { _id: "second", value: "two" },
+      { _id: "third", value: "three" },
+      { _id: "fourth", value: "four" }
+    ];
+
+    const copy = data1.slice();
+    copy.splice(2, 1);
+
+    sync.Write(data1, "arr");
+
+    sync.Splice("arr", 2, 1);
+
+    const storeArr = sync.Get<any[]>("arr");
+
+    expect(storeArr?.length).toEqual(3);
+    expect(storeArr?.[2]._id).toEqual("fourth");
+  })
 });

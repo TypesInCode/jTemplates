@@ -17,7 +17,7 @@ export abstract class Store {
    * @param keyFunc Optional function to generate a key for a given data value.
    * When provided, enables alias functionality where values can reference other root objects.
    */
-  constructor(protected keyFunc?: (value: any) => string | undefined) {
+  constructor(protected keyFunc?: (value: any) => string | undefined, private cloneData = true) {
     const aliasFunc =
       keyFunc &&
       ((value: unknown, reactive = true) => {
@@ -102,7 +102,8 @@ export abstract class Store {
       if (results.length > 1 || results[0].path.length > 1)
         throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
 
-      const newRootObject = this.createNode({ [rootPath]: JsonDeepClone(results[0].value) });
+      const rootData = this.cloneData ? JsonDeepClone(results[0].value) : results[0].value;
+      const newRootObject = this.createNode({ [rootPath]: rootData });
       this.rootMap.set(rootPath, newRootObject);
 
       return;

@@ -476,11 +476,11 @@ export namespace ObservableNode {
    * @param rootNode The observable node to apply the diff to.
    * @param diffResult The diff result from JsonDiff containing path-value pairs of changes.
    */
-  export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
+  export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult, cloneData = true) {
     const root = rootNode[NODE_VALUE];
     if (diffResult.length === 1 && diffResult[0].path.length === 0) {
       // Replacing rootNode
-      const rootPatch = JsonDeepClone(diffResult[0].value);
+      const rootPatch = cloneData ? JsonDeepClone(diffResult[0].value) : diffResult[0].value;
 
       const rootType = JsonType(root);
       const rootPatchType = JsonType(rootPatch);
@@ -535,7 +535,8 @@ export namespace ObservableNode {
       }
 
       const assignValue = pathTuples[y][1] as any;
-      ObservableNode.Assign(assignValue, path[y], JsonDeepClone(value));
+      const assignData = cloneData ? JsonDeepClone(value) : value;
+      ObservableNode.Assign(assignValue, path[y], assignData);
     }
   }
 

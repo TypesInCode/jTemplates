@@ -116,11 +116,18 @@ export class StoreSync extends Store {
     ...items: unknown[]
   ) {
     const arr = this.Get(key) as any[];
-    const arrValue = (arr as any).toJSON();
-    const spliceResult = arrValue.splice(start, deleteCount, ...items);
-    const diffResult = this.diff.DiffPath(key, arrValue);
+    const arrNodes = arr.slice(start); // Array starting from the splice start index
+    const spliceResult = arrNodes.splice(0, deleteCount ?? arrNodes.length, ...items);
 
+    const diffBatch: { path: string, value: any }[] = new Array(arrNodes.length + 1);
+    for (let x = 0; x < arrNodes.length; x++)
+      diffBatch[x] = { path: `${key}.${x + start}`, value: arrNodes[x]?.toJSON?.() ?? arrNodes[x] };
+
+    diffBatch[diffBatch.length - 1] = { path: `${key}.length`, value: start + arrNodes.length };
+
+    const diffResult = this.diff.DiffBatch(diffBatch);
     this.UpdateRootMap(diffResult);
+
     return spliceResult;
   }
 }
