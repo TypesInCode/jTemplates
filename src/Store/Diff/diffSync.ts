@@ -1,8 +1,5 @@
-import { ArraysEqual } from "../../Utils/array";
-import { JsonDiffFactory } from "../../Utils/json";
-import { DiffSpliceResult, DiffTreeFactory, DiffTreeProjectionMap, IDiffTree } from "./diffTree";
+import { DiffSpliceResult, DiffTree, DiffTreeProjectionMap, IDiffTree } from "./diffTree";
 
-const diffCnstr = DiffTreeFactory(JsonDiffFactory, ArraysEqual);
 
 /**
  * Synchronous diff implementation.
@@ -20,7 +17,7 @@ export class DiffSync implements IDiffTree {
    * @param projections - Optional map of derived-value projections, keyed by id
    */
   constructor(keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap) {
-    this.diffTree = new diffCnstr(keyFunc, projections);
+    this.diffTree = new DiffTree(keyFunc, projections);
   }
 
   /**

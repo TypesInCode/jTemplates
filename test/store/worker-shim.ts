@@ -1,44 +1,50 @@
-import { JsonDiffFactory } from "../../src/Utils/json";
-import { ArraysEqual } from "../../src/Utils/array";
-import { DiffTreeFactory } from "../../src/Store/Diff/diffTree";
+import { DiffTree, DiffTreeProjectionMap } from "../../src/Store/Diff/diffTree";
+import { ConnectWorkerToDiffTree } from "../../src/Store/Diff/diffTreeWorker";
 
-// jsdom has no Worker. This shim stands in for the Store's diff worker: it runs the
-// DiffTree in this thread, and delivers messages asynchronously as structured-cloned
-// copies, as a real worker does. diffWorker.ts checks for Worker when it loads, so import
-// this before anything that imports StoreAsync.
+// jsdom has no Worker, and a real worker entry module (like defaultDiffTreeWorker.ts) can
+// only be built by a bundler. This shim plays that role for tests: it builds a DiffTree
+// with the given keyFunc/projections baked in, in this thread, and connects it through
+// ConnectWorkerToDiffTree to a fake Worker pair that delivers messages asynchronously as
+// structured-cloned copies, as a real worker boundary would.
 
 const clone = (v: unknown) => (v === undefined ? v : structuredClone(v));
 
-class ShimWorker {
-  onmessage: ((e: { data: unknown }) => void) | null = null;
-  onerror: ((e: unknown) => void) | null = null;
-  private readonly ctx: any;
+/**
+ * Creates a `Worker` handle backed by a same-thread `DiffTree`, for use with `DiffAsync` in
+ * tests. Mirrors what a bundler-built worker entry file does, minus the actual thread.
+ */
+export function CreateShimDiffWorker(
+  keyFunc?: (val: any) => string,
+  projections?: DiffTreeProjectionMap,
+): Worker {
+  const mainSide: any = { onmessage: null, onerror: null };
+  const workerSide: any = { onmessage: null, onerror: null };
 
-  constructor() {
-    const worker = this;
-    this.ctx = {
-      onmessage: null,
-      postMessage(data: unknown) {
-        const copy = clone(data);
-        setTimeout(() => worker.onmessage?.({ data: copy }));
-      },
-    };
-    DiffTreeFactory.call(this.ctx, JsonDiffFactory, ArraysEqual, true);
-  }
-
-  postMessage(data: unknown) {
+  mainSide.postMessage = (data: unknown) => {
     const copy = clone(data);
     setTimeout(() => {
       try {
-        this.ctx.onmessage?.({ data: copy });
+        workerSide.onmessage?.({ data: copy });
       } catch (err) {
-        this.onerror?.(err);
+        mainSide.onerror?.(err);
       }
     });
-  }
+  };
+  mainSide.terminate = () => {};
 
-  terminate() {}
+  workerSide.postMessage = (data: unknown) => {
+    const copy = clone(data);
+    setTimeout(() => {
+      try {
+        mainSide.onmessage?.({ data: copy });
+      } catch (err) {
+        mainSide.onerror?.(err);
+      }
+    });
+  };
+
+  const diffTree = new DiffTree(keyFunc, projections);
+  ConnectWorkerToDiffTree(diffTree, workerSide as Worker);
+
+  return mainSide as Worker;
 }
-
-(globalThis as any).Worker = ShimWorker;
-if (!URL.createObjectURL) URL.createObjectURL = () => "blob:diff-worker-shim";

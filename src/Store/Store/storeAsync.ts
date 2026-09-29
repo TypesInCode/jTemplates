@@ -1,8 +1,6 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonDeepClone, JsonMerge } from "../../Utils/json";
 import { DiffAsync } from "../Diff/diffAsync";
-import { DiffTreeProjectionMap } from "../Diff/diffTree";
-import { ObservableNode } from "../Tree/observableNode";
 import { Store } from "./store";
 
 /**
@@ -59,10 +57,9 @@ export class StoreAsync extends Store {
    * worker, the same mechanic used for `keyFunc`, so it must not close over state that
    * doesn't survive that round trip.
    */
-  constructor(keyFunc?: (value: any) => string | undefined, projections?: DiffTreeProjectionMap) {
+  constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined) {
     super(keyFunc, false);
-
-    this.diff = new DiffAsync(keyFunc, projections);
+    this.diff = new DiffAsync(diffWorker);
   }
 
   /**

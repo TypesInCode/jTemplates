@@ -1,26 +1,7 @@
-import { DiffSpliceResult, DiffTreeFactory, DiffTreeProjectionMap, DiffTreeSerializedProjectionMap, IDiffMethod, IDiffTree } from "./diffTree";
+import { DiffSpliceResult, IDiffTree } from "./diffTree";
 import { WorkerQueue } from "./workerQueue";
-import { DiffWorker } from "./diffWorker";
 import { JsonDiffResult } from "../../Utils/json";
-
-/**
- * Serializes a `DiffTreeProjectionMap` for the worker boundary: `reads` survives structured
- * clone as-is, and each `projection` function is serialized with `.toString()`, the same
- * mechanic used below for `keyFunc`.
- */
-function SerializeProjections(projections: DiffTreeProjectionMap): DiffTreeSerializedProjectionMap {
-  const serialized: DiffTreeSerializedProjectionMap = {};
-  const ids = Object.keys(projections);
-  for (let x = 0; x < ids.length; x++) {
-    const id = ids[x];
-    serialized[id] = {
-      reads: projections[id].reads,
-      projection: projections[id].projection.toString(),
-    };
-  }
-
-  return serialized;
-}
+import { IDiffMethod } from "./diffTreeWorker";
 
 /**
  * Async version of IDiffTree interface with all methods returning promises.
@@ -48,15 +29,8 @@ export class DiffAsync implements IDiffTreeAsync {
    *   projection's function is serialized with `.toString()` and `eval`'d back into a
    *   function in the worker, the same mechanic used for `keyFunc`.
    */
-  constructor(keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap) {
-    this.workerQueue = new WorkerQueue(DiffWorker.Create());
-    this.workerQueue.Push({
-      method: "create",
-      arguments: [
-        keyFunc ? keyFunc.toString() : undefined,
-        projections ? SerializeProjections(projections) : undefined,
-      ],
-    });
+  constructor(diffWorker: Worker) {
+    this.workerQueue = new WorkerQueue(diffWorker);
   }
 
   /**

@@ -64,7 +64,7 @@ import {
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
-import { StoreAsync, StoreSync } from "../Store";
+import { Store, StoreAsync, StoreSync } from "../Store";
 import { Injector } from "./injector";
 
 /**
@@ -150,7 +150,7 @@ function GetDestroyArrayForPrototype(prototype: WeakKey, create = true) {
 
 function CreateStoreScope(
   getter: () => any,
-  store: StoreSync | StoreAsync,
+  store: Store,
   defaultValue?: any,
 ) {
   const getterScope = ObservableScope.Gated(function () {
@@ -492,9 +492,11 @@ function ComputedAsyncDecorator<
     get: function (this: T) {
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
+        const worker = new Worker(new URL("../Store/Diff/defaultDiffTreeWorker.js", import.meta.url), { type: "module" });
+        const storeAsync = new StoreAsync(worker);
         const propertyScope = CreateStoreScope(
           getter.bind(this),
-          new StoreAsync(),
+          storeAsync,
           defaultValue,
         );
         scopeMap[propertyKey] = [propertyScope, undefined];

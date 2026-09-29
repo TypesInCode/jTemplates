@@ -1,10 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { DiffTreeFactory, PROJECTION_PREFIX } from "../../src/Store/Diff/diffTree";
-import { JsonDiffFactory } from "../../src/Utils/json";
+import { DiffTree, PROJECTION_PREFIX } from "../../src/Store/Diff/diffTree";
 import { JsonType } from "../../src/Utils/json";
-import { ArraysEqual } from "../../src/Utils/array";
 
-const DiffTreeConstructor = DiffTreeFactory(JsonDiffFactory, ArraysEqual);
+const DiffTreeConstructor = DiffTree;
 
 function KeyFunc(val: any) {
   const type = JsonType(val);
