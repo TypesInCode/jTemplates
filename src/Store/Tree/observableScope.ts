@@ -270,7 +270,7 @@ function RegisterScope(scope: IObservableScope<any> | IBasicObservableScope<any>
  */
 function GetScopeValue<T>(scope: IObservableScope<T> | IBasicObservableScope<T>): T {
   if (scope.type === "basic")
-    return scope.getFunction();
+    return ExecuteBasicScope(scope);
 
   if (scope.type === "static" || !scope.dirty || scope.destroyed)
     return scope.value as T;
@@ -392,6 +392,14 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
     scope.value = state.value;
     scope.onUpdated && Emitter.Emit(scope.onUpdated, lastValue, scope);
   }
+}
+
+function ExecuteBasicScope(scope: IBasicObservableScope<any>) {
+  const parent = watchState;
+  watchState = null;
+  const result = scope.getFunction();
+  watchState = parent;
+  return result;
 }
 
 /**
