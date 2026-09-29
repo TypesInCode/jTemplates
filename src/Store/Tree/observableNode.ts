@@ -4,6 +4,7 @@ import { IBasicObservableScope, ObservableScope } from "./observableScope";
 
 const NODE_VALUE = Symbol("NODE_VALUE");
 const NODE_PROXY = Symbol("NODE_PROXY");
+const NODE_SNAPSHOT = Symbol("NODE_SNAPSHOT");
 const toJSON = "toJSON";
 const IS_NODE = Symbol("IS_NODE");
 const OBJECT_SCOPE = Symbol("OBJECT_SCOPE");
@@ -24,6 +25,23 @@ type ObservableNodeWrapper = {
 }
 
 const wrapperCache = new WeakMap<any, ObservableNodeWrapper>();
+const valueSnapshotCache = new WeakMap<any, any>();
+const valueSnapshotHierarchy = new WeakMap<any, any>();
+
+function CreateSnapshotLink(child: object, parent: object) {
+  let parents = valueSnapshotHierarchy.get(child);
+  if (!parents) valueSnapshotHierarchy.set(child, (parents = new Set()));
+  parents.add(parent);
+}
+
+function InvalidateSnapshotForValue(value: object) {
+  valueSnapshotCache.delete(value);
+  const parents = valueSnapshotHierarchy.get(value);
+  if (parents === undefined) return;
+  valueSnapshotHierarchy.delete(value);
+  for (const parent of parents)
+    if (valueSnapshotCache.has(parent)) InvalidateSnapshotForValue(parent);
+}
 
 function getOwnPropertyDescriptor(target: ObservableNodeWrapper, prop: string | symbol) {
   const descriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
@@ -122,52 +140,76 @@ function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
   );
 }
 
+function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
+  const propExists = Object.hasOwn(object[NODE_VALUE], prop);
+  object[NODE_VALUE][prop] = value;
+  InvalidateSnapshotForValue(object[NODE_VALUE]);
+  ObservableScope.Update(object[prop]);
+  !propExists && ObservableScope.Update(object[ITERATOR_SCOPE]);
+}
+
+function SetArrayValue(object: ObservableNodeWrapper, prop: string | number, value: any) {
+  object[NODE_VALUE][prop] = value;
+  InvalidateSnapshotForValue(object[NODE_VALUE]);
+  ObservableScope.Update(object[OBJECT_SCOPE]);
+}
+
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
+  /**
+   * An immutable snapshot of a raw node value (arrays and plain objects; other values are
+   * returned as they are). A snapshot is cached per raw value in valueSnapshotCache and
+   * returned as-is until a write invalidates it: every write path calls Invalidate, which
+   * clears the written value and every cached ancestor, found through the parent links
+   * recorded here. A rebuild makes new containers but reuses the cached snapshots of
+   * unchanged children, so a snapshot handed out never changes and unchanged parts are
+   * shared between snapshots. Keyed children are read through their root.
+   */
+  function CreateSnapshot(value: any): any {
+    if (JsonType(value) === "value")
+      return value;
 
-  function ToJsonCopy(value: unknown): any {
-    const type = JsonType(value);
-    switch (type) {
-      case "array": {
-        const typedValue = value as any[];
-        const arrayValue = alias(typedValue, false) ?? typedValue;
-        return arrayValue.map(ToJsonCopy);
-      }
-      case "object": {
-        const typedValue: { [prop: string]: unknown } = alias(value) ?? value;
-        const objectValue = alias(typedValue, false) ?? typedValue;
-        const keys = Object.keys(objectValue);
-        const copy: { [prop: string]: unknown } = {};
-        for (let x = 0; x < keys.length; x++)
-          copy[keys[x]] = ToJsonCopy(typedValue[keys[x]]);
+    const cached = valueSnapshotCache.get(value);
+    if (cached !== undefined)
+      return cached;
 
-        return copy;
-      }
-      default:
-        return value;
+    let snapshot: any;
+    if (Array.isArray(value)) {
+      snapshot = new Array(value.length);
+      for (let x = 0; x < value.length; x++)
+        snapshot[x] = ChildSnapshot(value, value[x]);
     }
+    else {
+      snapshot = {};
+      const keys = Object.keys(value);
+      for (let x = 0; x < keys.length; x++)
+        snapshot[keys[x]] = ChildSnapshot(value, value[keys[x]]);
+    }
+
+    valueSnapshotCache.set(value, snapshot);
+    return snapshot;
   }
 
-  function ToJsonDefault(value: any) {
-    return JsonDeepClone(value);
+  /**
+   * A child's snapshot, linking the child to its parent so a write to the child
+   * invalidates the parent. A keyed child's snapshot comes from its root, so the root is
+   * linked too; the parent's own embedded copy stays linked because a positional write
+   * (one that changes which entity a slot holds) mutates that copy in place.
+   */
+  function ChildSnapshot(parent: object, child: unknown) {
+    if (JsonType(child) === "value")
+      return child;
+
+    CreateSnapshotLink(child as object, parent);
+    const resolved = alias?.(child, false);
+    if (resolved !== undefined && resolved !== child) {
+      CreateSnapshotLink(resolved, parent);
+      return CreateSnapshot(resolved);
+    }
+
+    return CreateSnapshot(child);
   }
 
-  const ToJson = alias !== undefined ? ToJsonCopy : ToJsonDefault;
   const readOnly = alias !== undefined;
-
-  function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
-    object[NODE_VALUE][prop] = value;
-    ObservableScope.Update(object[prop]);
-  }
-
-  function SetArrayValue(object: ObservableNodeWrapper, prop: number, value: any) {
-    object[NODE_VALUE][prop] = value;
-    ObservableScope.Update(object[OBJECT_SCOPE]);
-  }
-
-  function CreateProxy<T>(value: T): T {
-    value = UnwrapProxy(value);
-    return CreateProxyFromValue(value);
-  }
 
   function CreateArrayProxy(value: any[]) {
     const wrapper: ObservableNodeWrapper = Object.assign([] as any as ObservableNodeWrapper, {
@@ -214,10 +256,12 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
         return true;
       case toJSON:
         return function () {
-          return ToJson(object[NODE_VALUE]);
+          return CreateSnapshot(object[NODE_VALUE]);
         };
       case NODE_VALUE:
         return object[NODE_VALUE];
+      case NODE_SNAPSHOT:
+        return CreateSnapshot(object[NODE_VALUE]);
       default: {
         const scope = object[OBJECT_SCOPE];
         const array = ObservableScope.Value(scope);
@@ -247,6 +291,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
                 for (let x = 0; x < proxyArray.length; x++)
                   array[x] = UnwrapProxy(proxyArray[x]);
 
+                InvalidateSnapshotForValue(object[NODE_VALUE])
                 ObservableScope.Update(scope);
                 break;
             }
@@ -293,9 +338,11 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     switch (prop) {
       case IS_NODE:
         return true;
+      case NODE_SNAPSHOT:
+        return CreateSnapshot(object[NODE_VALUE]);
       case toJSON:
         return function () {
-          return ToJson(object[NODE_VALUE]);
+          return CreateSnapshot(object[NODE_VALUE]);
         };
       case NODE_VALUE:
         return object[NODE_VALUE];
@@ -394,6 +441,13 @@ export namespace ObservableNode {
     return DefaultCreateProxy(value);
   }
 
+  export function Snapshot<T>(proxy: T): T | undefined {
+    if ((proxy as any)[IS_NODE])
+      return (proxy as any)[NODE_SNAPSHOT];
+
+    return undefined;
+  }
+
   /**
    * Marks an observable node or its property as changed, triggering reactive updates.
    * Used internally to notify dependencies that a value has been modified.
@@ -409,24 +463,18 @@ export namespace ObservableNode {
   }
 
   export function Assign<T>(value: T, prop: keyof T, propValue: any) {
-    const propExists = Object.hasOwn(value as Object, prop);
-    value[prop] = propValue;
+    // const propExists = Object.hasOwn(value as Object, prop);
+    // value[prop] = propValue;
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
       if (Array.isArray(wrapper))
-        ObservableScope.Update(wrapper[OBJECT_SCOPE]);
-      else {
-        const scope = wrapper[prop];
-        if (scope) {
-          // A prop was just added to the object, fire the iterator scope
-          if (!propExists)
-            ObservableScope.Update(wrapper[ITERATOR_SCOPE]);
-
-          ObservableScope.Update(scope);
-        }
-        else
-          ObservableScope.Update(wrapper[ITERATOR_SCOPE]);
-      }
+        SetArrayValue(wrapper, prop as string | number, propValue)
+      else
+        SetObjectValue(wrapper, prop as string, propValue);
+    }
+    else {
+      InvalidateSnapshotForValue(value as Object);
+      value[prop] = propValue;
     }
   }
 
@@ -472,6 +520,7 @@ export namespace ObservableNode {
 
   export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[], cloneData = true) {
     const root = rootNode[NODE_VALUE];
+    InvalidateSnapshotForValue(rootNode[NODE_VALUE]);
     const addItems = cloneData ? JsonDeepClone(items) : items;
     root.splice(start, deleteCount, ...addItems);
     ObservableNode.Update(root);
@@ -487,6 +536,7 @@ export namespace ObservableNode {
     const root = rootNode[NODE_VALUE];
     if (diffResult.length === 1 && diffResult[0].path.length === 0) {
       // Replacing rootNode
+      InvalidateSnapshotForValue(root);
       const rootPatch = cloneData ? JsonDeepClone(diffResult[0].value) : diffResult[0].value;
 
       const rootType = JsonType(root);
