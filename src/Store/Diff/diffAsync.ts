@@ -1,7 +1,26 @@
-import { DiffSpliceResult, DiffTreeFactory, IDiffMethod, IDiffTree } from "./diffTree";
+import { DiffSpliceResult, DiffTreeFactory, DiffTreeProjectionMap, DiffTreeSerializedProjectionMap, IDiffMethod, IDiffTree } from "./diffTree";
 import { WorkerQueue } from "./workerQueue";
 import { DiffWorker } from "./diffWorker";
 import { JsonDiffResult } from "../../Utils/json";
+
+/**
+ * Serializes a `DiffTreeProjectionMap` for the worker boundary: `reads` survives structured
+ * clone as-is, and each `projection` function is serialized with `.toString()`, the same
+ * mechanic used below for `keyFunc`.
+ */
+function SerializeProjections(projections: DiffTreeProjectionMap): DiffTreeSerializedProjectionMap {
+  const serialized: DiffTreeSerializedProjectionMap = {};
+  const ids = Object.keys(projections);
+  for (let x = 0; x < ids.length; x++) {
+    const id = ids[x];
+    serialized[id] = {
+      reads: projections[id].reads,
+      projection: projections[id].projection.toString(),
+    };
+  }
+
+  return serialized;
+}
 
 /**
  * Async version of IDiffTree interface with all methods returning promises.
@@ -25,12 +44,18 @@ export class DiffAsync implements IDiffTreeAsync {
   /**
    * Creates a DiffAsync instance and initializes the worker.
    * @param keyFunc - Optional function to extract a key from objects
+   * @param projections - Optional map of derived-value projections, keyed by id. Each
+   *   projection's function is serialized with `.toString()` and `eval`'d back into a
+   *   function in the worker, the same mechanic used for `keyFunc`.
    */
-  constructor(keyFunc?: { (val: any): string }) {
+  constructor(keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap) {
     this.workerQueue = new WorkerQueue(DiffWorker.Create());
     this.workerQueue.Push({
       method: "create",
-      arguments: keyFunc ? [keyFunc.toString()] : [],
+      arguments: [
+        keyFunc ? keyFunc.toString() : undefined,
+        projections ? SerializeProjections(projections) : undefined,
+      ],
     });
   }
 

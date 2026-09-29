@@ -1,3 +1,4 @@
+import { ArraysEqual } from "../../Utils/array";
 import { JsonDiffFactory } from "../../Utils/json";
 import { DiffTreeFactory } from "./diffTree";
 
@@ -7,7 +8,7 @@ export namespace DiffWorker {
   if (typeof Worker !== "undefined") {
     workerConstructor = Worker;
     workerParameter = URL.createObjectURL(
-      new Blob([`(${DiffTreeFactory}).call(this, (${JsonDiffFactory}), true)`]),
+      new Blob([`(${DiffTreeFactory}).call(this, (${JsonDiffFactory}), (${ArraysEqual}), true)`]),
     );
   }
 

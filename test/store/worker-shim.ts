@@ -1,4 +1,5 @@
 import { JsonDiffFactory } from "../../src/Utils/json";
+import { ArraysEqual } from "../../src/Utils/array";
 import { DiffTreeFactory } from "../../src/Store/Diff/diffTree";
 
 // jsdom has no Worker. This shim stands in for the Store's diff worker: it runs the
@@ -22,7 +23,7 @@ class ShimWorker {
         setTimeout(() => worker.onmessage?.({ data: copy }));
       },
     };
-    DiffTreeFactory.call(this.ctx, JsonDiffFactory, true);
+    DiffTreeFactory.call(this.ctx, JsonDiffFactory, ArraysEqual, true);
   }
 
   postMessage(data: unknown) {

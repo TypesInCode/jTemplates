@@ -41,3 +41,11 @@ export function RemoveNulls(array: (unknown | null)[], startIndex = 0) {
   if (nullIndex < array.length)
     array.splice(nullIndex);
 }
+
+export function ArraysEqual(left: any[], right: any[]) {
+  let equal = left === right || left?.length === right?.length;
+  for (let x = 0; equal && x < left.length; x++)
+    equal = left[x] === right[x];
+
+  return equal;
+}

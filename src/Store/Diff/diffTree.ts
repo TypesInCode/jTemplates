@@ -10,6 +10,40 @@ export interface IDiffMethod {
   arguments: Array<any>;
 }
 
+/**
+ * A pure function computing a derived value from the current values at `reads`, passed
+ * positionally in the same order, so each parameter can be typed at the call site instead of
+ * cast out of a generic read.
+ */
+export type DiffTreeProjectionFunc = (...values: any[]) => any;
+
+/**
+ * A projection's declaration: the dot-separated paths it reads (a plain tree path, an
+ * entity's key, or another projection's `$projection_<id>` key for chaining) and the
+ * function computing its result from their current values, positionally. Declaring `reads`
+ * up front lets the tree topologically sort projections and reject a dependency cycle at
+ * construction instead of on first write.
+ */
+export type DiffTreeProjectionDefinition = {
+  reads: string[];
+  projection: DiffTreeProjectionFunc;
+};
+
+/** A map of projection id to its declaration, keyed by the id used in `$projection_<id>`. */
+export type DiffTreeProjectionMap = { [id: string]: DiffTreeProjectionDefinition };
+
+/**
+ * The wire form of a `DiffTreeProjectionMap` sent to the diff worker: `reads` survives
+ * structured clone as-is, and `projection` is serialized with `.toString()`, the same
+ * mechanic `DiffAsync` already uses to send `keyFunc` across the worker boundary.
+ */
+export type DiffTreeSerializedProjectionMap = {
+  [id: string]: { reads: string[]; projection: string };
+};
+
+/** Reserved key prefix a projection's result is stored under: `$projection_<id>`. */
+export const PROJECTION_PREFIX = "$projection_";
+
 export type DiffSpliceResult<T = unknown> = {
   /** Array path segments (strings for object keys, numbers for array indices) */
   path: (string | number)[];
@@ -48,8 +82,9 @@ export interface IDiffTreeConstructor {
   /**
    * Creates a new IDiffTree instance.
    * @param keyFunc - Optional function to extract a key from a value
+   * @param projections - Optional map of derived-value projections, keyed by id
    */
-  new (keyFunc?: { (val: any): string }): IDiffTree;
+  new (keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap): IDiffTree;
 }
 
 /**
@@ -60,10 +95,31 @@ export interface IDiffTreeConstructor {
  * @returns DiffTree constructor
  */
 export function DiffTreeFactory(
-  jsonDiffFactory?: () => JsonDiffFactoryResult,
+  jsonDiffFactory: () => JsonDiffFactoryResult,
+  arraysEqual: (left: any[], right: any[]) => boolean,
   worker?: boolean,
 ) {
   const { JsonDiff, JsonType, JsonDeepClone } = jsonDiffFactory();
+
+  /**
+   * Reconstructs a `DiffTreeProjectionMap` from its wire form: each projection's function
+   * source, `eval`'d back into a function, the same mechanic used to deserialize `keyFunc`.
+   */
+  function DeserializeProjections(
+    serialized: DiffTreeSerializedProjectionMap,
+  ): DiffTreeProjectionMap {
+    const projections: DiffTreeProjectionMap = {};
+    const ids = Object.keys(serialized);
+    for (let x = 0; x < ids.length; x++) {
+      const id = ids[x];
+      projections[id] = {
+        reads: serialized[id].reads,
+        projection: eval(serialized[id].projection),
+      };
+    }
+
+    return projections;
+  }
 
   const ctx: Worker = this as any;
   if (worker && ctx) {
@@ -76,7 +132,10 @@ export function DiffTreeFactory(
           const keyFunc = data.arguments[0]
             ? eval(data.arguments[0])
             : undefined;
-          diffTree = new DiffTree(keyFunc);
+          const projections = data.arguments[1]
+            ? DeserializeProjections(data.arguments[1])
+            : undefined;
+          diffTree = new DiffTree(keyFunc, projections);
           ctx.postMessage(null);
           break;
         }
@@ -142,14 +201,21 @@ export function DiffTreeFactory(
    * @param path - Dot-separated path to the value (empty string returns source)
    * @returns The value at the specified path
    */
-  function GetPathValue(source: any, path: string) {
-    if (path === "") return source;
+  function GetPathValue(source: any, path: string): readonly [any, boolean] {
+    if (path === "") return [source, true] as const;
 
     const parts = path.split(".");
     let curr = source;
-    for (let x = 0; x < parts.length; x++) curr = curr[parts[x]];
+    let x = 0;
+    for (; curr && x < parts.length - 1; x++) curr = curr[parts[x]];
 
-    return curr;
+    if (curr && Object.hasOwn(curr, parts[x])) {
+      curr = curr[parts[x]];
+      x++;
+    }
+    else curr = undefined;
+
+    return [curr, x === parts.length] as const;
   }
 
   /**
@@ -170,6 +236,200 @@ export function DiffTreeFactory(
     for (; x < path.length - 1; x++) curr = curr[path[x]];
 
     curr[path[x]] = value;
+    InvalidateSnapshotForValue(curr);
+  }
+
+  const valueSnapshotCache = new WeakMap<any, any>();
+  const valueSnapshotHierarchy = new WeakMap<any, Set<any>>();
+
+  function CreateSnapshotLink(child: object, parent: object) {
+    let parents = valueSnapshotHierarchy.get(child);
+    if (!parents) valueSnapshotHierarchy.set(child, (parents = new Set()));
+    parents.add(parent);
+  }
+
+  /**
+   * Clears the cached snapshot for a raw value that was just written to, and climbs to
+   * every parent whose own cached snapshot embedded it, so a write to a deeply nested value
+   * invalidates every cached ancestor that still holds a snapshot. Mirrors ObservableNode's
+   * `InvalidateSnapshotForValue`.
+   */
+  function InvalidateSnapshotForValue(value: object) {
+    valueSnapshotCache.delete(value);
+    const parents = valueSnapshotHierarchy.get(value);
+    if (parents === undefined) return;
+    valueSnapshotHierarchy.delete(value);
+    for (const parent of parents)
+      if (valueSnapshotCache.has(parent)) InvalidateSnapshotForValue(parent);
+  }
+
+  /**
+   * An immutable snapshot of a raw tree value (arrays and plain objects; other values are
+   * returned as-is), cached per raw value and reused until a write invalidates it. Mirrors
+   * ObservableNode's `CreateSnapshot`: a rebuild makes new containers but reuses the cached
+   * snapshots of unchanged children. A keyed child is read through the root entity `keyFunc`
+   * resolves it to, the parallel of ObservableNode's `alias`, so every reference to the same
+   * entity shares one snapshot and a write to the entity invalidates every holder.
+   */
+  function CreateSnapshot(
+    source: any,
+    keyFunc: ((val: any) => string) | undefined,
+    value: any,
+  ): any {
+    if (JsonType(value) === "value") return value;
+
+    const cached = valueSnapshotCache.get(value);
+    if (cached !== undefined) return cached;
+
+    let snapshot: any;
+    if (Array.isArray(value)) {
+      snapshot = new Array(value.length);
+      for (let x = 0; x < value.length; x++)
+        snapshot[x] = ChildSnapshot(source, keyFunc, value, value[x]);
+    } else {
+      snapshot = {};
+      const keys = Object.keys(value);
+      for (let x = 0; x < keys.length; x++)
+        snapshot[keys[x]] = ChildSnapshot(source, keyFunc, value, value[keys[x]]);
+    }
+
+    valueSnapshotCache.set(value, snapshot);
+    return snapshot;
+  }
+
+  /**
+   * A child's snapshot, linking the child to its parent so a write to the child invalidates
+   * the parent. A keyed child's snapshot comes from its root entity (`source[key]`), so the
+   * root is linked too; the parent's own embedded copy stays linked because a positional
+   * write (one that changes which entity a slot holds) mutates that copy in place.
+   */
+  function ChildSnapshot(
+    source: any,
+    keyFunc: ((val: any) => string) | undefined,
+    parent: object,
+    child: unknown,
+  ) {
+    if (JsonType(child) === "value") return child;
+
+    CreateSnapshotLink(child as object, parent);
+
+    if (keyFunc) {
+      const key = keyFunc(child);
+      if (key) {
+        const root = source[key];
+        if (root !== undefined && root !== child) {
+          CreateSnapshotLink(root, parent);
+          return CreateSnapshot(source, keyFunc, root);
+        }
+      }
+    }
+
+    return CreateSnapshot(source, keyFunc, child);
+  }
+
+  /**
+   * A projection's declaration together with its id, as held in the sorted, sequentially run
+   * order `BuildProjectionOrder` produces.
+   */
+  type DiffTreeProjectionEntry = DiffTreeProjectionDefinition & { id: string };
+
+  /**
+   * Topologically sorts projections by their declared `reads` into a single array, run
+   * sequentially: a read of another projection's `$projection_<id>` output is a dependency
+   * edge, so that projection is sorted earlier. Runs once, at construction, so a cycle (or a
+   * read of an id that isn't registered) is rejected immediately instead of on first write.
+   */
+  function BuildProjectionOrder(projections: DiffTreeProjectionMap): DiffTreeProjectionEntry[] {
+    const order: DiffTreeProjectionEntry[] = [];
+    const state = new Map<string, "visiting" | "done">();
+
+    function Visit(id: string, stack: string[]) {
+      if (state.get(id) === "done") return;
+      if (state.get(id) === "visiting")
+        throw new Error(
+          `DiffTree projection cycle detected: ${stack.concat(id).join(" -> ")}`,
+        );
+
+      const def = projections[id];
+      if (!def) throw new Error(`DiffTree projection "${id}" is not defined`);
+
+      state.set(id, "visiting");
+      for (let x = 0; x < def.reads.length; x++) {
+        const root = def.reads[x].split(".", 1)[0];
+        if (root.startsWith(PROJECTION_PREFIX))
+          Visit(root.slice(PROJECTION_PREFIX.length), stack.concat(id));
+      }
+
+      state.set(id, "done");
+      order.push({ id, ...def });
+    }
+
+    const ids = Object.keys(projections);
+    for (let x = 0; x < ids.length; x++) Visit(ids[x], []);
+
+    return order;
+  }
+
+  /**
+   * Runs every registered projection, sequentially in the dependency order
+   * `BuildProjectionOrder` computed, skipping ones whose declared `reads` all still resolve
+   * to the same cached snapshot as last time (so nothing they read has changed), and returns
+   * the diff of every projection whose result changed. A projection's result is stored at
+   * `$projection_<id>` the same way a `DiffPath` write is: diffed against what was there
+   * before and applied path by path, so a change to one field of a projection's result
+   * produces one small diff entry rather than replacing the whole thing.
+   *
+   * Because `order` runs dependencies before dependents, a projection that reads another's
+   * `$projection_<id>` output (chaining) always sees that projection's up-to-date result
+   * within the same pass.
+   *
+   * A projection whose `reads` names a root key that doesn't exist yet (a plain path never
+   * written, an entity never seen, or another projection that hasn't produced a result) is
+   * not run at all, so a projection's author never has to guard every parameter against
+   * missing data. It's tried again on every later write until every read exists. This also
+   * makes a blocked dependency propagate for free: a projection that never runs never writes
+   * `$projection_<id>`, so anything chaining off it stays blocked in turn.
+   *
+   * @param source - The root tree object
+   * @param keyFunc - Optional function to extract a key from objects, for reading through roots
+   * @param projections - Dependency-sorted projection entries, from `BuildProjectionOrder`
+   * @param memo - Per-tree, cross-call memo of each projection's last-read values, by id,
+   *   positional with its `reads`
+   * @returns Diff entries for every projection whose result changed
+   */
+  function RunProjections(
+    source: any,
+    keyFunc: ((val: any) => string) | undefined,
+    projections: DiffTreeProjectionEntry[],
+    memo: Map<string, any[]>,
+  ): JsonDiffResult {
+    const diffResult: JsonDiffResult = [];
+
+    for (let x = 0; x < projections.length; x++) {
+      const { id, reads, projection } = projections[x];
+      const values = new Array(reads.length);
+      let allPathsExist = true;
+      for (let y = 0; allPathsExist && y < reads.length; y++) {
+        const [value, found] = GetPathValue(source, reads[y]);
+        allPathsExist = found;
+        values[y] = found && CreateSnapshot(source, keyFunc, value) || value;
+      }
+
+      if (allPathsExist) {
+        const priorValues = memo.get(id);
+        if (!arraysEqual(priorValues, values)) {
+          const result = projection(...values);
+          memo.set(id, values);
+
+          // The same diff-and-apply UpdateSource uses for any other write, so a keyed entity
+          // embedded in a projection's result is flattened to its own root like any other write,
+          // and the diff reported here is unfiltered, the same as DiffPath/DiffBatch return.
+          diffResult.push(...UpdateSource(source, PROJECTION_PREFIX + id, result, true, keyFunc));
+        }
+      }
+    }
+
+    return diffResult;
   }
 
   /**
@@ -237,7 +497,7 @@ export function DiffTreeFactory(
       }
     }
 
-    const sourceValue = GetPathValue(source, path);
+    const [sourceValue] = GetPathValue(source, path);
     JsonDiff(value, sourceValue, path, diffResult);
 
     if (flatten && keyFunc) {
@@ -272,7 +532,10 @@ export function DiffTreeFactory(
       flatten: boolean,
       keyFunc?: (val: any) => string,
     ): DiffSpliceResult {
-      const sourceValue = GetPathValue(source, path) as any[];
+      const [sourceValue, found] = GetPathValue(source, path);
+      if (!found)
+        throw `Value not found at path ${path}`;
+
       if (!Array.isArray(sourceValue))
         throw `Value found at path ${path} is not an array`;
 
@@ -285,6 +548,7 @@ export function DiffTreeFactory(
         diffResult: [] as JsonDiffResult
       };
       spliceResult.spliceResult = sourceValue.splice(start, deleteCount, ...items);
+      InvalidateSnapshotForValue(sourceValue);
 
       if (flatten && keyFunc) {
         // Register the keyed entities the new items carry, diffed against the roots
@@ -319,12 +583,26 @@ export function DiffTreeFactory(
    */
   class DiffTree implements IDiffTree {
     private rootState: {} = {};
+    private projectionOrder: DiffTreeProjectionEntry[];
+    private projectionMemo = new Map<string, any[]>();
 
     /**
      * Creates a DiffTree instance.
      * @param keyFunc - Optional function to extract a key from objects
+     * @param projections - Optional map of derived-value projections, keyed by id. Cycles
+     *   and reads of an unregistered projection id are rejected here, at construction.
      */
-    constructor(private keyFunc?: { (val: any): string }) {}
+    constructor(
+      private keyFunc?: { (val: any): string },
+      projections?: DiffTreeProjectionMap,
+    ) {
+      this.projectionOrder = projections ? BuildProjectionOrder(projections) : [];
+    }
+
+    private RunProjections(): JsonDiffResult {
+      if (this.projectionOrder.length === 0) return [];
+      return RunProjections(this.rootState, this.keyFunc, this.projectionOrder, this.projectionMemo);
+    }
 
     /**
      * Computes diffs for a batch of path/value pairs.
@@ -333,8 +611,9 @@ export function DiffTreeFactory(
      */
     public DiffBatch(data: Array<{ path: string; value: any }>) {
       const results = data
-        .map(({ path, value }) => this.DiffPath(path, value))
+        .map(({ path, value }) => UpdateSource(this.rootState, path, value, true, this.keyFunc))
         .flat(1);
+      results.push(...this.RunProjections());
       return results;
     }
 
@@ -345,11 +624,15 @@ export function DiffTreeFactory(
      * @returns Diff results showing changes
      */
     public DiffPath(path: string, value: any, flatten = true) {
-      return UpdateSource(this.rootState, path, value, flatten, this.keyFunc);
+      const results = UpdateSource(this.rootState, path, value, flatten, this.keyFunc);
+      results.push(...this.RunProjections());
+      return results;
     }
 
     public SplicePath(path: string, start: number, deleteCount: number, items: any[], flatten = true) {
-      return SpliceSource(this.rootState, path, start, deleteCount, items, flatten, this.keyFunc);
+      const spliceResult = SpliceSource(this.rootState, path, start, deleteCount, items, flatten, this.keyFunc);
+      spliceResult.diffResult.push(...this.RunProjections());
+      return spliceResult;
     }
 
     /**
@@ -358,7 +641,21 @@ export function DiffTreeFactory(
      * @returns The value at the specified path
      */
     public GetPath(path: string) {
-      return GetPathValue(this.rootState, path);
+      const [value] = GetPathValue(this.rootState, path);
+      return value;
+    }
+
+    /**
+     * Returns an immutable, cached snapshot of the value at a path (empty string for the
+     * whole tree). Not part of `IDiffTree`; internal, for a future feature.
+     * @param path - Dot-separated path to the value
+     */
+    public Snapshot(path: string) {
+      const [value, found] = GetPathValue(this.rootState, path);
+      if (!found)
+        throw `Unable to get snapshot for path ${path}`;
+
+      return CreateSnapshot(this.rootState, this.keyFunc, value);
     }
   }
 

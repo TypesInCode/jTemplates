@@ -1,6 +1,7 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonDeepClone, JsonMerge } from "../../Utils/json";
 import { DiffAsync } from "../Diff/diffAsync";
+import { DiffTreeProjectionMap } from "../Diff/diffTree";
 import { ObservableNode } from "../Tree/observableNode";
 import { Store } from "./store";
 
@@ -52,11 +53,16 @@ export class StoreAsync extends Store {
   /**
    * Creates an instance of StoreAsync.
    * @param keyFunc Optional function to generate a key for a given data value.
+   * @param projections Optional map of derived-value projections, keyed by id. A
+   * projection's result is readable through `Get` at `$projection_<id>`. Each projection's
+   * function is serialized with `.toString()` and `eval`'d back into a function in the
+   * worker, the same mechanic used for `keyFunc`, so it must not close over state that
+   * doesn't survive that round trip.
    */
-  constructor(keyFunc?: (value: any) => string | undefined) {
+  constructor(keyFunc?: (value: any) => string | undefined, projections?: DiffTreeProjectionMap) {
     super(keyFunc, false);
 
-    this.diff = new DiffAsync(keyFunc);
+    this.diff = new DiffAsync(keyFunc, projections);
   }
 
   /**
