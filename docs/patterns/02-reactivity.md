@@ -16,7 +16,9 @@ import { ObservableScope } from "j-templates/Store";
 
 | Method | Signature | Description |
 |---|---|---|
-| `Create` | `<T>(fn: () => T \| Promise<T>, greedy?: boolean, force?: boolean): IObservableScope<T>` | Create a scope from a function. Returns static scope if no dependencies detected, dynamic otherwise. |
+| `Create` | `<T>(fn: () => T \| Promise<T>): IObservableScope<T>` | Create a non-greedy scope from a function. Returns a static scope if no reactive dependencies are detected, a dynamic scope otherwise. |
+| `Gated` | `<T>(fn: () => T \| Promise<T>): IObservableScope<T>` | Like `Create`, but greedy — batches updates via the microtask queue instead of emitting immediately. Used by `@Watch` and async scopes. |
+| `Basic` | `<T>(fn: () => T): IBasicObservableScope<T>` | Lightweight scope with no dependency tracking or caching — `Update` must be called manually to emit. Used by `@Value`. |
 | `Value` | `<T>(scope: IObservableScope<T>): T` | Read the current value **and** register as a dependency. |
 | `Peek` | `<T>(scope: IObservableScope<T>): T` | Read the current value **without** registering as a dependency. |
 | `Watch` | `<T>(scope: IObservableScope<T>, callback: (scope: IObservableScope<T>) => void): void` | Subscribe to value changes. |
@@ -340,15 +342,29 @@ const user = store.Get<User>("1");
 
 ### StoreAsync
 
-Asynchronous variant of `StoreSync`. All mutations return `Promise<void>`. Diff computation runs in a Web Worker to keep the main thread free. `Get` remains synchronous.
+Asynchronous variant of `StoreSync`. All mutations return `Promise<void>`. Diff computation runs on a `Worker` you supply, to keep the main thread free. `Get` remains synchronous.
+
+`StoreAsync` takes an already-running `Worker` as its first argument — it no longer builds or serializes one itself. Give it a small entry file (bundled separately by your build tool) that connects a `DiffTree` to the worker thread:
+
+```typescript
+// diff-worker.ts
+import { DiffTree } from "j-templates/Store/Diff/diffTree";
+import { ConnectWorkerToDiffTree } from "j-templates/Store/Diff/diffTreeWorker";
+
+const diffTree = new DiffTree((value: any) => value.id); // same keyFunc as below
+ConnectWorkerToDiffTree(diffTree, self as any as Worker);
+```
 
 ```typescript
 import { StoreAsync } from "j-templates/Store";
 
-const store = new StoreAsync((value) => value.id);
+const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
+const store = new StoreAsync(worker, (value) => value.id);
 await store.Write({ id: "1", name: "Alice" });
-store.Destroy(); // Stops the async queue
+store.Destroy(); // Stops the async queue and terminates the worker
 ```
+
+The second argument to `StoreAsync` is used locally, by the base `Store` class, to resolve keyed aliases when reading — pass the same key logic the worker's `DiffTree` was built with. See `docs/SYNTAX_PRIMER.md` — "StoreAsync: Supplying the Worker" for the full picture, including the no-`keyFunc` case (a `defaultDiffTreeWorker` entry ships with the package).
 
 ### Object sharing
 
@@ -373,8 +389,8 @@ For advanced cases outside of components, you can create and manage scopes direc
 ```typescript
 import { ObservableScope } from "j-templates/Store";
 
-// Create a scope
-const scope = ObservableScope.Create(() => someValue * 2, true); // greedy
+// Create a scope (Gated instead of Create for a greedy/batched scope)
+const scope = ObservableScope.Create(() => someValue * 2);
 
 // Read reactively
 const value = ObservableScope.Value(scope);

@@ -15,8 +15,15 @@ export abstract class ProjectService implements IDestroyable {
 }
 
 // Real implementation uses StoreAsync for off-main-thread diff computation.
+// StoreAsync takes an already-running Worker (built by diff-worker.ts, which
+// constructs the matching DiffTree with the same key function) rather than a
+// keyFunc it serializes itself; the keyFunc passed here is used locally, by
+// the base Store class, to resolve keyed aliases when reading.
 export class RealProjectService extends ProjectService {
-  private store = new StoreAsync((value: any) => value.id);
+  private store = new StoreAsync(
+    new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
+    (value: any) => value.id,
+  );
 
   // Derived stats computed from tasks — updates reactively when tasks change.
   private statsScope = ObservableScope.Create((): ProjectStats => {

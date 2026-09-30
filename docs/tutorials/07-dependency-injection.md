@@ -402,13 +402,25 @@ export interface IDestroyable {
 
 ### Service with IDestroyable
 
+`StoreAsync` takes an already-running `Worker`, so give it a tiny entry file (bundled separately by your build tool) that connects a `DiffTree` to the worker thread:
+
+```typescript
+// diff-worker.ts — no custom keyFunc/projections needed, so no arguments to DiffTree
+import { DiffTree } from "j-templates/Store/Diff/diffTree";
+import { ConnectWorkerToDiffTree } from "j-templates/Store/Diff/diffTreeWorker";
+
+ConnectWorkerToDiffTree(new DiffTree(), self as any as Worker);
+```
+
 ```typescript
 import { DataService } from "./data-service";
 import { StoreAsync } from "j-templates/Store";
 import { IDestroyable } from "j-templates/Utils";
 
 export class DataService implements IDestroyable {
-  private store = new StoreAsync();
+  private store = new StoreAsync(
+    new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
+  );
   
   GetData(): Item[] {
     return this.store.Get<Item[]>("items", []);

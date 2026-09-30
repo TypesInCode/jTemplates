@@ -23,11 +23,10 @@ export class DiffAsync implements IDiffTreeAsync {
   private workerQueue: WorkerQueue<IDiffMethod, JsonDiffResult | DiffSpliceResult>;
 
   /**
-   * Creates a DiffAsync instance and initializes the worker.
-   * @param keyFunc - Optional function to extract a key from objects
-   * @param projections - Optional map of derived-value projections, keyed by id. Each
-   *   projection's function is serialized with `.toString()` and `eval`'d back into a
-   *   function in the worker, the same mechanic used for `keyFunc`.
+   * Creates a DiffAsync instance around an already-running worker.
+   * @param diffWorker - A `Worker` running a `DiffTree` connected via
+   *   `ConnectWorkerToDiffTree` (e.g. a bundled `defaultDiffTreeWorker` entry, or a custom
+   *   entry file for a non-default `keyFunc`/`projections` baked into the worker thread).
    */
   constructor(diffWorker: Worker) {
     this.workerQueue = new WorkerQueue(diffWorker);

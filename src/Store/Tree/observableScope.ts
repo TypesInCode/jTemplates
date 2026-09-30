@@ -772,7 +772,9 @@ export namespace ObservableScope {
    * Creates a lightweight basic scope that stores a value directly without a proxy.
    * Used by `@Value` for primitives. Basic scopes do not automatically track dependencies —
    * after creation, `ObservableScope.Update` must be called for the scope to emit. They also do
-   * not cache a value internally: the valueFunction is invoked on every read.
+   * not cache a value internally: the valueFunction is invoked on every read, with dependency
+   * tracking suspended, so any reactive value it reads is never registered as a dependency of
+   * whichever scope happened to be executing when the read occurred.
    * @template T The type of value stored in the scope.
    * @param valueFunction Function that returns the scope's value.
    * @returns A new basic observable scope.

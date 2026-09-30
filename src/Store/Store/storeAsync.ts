@@ -13,8 +13,9 @@ import { Store } from "./store";
  * without blocking the main thread.
  *
  * @example
- * // Creating a StoreAsync instance
- * const store = new StoreAsync();
+ * // Creating a StoreAsync instance from a bundler-built worker entry file
+ * const worker = new Worker(new URL("./Store/Diff/defaultDiffTreeWorker.js", import.meta.url), { type: "module" });
+ * const store = new StoreAsync(worker);
  *
  * // Writing data to the store asynchronously
  * await store.Write({ name: "John", age: 30 }, "user");
@@ -50,12 +51,13 @@ export class StoreAsync extends Store {
 
   /**
    * Creates an instance of StoreAsync.
-   * @param keyFunc Optional function to generate a key for a given data value.
-   * @param projections Optional map of derived-value projections, keyed by id. A
-   * projection's result is readable through `Get` at `$projection_<id>`. Each projection's
-   * function is serialized with `.toString()` and `eval`'d back into a function in the
-   * worker, the same mechanic used for `keyFunc`, so it must not close over state that
-   * doesn't survive that round trip.
+   * @param diffWorker A `Worker` running a `DiffTree` connected via
+   *   `ConnectWorkerToDiffTree` (e.g. a bundled `defaultDiffTreeWorker` entry). Any
+   *   `keyFunc`/projections the diff needs must be baked into that worker's own entry file,
+   *   since the worker now runs standard bundled code rather than a serialized function.
+   * @param keyFunc Optional function to generate a key for a given data value, used locally
+   *   by this store to resolve root objects. Pass the same key logic the worker's `DiffTree`
+   *   was constructed with, if any.
    */
   constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined) {
     super(keyFunc, false);

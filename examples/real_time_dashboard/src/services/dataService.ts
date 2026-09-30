@@ -49,15 +49,24 @@ import { IDestroyable } from "j-templates/Utils";
 export class DataService implements ActivityDataService, IDestroyable {
   /**
    * StoreAsync with a key function for object sharing.
-   * 
-   * The key function (value => value.id) extracts an identity from each stored
-   * object, so objects with the same ID reference the same instance — e.g. two
-   * activities with the same user share one user object.
-   * 
+   *
+   * StoreAsync now takes an already-running Worker rather than building or
+   * serializing one itself, so the diff computation happens in diff-worker.ts —
+   * a separate bundled entry that constructs its own DiffTree with the same key
+   * function, `(value) => value.id`. That key function extracts an identity from
+   * each stored object, so objects with the same ID reference the same instance
+   * — e.g. two activities with the same user share one user object. The
+   * `keyFunc` passed to StoreAsync here is used locally, by the base Store
+   * class, to resolve those aliases when reading.
+   *
+   * @see ./diff-worker.ts - worker entry constructing the matching DiffTree
    * @see src/Store/Store/storeAsync.ts:39 - StoreAsync class
    * @see src/Store/Store/store.ts - Base Store class
    */
-  private store = new StoreAsync((value) => value.id);
+  private store = new StoreAsync(
+    new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
+    (value) => value.id,
+  );
 
   /**
    * Reactive scope for sorted activity data.
@@ -248,7 +257,7 @@ export class DataService implements ActivityDataService, IDestroyable {
    * Store.Push appends to the activities array; dependent scopes re-compute and
    * the UI updates automatically through reactivity.
    * 
-   * @see src/Store/Store/storeAsync.ts:106 - StoreAsync.Push method
+   * @see src/Store/Store/storeAsync.ts - StoreAsync.Push method
    */
   RefreshData() {
     const nextActivities = generateActivities();

@@ -195,7 +195,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
         reads: ["items"],
-        projection: (items: any[]) => items.length,
+        projection: (_keys: string[], items: any[]) => items.length,
       },
     });
 
@@ -211,7 +211,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls++;
           return items.length;
         },
@@ -236,14 +236,14 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       count: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls.count++;
           return items.length;
         },
       },
       doubled: {
         reads: [`${PROJECTION_PREFIX}count`],
-        projection: (count: number) => {
+        projection: (_keys: string[], count: number) => {
           calls.doubled++;
           return count * 2;
         },
@@ -265,7 +265,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls++;
           return items.length;
         },
@@ -286,7 +286,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls++;
           return items.length;
         },
@@ -307,7 +307,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       hasItems: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls++;
           return items.length > 0;
         },
@@ -329,7 +329,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       name: {
         reads: ["a"],
-        projection: (a: any) => {
+        projection: (_keys: string[], a: any) => {
           calls++;
           return a?.value;
         },
@@ -353,14 +353,14 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       count: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls.count++;
           return items.length;
         },
       },
       doubled: {
         reads: [`${PROJECTION_PREFIX}count`],
-        projection: (count: number) => {
+        projection: (_keys: string[], count: number) => {
           calls.doubled++;
           return count * 2;
         },
@@ -388,11 +388,11 @@ describe("Diff Tree Projection Test", () => {
       // "doubled" is declared before "count", the projection it depends on.
       doubled: {
         reads: [`${PROJECTION_PREFIX}count`],
-        projection: (count: number) => count * 2,
+        projection: (_keys: string[], count: number) => count * 2,
       },
       count: {
         reads: ["items"],
-        projection: (items: any[]) => items.length,
+        projection: (_keys: string[], items: any[]) => items.length,
       },
     });
 
@@ -405,8 +405,8 @@ describe("Diff Tree Projection Test", () => {
     expect(
       () =>
         new DiffTreeConstructor(KeyFunc, {
-          a: { reads: [`${PROJECTION_PREFIX}b`], projection: (b: any) => b },
-          b: { reads: [`${PROJECTION_PREFIX}a`], projection: (a: any) => a },
+          a: { reads: [`${PROJECTION_PREFIX}b`], projection: (_keys: string[], b: any) => b },
+          b: { reads: [`${PROJECTION_PREFIX}a`], projection: (_keys: string[], a: any) => a },
         }),
     ).toThrow(/cycle/i);
   });
@@ -415,7 +415,7 @@ describe("Diff Tree Projection Test", () => {
     expect(
       () =>
         new DiffTreeConstructor(KeyFunc, {
-          self: { reads: [`${PROJECTION_PREFIX}self`], projection: (self: any) => self },
+          self: { reads: [`${PROJECTION_PREFIX}self`], projection: (_keys: string[], self: any) => self },
         }),
     ).toThrow(/cycle/i);
   });
@@ -424,7 +424,7 @@ describe("Diff Tree Projection Test", () => {
     expect(
       () =>
         new DiffTreeConstructor(KeyFunc, {
-          a: { reads: [`${PROJECTION_PREFIX}missing`], projection: (v: any) => v },
+          a: { reads: [`${PROJECTION_PREFIX}missing`], projection: (_keys: string[], v: any) => v },
         }),
     ).toThrow(/missing/);
   });
@@ -433,7 +433,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       summary: {
         reads: ["count"],
-        projection: (count: number) => ({ best: { _id: "derived", value: count } }),
+        projection: (_keys: string[], count: number) => ({ best: { _id: "derived", value: count } }),
       },
     });
 
@@ -449,7 +449,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
         reads: ["items"],
-        projection: (items: any[]) => {
+        projection: (_keys: string[], items: any[]) => {
           calls++;
           return items.length;
         },
@@ -470,7 +470,7 @@ describe("Diff Tree Projection Test", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       combined: {
         reads: ["a", "b"],
-        projection: (a: any, b: any) => {
+        projection: (_keys: string[], a: any, b: any) => {
           calls++;
           return `${a?.value}-${b?.value}`;
         },
@@ -484,5 +484,60 @@ describe("Diff Tree Projection Test", () => {
 
     expect(calls).toBe(1);
     expect(result).toContainEqual({ path: [`${PROJECTION_PREFIX}combined`], value: "x-y" });
+  });
+
+  it("collects every root key matching a wildcard prefix as rest args", () => {
+    let calls = 0;
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      taskCount: {
+        reads: ["task_*"],
+        projection: (_keys: string[], ...tasks: any[]) => {
+          calls++;
+          return tasks.length;
+        },
+      },
+    });
+
+    const key = `${PROJECTION_PREFIX}taskCount`;
+
+    tree.DiffPath("task_1", { _id: "task_1", value: 1 });
+    expect(calls).toBe(1);
+    expect(tree.GetPath(key)).toBe(1);
+
+    // A key that doesn't match the prefix isn't picked up by the wildcard, so the set of
+    // matched values is unchanged and the projection doesn't re-run.
+    tree.DiffPath("note_1", { _id: "note_1", value: "unrelated" });
+    expect(calls).toBe(1);
+
+    const result = tree.DiffPath("task_2", { _id: "task_2", value: 2 });
+    expect(calls).toBe(2);
+    expect(tree.GetPath(key)).toBe(2);
+    expect(result).toContainEqual({ path: [key], value: 2 });
+  });
+
+  it("re-runs a wildcard projection when a matched entity's contents change in place", () => {
+    let calls = 0;
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      total: {
+        reads: ["task_*"],
+        projection: (_keys: string[], ...tasks: any[]) => {
+          calls++;
+          return tasks.reduce((sum, task) => sum + task.value, 0);
+        },
+      },
+    });
+
+    const key = `${PROJECTION_PREFIX}total`;
+
+    tree.DiffPath("task_1", { _id: "task_1", value: 1 });
+    expect(calls).toBe(1);
+    expect(tree.GetPath(key)).toBe(1);
+
+    // Same key, new value: the "task_1" root object is mutated in place rather than
+    // replaced, so this only re-runs the projection if the wildcard-matched values are
+    // snapshotted (like any other read) instead of compared by raw reference.
+    tree.DiffPath("task_1", { _id: "task_1", value: 5 });
+    expect(calls).toBe(2);
+    expect(tree.GetPath(key)).toBe(5);
   });
 });

@@ -35,11 +35,13 @@ export interface IDiffTreeConstructor {
 }
 
 /**
- * A pure function computing a derived value from the current values at `reads`, passed
- * positionally in the same order, so each parameter can be typed at the call site instead of
- * cast out of a generic read.
+ * A pure function computing a derived value from the current values at `reads`. Called with
+ * the resolved read paths (`keys`) first, then each value positionally in the same order as
+ * `reads`, so each value parameter can be typed at the call site instead of cast out of a
+ * generic read. A trailing wildcard read expands to one key/value pair per matched root key,
+ * so `keys` lets the function tell which root each trailing value came from.
  */
-export type DiffTreeProjectionFunc = (...values: any[]) => any;
+export type DiffTreeProjectionFunc = (keys: string[], ...values: any[]) => any;
 
 /**
  * A projection's declaration: the dot-separated paths it reads (a plain tree path, an
@@ -47,6 +49,11 @@ export type DiffTreeProjectionFunc = (...values: any[]) => any;
  * function computing its result from their current values, positionally. Declaring `reads`
  * up front lets the tree topologically sort projections and reject a dependency cycle at
  * construction instead of on first write.
+ *
+ * The final entry in `reads` may instead be a wildcard root key (e.g. `"user_*"`, no dot
+ * nesting) matching every root key with that prefix; each match is read and passed to the
+ * projection as its own trailing key/value pair. A wildcard read can't be chained off a
+ * projection's `$projection_<id>` key and can't appear anywhere but last.
  */
 export type DiffTreeProjectionDefinition = {
   reads: string[];
@@ -68,8 +75,6 @@ export type DiffSpliceResult<T = unknown> = {
   spliceResult: any[],
   diffResult: JsonDiffResult
 };
-
-
 
 /**
  * Flattens nested objects/arrays, extracting keyed objects to root.
@@ -241,6 +246,9 @@ type DiffTreeProjectionEntry = DiffTreeProjectionDefinition & { id: string };
  * sequentially: a read of another projection's `$projection_<id>` output is a dependency
  * edge, so that projection is sorted earlier. Runs once, at construction, so a cycle (or a
  * read of an id that isn't registered) is rejected immediately instead of on first write.
+ * Also validates each projection's wildcard reads here, at construction: a wildcard must be
+ * the final read, must not have dot nesting, and can't target a projection's
+ * `$projection_<id>` key.
  */
 function BuildProjectionOrder(
   projections: DiffTreeProjectionMap,
@@ -260,7 +268,14 @@ function BuildProjectionOrder(
 
     state.set(id, "visiting");
     for (let x = 0; x < def.reads.length; x++) {
-      const root = def.reads[x].split(".", 1)[0];
+      const read = def.reads[x];
+      const root = read.split(".", 1)[0];
+      if (root.endsWith("*") && x !== def.reads.length - 1)
+        throw `Wildcard reads only supported as the final read: ${root}`;
+      if (root.endsWith("*") && root.includes("."))
+        throw `Wildcard reads do not support dot nesting: ${root}`;
+      if (root.startsWith(PROJECTION_PREFIX) && read.endsWith("*"))
+        throw `Projection keys do not support wildcard reads: ${root}`
       if (root.startsWith(PROJECTION_PREFIX))
         Visit(root.slice(PROJECTION_PREFIX.length), stack.concat(id));
     }
@@ -295,6 +310,11 @@ function BuildProjectionOrder(
  * makes a blocked dependency propagate for free: a projection that never runs never writes
  * `$projection_<id>`, so anything chaining off it stays blocked in turn.
  *
+ * A trailing wildcard read is expanded against the current root keys before the projection
+ * runs: every root key matching the prefix is read and appended as its own key/value pair,
+ * so the projection is called with `(keys, ...values)` where `keys` is every resolved read
+ * path (fixed reads first, then each matched wildcard key) positional with `values`.
+ *
  * @param source - The root tree object
  * @param keyFunc - Optional function to extract a key from objects, for reading through roots
  * @param projections - Dependency-sorted projection entries, from `BuildProjectionOrder`
@@ -312,18 +332,33 @@ function RunProjections(
 
   for (let x = 0; x < projections.length; x++) {
     const { id, reads, projection } = projections[x];
-    const values = new Array(reads.length);
+    const values: any[] = [];
+    const keys: string[] = [];
     let allPathsExist = true;
-    for (let y = 0; allPathsExist && y < reads.length; y++) {
-      const [value, found] = GetPathValue(source, reads[y]);
+    let y = 0;
+    for (; allPathsExist && y < reads.length && !reads[y].endsWith("*"); y++) {
+      const read = reads[y];
+      const [value, found] = GetPathValue(source, read);
       allPathsExist = found;
-      values[y] = (found && CreateSnapshot(source, keyFunc, value)) || value;
+      keys.push(read);
+      values.push((found && CreateSnapshot(source, keyFunc, value)) || value);
+    }
+
+    if (y < reads.length && reads[y].endsWith("*")) {
+      const prefix = reads[y].slice(0, reads[y].length - 1);
+      const matchedKeys = Object.keys(source).filter(key => key.startsWith(prefix));
+      for (let z = 0; z < matchedKeys.length; z++) {
+        const [value, found] = GetPathValue(source, matchedKeys[z]);
+        allPathsExist = allPathsExist && found;
+        keys.push(matchedKeys[z]);
+        values.push((found && CreateSnapshot(source, keyFunc, value)) || value);
+      }
     }
 
     if (allPathsExist) {
       const priorValues = memo.get(id);
       if (!ArraysEqual(priorValues, values)) {
-        const result = projection(...values);
+        const result = projection(keys, ...values);
         memo.set(id, values);
 
         // The same diff-and-apply UpdateSource uses for any other write, so a keyed entity
@@ -499,9 +534,11 @@ function SpliceSource(
 }
 
 /**
- * Internal diff tree implementation.
- * Maintains root state and computes diffs for path/value updates.
- * @private
+ * Diff tree implementation. Maintains root state and computes diffs for path/value updates.
+ * Used directly by `DiffSync`, and is the building block for a `DiffAsync` worker entry
+ * file: construct one with the desired `keyFunc`/`projections` and connect it to the worker
+ * thread with `ConnectWorkerToDiffTree` (see `defaultDiffTreeWorker.ts` for the no-argument
+ * case, or a custom entry file when either is needed).
  */
 export class DiffTree {
   private rootState: {} = {};

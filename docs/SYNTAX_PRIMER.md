@@ -1,6 +1,6 @@
-# j-templates Syntax Primer — v4
+# j-templates Syntax Primer — v5
 
-Complete reference for the **j-templates** framework syntax. This documents **j-templates v7.0.98** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
+Complete reference for the **j-templates** framework syntax. This documents **j-templates v8.0.16** (see `package.json`). For pattern-oriented guides, see `docs/patterns/`; for step-by-step tutorials, see `docs/tutorials/`.
 
 > **Core concepts:** Components define UI via `Template()`. State decorators (`@Value`, `@State`, `@Computed`) enable reactivity. DOM functions (`div()`, `button()`) create virtual nodes. No compile step, minimal dependencies.
 
@@ -1339,42 +1339,59 @@ class Child extends Component {
 
 Both stores share the same API and flattening model, but differ fundamentally in where and how diffing occurs.
 
-**StoreSync** computes diffs synchronously on the main thread. Writes are immediate and consistent — a value written is readable in the same tick. It has no worker overhead, no serialisation constraints, and no `Destroy()` requirement. Use StoreSync for the vast majority of application state: user data, UI state, app config, form data, and any dataset where diff computation is not a bottleneck. `@Computed` uses `StoreSync` internally.
+**StoreSync** computes diffs synchronously on the main thread. Writes are immediate and consistent — a value written is readable in the same tick. It has no worker overhead and no `Destroy()` requirement. Use StoreSync for the vast majority of application state: user data, UI state, app config, form data, and any dataset where diff computation is not a bottleneck. `@Computed` uses `StoreSync` internally.
 
-**StoreAsync** offloads all diff computation to a dedicated Web Worker via a serialised message queue, computing minimal diffs off the main thread so large dataset operations don't block rendering or input. Use StoreAsync when diffing genuinely large or deeply nested datasets — message feeds, large tables, real-time data. `@ComputedAsync` uses `StoreAsync` internally.
+**StoreAsync** runs diff computation on a `Worker` you supply, off the main thread, so large dataset operations don't block rendering or input. Use StoreAsync when diffing genuinely large or deeply nested datasets — message feeds, large tables, real-time data. `@ComputedAsync` uses `StoreAsync` internally, with a shared prebuilt worker.
 
 **If you are unsure which to use, start with StoreSync.** StoreAsync introduces meaningful constraints (see below) that are only worth accepting when the dataset size justifies off-thread diffing.
 
 | Aspect | StoreSync | StoreAsync |
 |--------|-----------|------------|
-| Diff execution | Main thread, synchronous | Web Worker, asynchronous |
+| Diff execution | Main thread, synchronous | Caller-supplied `Worker`, asynchronous |
 | Write consistency | Immediate — readable same tick | Eventual — must `await` before reading |
-| `keyFunc` constraint | None — can close over outer scope | **Must be self-contained** — serialised and executed in worker |
-| Data constraint | Any JS value | **JSON-serialisable only** — no class instances, methods, `Date`, `Map`, `Set`, circular refs |
-| `Destroy()` required | No | Yes — terminates worker and queue |
+| Construction | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(diffWorker, keyFunc?)` — the worker is built separately (see below) |
+| `keyFunc`/projections used for diffing | Passed straight to the constructor, can close over outer scope | Must be baked into the worker's own entry file — the constructor's `keyFunc` only resolves aliases locally, on the main thread |
+| Data constraint | Any JS value | **JSON-serialisable only** — no class instances, methods, `Date`, `Map`, `Set`, circular refs (carried over `postMessage`'s structured clone) |
+| `Destroy()` required | No | Yes — terminates the worker and queue |
 | Best for | Most app state | Large / real-time datasets |
 | Decorator backend | `@Computed` | `@ComputedAsync` |
 
-### StoreAsync Constraints
+### StoreAsync: Supplying the Worker
 
-StoreAsync's worker is bootstrapped by serialising `keyFunc` and the diff engine and executing them in a worker context. This has two hard constraints:
+`StoreAsync` doesn't build or serialize a worker itself anymore — you construct a real `Worker` (a bundler-built module, not a Blob) and hand it in. Internally, a worker becomes usable by connecting a `DiffTree` to it with `ConnectWorkerToDiffTree`; that's what a worker *entry file* does.
 
-**1. `keyFunc` must be self-contained — no closed-over variables.**
-
-The function is serialised and evaluated in the worker context. Any variable from the outer scope will be undefined inside the worker.
+**Most portable option — write your own tiny entry file.** This always works regardless of bundler, because it's a relative import inside your own source tree, exactly like any other bundler-built worker:
 
 ```typescript
-// ❌ Breaks at runtime — prefix is not accessible in the worker
-const prefix = "user";
-const store = new StoreAsync((val) => val?.id ? `${prefix}_${val.id}` : undefined);
+// diff-worker.ts — a separate entry file; your bundler compiles it as its own chunk
+import { DiffTree } from "j-templates/Store/Diff/diffTree";
+import { ConnectWorkerToDiffTree } from "j-templates/Store/Diff/diffTreeWorker";
 
-// ✅ Self-contained — no outer scope references
-const store = new StoreAsync((val) => val?.id ? `user_${val.id}` : undefined);
+const diffTree = new DiffTree(/* keyFunc, projections — see below */);
+ConnectWorkerToDiffTree(diffTree, self as any as Worker);
 ```
 
-**2. All data must be JSON-serialisable.**
+```typescript
+// wherever you construct the store
+import { StoreAsync } from "j-templates/Store";
 
-The worker communicates via `postMessage`, which uses the structured clone algorithm. Class instances with methods, `Date` objects, `Map`, `Set`, `undefined` values, and circular references will be lost or throw.
+const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
+const store = new StoreAsync(worker, keyFunc); // pass the same keyFunc for local alias resolution
+```
+
+**No custom `keyFunc`/projections needed?** The package ships a ready no-argument entry file, `defaultDiffTreeWorker.js`, which is what `@ComputedAsync` builds internally (see `src/Utils/decorators.ts`) via a relative import from inside the package itself:
+
+```typescript
+const worker = new Worker(
+  new URL("../Store/Diff/defaultDiffTreeWorker.js", import.meta.url),
+  { type: "module" },
+);
+const store = new StoreAsync(worker);
+```
+
+That relative path only resolves correctly from *inside* the installed package (it's relative to the file doing the importing), so from your own app code, writing your own entry file (above) is the reliable choice.
+
+Because the worker module runs in its own realm, its `keyFunc`/projections can only close over things defined in that file — there's no shared runtime state with the main thread, and nothing is serialised with `.toString()`/`eval` (unlike older versions of this library). Data crossing the worker boundary, via `postMessage`, still goes through the structured clone algorithm, so it must be JSON-serialisable:
 
 ```typescript
 // ❌ Methods and class instances are stripped by structured clone
@@ -1392,6 +1409,7 @@ class Store {
   constructor(keyFunc?: (value: any) => string | undefined);
   Get<O>(id: string): O | undefined;        // Returns undefined if not found
   Get<O>(id: string, defaultValue: O): O;   // Creates and returns default if not found
+  Has(id: string): boolean;                 // Whether a root object exists for id
 }
 ```
 
@@ -1399,6 +1417,7 @@ class Store {
 
 ```typescript
 class StoreSync extends Store {
+  constructor(keyFunc?: (value: any) => string | undefined, projections?: DiffTreeProjectionMap);
   Write(data: unknown, key?: string): void;
   Patch(key: string, patch: unknown): void;       // Deep merge; throws if key not found
   Push(key: string, ...data: unknown[]): void;
@@ -1411,13 +1430,38 @@ class StoreSync extends Store {
 
 ```typescript
 class StoreAsync extends Store {
+  constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined);
   async Write(data: unknown, key?: string): Promise<void>;
   async Patch(key: string, patch: unknown): Promise<void>;  // Deep merge; throws if key not found
   async Push(key: string, ...data: unknown[]): Promise<void>;
   async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<unknown[]>;
-  Destroy(): void;  // Always call when service is destroyed — terminates worker
+  Destroy(): void;  // Always call when service is destroyed — terminates the worker
 }
 ```
+
+### Projections — Derived Values Computed Inside the Store
+
+A projection is a derived value the store computes for you and stores alongside your written data, readable through `Get` like anything else. Declare a map of them at construction (`StoreSync`'s second argument; for `StoreAsync`, baked into the worker's `DiffTree` as shown above):
+
+```typescript
+import { StoreSync } from "j-templates/Store";
+import { PROJECTION_PREFIX } from "j-templates/Store/Diff/diffTree";
+
+const store = new StoreSync((value: any) => value?.id, {
+  activeCount: {
+    reads: ["todos"],
+    projection: (keys: string[], todos: Todo[]) => todos.filter((t) => !t.completed).length,
+  },
+});
+
+store.Write(todos, "todos");
+store.Get<number>(`${PROJECTION_PREFIX}activeCount`); // "$projection_activeCount"
+```
+
+- `reads` is a list of dot-separated paths: a plain tree path (`"todos"`), a keyed entity's id (whatever `keyFunc` returns for it), or another projection's output via `` `${PROJECTION_PREFIX}otherId` `` (i.e. `"$projection_otherId"`) — chaining. The dependency graph is topologically sorted at construction, so a cycle (or a read of an unregistered id) throws immediately rather than on first write.
+- `projection` is called as `(keys, ...values)` — every resolved read path, then each value positionally in the same order as `reads`.
+- The final `reads` entry may instead be a wildcard root prefix (e.g. `"task_*"`, no dot nesting) — every root key with that prefix is read and appended as its own trailing key/value pair, so `projection` receives one extra `(key, value)` pair per match. Only the last read may be a wildcard, and it can't target a projection's `$projection_<id>` key.
+- A projection only runs once every one of its `reads` resolves — a path never written, an entity never seen, or a projection that hasn't produced a value yet blocks it (and blocks anything chaining off it). It re-runs whenever a read's resolved value changes, and its result is diffed and applied in place like any other write, so only the fields that actually changed reach reactive readers.
 
 ### keyFunc and Automatic Flattening
 
@@ -1462,7 +1506,7 @@ If an object has no `id` property (or `keyFunc` returns `undefined`), it is stor
 | Splice | sync | async (Promise) |
 | Get | sync | sync |
 | Destroy | N/A | `Destroy(): void` — required |
-| keyFunc constraint | None | Self-contained, no closed-over vars |
+| Construction | `keyFunc`/`projections` args | `diffWorker` (required) + local `keyFunc` |
 | Data constraint | Any JS value | JSON-serialisable only |
 
 ---
@@ -1499,9 +1543,12 @@ scope whose value doesn't derive from reactive state, use `Basic` instead, which
 ### Service Patterns
 
 ```typescript
-// Derived state in services
+// Derived state in services — worker built once, e.g. in a module-level helper
+// (see "StoreAsync: Supplying the Worker" above for how diff-worker.ts is written)
+const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
+
 class DataService implements IDestroyable {
-  private store = new StoreAsync((value) => value.id);
+  private store = new StoreAsync(worker, (value) => value.id);
   private derived = ObservableScope.Create(() => {
     const items = this.store.Get<Item[]>("items", []);
     return ObservableNode.Unwrap(items).filter(i => i.active);
@@ -1531,6 +1578,7 @@ namespace ObservableNode {
   Create<T>(value: T): T;                                       // Wrap in reactive proxy
   Unwrap<T>(value: T): T;                                      // Get raw value from proxy
   Clone<T>(value: T): T;                                        // Strip proxies into plain data (mutates plain objects in place)
+  Snapshot<T>(proxy: T): T | undefined;                         // Immutable cached plain-value snapshot of a node
   Update(value: unknown, prop?: string | number): void;         // Manually trigger change on a node/property
   Apply(rootNode: any, value: any): void;                       // Merge a full value in-place, preserving identity (public)
   ApplyDiff(rootNode: any, diffResult: JsonDiffResult): void;   // Apply diff in-place (internal — used by Store/@Computed)
@@ -1539,6 +1587,8 @@ namespace ObservableNode {
 ```
 
 **`Apply` vs `ApplyDiff`:** `Apply(rootNode, value)` merges a full replacement value into an observable node in-place, preserving the node's reference (so `===` checks and DOM reuse stay stable). Use this when you want to update an observable node in place — assigning a property directly on an observable node does **not** generate a diff. `ApplyDiff` is internal-only (used by `StoreSync`/`StoreAsync`/`@Computed`) — ignore it.
+
+**`Snapshot` and `toJSON`.** `ObservableNode.Snapshot(proxy)` returns an immutable plain copy of a node's current value (arrays/objects only; keyed children are read through their root). The same snapshot is returned on repeated calls until a write invalidates it, and unchanged nested parts are shared between snapshots, so `===` holds for anything that hasn't changed — useful for cheap change detection or handing data to non-reactive code. Calling `.toJSON()` on an observable node (e.g. via `JSON.stringify`) returns this same cached snapshot.
 
 **Array operations on ObservableNode proxies:** `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse` — all trigger reactive updates.
 
@@ -1568,7 +1618,7 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 10. **`@Computed` only tracks what the getter touches.** Returning `this.tasks` without reading item properties won't re-trigger on per-item mutations. Touch every property you track.
 11. **`scope()`/`gate()`/`peek()`/`mapped()` throw outside a watch context.** They must be called inside a children function, `data:`/`props:`/`attrs:` function, `@Scope`/`@Computed`/`@ComputedAsync` getter, or `@Watch` callback — not inside `on:` event handlers.
 12. **`Injector` is not publicly exported.** Use `@Inject` and `this.Injector` on components.
-13. **StoreAsync data must be JSON-serialisable** and `keyFunc` must be self-contained (no closed-over variables). Always `await` StoreAsync writes before reading.
+13. **StoreAsync data must be JSON-serialisable** (carried over `postMessage`'s structured clone), and `StoreAsync` now takes an already-running `Worker` as its first constructor argument — any `keyFunc`/projections needed for diffing must be baked into that worker's own entry file, not passed to `StoreAsync` directly. Always `await` StoreAsync writes before reading.
 14. **Two-way binding needs reactive props** (`props: () => ({ value })`). A static `props: { value }` object causes input focus loss.
 15. **The Destructuring Trap.** Reading a scope or `this.Data` at the top of `Template()` subscribes the whole component — the React instinct to hoist state reads is backwards here. Read scopes inside children functions or `data:` bindings for fine-grained updates. See Mental Model.
 16. **`scope()`/`gate()`/`peek()` ID collisions are per-scope.** Multiple calls to the same helper in one watch context without IDs silently resolve to the first scope. Provide distinct IDs when calling the same helper more than once in a single ObservableScope definition.
@@ -1645,12 +1695,13 @@ These are the subtle behaviors that cause the most bugs. Read this before writin
 | **ObservableNode** | A reactive proxy wrapper around objects/arrays that tracks property-level mutations |
 | **Injector** | Scoped dependency injection container with parent-chain resolution (not publicly exported) |
 | **keyFunc** | A function passed to Store that extracts an ID from objects for automatic flattening |
+| **Projection** | A derived value declared at Store construction (`reads` + a computing function), stored and read like any other data at `$projection_<id>` |
 
 ---
 
 ## References
 
-- **Source of truth:** `src/` (this primer documents `j-templates` v7.0.98).
+- **Source of truth:** `src/` (this primer documents `j-templates` v8.0.16).
 - **Pattern guides:** `docs/patterns/01-components.md`, `docs/patterns/02-reactivity.md`, `docs/patterns/03-templates-and-data.md`, `docs/patterns/04-dependency-injection.md`.
 - **Tutorials:** `docs/tutorials/` (01-getting-started through 08-building-complete-app).
 - **Worked example:** `examples/smart-tasks/src/` (the Smart Tasks app used above).

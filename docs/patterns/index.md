@@ -11,7 +11,7 @@
 
 ## Further Reading
 
-- [Syntax Primer v3](../SYNTAX_PRIMER_v3.md) — Complete API reference and cheat sheet
+- [Syntax Primer](../SYNTAX_PRIMER.md) — Complete API reference and cheat sheet
 - [Tutorials](../tutorials/index.md) — Step-by-step guides from getting started to full applications
 
 ## Example Application
@@ -28,4 +28,4 @@ Key files:
 - `src/app.ts` — Main component with DI, computed state
 - `src/components/number-card.ts` — Animation, @Value, @Watch
 - `src/components/data-table.ts` — Generic components
-- `src/services/dataService.ts` — StoreSync, reactive state
+- `src/services/dataService.ts` — StoreAsync, reactive state

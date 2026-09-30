@@ -142,23 +142,40 @@ File: `src/services/dataService.ts`
 
 ```typescript
 export class DataService implements ActivityDataService, IDestroyable {
-  private store = new StoreAsync((value) => value.id);
-  
+  private store = new StoreAsync(
+    new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
+    (value) => value.id,
+  );
+
   constructor() {
     this.store.Write(generateActivities(2), "activities");
   }
 }
 ```
 
+`diff-worker.ts` is a small separate entry file, bundled on its own by Vite, that builds the `DiffTree` actually doing the diffing:
+
+```typescript
+// src/services/diff-worker.ts
+import { DiffTree } from "j-templates/Store/Diff/diffTree";
+import { ConnectWorkerToDiffTree } from "j-templates/Store/Diff/diffTreeWorker";
+
+const diffTree = new DiffTree((value: any) => value?.id);
+ConnectWorkerToDiffTree(diffTree, self as any as Worker);
+```
+
 ### StoreAsync with Key Function
 
 ```typescript
-private store = new StoreAsync((value) => value.id);
+private store = new StoreAsync(
+  new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
+  (value) => value.id,
+);
 ```
 
 **What This Does:**
-1. Creates an async store for managing activity data
-2. Key function `(value) => value.id` enables **object sharing**
+1. Creates an async store for managing activity data, with diffing running on the worker `diff-worker.ts` builds
+2. Key function `(value) => value.id`, declared in **both** `diff-worker.ts` (for diffing) and here (for locally resolving aliases when reading), enables **object sharing**
 3. Objects with the same ID reference the same instance internally
 
 **Object Sharing Example:**
@@ -337,7 +354,7 @@ tbody({ data: () => gate(() => this.Data.data) }, (data) => ...)
 - Important when parent scope aggregates multiple values
 - Optional for direct @State access (arrays are reactive by default)
 
-**See:** `docs/SYNTAX_PRIMER_v3.md` - "gate() — Emission Gatekeeper"
+**See:** `docs/SYNTAX_PRIMER.md` - "gate() — Emission Gatekeeper"
 
 ---
 
@@ -522,7 +539,7 @@ get Report() {
 - `@Scope` - For cheap primitive calculations
 - Both cache results and re-evaluate on dependency changes
 
-**See:** `docs/SYNTAX_PRIMER_v3.md` - "@Computed vs @Scope" table
+**See:** `docs/SYNTAX_PRIMER.md` - "@Computed vs @Scope" table
 
 ### @ComputedAsync Alternative
 
@@ -601,7 +618,7 @@ Component.Attach(root, app({}));
 6. Attaches DOM to root element
 7. Sets up reactive bindings
 
-**See:** `docs/SYNTAX_PRIMER_v3.md` - "Component lifecycle"
+**See:** `docs/SYNTAX_PRIMER.md` - "Component lifecycle"
 
 ---
 
@@ -931,7 +948,7 @@ Destroy(): void {
 - [Dependency Injection](../patterns/04-dependency-injection.md)
 
 ### Syntax Primer
-- [Syntax Primer v3](../SYNTAX_PRIMER_v3.md)
+- [Syntax Primer](../SYNTAX_PRIMER.md)
 
 ### Source Code
 - `examples/real_time_dashboard/` - Working reference implementation
@@ -942,13 +959,13 @@ Destroy(): void {
 - `src/Utils/injector.ts` - Injector class
 
 ### Previous Tutorials
-- [Tutorial 1: Getting Started](./tutorials/01-getting-started.md)
-- [Tutorial 2: Your First Component](./tutorials/02-your-first-component.md)
-- [Tutorial 3: Reactive State Basics](./tutorials/03-reactive-state-basics.md)
-- [Tutorial 4: Template System Deep Dive](./tutorials/04-template-system-deep-dive.md)
-- [Tutorial 5: Decorators Deep Dive](./tutorials/05-decorators-deep-dive.md)
-- [Tutorial 6: Component Composition](./tutorials/06-component-composition.md)
-- [Tutorial 7: Dependency Injection](./tutorials/07-dependency-injection.md)
+- [Tutorial 1: Getting Started](./01-getting-started.md)
+- [Tutorial 2: Your First Component](./02-your-first-component.md)
+- [Tutorial 3: Reactive State Basics](./03-reactive-state-basics.md)
+- [Tutorial 4: Template System Deep Dive](./04-template-system-deep-dive.md)
+- [Tutorial 5: Decorators Deep Dive](./05-decorators-deep-dive.md)
+- [Tutorial 6: Component Composition](./06-component-composition.md)
+- [Tutorial 7: Dependency Injection](./07-dependency-injection.md)
 
 ---
 

@@ -441,6 +441,14 @@ export namespace ObservableNode {
     return DefaultCreateProxy(value);
   }
 
+  /**
+   * Returns an immutable, cached snapshot of an observable node's current value (plain
+   * objects/arrays, with keyed children read through their root). The same snapshot is
+   * returned until a write invalidates it, and unchanged nested parts are shared between
+   * snapshots, so `===` holds for any part that hasn't changed.
+   * @param proxy The observable node to snapshot.
+   * @returns The snapshot, or `undefined` if `proxy` is not an observable node.
+   */
   export function Snapshot<T>(proxy: T): T | undefined {
     if ((proxy as any)[IS_NODE])
       return (proxy as any)[NODE_SNAPSHOT];
@@ -518,6 +526,16 @@ export namespace ObservableNode {
     ApplyDiff(rootNode, diff);
   }
 
+  /**
+   * Splices an observable node's underlying array in-place, invalidating its snapshot and
+   * touching its scope so reactive readers update.
+   * @param rootNode The observable array node to splice.
+   * @param start Index at which to start changing the array.
+   * @param deleteCount Number of elements to remove starting at `start`.
+   * @param items Elements to insert at `start`.
+   * @param cloneData Whether to deep-clone `items` before inserting them (true by default,
+   *   so the store isn't left holding a reference the caller can still mutate).
+   */
   export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[], cloneData = true) {
     const root = rootNode[NODE_VALUE];
     InvalidateSnapshotForValue(rootNode[NODE_VALUE]);
@@ -531,6 +549,8 @@ export namespace ObservableNode {
    * Optimizes nested object updates by computing paths incrementally and touching modified properties.
    * @param rootNode The observable node to apply the diff to.
    * @param diffResult The diff result from JsonDiff containing path-value pairs of changes.
+   * @param cloneData Whether to deep-clone each diff value before writing it in (true by
+   *   default), so the store isn't left holding a reference the caller can still mutate.
    */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult, cloneData = true) {
     const root = rootNode[NODE_VALUE];

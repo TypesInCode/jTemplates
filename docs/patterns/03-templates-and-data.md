@@ -242,11 +242,16 @@ class UserProfile extends Component<{ user: User }> {
 ```typescript
 const store = new StoreSync((value) => value.id);
 
-store.Write({ id: "1", name: "Alice" });           // Write & diff
+store.Write({ id: "1", name: "Alice" });            // Write & diff
 store.Patch("1", { email: "alice@example.com" });   // Deep merge
-store.Push("1", "tags", "admin");                   // Push to nested array
-store.Splice("1", "tags", 0, 1);                    // Splice nested array
 const user = store.Get<User>("1");                  // Observable retrieval
+
+// Push/Splice operate on an array stored at its own root key — not a nested
+// path within another root, so give the array its own key to Push/Splice into it.
+store.Write([] as string[], "tags");
+store.Push("tags", "admin");                        // Push item(s)
+store.Splice("tags", 0, 1);                         // Splice — returns removed items
+const tags = store.Get<string[]>("tags", []);
 ```
 
 ### Object sharing with key functions
