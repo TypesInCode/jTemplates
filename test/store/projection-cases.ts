@@ -24,17 +24,17 @@ export const KeyFunc = (val: any) => val?._id;
 export const projections: DiffTreeProjectionMap = {
   total: {
     reads: ["items"],
-    projection: (items: any[]) => items.length,
+    projection: (_: string[], items: any[]) => items.length,
   },
   doubled: {
     reads: [`$projection_total`],
-    projection: (total: number) => total * 2,
+    projection: (_: string[], total: number) => total * 2,
   },
   leader: {
     reads: ["items"],
     // "derived" exists only inside this result, so it only becomes its own root through
     // the projection's flatten, the same way any other write's flatten would register it.
-    projection: (items: any[]) => ({ best: { _id: "derived", count: items.length } }),
+    projection: (_: string[], items: any[]) => ({ best: { _id: "derived", count: items.length } }),
   },
 };
 
