@@ -384,8 +384,10 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     }
   }
 
-  return function CreateProxy<T>(value: T): T {
-    value = UnwrapProxy(value);
+  return function CreateProxy<T>(value: T, unwrapValue = true): T {
+    if (unwrapValue)
+      value = UnwrapProxy(value);
+
     return CreateProxyFromValue(value);
   }
 }
@@ -437,8 +439,8 @@ export namespace ObservableNode {
    * @param value The plain value (object, array, or primitive) to make observable.
    * @returns A proxied version of the value that emits change events.
    */
-  export function Create<T>(value: T): T {
-    return DefaultCreateProxy(value);
+  export function Create<T>(value: T, unwrapValue = true): T {
+    return DefaultCreateProxy(value, unwrapValue);
   }
 
   /**

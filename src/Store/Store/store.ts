@@ -11,7 +11,7 @@ import { ObservableNode } from "../Tree/observableNode";
  */
 export abstract class Store {
   private rootMap = new Map<string | number, any>();
-  private createNode: <T>(data: T) => T;
+  private createNode: <T>(data: T, unwrapValue?: boolean) => T;
 
   /**
    * Creates an instance of Store.
@@ -113,7 +113,7 @@ export abstract class Store {
         throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
 
       const rootData = this.cloneData ? JsonDeepClone(results[0].value) : results[0].value;
-      const newRootObject = this.createNode({ [rootPath]: rootData });
+      const newRootObject = this.createNode({ [rootPath]: rootData }, false);
       this.rootMap.set(rootPath, newRootObject);
 
       return;

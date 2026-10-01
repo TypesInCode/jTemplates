@@ -71,6 +71,9 @@ export class StoreAsync extends Store {
     return this.queue.Flush();
   }
 
+  private nextWritePromise: Promise<void> = null;
+  private nextWriteBatch: { path: string | undefined, value: unknown }[] = null;
+
   /**
    * Writes data to the store asynchronously.
    * This method ensures that write operations are queued and executed in a non-blocking manner.
@@ -79,14 +82,24 @@ export class StoreAsync extends Store {
    * @throws Will throw an error if no key is provided for the data.
    */
   async Write(data: unknown, key?: string) {
-    await this.queue.Next(async () => {
-      key = key || this.keyFunc?.(data);
+    const nextWriteBatch = this.nextWriteBatch ??= [];
+    const init = nextWriteBatch.length === 0;
 
-      if (!key) throw "No key provided for data";
-
-      const diffResult = await this.diff.DiffPath(key, data);
-      this.UpdateRootMap(diffResult);
+    nextWriteBatch.push({
+      path: key || this.keyFunc?.(data),
+      value: data
     });
+
+    if (init) {
+      this.nextWritePromise = this.queue.Next(async () => {
+        await Promise.resolve();
+        this.nextWriteBatch = null;
+        const diffResult = await this.diff.DiffBatch(nextWriteBatch);
+        this.UpdateRootMap(diffResult);
+      });
+    }
+
+    return this.nextWritePromise;
   }
 
   /**
