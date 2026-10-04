@@ -58,7 +58,7 @@ export type vNodeDefinition<
   props?: FunctionOr<RecursivePartial<P>>;
   attrs?: FunctionOr<{ [name: string]: string }>;
   on?: FunctionOr<vNodeEvents<E>>;
-  data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
+  data?: () => T | Array<T> | null | undefined | Promise<T | Array<T> | null | undefined>;
   children?: vNodeChildrenFunction<T>;
   childrenArray?: vNode[];
   componentFactory?: (vnode: vNode) => Component<any, any, any>;
