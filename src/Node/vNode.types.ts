@@ -14,15 +14,13 @@ export type vNodeEvents<E extends { [event: string]: any } = any> = {
   [P in keyof E]?: { (events: E[P]): void };
 };
 
-export type vNodeChildrenFunction<T> =
-  | ((data: T) => vNode | vNode[])
-  | ((data: T) => string);
+export type vNodeChildrenFunction<T> = (data: T) => vNode | vNode[] | string | null | undefined;
 
 export type vNodeConfig<P = HTMLElement, E = HTMLElementEventMap, T = never> = {
   props?: FunctionOr<RecursivePartial<P>>;
   attrs?: FunctionOr<{ [name: string]: string }>;
   on?: FunctionOr<vNodeEvents<E>>;
-  data?: () => T | Array<T> | Promise<Array<T>> | Promise<T>;
+  data?: () => T | Array<T> | null | undefined | Promise<T | Array<T> | null | undefined>;
 };
 
 export type vStringNode = {
