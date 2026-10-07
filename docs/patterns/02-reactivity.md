@@ -128,24 +128,26 @@ tbody({ data: () => gate(() => this.Data.items) }, (item) => tr(...));
 
 ### peek
 
-Memoized computed scope that does **not** register as a dependency with the parent. Use this to read reactive data without subscribing to changes. Accepts async callbacks.
+Calls a function with dependency tracking turned off. Use this to read reactive data without subscribing to changes.
 
 ```typescript
 import { peek } from "j-templates";
 ```
 
 ```typescript
-peek<T>(callback: () => T | Promise<T>, idOverride?: string): T
+peek<T>(callback: () => T): T
 ```
 
-`peek` **only works inside a watch context** (during another scope's evaluation). Unlike `gate`, the scope created by `peek` does not register as a dependency — changes to the data accessed within the callback will not trigger recomputation of the parent scope. The scope is still memoized by ID within the watch context to avoid redundant computation.
+`peek` creates no scope: the callback runs immediately on every call and its return value is passed through. Reactive values read inside the callback are not registered with the current watch context, so changes to them will not trigger recomputation of the parent scope. Nothing is memoized and there is no id parameter — if the parent re-runs, the callback runs again.
+
+`peek` works anywhere, inside or outside a watch context (including `on:` handlers). Because tracking is off inside the callback, `scope()`, `gate()` and `mapped()` throw if called from within it. Async callbacks are not awaited; the Promise is returned as-is.
 
 ```typescript
-// Read reactive data without subscribing
-const timestamp = peek(() => Date.now());
-
 // Useful for reading values that should not drive parent updates
-const id = peek(() => this.Data.id, "id");
+const id = peek(() => this.Data.id);
+
+// Also fine outside a scope, e.g. in an event handler
+on: { click: () => console.log(peek(() => this.items.length)) }
 ```
 
 #### Comparison
@@ -154,7 +156,7 @@ const id = peek(() => this.Data.id, "id");
 |---|---|---|---|
 | `scope()` | Yes | No | Full reactivity needed |
 | `gate()` | Yes | Yes | Prevent unnecessary downstream updates |
-| `peek()` | No | N/A | One-time reads, display-only values |
+| `peek()` | No (no scope created) | N/A | Untracked reads, anywhere |
 | `mapped()` | Yes (per item) | No | Per-item scopes (advanced; used internally by `data:`) |
 
 ## Decorators
@@ -166,7 +168,7 @@ Decorators provide ergonomic access to the reactive primitives inside `Component
 | `@Value()` | Property | `ObservableScope` | Reactive primitive (number, string, boolean). Setter triggers `Update`. |
 | `@State()` | Property | `ObservableNode` | Deep reactive object/array via proxy. Nested mutations tracked. |
 | `@Scope()` | Getter | `ObservableScope` | Cached computed value. Returns **new** reference on update. |
-| `@Computed()` | Getter | `StoreSync` + `ApplyDiff` | Cached computed with **identity preservation**. Returns **same** reference on update. |
+| `@Computed()` | Getter | `ObservableNode` + `Apply` | Cached computed with **identity preservation**. Returns **same** reference on update. |
 | `@ComputedAsync(default)` | Getter | `StoreAsync` + `ApplyDiff` | Like `@Computed`, but diff computation runs asynchronously. |
 | `@Watch(fn)` | Method | `ObservableScope.Watch` | Subscribe a method to reactive value changes. |
 
@@ -233,7 +235,7 @@ How it works:
 
 ### @Computed — Computed getter (identity preservation)
 
-Best for expensive computations or when downstream consumers need stable object references. Uses `StoreSync` + `ApplyDiff` so the same object is mutated in-place when the structure hasn't changed.
+Best for expensive computations or when downstream consumers need stable object references. Uses an `ObservableNode` + `ObservableNode.Apply` so the same object is mutated in-place when the structure hasn't changed. No store is involved.
 
 ```typescript
 class TodoApp extends Component {
@@ -247,9 +249,9 @@ class TodoApp extends Component {
 ```
 
 How it works:
-1. Creates a **getter scope** that evaluates the user's getter.
-2. When dependencies change, the getter result is written to a `StoreSync` via `Write`.
-3. A **property scope** reads from the `StoreSync`, which applies a diff (`ApplyDiff`) to the existing object.
+1. Creates a **Gated getter scope** that evaluates the user's getter and returns a clone of the result (`ObservableNode.Clone`).
+2. A watcher on the getter scope merges each new clone into a persistent `ObservableNode` with `ObservableNode.Apply`, which diffs against the current value and changes only the paths that differ.
+3. A **property scope** reads the node's root. It emits only when the root is replaced — the result's type changes or an object result loses a key. Readers of sub-properties are notified per changed path.
 4. Downstream consumers receive the **same object reference** when the structure is unchanged.
 
 **Note:** Unlike the old docs suggested, `@Computed()` does **not** take a `defaultValue` parameter. The type is inferred from the getter's return type.
@@ -271,7 +273,7 @@ How it works:
 1. Creates a getter scope and a `StoreAsync` instance.
 2. On dependency change, `store.Write(data, "root")` is queued asynchronously.
 3. A property scope reads from the store with `store.Get("root", defaultValue)`.
-4. Object identity is preserved via `ApplyDiff`, same as `@Computed`.
+4. Object identity is preserved via the store's `ApplyDiff`, like `@Computed`.
 
 ### @Watch — React to value changes
 
@@ -305,7 +307,7 @@ How it works:
 
 | | `@Scope` | `@Computed` |
 |---|---|---|
-| Backend | Single `ObservableScope` | `ObservableScope` → `StoreSync` → `ObservableScope` |
+| Backend | Single `ObservableScope` | Gated `ObservableScope` → `ObservableNode` → `ObservableScope` |
 | Object identity | New reference on change | Same reference when structure unchanged |
 | Best for | Primitives, cheap arrays, new-object returns | Expensive arrays, object reuse, DOM recycling |
 | Overhead | Low | Higher (diff computation) |
@@ -425,7 +427,7 @@ ObservableScope.OnDestroyed(scope, () => console.log("destroyed"));
 
 ## Source
 
-- `src/Store/Tree/observableScope.ts` — ObservableScope, InlineScope, GateScope, PeekScope, MappedScope
+- `src/Store/Tree/observableScope.ts` — ObservableScope, InlineScope, GateScope, PeekCallback, MappedScope
 - `src/Store/Tree/observableNode.ts` — ObservableNode
 - `src/Store/Store/storeSync.ts` — StoreSync
 - `src/Store/Store/storeAsync.ts` — StoreAsync

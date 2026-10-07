@@ -2,13 +2,13 @@
 
 Oct 3, 2026 · @Jay Landrum
 
-Reference for building apps with j-templates 8.0.19. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
+Reference for building apps with j-templates 8.0.21. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
 
 ## How to use this document
 
 Read Mental model, then Templates and State decorators before writing a component. Check the Traps checklist before shipping.
 
-- **Version:** j-templates 8.0.19 (its runtime code is identical to 8.0.18; only two type declarations changed). Tested in jsdom with TypeScript (`experimentalDecorators`).
+- **Version:** j-templates 8.0.21. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry; those sections were re-verified against 8.0.21 in jsdom.
 - **Not verified:** a real browser `Worker` (a structured-clone shim stood in), real focus behavior, and the `docs/`, `examples/` and `src/` folders the package does not ship.
 - **Convention:** `this.x` in examples is a component field decorated with `@Value` or `@State` unless shown otherwise. Imports are omitted after the first example.
 
@@ -324,8 +324,10 @@ Tracked array methods: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `rev
 ```
 
 - Created on first read; afterwards recomputes immediately when a dependency changes, then merges the result into the existing object.
-- No store is involved. The getter runs inside an `ObservableScope.Gated` scope; each result is copied with `ObservableNode.Clone` and merged into an internal `ObservableNode` with `ObservableNode.Apply` (from source).
-- `this.summary === this.summary` holds across updates, so `gate()` and identity-based item reuse see a stable reference.
+- No store is involved. The getter runs inside an `ObservableScope.Gated` scope that is watched; each result is copied with `ObservableNode.Clone` and merged into an internal `ObservableNode` with `ObservableNode.Apply`. The property reads that node's root through a separate scope (from source).
+- Readers of the property itself re-run only when the root is replaced. A reader of a sub-property (`this.summary.done`) re-runs only when that path changes (verified).
+- `this.summary === this.summary` holds across content updates, including arrays growing or shrinking (verified), so `gate()` and identity-based item reuse see a stable reference.
+- The root is replaced, with a new identity, when the result's type changes or an object result loses a key (verified: `{ a, b }` → `{ a }`). A primitive result therefore behaves like `gate()`: readers re-run only when the value changes (verified).
 - The result is a **copy**. `@Computed() get x() { return this.tasks; }` returns an object that is not `this.tasks`. Use `@Scope` when you need the original reference.
 - The copy step reads every property of the result, so all of them become dependencies. Returning a `@State` array therefore re-runs the getter when any item property changes (verified).
 - No arguments. Prefer `@Scope` or a plain getter for cheap values.
@@ -368,24 +370,26 @@ syncFilter(value: FilterType) { this.localFilter = value; }
 
 ## Inline scopes: scope, gate, peek, mapped
 
-These create a memoized child scope inside the scope currently being evaluated and return its value.
+`scope`, `gate` and `mapped` create a memoized child scope inside the scope currently being evaluated and return its value. `peek` creates no scope: it calls its function immediately with dependency tracking turned off.
 
 | Function | Parent re-runs when the value changes | Equality check | Use for |
 | --- | --- | --- | --- |
 | `scope(fn, id?)` | yes | none: parent re-runs on every emit | composing a value, especially async |
 | `gate(fn, id?)` | yes | `!==` only | booleans and other primitives that change less often than their inputs |
-| `peek(fn, id?)` | no | — | reading without subscribing |
+| `peek(fn)` | no | — | reading without subscribing; works anywhere |
 | `mapped(data, fn, onUpdated?, onDestroyed?)` | yes | none | a per-item scope for one value (what `data:` does internally) |
 
 Verified example: with `n` going from 0 to 1, `scope(() => n > 10)` re-runs the parent, `gate(() => n > 10)` and `peek(() => n > 10)` do not.
 
-**Where they can be called.** Only while a scope is evaluating: children functions, `data:`/`props:`/`attrs:` functions, decorated getters, and `ObservableScope.Create` value functions. Elsewhere, including `on:` handlers, they throw `scope() must be called within a watch context` (or `gate()` / `peek()`; `mapped()` reports `scope()`).
+**Where they can be called.** `scope`, `gate` and `mapped` only while a scope is evaluating: children functions, `data:`/`props:`/`attrs:` functions, decorated getters, and `ObservableScope.Create` value functions. Elsewhere, including `on:` handlers, they throw `scope() must be called within a watch context` (or `gate()`; `mapped()` reports `scope()`). They also throw inside a `peek` callback, because tracking is off there (verified).
+
+**peek() details.** `peek` can be called anywhere, including `on:` handlers and plain code (verified). It is not memoized and takes no id: the callback runs on every call, so a parent that re-runs calls it again (verified). It does not await: an `async` callback returns its Promise.
 
 **gate() with @Scope.** Works for a getter that returns a primitive: `gate(() => this.isEmpty)` suppresses re-runs while the boolean is unchanged. Useless for a getter that builds a new object or array each run, because every result is `!==` the last.
 
 ### How memoization matches calls
 
-On each re-run of the parent, each call is matched to a scope from the previous run with the same key, in call order. The key is `id` if given, otherwise one default key per function. `mapped()` keys by the `data` object instead. Consequences:
+This applies to `scope`, `gate` and `mapped`; `peek` has no scope to match. On each re-run of the parent, each call is matched to a scope from the previous run with the same key, in call order. The key is `id` if given, otherwise one default key per function. `mapped()` keys by the `data` object instead. Consequences:
 
 1. **Unconditional duplicates are safe.** Two `gate()` calls without ids, always made in the same order, stay independent across re-runs (verified).
 2. **Conditional or reordered calls need ids.** If a call without an id is skipped, the next same-function call takes its old scope and returns the wrong value, permanently:
@@ -890,11 +894,11 @@ Component.Attach(document.getElementById("app")!, app({}));
 8. **`@Value` does not see in-place mutation.** Reassign, or use `@State`.
 9. **`@State` deep-tracks plain objects and arrays only**, not class instances, `Map` or `Set`.
 10. **`@Scope` has no equality check**; consumers re-run on every change of its inputs. `gate()` it if it returns a primitive.
-11. **`@Computed` returns a copy**, not the object the getter returned, and its identity never changes.
+11. **`@Computed` returns a copy**, not the object the getter returned. Its identity changes only when the result's type changes or an object result loses a key.
 12. **`Bound()` runs before `Template()`**, with the host detached and empty. Defer DOM access with `requestAnimationFrame`. Forgetting `super.Bound()` silences `@Watch`.
 13. **`@Watch` fires immediately** with the initial value, and coalesces synchronous changes into one call.
-14. **Inline helpers outside a scope throw**, including in `on:` handlers.
-15. **Conditional `scope()`/`gate()`/`peek()` calls need ids**, or a later call takes a skipped call's scope. Callbacks are fixed at first run: don't close over locals.
+14. **`scope()`, `gate()` and `mapped()` outside a scope throw**, including in `on:` handlers and inside `peek()` callbacks. `peek()` works anywhere.
+15. **Conditional `scope()`/`gate()` calls need ids**, or a later call takes a skipped call's scope. Callbacks are fixed at first run: don't close over locals.
 16. **Async scopes need the `async` keyword**, track only reads before the first `await`, and are `null` until resolved.
 17. **Rendering is asynchronous** unless `SYNC_SCHEDULING=true`: the DOM is not updated on the line after a write, and not built when `Attach` returns.
 18. **Native DOM listeners belong on elements you render**, not the host.
@@ -905,6 +909,7 @@ Component.Attach(document.getElementById("app")!, app({}));
 
 23) **Equal-value writes still notify.** Assigning the current value again re-runs every reader. Guard repeated writes or read through `gate()`.
 24) **`JSON.stringify(node)` and `ObservableNode.Snapshot(node)` don't subscribe.** Read properties directly, or `ObservableNode.Clone(node)` to track everything.
+25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
 
 ## Debugging
 
@@ -928,6 +933,8 @@ Component.Attach(document.getElementById("app")!, app({}));
 | `ReferenceError: self is not defined` | importing `defaultDiffTreeWorker` on the main thread | write your own worker entry file |
 | A page or region rebuilds although nothing visibly changed | a write assigned the same value again (common in routers and sync code) | write only changed values, or read through gate() |
 | A watcher or scope over JSON.stringify/Snapshot never fires | snapshot reads register no dependencies | read properties directly, or JSON.stringify(ObservableNode.Clone(node)) |
+| `Emitter.Emit: re-entry during emit is not supported` | a `Watch`/`OnUpdated` callback updates the scope or value that is notifying it | defer the write, or move it out of the callback |
+| `scope() must be called within a watch context` inside `peek()` | tracking is off inside `peek` | call `scope()`/`gate()` outside the `peek` callback |
 
 ## Corrections from the v5 primer
 
