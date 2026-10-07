@@ -39,13 +39,13 @@
  * | Aspect | @Computed | @Scope |
  * |--------|-----------|--------|
  * | Caching | ✅ Yes | ✅ Yes |
- * | Object identity preserved | ✅ Yes (ApplyDiff) | ❌ No (new object) |
+ * | Object identity preserved | ✅ Yes (Apply) | ❌ No (new object) |
  * | Overhead | Store + diff | Single scope |
  * | Best for | Complex objects | Primitives/simple values |
  *
  * Object Identity (Key Difference):
  * ---------------------------------
- * @Computed: Same object reference, in-place updates via ObservableNode.ApplyDiff
+ * @Computed: Same object reference, in-place updates via ObservableNode.Apply
  * @Scope: New object reference on every update
  *
  * Example:
@@ -58,9 +58,10 @@
  */
 
 import {
-    IBasicObservableScope,
+  IBasicObservableScope,
   IObservableScope,
   ObservableScope,
+  PeekCallback,
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
@@ -178,33 +179,50 @@ function CreateStoreScope(
 }
 
 /**
- * Creates a Gated observable scope that exposes a getter's value through a persistent
+ * Creates an observable scope that exposes a getter's value through a persistent
  * observable node, preserving the value's object identity across updates.
  *
- * On each re-evaluation the getter's value is cloned and merged into the node in-place
- * via ObservableNode.Apply:
+ * The getter runs in a Gated scope that returns a clone of its value. A watcher on that
+ * scope merges each new clone into the node in-place via ObservableNode.Apply, with
+ * dependency tracking suspended. The returned scope reads the node's root:
  * - Content changes (same structure, changed properties) fire only the affected
- *   per-property scopes - the top-level scope does not emit.
+ *   per-property emitters - the returned scope does not emit.
  * - Structural changes (type change or removed keys) replace the root value with a new
- *   identity, which the Gated scope detects and emits for.
- * - Deep-equal results are suppressed entirely by the Gated ===-gating.
+ *   identity; the root's emitter fires and the returned scope emits.
+ * - Deep-equal results change nothing in the node, so nothing downstream is notified.
+ *
+ * Destroying the returned scope also destroys the Gated getter scope.
  *
  * @param getter Function computing the value. May read reactive dependencies.
- * @returns The Gated scope whose value is the observable root node.
+ * @returns A scope whose value is the observable node's root.
  */
 function CreateNodeScope(
   getter: () => any
 ) {
-  const observableNode = ObservableNode.Create({ root: null });
-  const getterScope = ObservableScope.Gated(function () {
+  const getterScope = ObservableScope.Gated(function() {
     const value = getter();
     const clonedValue = ObservableNode.Clone(value);
-    ObservableNode.Apply(observableNode, { root: clonedValue });
+    return clonedValue;
+  });
 
+  const observableNode = ObservableNode.Create({ root: ObservableScope.Peek(getterScope) });
+
+  ObservableScope.Watch(getterScope, function(scope) {
+    PeekCallback(function() {
+      const value = ObservableScope.Peek(scope);
+      ObservableNode.Apply(observableNode, { root: value });
+    });
+  });
+  
+  const nodeScope = ObservableScope.Create(function () {
     return observableNode.root;
   });
 
-  return getterScope;
+  ObservableScope.OnDestroyed(nodeScope, function() {
+    ObservableScope.Destroy(getterScope);
+  });
+
+  return nodeScope;
 }
 
 /**
@@ -253,13 +271,16 @@ function CreateNodeScope(
  * @remarks
  * The @Computed decorator uses a Gated getter scope driving a persistent observable node:
  * 1. Getter scope (Gated): Re-evaluates the getter when dependencies change, batched via
- *    the microtask queue. If the result deep-equals the previous value, no update is emitted.
+ *    the microtask queue, and returns a clone of the result. A watcher on this scope
+ *    applies each new clone to the node.
  * 2. ObservableNode.Apply: Diffs the fresh value against the node's current root and applies
- *    only the changed paths in-place, preserving the node's object identity.
- * 3. Downstream notification: Per-property scopes are fired for each changed path, so scopes
- *    reading sub-properties update directly. If the diff collapses to a full root replacement
- *    (type change or removed keys), the root value gets a new identity and the Gated scope
- *    emits, notifying top-level subscribers.
+ *    only the changed paths in-place, preserving the node's object identity. If the result
+ *    deep-equals the previous value, nothing is changed and nothing is emitted.
+ * 3. Downstream notification: Per-property emitters fire for each changed path, so scopes
+ *    reading sub-properties update directly. The property itself is backed by a separate
+ *    scope that reads the node's root; it emits, notifying top-level subscribers, only when
+ *    the diff collapses to a full root replacement (type change or removed keys) and the
+ *    root value gets a new identity.
  *
  * **Initialization**: @Computed uses lazy initialization - the scopes are created on first access:
  * ```typescript
@@ -276,7 +297,7 @@ function CreateNodeScope(
  * dependencies change. The key difference is what happens during re-evaluation:
  *
  * **Key benefit - Object Reuse**: The returned object maintains its identity across updates.
- * Only the changed properties are modified in-place using ObservableNode.ApplyDiff. This enables:
+ * Only the changed properties are modified in-place using ObservableNode.Apply. This enables:
  * - DOM reference preservation (no unnecessary re-renders)
  * - Existing proxy reuse (no proxy recreation overhead)
  * - Identity checks (===) remain stable across updates
@@ -305,7 +326,7 @@ function CreateNodeScope(
  * @see {@link Scope} for simple getter-based reactive properties (caches but new reference)
  * @see {@link ComputedAsync} for async computed properties
  * @see {@link ObservableNode.Apply} for how diffs are applied in-place to maintain object identity
- * @see {@link ObservableScope} for the Gated scope mechanism (batched, ===-gated updates)
+ * @see {@link ObservableScope} for the Gated scope mechanism (batched updates)
  * @see {@link StoreSync} for the store-backed variant used by @ComputedAsync
  */
 export function Computed<
@@ -824,7 +845,7 @@ function ValueDecorator<T extends WeakKey, K extends string>(
  *
  * @see {@link Computed} for cached computed properties with object reuse
  * @see {@link ComputedAsync} for sync getters with StoreAsync backend
- * @see {@link ObservableNode.ApplyDiff} for how @Computed maintains object identity
+ * @see {@link ObservableNode.Apply} for how @Computed maintains object identity
  * @see {@link ObservableScope} for the scope-based reactivity system
  * @see {@link scope} for inline computed scopes within @Scope
  */

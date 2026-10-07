@@ -395,11 +395,7 @@ function ExecuteScope(scope: IDynamicObservableScope<any>) {
 }
 
 function ExecuteBasicScope(scope: IBasicObservableScope<any>) {
-  const parent = watchState;
-  watchState = null;
-  const result = scope.getFunction();
-  watchState = parent;
-  return result;
+  return PeekCallback(scope.getFunction);
 }
 
 /**
@@ -516,7 +512,6 @@ function MappedScopeHelper<D, T>(
 
 const SCOPE_DEFAULT = Symbol("SCOPE_DEFAULT");
 const GATE_DEFAULT = Symbol("GATE_DEFAULT");
-const PEEK_DEFAULT = Symbol("PEEK_DEFAULT");
 
 /**
  * Creates an inline computed scope registered as a dependency of the parent.
@@ -599,37 +594,35 @@ export function GateScope<T>(
 }
 
 /**
- * Creates a computed scope that isn't registered as a dependency with the parent.
+ * Invokes a callback with dependency tracking suspended.
  * Use this function to read reactive data without subscribing to changes
  * to that data.
  *
- * Unlike GateScope, PeekScope does not register itself as a dependency, meaning
- * changes to the data accessed within the callback will not trigger recomputation
- * of the parent scope. The scope is still memoized by ID within the watch context
- * to avoid redundant computation during the same evaluation.
+ * No scope is created: the callback runs immediately on every call and nothing
+ * is memoized. Reactive values read inside the callback are not registered with
+ * the current watch context, so changes to them will not trigger recomputation
+ * of the parent scope. The previous watch context is restored afterwards, even
+ * if the callback throws.
  *
- * Supports async callbacks — Promise<T> is resolved and the resolved value is returned.
- *
- * Only works within a watch context (during another scope's execution).
- * Throws if called outside a watch context.
- * @template T The type of value returned by the callback (extracted from Promise if async).
- * @param callback The function to compute the derived value.
- * @param idOverride Optional custom ID for memoization when using multiple peek calls.
- * @returns The computed value, reusing existing scope if available.
- * @throws Error if called outside a watch context.
+ * Can be called anywhere, inside or outside a watch context. Because tracking is
+ * suspended, InlineScope, GateScope and MappedScope throw if called from within
+ * the callback. Async callbacks are not awaited; the Promise is returned as-is.
+ * @template T The type of value returned by the callback.
+ * @param callback The function to invoke without dependency tracking.
+ * @returns The value returned by the callback.
  */
-export function PeekScope<T>(
-  callback: () => T | Promise<T>,
-  idOverride?: string,
+export function PeekCallback<T>(
+  callback: () => T
 ): T {
-  if (watchState === null) {
-    throw new Error("peek() must be called within a watch context");
+  const parent = watchState;
+  watchState = null;
+
+  try {
+    return callback();
   }
-
-  const id = idOverride ?? PEEK_DEFAULT;
-  const scope = ScopeHelper(callback, id, false);
-
-  return GetScopeValue(scope);
+  finally {
+    watchState = parent;
+  }
 }
 
 /**
@@ -830,6 +823,8 @@ export namespace ObservableScope {
   /**
    * Subscribes to changes on a dynamic scope.
    * @template T The type of value stored in the scope.
+   * The callback must not cause the same scope to emit again (for example by calling
+   * `Update(scope)`): re-entrant emits throw.
    * @param scope The scope to watch for changes.
    * @param callback Function to invoke when the scope's value changes.
    */

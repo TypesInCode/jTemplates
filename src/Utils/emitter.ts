@@ -1,15 +1,14 @@
-import { RemoveNulls } from "./array";
 import { _requestIdleCallback } from "./scheduling";
 
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => void;
-export type Emitter = [number, ...EmitterCallback[]];
+export type Emitter = [[number, number], ...EmitterCallback[]];
 
 const pendingCompactEmitters = new Set<Emitter>();
 
 function Compact(emitter: Emitter) {
-  if (emitter.length === 1 || emitter[0] === 0) return;
+  if (emitter.length === 1 || emitter[0][0] === 0) return;
 
   pendingCompactEmitters.add(emitter);
   ScheduleCompact();
@@ -34,62 +33,71 @@ function PerformCompact() {
 }
 
 function CompactEmitter(emitter: Emitter) {
-  if (emitter[0] === 0)
+  if (emitter[0][0] === 0)
     return;
 
-  emitter.splice(1, emitter[0]);
-  emitter[0] = 0;
+  emitter.splice(1, emitter[0][0]);
+  emitter[0][0] = 0;
 }
 
 export namespace Emitter {
 
   export function Create(): Emitter {
-    return [0];
+    return [[0, -1]];
   }
 
   export function On(emitter: Emitter, callback: EmitterCallback) {
     emitter.push(callback);
   }
 
-  const emitterStack: Emitter[] = [];
-  const modifiedDuringEmit: Set<Emitter> = new Set();
+  // Re-entry during emit is not supported and considered a bug in client code
   export function Emit(emitter: Emitter, ...args: any[]) {
-    emitterStack.push(emitter);
+    if (emitter[0][1] !== -1)
+      throw new Error("Emitter.Emit: re-entry during emit is not supported");
 
-    for (let x = emitter[0] + 1; x < emitter.length; x++)
-      (emitter[x] as EmitterCallback)?.(...args);
-
-    emitterStack.pop();
-    if (modifiedDuringEmit.delete(emitter)) {
-      RemoveNulls(emitter);
-      emitter[0] = 0;
+    try {
+      for (let x = emitter[0][1] = emitter[0][0] + 1; x < emitter.length; emitter[0][1] = ++x) {
+        (emitter[x] as EmitterCallback)(...args);
+      }
     }
+    finally {
+      emitter[0][1] = -1;
+    }
+
+    if (emitter[0][0] !== 0)
+      Compact(emitter);
+  }
+
+  function RemoveFromEnd(emitter: Emitter, index: number) {
+    emitter[index] = emitter[emitter.length - 1];
+    emitter.pop();
+  }
+
+  function RemoveFromBeginning(emitter: Emitter, index: number) {
+    const tombstoneSize = emitter[0][0];
+    emitter[index] = emitter[tombstoneSize + 1];
+    emitter[tombstoneSize + 1] = null;
+    emitter[0][0]++;
   }
 
   export function Remove(emitter: Emitter, callback: EmitterCallback) {
     if (emitter.length === 1)
       return;
 
-    const startIndex = emitter[0] + 1;
+    const startIndex = emitter[0][0] + 1;
     const index = emitter.indexOf(callback, startIndex);
+
     if (index < 1)
       return;
 
-    const emitterStackIndex = emitterStack.indexOf(emitter);
-    if (emitterStackIndex < 0) {
-      emitter[0]++;
-      emitter[index] = emitter[startIndex];
-      emitter[startIndex] = null;
-      Compact(emitter);
-    }
-    else {
-      emitter[index] = null;
-      modifiedDuringEmit.add(emitter);
-    }
+    if (index <= emitter[0][1])
+      RemoveFromBeginning(emitter, index);
+    else
+      RemoveFromEnd(emitter, index);
   }
 
   export function Clear(emitter: Emitter) {
     emitter.length > 1 && emitter.splice(1);
-    emitter[0] = 0;
+    emitter[0][0] = 0;
   }
 }
