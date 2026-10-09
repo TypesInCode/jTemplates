@@ -114,16 +114,16 @@ function FlattenValue(
  * @param path - Dot-separated path to the value (empty string returns source)
  * @returns The value at the specified path
  */
-function GetPathValue(source: any, path: string): readonly [any, boolean] {
+function GetPathValue(source: any, path: string, keyFunc?: (value: any) => string | undefined): readonly [any, boolean] {
   if (path === "") return [source, true] as const;
 
   const parts = path.split(".");
   let curr = source;
   let x = 0;
-  for (; curr && x < parts.length - 1; x++) curr = curr[parts[x]];
+  for (; curr && x < parts.length - 1; x++) curr = ResolveKeyed(source, curr[parts[x]], keyFunc);
 
   if (curr && Object.hasOwn(curr, parts[x])) {
-    curr = curr[parts[x]];
+    curr = ResolveKeyed(source, curr[parts[x]], keyFunc);
     x++;
   } else curr = undefined;
 
@@ -338,7 +338,7 @@ function RunProjections(
     let y = 0;
     for (; allPathsExist && y < reads.length && !reads[y].endsWith("*"); y++) {
       const read = reads[y];
-      const [value, found] = GetPathValue(source, read);
+      const [value, found] = GetPathValue(source, read, keyFunc);
       allPathsExist = found;
       keys.push(read);
       values.push((found && CreateSnapshot(source, keyFunc, value)) || value);
@@ -348,6 +348,7 @@ function RunProjections(
       const prefix = reads[y].slice(0, reads[y].length - 1);
       const matchedKeys = Object.keys(source).filter(key => key.startsWith(prefix));
       for (let z = 0; z < matchedKeys.length; z++) {
+        // No keyFunc passed because dot paths are not supported for wildcard paths
         const [value, found] = GetPathValue(source, matchedKeys[z]);
         allPathsExist = allPathsExist && found;
         keys.push(matchedKeys[z]);
@@ -378,6 +379,14 @@ function RunProjections(
   }
 
   return diffResult;
+}
+
+function ResolveKeyed(source: any, value: any, keyFunc?: (val: any) => string | undefined) {
+  if (keyFunc === undefined || JsonType(value) === 'value')
+    return value;
+
+  const key = keyFunc(value);
+  return (key && source[key]) ?? value;
 }
 
 /**
@@ -627,7 +636,7 @@ export class DiffTree {
    * @returns The value at the specified path
    */
   public GetPath(path: string) {
-    const [value] = GetPathValue(this.rootState, path);
+    const [value] = GetPathValue(this.rootState, path, this.keyFunc);
     return value;
   }
 
@@ -637,7 +646,7 @@ export class DiffTree {
    * @param path - Dot-separated path to the value
    */
   public Snapshot(path: string) {
-    const [value, found] = GetPathValue(this.rootState, path);
+    const [value, found] = GetPathValue(this.rootState, path, this.keyFunc);
     if (!found) throw `Unable to get snapshot for path ${path}`;
 
     return CreateSnapshot(this.rootState, this.keyFunc, value);

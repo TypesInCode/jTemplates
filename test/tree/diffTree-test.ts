@@ -541,3 +541,71 @@ describe("Diff Tree Projection Test", () => {
     expect(tree.GetPath(key)).toBe(5);
   });
 });
+
+// A dotted read that ends on, or passes through, a keyed entity should resolve that entity
+// through its root, the way writes (ResolveKeyPath) and a parent's Snapshot (ChildSnapshot)
+// already do. Today GetPathValue walks the raw tree and lands on the stale copy embedded in
+// the parent, so these reads miss writes made to the entity's root.
+describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
+  it("re-runs a projection whose read ends on a keyed entity", () => {
+    const seen: any[] = [];
+    const seen2: any[] = [];
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      p: {
+        reads: ["list.0"],
+        projection: (_keys: string[], e: any) => {
+          seen.push(e);
+          return { e };
+        },
+      },
+      c: {
+        reads: ["list.0.n"],
+        projection: (_keys: string[], n: any) => {
+          seen2.push(n);
+          return { n };
+        }
+      }
+    });
+    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
+    tree.DiffPath("e1.n", 2);
+
+    expect(seen.length).toBe(2);
+    expect(seen[seen.length - 1]).toEqual({ _id: "e1", n: 2 });
+  });
+
+  it("re-runs a projection whose read passes through a keyed entity", () => {
+    const seen: any[] = [];
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      p: {
+        reads: ["list.0.n"],
+        projection: (_keys: string[], n: any) => {
+          seen.push(n);
+          return n;
+        },
+      },
+    });
+    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
+    tree.DiffPath("e1.n", 2);
+
+    expect(seen).toEqual([1, 2]);
+    expect(tree.GetPath(`${PROJECTION_PREFIX}p`)).toBe(2);
+  });
+
+  it("GetPath through a keyed entity reads its root", () => {
+    const tree: any = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
+    tree.DiffPath("e1.n", 2);
+
+    expect(tree.GetPath("e1.n")).toBe(2);
+    expect(tree.GetPath("list.0.n")).toBe(2);
+  });
+
+  it("Snapshot of a keyed entity by dotted path reads its root", () => {
+    const tree: any = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
+    tree.DiffPath("e1.n", 2);
+
+    expect(tree.Snapshot("list")).toEqual([{ _id: "e1", n: 2 }]);
+    expect(tree.Snapshot("list.0")).toEqual({ _id: "e1", n: 2 });
+  });
+});
