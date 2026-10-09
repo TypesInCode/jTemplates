@@ -25,11 +25,13 @@ export type vNodeConfig<P = HTMLElement, E = HTMLElementEventMap, T = never> = {
 
 export type vStringNode = {
   type: typeof STRING_NODE;
+  connected: boolean;
   node: string;
 };
 
 export type vElementNode = {
   type: string | typeof TEXT_NODE | typeof FRAGMENT_NODE;
+  connected: boolean;
   definition: vNodeDefinition<any, any, any>;
   injector: Injector;
   parentNode: vElementNode | null;

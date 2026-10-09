@@ -1,6 +1,7 @@
 import { DOMNodeConfig } from "../DOM/domNodeConfig";
 
 export interface INodeConfig {
+  isConnected(node: any): boolean;
   createNode(type: any, namespace: string): any;
   createTextNode(value?: string): any;
   scheduleUpdate(callback: () => void): void;

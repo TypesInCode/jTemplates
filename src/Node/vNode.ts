@@ -21,6 +21,7 @@ import {
   TEXT_NODE,
   FRAGMENT_NODE,
   STRING_NODE,
+  vStringNode,
 } from "./vNode.types";
 export namespace vNode {
   export function Create<P = HTMLElement, E = HTMLElementEventMap, T = never>(
@@ -29,6 +30,7 @@ export namespace vNode {
     return {
       definition,
       type: definition.type,
+      connected: false,
       injector: definition.componentFactory
         ? new Injector()
         : (Injector.Current() ?? new Injector()),
@@ -94,15 +96,19 @@ export namespace vNode {
     };
   }
 
-  export function Attach(node: any, vnode: vNodeType) {
+  export function Attach(node: any, vnode: vElementNode) {
     if (vnode.type === FRAGMENT_NODE)
       throw new Error(
         "Cannot attach a fragment directly. A fragment has no DOM node — " +
           "wrap it in a real element (e.g. div) before attaching.",
       );
 
+    // Must create a node + attach before Init so Connected can run correctly
+    // on a possible Component instance
+    const childNode = vnode.definition.node = CreateNode(vnode);
+    NodeConfig.addChild(node, childNode);
+
     Init(vnode);
-    NodeConfig.addChild(node, vnode.node);
     return vnode;
   }
 }
@@ -111,10 +117,21 @@ function ComponentChildren(this: Component) {
   return this.Template();
 }
 
+function CreateNode(vnode: vElementNode) {
+  switch (vnode.type) {
+    case FRAGMENT_NODE:
+      return null;
+    case TEXT_NODE:
+      return vnode.definition.node ?? NodeConfig.createTextNode();
+    default:
+      return vnode.definition.node ?? NodeConfig.createNode(vnode.definition.type, vnode.definition.namespace);
+  }
+}
+
 function InitNode(vnode: vElementNode, parentNode: vElementNode) {
   const {
-    type,
-    namespace,
+    /* type,
+    namespace, */
     props,
     attrs,
     on,
@@ -124,17 +141,7 @@ function InitNode(vnode: vElementNode, parentNode: vElementNode) {
     childrenArray,
   } = vnode.definition;
 
-  let node = null as Node;
-  switch (vnode.type) {
-    case FRAGMENT_NODE:
-      break;
-    case TEXT_NODE:
-      vnode.node = node = vnode.definition.node ?? NodeConfig.createTextNode();
-      break;
-    default:
-      vnode.node = node = vnode.definition.node ?? NodeConfig.createNode(type, namespace);
-      break;
-  }
+  const node = vnode.node = CreateNode(vnode);
 
   vnode.definition = null;
   vnode.parentNode = parentNode;
@@ -171,7 +178,7 @@ function InitNode(vnode: vElementNode, parentNode: vElementNode) {
 
   if (componentFactory) {
     vnode.component = Injector.Scope(vnode.injector, componentFactory, vnode);
-    vnode.component.Bound();
+    // vnode.component.Bound();
     Children(vnode, ComponentChildren.bind(vnode.component));
   } else if (childrenArray) {
     vnode.children = childrenArray;
@@ -233,7 +240,7 @@ function CreateChildrenScope(
 function ToVNodeType(
   children: string | vNodeType | vNodeType[],
 ): vNodeType | vNodeType[] {
-  return typeof children === "string" ? { type: STRING_NODE, node: children } : children;
+  return typeof children === "string" ? { type: STRING_NODE, connected: false, node: children } : children;
 }
 
 function GetNextNodes(injector: Injector, children: (data: any) => string | vNodeType | vNodeType[], data: any) {
@@ -313,11 +320,15 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
       if (vnode.destroyed || children !== vnode.children) return;
 
       if (init) {
-        if (vnode.node !== null)
+        if (vnode.node !== null) {
           NodeConfig.reconcileChildren(
             vnode.node,
             CleanupChildrenArray(vnode.children)
           );
+          vnode.component?.Bound();
+
+          FireConnected(vnode, true);
+        }
       }
       else if (!async) {
         let reconcileNode = vnode;
@@ -328,6 +339,8 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
           reconcileNode.node,
           CleanupChildrenArray(reconcileNode.children)
         );
+
+        FireConnected(vnode, true);
       } else {
         NodeConfig.scheduleUpdate(function () {
           if (vnode.destroyed || children !== vnode.children) return;
@@ -340,10 +353,56 @@ function UpdateChildren(vnode: vElementNode, init = false, skipInit = false) {
             reconcileNode.node,
             CleanupChildrenArray(reconcileNode.children)
           );
+
+          FireConnected(vnode, true);
         });
       }
     });
   });
+}
+
+function FireConnected(vnode: vNodeType, root = false) {
+  if (
+    (!root && vnode.connected) ||
+    (vnode.type !== FRAGMENT_NODE && vnode.node === null)
+  )
+    return;
+
+
+
+  switch (vnode.type) {
+    case FRAGMENT_NODE:
+      break;
+    default: {
+      if (!vnode.connected) {
+        vnode.connected = NodeConfig.isConnected(vnode.node);
+        switch (vnode.type) {
+          case STRING_NODE:
+          case TEXT_NODE:
+            break;
+          default:
+            vnode.connected && vnode.component?.Connected();
+        }
+      }
+      break;
+    }
+  }
+
+  if (vnode.type !== FRAGMENT_NODE && !vnode.connected)
+    return;
+
+  switch (vnode.type) {
+    case STRING_NODE:
+    case TEXT_NODE:
+      break;
+    default: {
+      const children = vnode.children;
+      const count = children?.length;
+
+      for (let x = 0; x < count; x++)
+        FireConnected(children[x]);
+    }
+  }
 }
 
 function ScheduledAssignment(assign: (data: any) => void) {

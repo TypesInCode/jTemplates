@@ -24,6 +24,14 @@ export class Component<D = void, T = void, E = {}> {
   private componentEvents: ComponentEvents<E>;
 
   /**
+   * Return if the component's vNode is connected
+   * to a parent document
+   */
+  public get IsConnected() {
+    return this.vNode.connected;
+  }
+
+  /**
    * Returns the component's virtual node injector.
    */
   public get Injector() {
@@ -103,6 +111,8 @@ export class Component<D = void, T = void, E = {}> {
   public Bound() {
     Bound.All(this);
   }
+
+  public Connected() { }
 
   /**
    * Fires a component event.
@@ -189,7 +199,7 @@ export namespace Component {
    * @param vnode - The virtual node to be attached.
    * @returns The result of the attachment operation.
    */
-  export function Attach(node: any, vnode: vNodeType) {
+  export function Attach(node: any, vnode: vElementNode) {
     return vNode.Attach(node, vnode);
   }
 }

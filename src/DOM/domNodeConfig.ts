@@ -63,6 +63,9 @@ function getHTMLNode(from: HTMLElement | string, current?: HTMLElement | null) {
 }
 
 export const DOMNodeConfig: INodeConfig = {
+  isConnected(target: Node) {
+    return target.isConnected;
+  },
   createNode(type: string, namespace?: string): Node {
     return namespace
       ? document.createElementNS(namespace, type)
