@@ -1,5 +1,4 @@
 import { JsonDeepClone, JsonDiffResult } from "../../Utils/json";
-import { DiffSpliceResult } from "../Diff/diffTree";
 import { ObservableNode } from "../Tree/observableNode";
 
 /**

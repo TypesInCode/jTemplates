@@ -1,6 +1,7 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { JsonDeepClone, JsonMerge } from "../../Utils/json";
-import { DiffAsync } from "../Diff/diffAsync";
+import { DiffSpliceResult } from "../Diff/diffTree";
+import { IDiffMethod, IDiffMethodBatch, IDiffMethodBatchResult } from "../Diff/diffTreeWorker";
+import { WorkerQueue } from "../Diff/workerQueue";
 import { Store } from "./store";
 
 /**
@@ -24,159 +25,174 @@ import { Store } from "./store";
  * await store.Patch("user", { age: 31 });
  *
  * // Pushing data into an array asynchronously
- * await store.Push("user.array", { id: 1 }, { id: 2 });
+ * await store.Write([], "users");
+ * await store.Push("users", { id: 1 }, { id: 2 });
  *
  * // Splicing an array asynchronously
- * const deletedItems = await store.Splice("user.array", 0, 1, { id: 3 });
+ * const deletedItems = await store.Splice("users", 0, 1, { id: 3 });
  *
  * // Cleaning up resources
  * store.Destroy();
  *
  * @see Store
  * @see StoreSync
- * @see DiffAsync
  */
 export class StoreAsync extends Store {
-  /**
-   * The diff instance used to compute differences between current and new data states asynchronously.
-   * @private
-   */
-  private diff: DiffAsync;
-
-  /**
-   * The async queue instance used to manage asynchronous operations in a non-blocking manner.
-   * @private
-   */
-  private queue = new AsyncQueue();
+  private writeKeySet = new Set<string>();
+  private workerQueue: WorkerQueue<IDiffMethodBatch, IDiffMethodBatchResult>;
+  private asyncQueue: AsyncQueue;
+  private currentBatch: IDiffMethodBatch = [];
+  private currentBatchPromise: Promise<IDiffMethodBatchResult> = Promise.resolve([]);
 
   /**
    * Creates an instance of StoreAsync.
-   * @param diffWorker A `Worker` running a `DiffTree` connected via
-   *   `ConnectWorkerToDiffTree` (e.g. a bundled `defaultDiffTreeWorker` entry). Any
-   *   `keyFunc`/projections the diff needs must be baked into that worker's own entry file,
-   *   since the worker now runs standard bundled code rather than a serialized function.
-   * @param keyFunc Optional function to generate a key for a given data value, used locally
-   *   by this store to resolve root objects. Pass the same key logic the worker's `DiffTree`
-   *   was constructed with, if any.
+   * @param diffWorker A `Worker` running a `DiffTree` connected via `ConnectWorkerToDiffTree`
+   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/projections the diff needs
+   *   must be baked into that worker's own entry file.
+   * @param keyFunc Optional function to generate a key for a given data value, used locally by
+   *   this store to resolve root objects. Pass the same key logic the worker's `DiffTree` was
+   *   constructed with, if any.
    */
   constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined) {
     super(keyFunc, false);
-    this.diff = new DiffAsync(diffWorker);
+    this.workerQueue = new WorkerQueue(diffWorker);
+    this.asyncQueue = new AsyncQueue(true);
   }
 
-  /**
-   * Returns a promise that resolve once all current queued writes have completed
-   */
-  async Flush(): Promise<void> {
-    return this.queue.Flush();
-  }
-
-  private nextWritePromise: Promise<void> = null;
-  private nextWriteBatch: { path: string | undefined, value: unknown }[] = null;
-
-  /**
-   * Writes data to the store asynchronously.
-   * This method ensures that write operations are queued and executed in a non-blocking manner.
-   * @param data The data to be written. Can be of any type.
-   * @param key Optional key for the data. If not provided, the keyFunc will be used to generate a key.
-   * @throws Will throw an error if no key is provided for the data.
-   */
-  async Write(data: unknown, key?: string) {
-    const nextWriteBatch = this.nextWriteBatch ??= [];
-    const init = nextWriteBatch.length === 0;
-
-    nextWriteBatch.push({
-      path: key || this.keyFunc?.(data),
-      value: data
-    });
-
-    if (init) {
-      this.nextWritePromise = this.queue.Next(async () => {
+  private async Schedule(method: IDiffMethod) {
+    if (this.currentBatch.length === 0) {
+      const batch = this.currentBatch;
+      this.currentBatchPromise = this.asyncQueue.Next(async () => {
         await Promise.resolve();
-        this.nextWriteBatch = null;
-        const diffResult = await this.diff.DiffBatch(nextWriteBatch);
-        this.UpdateRootMap(diffResult);
+        if (batch === this.currentBatch)
+          this.currentBatch = [];
+
+        const results = await this.workerQueue.Push(batch);
+
+        for (let x = 0; x < results.length; x++) {
+          const result = results[x];
+          switch (result.type) {
+            case "diff": {
+              this.UpdateRootMap(result.result);
+              break;
+            }
+            case "splice": {
+              const spliceResult = result.result;
+              this.UpdateRootMap(spliceResult.diffResult);
+              this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, spliceResult.items);
+              break;
+            }
+          }
+        }
+
+        return results;
       });
     }
 
-    return this.nextWritePromise;
+    const batchIndex = this.currentBatch.length;
+    this.currentBatch.push(method);
+
+    const batchResult = await this.currentBatchPromise;
+    return batchResult[batchIndex].result;
+  }
+
+  /**
+   * Writes data to the store asynchronously.
+   * Changes made in the same tick are sent to the worker together as one batch and applied in
+   * the order they were made. A change to this key may be made before the returned promise
+   * resolves; it's applied after this write.
+   * @param data The data to be written. Can be of any type.
+   * @param key Optional key for the data. If not provided, the keyFunc will be used to generate a key.
+   * @returns A promise that resolves once the write has been applied to the store.
+   * @throws Will throw an error if no key is provided for the data, or reject with the original
+   *   error if an earlier change failed.
+   */
+  async Write(data: unknown, key?: string): Promise<void> {
+    key = key || this.keyFunc?.(data);
+    if (!key)
+      throw new Error("No key provided for data");
+
+    this.writeKeySet.add(key);
+
+    await this.Schedule({
+      method: "diffpath",
+      arguments: [key, data]
+    });
+
+    this.writeKeySet.delete(key);
   }
 
   /**
    * Patches an existing value in the store with new data asynchronously.
-   * This method ensures that patch operations are queued and executed in a non-blocking manner.
+   * The patch is merged with the current value in the worker, so it applies on top of any
+   * change made before it, including ones not yet applied to the store.
    * @param key The key of the value to be patched.
    * @param patch The patch data to be merged with the existing value.
-   * @throws Will throw an error if the value to be patched is undefined.
+   * @returns A promise that resolves once the patch has been applied to the store.
+   * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
+   *   the original error if an earlier change failed.
    */
-  async Patch(key: string, patch: unknown) {
-    await this.queue.Next(async () => {
-      if (!this.Has(key))
-        throw "Key not found in store";
+  async Patch(key: string, patch: unknown): Promise<void> {
+    if (!this.Has(key) && !this.writeKeySet.has(key))
+      throw "Key not found in store";
 
-      const value = this.Get(key);
-      if (value === undefined) throw "Unable to patch undefined value";
-
-      const json = (value as any).toJSON();
-      const mergedJson = JsonMerge(json, patch);
-
-      const diffResult = await this.diff.DiffPath(key, mergedJson, false);
-      this.UpdateRootMap(diffResult);
+    await this.Schedule({
+      method: "patchpath",
+      arguments: [key, patch]
     });
   }
 
   /**
    * Pushes data into an array stored at the specified key asynchronously.
-   * This method ensures that push operations are queued and executed in a non-blocking manner.
    * @param key The key of the array where data will be pushed.
    * @param data The data items to be pushed into the array.
+   * @returns A promise that resolves once the items have been applied to the store.
+   * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
+   *   the original error if an earlier change failed.
    */
-  async Push(key: string, ...data: unknown[]) {
-    await this.queue.Next(async () => {
-      if (!this.Has(key))
-        throw "Key not found in store";
+  async Push(key: string, ...data: unknown[]): Promise<void> {
+    if (!this.Has(key) && !this.writeKeySet.has(key))
+      throw "Key not found in store";
 
-      const arr = this.Get(key) as any[];
-
-      const batch = data.map(function (d, i) {
-        return {
-          path: `${key}.${arr.length + i}`,
-          value: d,
-        };
-      });
-
-      const diffResult = await this.diff.DiffBatch(batch);
-      this.UpdateRootMap(diffResult);
+    await this.Schedule({
+      method: "pushpath",
+      arguments: [key, data]
     });
   }
 
   /**
    * Splices an array stored at the specified key with new data asynchronously.
-   * This method ensures that splice operations are queued and executed in a non-blocking manner.
-   * It modifies the array by deleting elements and inserting new ones at the specified position.
+   * This method modifies the array by deleting elements and inserting new ones at the specified position.
    * @param key The key of the array to be spliced.
    * @param start The position at which to start changing the array.
    * @param deleteCount Optional number of elements to delete. If not provided, all elements from start to end will be deleted.
    * @param items Optional elements to insert into the array.
-   * @returns The array of deleted elements.
+   * @returns A promise that resolves to the array of deleted elements once the splice has been
+   *   applied to the store.
+   * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
+   *   the original error if an earlier change failed.
    */
-  async Splice(
-    key: string,
-    start: number,
-    deleteCount?: number,
-    ...items: unknown[]
-  ) {
-    items = JsonDeepClone(items)
-    return await this.queue.Next(async () => {
-      if (!this.Has(key))
-        throw "Key not found in store";
+  async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<any[]> {
+    if (!this.Has(key) && !this.writeKeySet.has(key))
+      throw "Key not found in store";
 
-      const spliceResult = await this.diff.SplicePath(key, start, deleteCount, items);
-      this.UpdateRootMap(spliceResult.diffResult);
-      this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, items);
+    const spliceResult = await this.Schedule({
+      method: "splicepath",
+      arguments: [key, start, deleteCount, items]
+    }) as DiffSpliceResult;
 
-      return spliceResult.spliceResult;
-    });
+    return spliceResult.spliceResult;
+  }
+
+  /**
+   * Returns a promise that resolves once every change made before this call has been applied
+   * to the store. Changes made after this call are sent in a later batch, so they aren't
+   * waited for and haven't been applied when the promise resolves.
+   * @throws Rejects with the original error if a change made before this call failed.
+   */
+  async Flush() {
+    this.currentBatch = [];
+    return this.asyncQueue.Flush();
   }
 
   /**
@@ -184,7 +200,7 @@ export class StoreAsync extends Store {
    * This method should be called when the instance is no longer needed to free up resources.
    */
   Destroy() {
-    this.queue.Stop();
-    this.diff.Destroy();
+    this.asyncQueue.Stop();
+    this.workerQueue.Destroy();
   }
 }

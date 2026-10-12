@@ -1,7 +1,6 @@
-import { JsonMerge, JsonDeepClone } from "../../Utils/json";
+import { JsonDeepClone } from "../../Utils/json";
 import { DiffSync } from "../Diff/diffSync";
 import { DiffTreeProjectionMap } from "../Diff/diffTree";
-import { ObservableNode } from "../Tree/observableNode";
 import { Store } from "./store";
 
 /**
@@ -59,12 +58,9 @@ export class StoreSync extends Store {
    */
   Write(data: unknown, key?: string) {
     key = key || this.keyFunc?.(data);
-
     if (!key) throw "No key provided for data";
 
-    data = ObservableNode.Unwrap(data);
     const diffResult = this.diff.DiffPath(key, data);
-
     this.UpdateRootMap(diffResult);
   }
 
@@ -78,13 +74,7 @@ export class StoreSync extends Store {
     if (!this.Has(key))
       throw "Key not found in store";
 
-    const value = this.Get(key);
-    if (value === undefined) throw "Unable to patch undefined value";
-
-    const json = ObservableNode.Unwrap(value);
-    const mergedJson = JsonMerge(json, patch);
-
-    const diffResult = this.diff.DiffPath(key, mergedJson, false);
+    const diffResult = this.diff.PatchPath(key, patch);
     this.UpdateRootMap(diffResult);
   }
 
@@ -97,15 +87,7 @@ export class StoreSync extends Store {
     if (!this.Has(key))
       throw "Key not found in store";
 
-    const arr = this.Get(key) as any[];
-    const batch = data.map(function (d, i) {
-      return {
-        path: `${key}.${arr.length + i}`,
-        value: d,
-      };
-    });
-
-    const diffResult = this.diff.DiffBatch(batch);
+    const diffResult = this.diff.PushPath(key, data);
     this.UpdateRootMap(diffResult);
   }
 

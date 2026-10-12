@@ -10,7 +10,7 @@ import { ConnectWorkerToDiffTree } from "../../src/Store/Diff/diffTreeWorker";
 const clone = (v: unknown) => (v === undefined ? v : structuredClone(v));
 
 /**
- * Creates a `Worker` handle backed by a same-thread `DiffTree`, for use with `DiffAsync` in
+ * Creates a `Worker` handle backed by a same-thread `DiffTree`, for use with `StoreAsync` in
  * tests. Mirrors what a bundler-built worker entry file does, minus the actual thread.
  */
 export function CreateShimDiffWorker(

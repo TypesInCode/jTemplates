@@ -14,6 +14,14 @@ function KeyFunc(val: any) {
   }
 }
 
+// DiffTree's write operations (DiffPath, PatchPath, PushPath, SplicePath) don't run
+// projections; the caller (DiffSync, the worker) runs them once per operation via
+// RunProjections. Projection tests write through this helper to get the same combined
+// diff a caller would.
+function Write(tree: DiffTree, path: string, value: any) {
+  return tree.DiffPath(path, value).concat(tree.RunProjections());
+}
+
 describe("Diff Tree Test", () => {
   it("Default Test", () => {
     const tree = new DiffTreeConstructor(KeyFunc);
@@ -199,7 +207,7 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    const result = tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }]);
+    const result = Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
 
     const key = `${PROJECTION_PREFIX}total`;
     expect(result).toContainEqual({ path: [key], value: 2 });
@@ -220,13 +228,13 @@ describe("Diff Tree Projection Test", () => {
 
     // Nothing has written "items" yet; the projection must not run or produce a diff, so
     // its author never has to guard against an undefined `items`.
-    const result = tree.DiffPath("other", "x");
+    const result = Write(tree, "other", "x");
     expect(calls).toBe(0);
     expect(result.find((d: any) => d.path[0] === `${PROJECTION_PREFIX}total`)).toBeUndefined();
     expect(tree.GetPath(`${PROJECTION_PREFIX}total`)).toBeUndefined();
 
     // Once "items" exists, the projection runs on that same write.
-    const second = tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }]);
+    const second = Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
     expect(calls).toBe(1);
     expect(second).toContainEqual({ path: [`${PROJECTION_PREFIX}total`], value: 2 });
   });
@@ -252,10 +260,10 @@ describe("Diff Tree Projection Test", () => {
 
     // "count" is blocked (no "items" yet), so it never writes $projection_count, so
     // "doubled" is blocked in turn without any special-casing for chained dependencies.
-    tree.DiffPath("other", "x");
+    Write(tree, "other", "x");
     expect(calls).toEqual({ count: 0, doubled: 0 });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toEqual({ count: 1, doubled: 1 });
     expect(tree.GetPath(`${PROJECTION_PREFIX}doubled`)).toBe(2);
   });
@@ -272,10 +280,10 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
 
-    const result = tree.DiffPath("other", { value: "unrelated" });
+    const result = Write(tree, "other", { value: "unrelated" });
 
     expect(calls).toBe(1);
     expect(result.find((d: any) => d.path[0] === `${PROJECTION_PREFIX}total`)).toBeUndefined();
@@ -293,10 +301,10 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
 
-    const result = tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }]);
+    const result = Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
 
     expect(calls).toBe(2);
     expect(result).toContainEqual({ path: [`${PROJECTION_PREFIX}total`], value: 2 });
@@ -314,11 +322,11 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
 
     // Different array, but it doesn't change what the projection returns.
-    const result = tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }]);
+    const result = Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
 
     expect(calls).toBe(2);
     expect(result.find((d: any) => d.path[0] === `${PROJECTION_PREFIX}hasItems`)).toBeUndefined();
@@ -336,14 +344,14 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a", value: "one" }]);
+    Write(tree, "items", [{ _id: "a", value: "one" }]);
     expect(calls).toBe(1);
     expect(tree.GetPath(`${PROJECTION_PREFIX}name`)).toBe("one");
 
-    tree.DiffPath("other", "noop");
+    Write(tree, "other", "noop");
     expect(calls).toBe(1);
 
-    tree.DiffPath("a", { _id: "a", value: "changed" });
+    Write(tree, "a", { _id: "a", value: "changed" });
     expect(calls).toBe(2);
     expect(tree.GetPath(`${PROJECTION_PREFIX}name`)).toBe("changed");
   });
@@ -367,17 +375,17 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    Write(tree, "items", [{ _id: "a" }]);
     expect(tree.GetPath(`${PROJECTION_PREFIX}count`)).toBe(1);
     expect(tree.GetPath(`${PROJECTION_PREFIX}doubled`)).toBe(2);
     expect(calls).toEqual({ count: 1, doubled: 1 });
 
     // Unrelated write: neither projection reads it, so neither re-runs.
-    tree.DiffPath("other", "noop");
+    Write(tree, "other", "noop");
     expect(calls).toEqual({ count: 1, doubled: 1 });
 
     // Changes the upstream projection's dependency, so both re-run in order.
-    tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }]);
+    Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
     expect(tree.GetPath(`${PROJECTION_PREFIX}count`)).toBe(2);
     expect(tree.GetPath(`${PROJECTION_PREFIX}doubled`)).toBe(4);
     expect(calls).toEqual({ count: 2, doubled: 2 });
@@ -396,7 +404,7 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }, { _id: "b" }, { _id: "c" }]);
+    Write(tree, "items", [{ _id: "a" }, { _id: "b" }, { _id: "c" }]);
 
     expect(tree.GetPath(`${PROJECTION_PREFIX}doubled`)).toBe(6);
   });
@@ -437,14 +445,14 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("count", 5);
+    Write(tree, "count", 5);
 
     // "derived" exists only inside the projection's result; flatten registers it as its
     // own root the same way it would for any other write, via UpdateSource.
     expect(tree.GetPath("derived")).toEqual({ _id: "derived", value: 5 });
   });
 
-  it("runs once per SplicePath call and includes the projection diff", () => {
+  it("SplicePath leaves projections to the caller", () => {
     let calls = 0;
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       total: {
@@ -456,16 +464,49 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    tree.DiffPath("items", [{ _id: "a" }]);
+    const key = `${PROJECTION_PREFIX}total`;
+
+    Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
 
     const spliceResult = tree.SplicePath("items", 1, 0, [{ _id: "b" }]);
 
+    expect(calls).toBe(1);
+    expect(spliceResult.diffResult.find((d: any) => d.path[0] === key)).toBeUndefined();
+    expect(tree.GetPath(key)).toBe(1);
+
+    expect(tree.RunProjections()).toEqual([{ path: [key], value: 2 }]);
     expect(calls).toBe(2);
-    expect(spliceResult.diffResult).toContainEqual({ path: [`${PROJECTION_PREFIX}total`], value: 2 });
   });
 
-  it("runs once per DiffBatch call, not once per item", () => {
+  it("PushPath leaves projections to the caller", () => {
+    let calls = 0;
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      total: {
+        reads: ["items"],
+        projection: (_keys: string[], items: any[]) => {
+          calls++;
+          return items.length;
+        },
+      },
+    });
+
+    const key = `${PROJECTION_PREFIX}total`;
+
+    Write(tree, "items", [{ _id: "a" }]);
+    expect(calls).toBe(1);
+
+    const result = tree.PushPath("items", [{ _id: "b" }, { _id: "c" }]);
+
+    expect(calls).toBe(1);
+    expect(result.find((d: any) => d.path[0] === key)).toBeUndefined();
+    expect(tree.GetPath(key)).toBe(1);
+
+    expect(tree.RunProjections()).toEqual([{ path: [key], value: 3 }]);
+    expect(calls).toBe(2);
+  });
+
+  it("runs once per RunProjections call after several DiffPath writes", () => {
     let calls = 0;
     const tree: any = new DiffTreeConstructor(KeyFunc, {
       combined: {
@@ -477,13 +518,58 @@ describe("Diff Tree Projection Test", () => {
       },
     });
 
-    const result = tree.DiffBatch([
-      { path: "a", value: { value: "x" } },
-      { path: "b", value: { value: "y" } },
-    ]);
+    tree.DiffPath("a", { value: "x" });
+    tree.DiffPath("b", { value: "y" });
+    expect(calls).toBe(0);
+
+    const result = tree.RunProjections();
 
     expect(calls).toBe(1);
-    expect(result).toContainEqual({ path: [`${PROJECTION_PREFIX}combined`], value: "x-y" });
+    expect(result).toEqual([{ path: [`${PROJECTION_PREFIX}combined`], value: "x-y" }]);
+  });
+
+  it("DiffPath and PatchPath leave projections to the caller", () => {
+    let calls = 0;
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      total: {
+        reads: ["items"],
+        projection: (_keys: string[], items: any[]) => {
+          calls++;
+          return items.length;
+        },
+      },
+    });
+
+    const key = `${PROJECTION_PREFIX}total`;
+
+    const diffResult = tree.DiffPath("items", [{ _id: "a" }]);
+    expect(calls).toBe(0);
+    expect(diffResult.find((d: any) => d.path[0] === key)).toBeUndefined();
+    expect(tree.GetPath(key)).toBeUndefined();
+
+    tree.RunProjections();
+    expect(tree.GetPath(key)).toBe(1);
+
+    const patchResult = tree.PatchPath("items", [{ _id: "a" }, { _id: "b" }]);
+    expect(calls).toBe(1);
+    expect(patchResult.find((d: any) => d.path[0] === key)).toBeUndefined();
+    expect(tree.GetPath(key)).toBe(1);
+
+    tree.RunProjections();
+    expect(calls).toBe(2);
+    expect(tree.GetPath(key)).toBe(2);
+  });
+
+  it("RunProjections returns nothing when no reads changed", () => {
+    const tree: any = new DiffTreeConstructor(KeyFunc, {
+      total: {
+        reads: ["items"],
+        projection: (_keys: string[], items: any[]) => items.length,
+      },
+    });
+
+    Write(tree, "items", [{ _id: "a" }]);
+    expect(tree.RunProjections()).toEqual([]);
   });
 
   it("collects every root key matching a wildcard prefix as rest args", () => {
@@ -500,16 +586,16 @@ describe("Diff Tree Projection Test", () => {
 
     const key = `${PROJECTION_PREFIX}taskCount`;
 
-    tree.DiffPath("task_1", { _id: "task_1", value: 1 });
+    Write(tree, "task_1", { _id: "task_1", value: 1 });
     expect(calls).toBe(1);
     expect(tree.GetPath(key)).toBe(1);
 
     // A key that doesn't match the prefix isn't picked up by the wildcard, so the set of
     // matched values is unchanged and the projection doesn't re-run.
-    tree.DiffPath("note_1", { _id: "note_1", value: "unrelated" });
+    Write(tree, "note_1", { _id: "note_1", value: "unrelated" });
     expect(calls).toBe(1);
 
-    const result = tree.DiffPath("task_2", { _id: "task_2", value: 2 });
+    const result = Write(tree, "task_2", { _id: "task_2", value: 2 });
     expect(calls).toBe(2);
     expect(tree.GetPath(key)).toBe(2);
     expect(result).toContainEqual({ path: [key], value: 2 });
@@ -529,14 +615,14 @@ describe("Diff Tree Projection Test", () => {
 
     const key = `${PROJECTION_PREFIX}total`;
 
-    tree.DiffPath("task_1", { _id: "task_1", value: 1 });
+    Write(tree, "task_1", { _id: "task_1", value: 1 });
     expect(calls).toBe(1);
     expect(tree.GetPath(key)).toBe(1);
 
     // Same key, new value: the "task_1" root object is mutated in place rather than
     // replaced, so this only re-runs the projection if the wildcard-matched values are
     // snapshotted (like any other read) instead of compared by raw reference.
-    tree.DiffPath("task_1", { _id: "task_1", value: 5 });
+    Write(tree, "task_1", { _id: "task_1", value: 5 });
     expect(calls).toBe(2);
     expect(tree.GetPath(key)).toBe(5);
   });
@@ -566,8 +652,8 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
         }
       }
     });
-    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
-    tree.DiffPath("e1.n", 2);
+    Write(tree, "list", [{ _id: "e1", n: 1 }]);
+    Write(tree, "e1.n", 2);
 
     expect(seen.length).toBe(2);
     expect(seen[seen.length - 1]).toEqual({ _id: "e1", n: 2 });
@@ -584,8 +670,8 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
         },
       },
     });
-    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
-    tree.DiffPath("e1.n", 2);
+    Write(tree, "list", [{ _id: "e1", n: 1 }]);
+    Write(tree, "e1.n", 2);
 
     expect(seen).toEqual([1, 2]);
     expect(tree.GetPath(`${PROJECTION_PREFIX}p`)).toBe(2);
@@ -593,8 +679,8 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
 
   it("GetPath through a keyed entity reads its root", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc);
-    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
-    tree.DiffPath("e1.n", 2);
+    Write(tree, "list", [{ _id: "e1", n: 1 }]);
+    Write(tree, "e1.n", 2);
 
     expect(tree.GetPath("e1.n")).toBe(2);
     expect(tree.GetPath("list.0.n")).toBe(2);
@@ -602,10 +688,153 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
 
   it("Snapshot of a keyed entity by dotted path reads its root", () => {
     const tree: any = new DiffTreeConstructor(KeyFunc);
-    tree.DiffPath("list", [{ _id: "e1", n: 1 }]);
-    tree.DiffPath("e1.n", 2);
+    Write(tree, "list", [{ _id: "e1", n: 1 }]);
+    Write(tree, "e1.n", 2);
 
     expect(tree.Snapshot("list")).toEqual([{ _id: "e1", n: 2 }]);
     expect(tree.Snapshot("list.0")).toEqual({ _id: "e1", n: 2 });
+  });
+});
+
+// PatchPath merges a partial value (JsonMerge) into the current value at a path and
+// writes the result through the same diff-and-apply path as DiffPath.
+describe("Diff Tree PatchPath Test", () => {
+  it("merges a patch into an object and diffs only the changed field", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1, b: { c: 2, d: 3 } });
+
+    const result = tree.PatchPath("root", { b: { c: 5 } });
+
+    expect(result).toEqual([{ path: ["root", "b", "c"], value: 5 }]);
+    expect(tree.GetPath("root")).toEqual({ a: 1, b: { c: 5, d: 3 } });
+  });
+
+  it("adds properties that weren't on the current value", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1 });
+
+    const result = tree.PatchPath("root", { b: 2 });
+
+    expect(result).toEqual([{ path: ["root", "b"], value: 2 }]);
+    expect(tree.GetPath("root")).toEqual({ a: 1, b: 2 });
+  });
+
+  it("produces no diff when the patch matches the current value", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1, b: { c: 2 } });
+
+    expect(tree.PatchPath("root", { b: { c: 2 } })).toEqual([]);
+  });
+
+  it("patches a keyed entity through a nested path and updates its root", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { data: { _id: "e1", value: "one", other: "x" } });
+
+    tree.PatchPath("root.data", { value: "two" });
+
+    expect(tree.GetPath("e1")).toEqual({ _id: "e1", value: "two", other: "x" });
+    expect(tree.GetPath("root.data")).toEqual({ _id: "e1", value: "two", other: "x" });
+  });
+
+  it("flattens a keyed entity introduced by the patch", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1 });
+
+    tree.PatchPath("root", { child: { _id: "c1", value: "c" } });
+
+    expect(tree.GetPath("c1")).toEqual({ _id: "c1", value: "c" });
+  });
+
+  it("does not corrupt an earlier snapshot of the patched value", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1, b: { c: 2 } });
+    const before = tree.Snapshot("root");
+
+    tree.PatchPath("root", { b: { c: 5 } });
+
+    expect(before).toEqual({ a: 1, b: { c: 2 } });
+    expect(tree.Snapshot("root")).toEqual({ a: 1, b: { c: 5 } });
+  });
+
+  it("throws when the path doesn't exist", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    expect(() => tree.PatchPath("missing", { a: 1 })).toThrow();
+  });
+});
+
+// PushPath appends items to the array at a path, reporting each new index plus the new
+// length, and registers any keyed entities the items carry.
+describe("Diff Tree PushPath Test", () => {
+  it("appends items and diffs each new index and the length", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("arr", [1, 2]);
+
+    const result = tree.PushPath("arr", [3, 4]);
+
+    expect(result).toEqual([
+      { path: ["arr", "2"], value: 3 },
+      { path: ["arr", "3"], value: 4 },
+      { path: ["arr", "length"], value: 4 },
+    ]);
+    expect(tree.GetPath("arr")).toEqual([1, 2, 3, 4]);
+  });
+
+  it("produces no diff when pushing nothing", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("arr", [1]);
+
+    expect(tree.PushPath("arr", [])).toEqual([]);
+    expect(tree.GetPath("arr")).toEqual([1]);
+  });
+
+  it("pushes onto an array nested in an object", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { list: ["a"] });
+
+    tree.PushPath("root.list", ["b"]);
+
+    expect(tree.GetPath("root.list")).toEqual(["a", "b"]);
+  });
+
+  it("registers pushed keyed entities as their own roots", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("arr", [{ _id: "a", value: "a" }]);
+
+    const result = tree.PushPath("arr", [{ _id: "b", value: "b" }]);
+
+    expect(result).toContainEqual({ path: ["b"], value: { _id: "b", value: "b" } });
+    expect(tree.GetPath("b")).toEqual({ _id: "b", value: "b" });
+  });
+
+  it("a pushed keyed entity reflects later writes to its root", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("arr", []);
+    tree.PushPath("arr", [{ _id: "b", value: "b" }]);
+
+    tree.DiffPath("b", { _id: "b", value: "changed" });
+
+    expect(tree.Snapshot("arr")).toEqual([{ _id: "b", value: "changed" }]);
+  });
+
+  it("invalidates the array's snapshot", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("arr", [1]);
+    const before = tree.Snapshot("arr");
+
+    tree.PushPath("arr", [2]);
+
+    expect(before).toEqual([1]);
+    expect(tree.Snapshot("arr")).toEqual([1, 2]);
+  });
+
+  it("throws when the path doesn't exist", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    expect(() => tree.PushPath("missing", [1])).toThrow(/not found/);
+  });
+
+  it("throws when the value at the path isn't an array", () => {
+    const tree = new DiffTreeConstructor(KeyFunc);
+    tree.DiffPath("root", { a: 1 });
+    expect(() => tree.PushPath("root", [1])).toThrow(/not an array/);
   });
 });

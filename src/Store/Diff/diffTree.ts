@@ -1,25 +1,23 @@
 import { ArraysEqual } from "../../Utils/array";
-import { JsonDeepClone, JsonDiff, JsonType, type JsonDiffResult } from "../../Utils/json";
+import { JsonDeepClone, JsonDiff, JsonMerge, JsonType, type JsonDiffResult } from "../../Utils/json";
 
 /**
  * Interface for diff tree operations.
  */
 export interface IDiffTree {
   /**
-   * Computes diffs for a batch of path/value pairs.
-   * @param data - Array of objects with path and value properties
-   * @returns Combined diff results
-   */
-  DiffBatch(data: Array<{ path: string; value: any }>): JsonDiffResult;
-  /**
    * Computes the diff between a new value and the current value at a path.
    * @param path - Dot-separated path to the value
    * @param value - The new value to compare
    * @returns Diff results showing changes
    */
-  DiffPath(path: string, value: any, flatten?: boolean): JsonDiffResult;
+  DiffPath(path: string, value: any): JsonDiffResult;
 
-  SplicePath(path: string, start: number, deleteCount: number | undefined, items: any[], flatten?: boolean): DiffSpliceResult;
+  PatchPath(path: string, patch: any): JsonDiffResult;
+
+  SplicePath(path: string, start: number, deleteCount: number | undefined, items: any[]): DiffSpliceResult;
+
+  PushPath(path: string, items: any[]): JsonDiffResult;
 }
 
 /**
@@ -72,6 +70,7 @@ export type DiffSpliceResult<T = unknown> = {
   /** Required by the splice operation **/
   start: number,
   deleteCount: number,
+  items: any[],
   spliceResult: any[],
   diffResult: JsonDiffResult
 };
@@ -364,13 +363,12 @@ function RunProjections(
 
         // The same diff-and-apply UpdateSource uses for any other write, so a keyed entity
         // embedded in a projection's result is flattened to its own root like any other write,
-        // and the diff reported here is unfiltered, the same as DiffPath/DiffBatch return.
+        // and the diff reported here is unfiltered, the same as DiffPath returns.
         diffResult.push(
           ...UpdateSource(
             source,
             PROJECTION_PREFIX + id,
             result,
-            true,
             keyFunc,
           ),
         );
@@ -441,7 +439,6 @@ function UpdateSource(
   source: any,
   path: string,
   value: unknown,
-  flatten: boolean,
   keyFunc?: (val: any) => string,
 ) {
   const diffResult: JsonDiffResult = [];
@@ -452,7 +449,6 @@ function UpdateSource(
         source,
         keyPath,
         value,
-        flatten,
         keyFunc,
       );
       diffResult.push(...keyDiffResult);
@@ -462,7 +458,7 @@ function UpdateSource(
   const [sourceValue] = GetPathValue(source, path);
   JsonDiff(value, sourceValue, path, diffResult);
 
-  if (flatten && keyFunc) {
+  if (keyFunc) {
     let flattened: any = {};
     flattened = FlattenValue(flattened, value, keyFunc) as any;
     flattened = JsonDeepClone(flattened);
@@ -485,13 +481,64 @@ function UpdateSource(
   return diffResult;
 }
 
+function PushSource(
+  source: any,
+  path: string,
+  items: any[],
+  keyFunc?: (val: any) => string
+) {
+  const [sourceValue, found] = GetPathValue(source, path);
+  if (!found) throw `Value not found at path ${path}`;
+
+  if (!Array.isArray(sourceValue))
+    throw `Value found at path ${path} is not an array`;
+
+  const results: JsonDiffResult = items.map(function (value, index) {
+    return {
+      path: `${path}.${sourceValue.length + index}`.split('.'),
+      value
+    };
+  })
+
+  sourceValue.push(...items);
+  if (items.length > 0)
+    results.push({
+      path: `${path}.length`.split('.'),
+      value: sourceValue.length
+    });
+
+  if (keyFunc) {
+    const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc));
+    const keys = Object.keys(flattened);
+    for (let x = 0; x < keys.length; x++)
+      JsonDiff(
+        flattened[keys[x]],
+        source[keys[x]],
+        keys[x],
+        results,
+      );
+  }
+
+  const filteredDiffResult = results.filter(
+    (diff) => diff.value !== undefined,
+  );
+  for (let x = 0; x < filteredDiffResult.length; x++) {
+    SetPathValue(
+      source,
+      filteredDiffResult[x].path,
+      filteredDiffResult[x].value,
+    );
+  }
+
+  return results;
+}
+
 function SpliceSource(
   source: any,
   path: string,
   start: number,
   deleteCount: number | undefined,
   items: any[],
-  flatten: boolean,
   keyFunc?: (val: any) => string,
 ): DiffSpliceResult {
   const [sourceValue, found] = GetPathValue(source, path);
@@ -504,6 +551,7 @@ function SpliceSource(
   const spliceResult: DiffSpliceResult = {
     path: path.split("."),
     start,
+    items,
     deleteCount,
     spliceResult: null,
     diffResult: [] as JsonDiffResult,
@@ -511,13 +559,11 @@ function SpliceSource(
   spliceResult.spliceResult = sourceValue.splice(start, deleteCount, ...items);
   InvalidateSnapshotForValue(sourceValue);
 
-  if (flatten && keyFunc) {
+  if (keyFunc) {
     // Register the keyed entities the new items carry, diffed against the roots
     // already held: a new entity is added whole, one re-inserted unchanged (an undo)
     // produces no diff, so its readers aren't woken.
-    const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc)) as {
-      [key: string]: unknown;
-    };
+    const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc));
     const keys = Object.keys(flattened);
     for (let x = 0; x < keys.length; x++)
       JsonDiff(
@@ -544,7 +590,7 @@ function SpliceSource(
 
 /**
  * Diff tree implementation. Maintains root state and computes diffs for path/value updates.
- * Used directly by `DiffSync`, and is the building block for a `DiffAsync` worker entry
+ * Used directly by `DiffSync`, and is the building block for a `StoreAsync` worker entry
  * file: construct one with the desired `keyFunc`/`projections` and connect it to the worker
  * thread with `ConnectWorkerToDiffTree` (see `defaultDiffTreeWorker.ts` for the no-argument
  * case, or a custom entry file when either is needed).
@@ -567,7 +613,7 @@ export class DiffTree {
     this.projectionOrder = projections ? BuildProjectionOrder(projections) : [];
   }
 
-  private RunProjections(): JsonDiffResult {
+  public RunProjections(): JsonDiffResult {
     if (this.projectionOrder.length === 0) return [];
     return RunProjections(
       this.rootState,
@@ -578,36 +624,33 @@ export class DiffTree {
   }
 
   /**
-   * Computes diffs for a batch of path/value pairs.
-   * @param data - Array of objects with path and value properties
-   * @returns Combined diff results
-   */
-  public DiffBatch(data: Array<{ path: string; value: any }>) {
-    const results = data
-      .map(({ path, value }) =>
-        UpdateSource(this.rootState, path, value, true, this.keyFunc),
-      )
-      .flat(1);
-    results.push(...this.RunProjections());
-    return results;
-  }
-
-  /**
    * Computes the diff between a new value and the current value at a path.
    * @param path - Dot-separated path to the value
    * @param value - The new value to compare
    * @returns Diff results showing changes
    */
-  public DiffPath(path: string, value: any, flatten = true) {
-    const results = UpdateSource(
+  public DiffPath(path: string, value: any) {
+    return UpdateSource(
       this.rootState,
       path,
       value,
-      flatten,
       this.keyFunc,
     );
-    results.push(...this.RunProjections());
-    return results;
+  }
+
+  public PatchPath(path: string, patch: any) {
+    const value = this.Snapshot(path);
+    const merged = JsonMerge(value, patch);
+    return UpdateSource(
+      this.rootState,
+      path,
+      merged,
+      this.keyFunc
+    );
+  }
+
+  public PushPath(path: string, items: unknown[]) {
+    return PushSource(this.rootState, path, items, this.keyFunc);
   }
 
   public SplicePath(
@@ -615,19 +658,15 @@ export class DiffTree {
     start: number,
     deleteCount: number,
     items: any[],
-    flatten = true,
   ) {
-    const spliceResult = SpliceSource(
+    return SpliceSource(
       this.rootState,
       path,
       start,
       deleteCount,
       items,
-      flatten,
       this.keyFunc,
     );
-    spliceResult.diffResult.push(...this.RunProjections());
-    return spliceResult;
   }
 
   /**
