@@ -286,7 +286,7 @@ function ToArray(result: any) {
 function MapNode(vnode: vNodeType): string | Node | null | (string | Node | null)[] {
   switch (vnode.type) {
     case FRAGMENT_NODE:
-      return vnode.children.flatMap(MapNode);
+      return vnode.children?.flatMap(MapNode) ?? null;
     default:
       return vnode.node;
   }
