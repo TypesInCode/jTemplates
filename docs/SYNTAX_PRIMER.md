@@ -1,14 +1,14 @@
 # j-templates Syntax Primer
 
-Oct 3, 2026 · @Jay Landrum
+Oct 17, 2026 · @Jay Landrum
 
-Reference for building apps with j-templates 8.0.21. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
+Reference for building apps with j-templates 8.1.0. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
 
 ## How to use this document
 
 Read Mental model, then Templates and State decorators before writing a component. Check the Traps checklist before shipping.
 
-- **Version:** j-templates 8.0.21. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry; those sections were re-verified against 8.0.21 in jsdom.
+- **Version:** j-templates 8.1.0. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry. 8.0.23 moved `Bound()` after the first render and added `Connected()`. 8.0.24 fixed dotted projection reads through keyed entities. 8.0.27 batches `StoreAsync` changes. 8.1.0 added `PushStore` and `DiffTreeWriter`, and moved the diff types and `PROJECTION_PREFIX` to `j-templates/Store/Diff`. Each of those sections was re-verified in jsdom against the version that changed it.
 - **Not verified:** a real browser `Worker` (a structured-clone shim stood in), real focus behavior, and the `docs/`, `examples/` and `src/` folders the package does not ship.
 - **Convention:** `this.x` in examples is a component field decorated with `@Value` or `@State` unless shown otherwise. Imports are omitted after the first example.
 
@@ -56,9 +56,10 @@ npm install j-templates
 | `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped`; type `vNode` |
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
 | `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`; type `IDestroyable` |
-| `j-templates/Store` | `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode` |
+| `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `PushStore`, `ObservableScope`, `ObservableNode` |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `DIFF_TREE_EVENT`, `DIFF_TREE_ERROR`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `IDiffPushEvent`, `DiffSpliceResult`, `IDiffTree` and the batch types. Types and constants only, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`, `PROJECTION_PREFIX`), `j-templates/Store/Diff/diffTreeWorker` (`ConnectWorkerToDiffTree`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreeWorker` (`ConnectWorkerToDiffTree`), `j-templates/Store/Diff/diffTreeWriter` (`DiffTreeWriter`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -102,20 +103,27 @@ Component.Attach(document.getElementById("app")!, counter({}));
 **Members:**
 
 - `Template(): vNode | vNode[]` — override to render. May return an array. Not overriding renders an empty host.
-- `Bound()` / `Destroy()` — optional overrides. If you override either, call `super.Bound()` / `super.Destroy()`. `super.Bound()` starts `@Watch`; `super.Destroy()` tears down scopes and runs `@Destroy` properties.
+- `Bound()` / `Connected()` / `Destroy()` — optional overrides. If you override `Bound()` or `Destroy()`, call `super.Bound()` / `super.Destroy()`. `super.Bound()` starts `@Watch`; `super.Destroy()` tears down scopes and runs `@Destroy` properties. The base `Connected()` is empty.
 - `Fire(event, payload?)` — sends a component event to the parent's `on:` handler. The payload is optional.
-- `this.Data`, `this.Templates`, `this.Injector`, `this.VNode` (host vNode; `this.VNode.node` is the host element), `this.Destroyed`.
+- `this.Data`, `this.Templates`, `this.Injector`, `this.VNode` (host vNode; `this.VNode.node` is the host element), `this.IsConnected`, `this.Destroyed`.
 - Never override the constructor. Use field initializers and `Bound()`.
 
-**Lifecycle (verified order):**
+**Lifecycle (verified order, 8.0.23+):**
 
 1. Field initializers run.
-2. `Bound()` runs. The host element exists but is **not in the document and has no children**. `@Watch` handlers fire here with their initial values.
-3. `Template()` runs.
-4. Children functions run and build the DOM. By default this happens **after** `Attach` returns; with `SYNC_SCHEDULING=true`, before.
-5. The host is in the document.
+2. `Template()` runs and its children functions build the DOM. Child components go through their own steps 1–3 here, so a child's `Bound()` runs before its parent's.
+3. `Bound()` runs once the initial subtree is in the host: `querySelector` on the host finds rendered elements, including a child component's content. `@Watch` handlers fire inside `super.Bound()` with their initial values, so they can use those elements too. Code placed before `super.Bound()` runs before the first `@Watch` call.
+4. `Connected()` runs once the host is first in the document, after `Bound()`. It runs parent first, then children. It fires once per component instance; a component that is removed and rendered again is a new instance and fires again.
 
-To touch rendered DOM from `Bound()`, defer with `requestAnimationFrame` or `setTimeout` (verified: host connected and children present by then). Attach native listeners to an element you render, not to the host.
+By default steps 2–4 happen **after** `Attach` returns; with `SYNC_SCHEDULING=true`, before.
+
+The host is in the document during `Bound()` only for the component passed to `Component.Attach(document.body, …)`. A child's host joins the document when its parent's children are placed, after the child's `Bound()`. So:
+
+- Find and wire up the elements you render in `Bound()`.
+- Put work that needs layout (measuring, sizes), focus, or the document in `Connected()`.
+- An element that a later change renders isn't there at `Bound()` or `Connected()`. Reach it from the code that renders it, or watch for it.
+
+`Connected()` only fires when j-templates itself puts a node in the document. A tree attached to a detached element never gets `Connected()`, even after you append that element to the document (verified). Attach native listeners to an element you render, not to the host.
 
 **Host element.** The name passed to `ToFunction` is the host's tag. `Template()` output renders inside it:
 
@@ -352,7 +360,7 @@ Tracked array methods: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `rev
 syncFilter(value: FilterType) { this.localFilter = value; }
 ```
 
-- Fires once in `super.Bound()` with the initial value, then on every change.
+- Fires once in `super.Bound()` with the initial value, then on every change. Since `Bound()` runs after the first render, that first call can use rendered elements.
 - Several synchronous writes in one tick produce one call with the latest value (`n = 1; n = 2; n = 3` → one call with `3`).
 - Without `super.Bound()` it never fires.
 - Use it for side effects and for copying parent `Data` into local `@Value` state. Don't use it to drive rendering; reads in templates are already reactive.
@@ -525,15 +533,15 @@ class Injector {
 
 ## Store
 
-A store holds reactive data under string keys and diffs every write into existing objects in place. Use `StoreSync` unless diffing large data blocks the main thread.
+A store holds reactive data under string keys and diffs every write into existing objects in place. Use `StoreSync` unless diffing large data blocks the main thread. Use `PushStore` when a worker produces the data itself, such as the result of a computation it runs.
 
-|  | `StoreSync` | `StoreAsync` |
-| --- | --- | --- |
-| Constructor | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(worker, keyFunc?)` |
-| Diffing | main thread, synchronous | in the `Worker` you supply |
-| Writes | `void`; readable immediately | `Promise`; readable only after `await` |
-| `Destroy()` | none | required; terminates the worker |
-| Backs | nothing (`@Computed` uses `ObservableNode` directly) | `@ComputedAsync` |
+|  | `StoreSync` | `StoreAsync` | `PushStore` |
+| --- | --- | --- | --- |
+| Constructor | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(worker, keyFunc?)` | `new PushStore(source, keyFunc?, cloneData?)` |
+| Diffing | main thread, synchronous | in the `Worker` you supply | in the `DiffTreeWriter` that pushes to it |
+| Writes | `void`; readable immediately | `Promise`; batched per tick, readable only after `await` | none; read-only. Changes arrive when the writer calls `Commit()` |
+| `Destroy()` | none | required; terminates the worker | required; stops listening, leaves the worker running |
+| Backs | nothing (`@Computed` uses `ObservableNode` directly) | `@ComputedAsync` | nothing |
 
 ### API
 
@@ -547,7 +555,7 @@ Push(key: string, ...items: unknown[]);      // append to the array at key
 Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]); // returns removed items
 ```
 
-`StoreAsync` has the same methods; the four writers return promises.
+`StoreAsync` has the same methods; the four writers return promises. It also has `Flush()` (see below). `PushStore` has only `Get` and `Has`, plus `Error` (see PushStore and DiffTreeWriter).
 
 ### keyFunc and flattening
 
@@ -585,12 +593,19 @@ store.Destroy();      // when done
 
 Data crosses the worker boundary by structured clone. Class instances arrive as plain objects without their methods; functions cannot be sent. Store plain data.
 
+**Batching (8.0.27).** Every `Write`, `Patch`, `Push` and `Splice` made in the same tick goes to the worker as one message and is applied in call order. The worker runs projections once per batch, after the last change, not after each one. Verified: a `Write`, a `Push` and a `Patch` in one tick sent one message and ran a projection once.
+
+- You don't have to await a change before making the next one. `Patch`, `Push` and `Splice` accept a key whose `Write` is still pending, and `Patch` merges in the worker, on top of everything before it.
+- The pending-key check covers only the key passed to `Write`. Entities that `keyFunc` will flatten out of that write don't exist yet: `Patch("a", …)` right after an un-awaited `Write([{ id: "a" }], "todos")` rejects with `Key not found in store` (verified). Await the write first.
+- `await store.Flush()` waits for every change made before the call. Changes made after it go in a later batch.
+- **A failed change stops the store.** After any change fails in the worker (for example `Splice` on a value that isn't an array), every later `Write`, `Patch`, `Push`, `Splice` and `Flush` rejects with that same error (verified). Validate before writing; a store in this state has to be replaced.
+
 ### Projections
 
 A projection is a derived value the store computes and stores under `$projection_<name>`. Pass them as `StoreSync`'s second argument (for `StoreAsync`, to the worker's `DiffTree`).
 
 ```typescript
-import { PROJECTION_PREFIX } from "j-templates/Store/Diff/diffTree"; // "$projection_"
+import { PROJECTION_PREFIX } from "j-templates/Store/Diff"; // "$projection_"
 
 const store = new StoreSync((v: any) => v?.id, {
   activeCount: { reads: ["todos"], projection: (keys, todos) => todos.filter((t) => !t.done).length },
@@ -605,6 +620,39 @@ store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 - The last read may be a root wildcard such as `"task_*"`: each matching root's key is added to `keys` and its value appended (verified: `[["task_1","task_2"], v1, v2]`).
 - A projection has no value until every read resolves. It re-runs when a read's value changes.
 - A cycle or a read of an undefined projection throws at construction.
+- A dotted read can pass through a keyed entity (`"doc.owner.name"`, where `owner` has an id). It reads the entity's own root, so a `Patch` to the entity reruns the projection with the new value (verified; before 8.0.24 such a read returned the stale embedded copy).
+- `StoreSync` and the `StoreAsync` worker run projections for you, and a `DiffTreeWriter` runs them in `Commit()`. `DiffTree.DiffPath`, `PatchPath`, `PushPath` and `SplicePath` don't (8.0.27): code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
+
+### PushStore and DiffTreeWriter
+
+`StoreAsync` only changes when the main thread writes. When a worker produces the data itself, the worker owns the tree instead: it writes into a `DiffTreeWriter` and calls `Commit()`, which runs projections and posts every change since the last commit as one message. A `PushStore` on the main thread applies each message as it arrives (8.1.0).
+
+```typescript
+// engine-worker.ts (bundled as its own worker entry)
+import { DiffTreeWriter } from "j-templates/Store/Diff/diffTreeWriter";
+const tree = new DiffTreeWriter(self, (v: any) => v?.id, projections);
+self.onmessage = async (e) => {
+  const results = await compute(e.data);   // the worker's own work
+  tree.DiffPath("results", results);
+  tree.DiffPath("meta", { finishedAt: Date.now() });
+  tree.Commit();                          // one message: both writes and the projections
+};
+
+// main thread
+const worker = new Worker(new URL("./engine-worker.ts", import.meta.url), { type: "module" });
+const store = new PushStore(worker, (v: any) => v?.id);   // before the first Commit()
+store.Get("results");   // reactive; undefined until the first commit
+store.Destroy();        // stops listening; terminate the worker yourself
+```
+
+- The writer is a `DiffTree`: write with `DiffPath`, `PatchPath`, `PushPath` and `SplicePath`. Nothing reaches the store until `Commit()`, and a `Commit()` with no changes posts nothing (verified).
+- Projections run once per `Commit()`, after the batch's writes, and their results arrive in the same message, so readers never see a projection out of step with the writes it came from (verified). Calling `RunProjections()` on a writer throws (from source).
+- Use the same `keyFunc` on both sides. Keyed entities resolve through their own roots, as in any store (verified).
+- `source` is any `EventTarget` that delivers the writer's messages as `"message"` events: a `Worker`, a `MessagePort` (started for you), or a plain `EventTarget` on the same thread. The store ignores messages whose `type` isn't `DIFF_TREE_EVENT` or `DIFF_TREE_ERROR` (verified). It listens with `addEventListener` and never sets `onmessage` (from source). The worker can carry its own requests and replies on the same channel.
+- **Create the store before the first `Commit()`.** Messages are diffs against the writer's tree, so a store created later misses the earlier changes and holds partial roots (from source). There is no catch-up message.
+- **A failed change doesn't stop either side.** After a write throws, every later write before `Commit()` throws the same error. `Commit()` still sends the writes made before the failure, skips projections, then posts `DIFF_TREE_ERROR`. The store applies the changes and sets `Error` (verified). The next commit brings projections up to date.
+- `store.Error` is reactive: the last commit's error, or `null`. It's cleared when a later commit's changes arrive (verified).
+- `cloneData` (default `false`): a `Worker` or `MessagePort` already delivers a structured-clone copy, so no copy is made. A same-thread `EventTarget` delivers the writer's own objects; post copies, or pass `true`. The flag only covers new roots and splices; changes to an existing root are always copied (from source).
 
 ## ObservableScope and ObservableNode
 
@@ -720,6 +768,23 @@ function fakeWorker(tree = new DiffTree()) {
 }
 (globalThis as any).Worker = class { constructor() { return fakeWorker(); } }; // for @ComputedAsync
 const store = new StoreAsync(fakeWorker(new DiffTree((v: any) => v?.id)), (v: any) => v?.id);
+```
+
+4. For `PushStore`, use a plain `EventTarget` as the channel. Deliver copies a tick later, as a worker would, and await a timeout before reading:
+
+```typescript
+import { DiffTreeWriter } from "j-templates/Store/Diff/diffTreeWriter";
+
+const target = new EventTarget();
+const port = { postMessage: (d: unknown) => setTimeout(() =>
+  target.dispatchEvent(new MessageEvent("message", { data: structuredClone(d) }))) };
+const writer = new DiffTreeWriter(port);
+const store = new PushStore(target);
+
+writer.DiffPath("a", { value: 1 });
+writer.Commit();
+await new Promise((r) => setTimeout(r));
+store.Get<any>("a").value;   // 1
 ```
 
 jsdom has no `innerText`; use `textContent` in tests.
@@ -895,7 +960,7 @@ Component.Attach(document.getElementById("app")!, app({}));
 9. **`@State` deep-tracks plain objects and arrays only**, not class instances, `Map` or `Set`.
 10. **`@Scope` has no equality check**; consumers re-run on every change of its inputs. `gate()` it if it returns a primitive.
 11. **`@Computed` returns a copy**, not the object the getter returned. Its identity changes only when the result's type changes or an object result loses a key.
-12. **`Bound()` runs before `Template()`**, with the host detached and empty. Defer DOM access with `requestAnimationFrame`. Forgetting `super.Bound()` silences `@Watch`.
+12. **`Bound()` runs after the first render**, but a child's host isn't in the document yet. Do layout and focus work in `Connected()`. Forgetting `super.Bound()` silences `@Watch`.
 13. **`@Watch` fires immediately** with the initial value, and coalesces synchronous changes into one call.
 14. **`scope()`, `gate()` and `mapped()` outside a scope throw**, including in `on:` handlers and inside `peek()` callbacks. `peek()` works anywhere.
 15. **Conditional `scope()`/`gate()` calls need ids**, or a later call takes a skipped call's scope. Callbacks are fixed at first run: don't close over locals.
@@ -904,12 +969,13 @@ Component.Attach(document.getElementById("app")!, app({}));
 18. **Native DOM listeners belong on elements you render**, not the host.
 19. **`svg()` is HTML-namespace.** Use namespaced components or `innerHTML` for SVG.
 20. **`ObservableScope.Create` with no reactive reads is static** and ignores `Update()`. Use `Basic`.
-21. **`StoreAsync` writes must be awaited**; data crosses by structured clone (class methods are lost).
+21. **`StoreAsync` writes must be awaited** before reading; data crosses by structured clone (class methods are lost). Changes in one tick are batched, and one failed change makes every later change reject.
 22. **The package needs a bundler or TypeScript runner**; plain Node cannot import it.
 
 23) **Equal-value writes still notify.** Assigning the current value again re-runs every reader. Guard repeated writes or read through `gate()`.
 24) **`JSON.stringify(node)` and `ObservableNode.Snapshot(node)` don't subscribe.** Read properties directly, or `ObservableNode.Clone(node)` to track everything.
 25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
+26) **A `PushStore` sees only what's committed after it exists.** Create it before the writer's first `Commit()`, and call `Commit()` after every batch of writes.
 
 ## Debugging
 
@@ -927,7 +993,9 @@ Component.Attach(document.getElementById("app")!, app({}));
 | `gate()` doesn't stop re-runs | gated value is a new object/array each time | gate a primitive, or use `@Computed` |
 | Async value never resolves (shows a Promise) | callback lacks `async` | `async () => …` |
 | Async value doesn't refresh | reactive read after `await` | read before the first `await` |
-| `querySelector` in `Bound()` finds nothing | children not built yet | `requestAnimationFrame(() => …)` |
+| `querySelector` in `Bound()` finds nothing | the element is rendered later by a change, not by the first render | reach it where it's rendered, or watch for it |
+| Measured size is 0, or `focus()` does nothing, in `Bound()` | the host isn't in the document yet | move the work to `Connected()` |
+| `Connected()` never fires | the tree was attached to a detached element and appended later | attach to an element that's already in the document |
 | Manual service scope never updates | `ObservableScope.Create` with no reactive reads | `ObservableScope.Basic` |
 | Test sees old DOM after a write | asynchronous rendering | `SYNC_SCHEDULING=true` or await a timeout |
 | `ReferenceError: self is not defined` | importing `defaultDiffTreeWorker` on the main thread | write your own worker entry file |
@@ -935,19 +1003,27 @@ Component.Attach(document.getElementById("app")!, app({}));
 | A watcher or scope over JSON.stringify/Snapshot never fires | snapshot reads register no dependencies | read properties directly, or JSON.stringify(ObservableNode.Clone(node)) |
 | `Emitter.Emit: re-entry during emit is not supported` | a `Watch`/`OnUpdated` callback updates the scope or value that is notifying it | defer the write, or move it out of the callback |
 | `scope() must be called within a watch context` inside `peek()` | tracking is off inside `peek` | call `scope()`/`gate()` outside the `peek` callback |
+| `Key not found in store` from `StoreAsync.Patch` right after a `Write` | the key is an entity id flattened out of a write that hasn't been applied yet | await the `Write` first |
+| Every `StoreAsync` change rejects with the same old error | an earlier change failed in the worker | fix that change; replace the store |
+| A test's projection never updates | the test drives a `DiffTree` directly | call `tree.RunProjections()` after each write |
+| `PushStore` never gets the writer's data | the worker wrote but didn't call `Commit()` | call `Commit()` after each batch |
+| `PushStore` holds partial or missing roots that the writer has | the store was created after the writer's first `Commit()` | create the store with the worker, before any commit |
+| Every `DiffTreeWriter` write throws the same old error | an earlier write in the batch failed | call `Commit()`: it sends the applied writes and the error, and the next batch starts clean |
+| `RunProjections` throws on a `DiffTreeWriter` | projections run in `Commit()` | call `Commit()` instead |
+| `PROJECTION_PREFIX` is `undefined`, projection keys read `"undefined<id>"` | imported from `j-templates/Store/Diff/diffTree`, its path before 8.1.0 | import it from `j-templates/Store/Diff` |
 
 ## Corrections from the v5 primer
 
 For maintainers comparing against the previous `SYNTAX_PRIMER.md`. Builders can skip this section.
 
-| Previous claim | Observed in 8.0.18 and 8.0.19 |
+| Previous claim | Observed (8.0.18 and 8.0.19 unless a version is named) |
 | --- | --- |
 | `Injector` is not exported from any public entry point | exported from `j-templates/Utils` |
 | `@Computed` returning `this.tasks` won't re-run on item property changes | it re-runs |
 | a second un-ID'd `scope()`/`gate()` call silently resolves to the first | unconditional duplicates are independent; conditional ones mis-pair |
 | exceptions in children functions/getters propagate uncaught | children-function and `Template()` exceptions are caught and logged; `props:`/`attrs:`/`data:` exceptions halt all rendering |
 | children functions can't return `null`/`undefined` | allowed as the sole return value; forbidden inside arrays |
-| `Bound()` runs with the DOM attached, after the template renders | runs before `Template()`, host detached and empty |
+| `Bound()` runs with the DOM attached, after the template renders | before 8.0.23: ran before `Template()`, host detached and empty. Since 8.0.23: runs after the first render; the host is in the document only for the attached root, and `Connected()` marks entry into the document |
 | `gate()` and `@Scope` are incompatible | fine for primitive-returning getters |
 | `data: this.value` (non-function) in the granular-scopes example | throws `data is not a function` |
 | `StoreAsync` data must be JSON-serialisable (no `Date`, `Map`, `Set`) | transport is structured clone: `Date`, `Map`, `Set` survive; class methods and functions do not |

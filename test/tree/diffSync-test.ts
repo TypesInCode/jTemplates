@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { DiffSync } from "../../src/Store/Diff/diffSync";
-import { DiffTree, PROJECTION_PREFIX } from "../../src/Store/Diff/diffTree";
+import { DiffTree } from "../../src/Store/Diff/diffTree";
+import { PROJECTION_PREFIX } from "../../src/Store/Diff";
 import { JsonType } from "../../src/Utils/json";
 
 function KeyFunc(val: any) {

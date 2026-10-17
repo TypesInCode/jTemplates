@@ -1,5 +1,6 @@
 import { JsonDiffResult } from "../../Utils/json";
-import { DiffSpliceResult, DiffTree, DiffTreeProjectionMap, IDiffTree } from "./diffTree";
+import { DiffTree } from "./diffTree";
+import { DiffSpliceResult, DiffTreeProjectionMap, IDiffTree } from "./diffTree.types";
 
 
 /**

@@ -844,7 +844,7 @@ export namespace ObservableScope {
    * @param callback The callback function to remove.
    */
   export function Unwatch<T>(
-    scope: IObservableScope<T>,
+    scope: IObservableScope<T> | IBasicObservableScope<T>,
     callback: (scope: IObservableScope<T>) => void,
   ) {
     if (!scope || scope.destroyed || scope.type === "static") return;

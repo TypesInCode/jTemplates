@@ -1,4 +1,5 @@
-import { DiffTree, DiffTreeProjectionMap } from "../../src/Store/Diff/diffTree";
+import { DiffTree } from "../../src/Store/Diff/diffTree";
+import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
 import { ConnectWorkerToDiffTree } from "../../src/Store/Diff/diffTreeWorker";
 
 // jsdom has no Worker, and a real worker entry module (like defaultDiffTreeWorker.ts) can
@@ -47,4 +48,24 @@ export function CreateShimDiffWorker(
   ConnectWorkerToDiffTree(diffTree, workerSide as Worker);
 
   return mainSide as Worker;
+}
+
+/**
+ * A one-way channel for `DiffTreeWriter` → `PushStore` tests. `port` is the writer's side;
+ * `target` is the `EventTarget` the store listens to. Each message is delivered
+ * asynchronously as a structured-cloned copy in a `"message"` event, as a real worker
+ * boundary would. `posted` records every message sent, before delivery.
+ */
+export function CreateShimPushChannel() {
+  const target = new EventTarget();
+  const posted: any[] = [];
+  const port = {
+    postMessage(data: unknown) {
+      posted.push(data);
+      const copy = clone(data);
+      setTimeout(() => target.dispatchEvent(new MessageEvent("message", { data: copy })));
+    },
+  };
+
+  return { target, port, posted };
 }

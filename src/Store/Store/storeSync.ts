@@ -1,6 +1,6 @@
 import { JsonDeepClone } from "../../Utils/json";
 import { DiffSync } from "../Diff/diffSync";
-import { DiffTreeProjectionMap } from "../Diff/diffTree";
+import { DiffTreeProjectionMap } from "../Diff/diffTree.types";
 import { Store } from "./store";
 
 /**

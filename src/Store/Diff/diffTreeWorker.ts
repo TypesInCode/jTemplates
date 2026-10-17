@@ -1,21 +1,5 @@
-import { JsonDiffResult } from "../../Utils/json";
-import { DiffSpliceResult, DiffTree } from "./diffTree";
-
-export type IDiffMethodBatch = IDiffMethod[];
-export type IDiffMethodBatchResult = ({
-  type: "diff";
-  result: JsonDiffResult;
-} | {
-  type: "splice";
-  result: DiffSpliceResult
-})[]
-
-export interface IDiffMethod {
-  /** The method to call */
-  method: "diffpath" | "splicepath" | "pushpath" | "patchpath";
-  /** Arguments for the method call */
-  arguments: Array<any>;
-}
+import { DiffTree } from "./diffTree";
+import { IDiffMethodBatch, IDiffMethodBatchResult } from "./diffTree.types";
 
 export function ConnectWorkerToDiffTree(diffTree: DiffTree, worker: Worker) {
 

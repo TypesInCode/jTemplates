@@ -2,18 +2,20 @@ import { JsonDeepClone, JsonDiffResult } from "../../Utils/json";
 import { ObservableNode } from "../Tree/observableNode";
 
 /**
- * Base class for observable data store management.
- * Stores root objects as ObservableNode instances and manages updates through diff operations.
+ * Base class for reading observable data: holds root objects as ObservableNode instances
+ * and applies diff results to them. Subclasses decide where the diffs come from: `Store`
+ * adds the write methods, and `PushStore` takes them from a `DiffTreeWriter`.
  *
- * @see StoreSync
- * @see StoreAsync
+ * @see Store
+ * @see PushStore
  */
-export abstract class Store {
+export abstract class ReadStore {
+
   private rootMap = new Map<string | number, any>();
   private createNode: <T>(data: T, unwrapValue?: boolean) => T;
 
   /**
-   * Creates an instance of Store.
+   * Creates an instance of ReadStore.
    * @param keyFunc Optional function to generate a key for a given data value.
    * When provided, enables alias functionality where values can reference other root objects.
    */
@@ -68,11 +70,6 @@ export abstract class Store {
     return this.rootMap.has(id);
   }
 
-  abstract Write(data: unknown, key?: string): Promise<void> | void;
-  abstract Patch(key: string, patch: unknown): Promise<void> | void;
-  abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
-  abstract Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<any[]> | any[];
-
   /**
    * Updates the root map with diff results by grouping changes by root path.
    * @param results - Array of diff results to apply
@@ -118,6 +115,20 @@ export abstract class Store {
       return;
     }
 
-    ObservableNode.ApplyDiff(rootObject, results);
+    ObservableNode.ApplyDiff(rootObject, results, this.cloneData);
   }
+}
+
+/**
+ * Base class for observable data store management.
+ * Stores root objects as ObservableNode instances and manages updates through diff operations.
+ *
+ * @see StoreSync
+ * @see StoreAsync
+ */
+export abstract class Store extends ReadStore {
+  abstract Write(data: unknown, key?: string): Promise<void> | void;
+  abstract Patch(key: string, patch: unknown): Promise<void> | void;
+  abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
+  abstract Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<any[]> | any[];
 }

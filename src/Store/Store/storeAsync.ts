@@ -1,6 +1,5 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { DiffSpliceResult } from "../Diff/diffTree";
-import { IDiffMethod, IDiffMethodBatch, IDiffMethodBatchResult } from "../Diff/diffTreeWorker";
+import { DiffSpliceResult, IDiffMethod, IDiffMethodBatch, IDiffMethodBatchResult } from "../Diff/diffTree.types";
 import { WorkerQueue } from "../Diff/workerQueue";
 import { Store } from "./store";
 

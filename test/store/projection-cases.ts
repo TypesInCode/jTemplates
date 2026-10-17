@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DiffTreeProjectionMap } from "../../src/Store/Diff/diffTree";
+import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
 
 // Store wiring for DiffTree projections, shared by StoreSync (projection-test.ts) and
 // StoreAsync (projection-test-async.ts). Every store call is awaited, so the same cases run
