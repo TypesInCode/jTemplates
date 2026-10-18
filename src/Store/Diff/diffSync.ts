@@ -45,7 +45,8 @@ export class DiffSync implements IDiffTree {
 
   public SplicePath(path: string, start: number, deleteCount: number | undefined, items: any[]): DiffSpliceResult {
     const spliceResult = this.diffTree.SplicePath(path, start, deleteCount, items);
-    spliceResult.diffResult.push(...this.diffTree.RunProjections());
+    const projectionDiff = this.diffTree.RunProjections();
+    spliceResult.diffResult = spliceResult.diffResult.concat(projectionDiff);
     return spliceResult;
   }
 }

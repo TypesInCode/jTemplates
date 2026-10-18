@@ -254,7 +254,7 @@ function RunProjections(
   projections: DiffTreeProjectionEntry[],
   memo: Map<string, any[]>,
 ): JsonDiffResult {
-  const diffResult: JsonDiffResult = [];
+  let diffResult: JsonDiffResult = [];
 
   for (let x = 0; x < projections.length; x++) {
     const { id, reads, projection } = projections[x];
@@ -291,14 +291,20 @@ function RunProjections(
         // The same diff-and-apply UpdateSource uses for any other write, so a keyed entity
         // embedded in a projection's result is flattened to its own root like any other write,
         // and the diff reported here is unfiltered, the same as DiffPath returns.
-        diffResult.push(
-          ...UpdateSource(
+        const diff = UpdateSource(
+          source,
+          PROJECTION_PREFIX + id,
+          result,
+          keyFunc
+        );
+
+        diffResult = diffResult.concat(diff);          ...UpdateSource(
             source,
             PROJECTION_PREFIX + id,
             result,
             keyFunc,
           ),
-        );
+
       }
     }
   }
@@ -368,7 +374,7 @@ function UpdateSource(
   value: unknown,
   keyFunc?: (val: any) => string,
 ) {
-  const diffResult: JsonDiffResult = [];
+  let diffResult: JsonDiffResult = [];
   if (keyFunc) {
     const keyPath = ResolveKeyPath(source, path, keyFunc);
     if (keyPath !== path) {
@@ -378,7 +384,7 @@ function UpdateSource(
         value,
         keyFunc,
       );
-      diffResult.push(...keyDiffResult);
+      diffResult = diffResult.concat(keyDiffResult);
     }
   }
 

@@ -7,8 +7,8 @@ const NODE_PROXY = Symbol("NODE_PROXY");
 const NODE_SNAPSHOT = Symbol("NODE_SNAPSHOT");
 const toJSON = "toJSON";
 const IS_NODE = Symbol("IS_NODE");
+const ARRAY_SCOPE = Symbol("ARRAY_SCOPE");
 const OBJECT_SCOPE = Symbol("OBJECT_SCOPE");
-const ITERATOR_SCOPE = Symbol("ITERATOR_SCOPE");
 
 function Identity<T>(value: T): T {
   return value;
@@ -44,39 +44,42 @@ function InvalidateSnapshotForValue(value: object) {
 }
 
 function getOwnPropertyDescriptor(target: ObservableNodeWrapper, prop: string | symbol) {
+  ObservableScope.Touch(target[OBJECT_SCOPE]);
   const descriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
-  return {
+  return descriptor && {
     ...descriptor,
     configurable: true,
   } as PropertyDescriptor;
 }
 
 function getOwnPropertyDescriptorArray(target: ObservableNodeWrapper, prop: string | symbol) {
-  const descriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
-  return {
-    ...descriptor,
-    configurable: true,
+  ObservableScope.Touch(target[ARRAY_SCOPE]);
+  const descriptor = Object.getOwnPropertyDescriptor(target, prop);
+  const nodeDescriptor = Object.getOwnPropertyDescriptor(target[NODE_VALUE], prop);
+  return nodeDescriptor && {
+    ...nodeDescriptor,
+    configurable: descriptor?.configurable ?? true,
   } as PropertyDescriptor;
 }
 
 function has(value: ObservableNodeWrapper, prop: string | symbol) {
-  ObservableScope.Touch(value[ITERATOR_SCOPE]);
+  ObservableScope.Touch(value[OBJECT_SCOPE]);
   return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
 function hasArray(value: ObservableNodeWrapper, prop: string | symbol) {
-  ObservableScope.Touch(value[ITERATOR_SCOPE]);
+  ObservableScope.Touch(value[ARRAY_SCOPE]);
   return Object.hasOwn(value[NODE_VALUE], prop);
 }
 
 function ownKeys(value: ObservableNodeWrapper) {
-  ObservableScope.Touch(value[ITERATOR_SCOPE]);
+  ObservableScope.Touch(value[OBJECT_SCOPE]);
   return Object.keys(value[NODE_VALUE]);
 }
 
 function ownKeysArray(value: ObservableNodeWrapper) {
-  ObservableScope.Touch(value[ITERATOR_SCOPE]);
-  return Object.keys(value[NODE_VALUE]);
+  ObservableScope.Touch(value[ARRAY_SCOPE]);
+  return Reflect.ownKeys(value[NODE_VALUE]);
 }
 
 function UnwrapProxy(
@@ -134,24 +137,34 @@ function CloneProxy(
   return value;
 }
 
-function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
-  return object[prop] ??= ObservableScope.Basic(
-    Property.bind(null, object[NODE_VALUE], prop)
-  );
+function GetPropertyScope(object: ObservableNodeWrapper, prop: string, create = true) {
+  if (!Object.hasOwn(object, prop)) {
+    if (!create)
+      return undefined;
+
+    Object.defineProperty(object, prop, {
+      value: ObservableScope.Basic(Property.bind(null, object[NODE_VALUE], prop)),
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  return object[prop];
 }
 
 function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
   const propExists = Object.hasOwn(object[NODE_VALUE], prop);
   object[NODE_VALUE][prop] = value;
   InvalidateSnapshotForValue(object[NODE_VALUE]);
-  ObservableScope.Update(object[prop]);
-  !propExists && ObservableScope.Update(object[ITERATOR_SCOPE]);
+  Object.hasOwn(object, prop) && ObservableScope.Update(object[prop]);
+  !propExists && ObservableScope.Update(object[OBJECT_SCOPE]);
 }
 
 function SetArrayValue(object: ObservableNodeWrapper, prop: string | number, value: any) {
   object[NODE_VALUE][prop] = value;
   InvalidateSnapshotForValue(object[NODE_VALUE]);
-  ObservableScope.Update(object[OBJECT_SCOPE]);
+  ObservableScope.Update(object[ARRAY_SCOPE]);
 }
 
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
@@ -215,7 +228,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     const wrapper: ObservableNodeWrapper = Object.assign([] as any as ObservableNodeWrapper, {
       [NODE_VALUE]: value,
       [NODE_PROXY]: null,
-      [OBJECT_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
+      [ARRAY_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
     });
 
     const proxy = wrapper[NODE_PROXY] = new Proxy(wrapper, {
@@ -263,7 +276,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       case NODE_SNAPSHOT:
         return CreateSnapshot(object[NODE_VALUE]);
       default: {
-        const scope = object[OBJECT_SCOPE];
+        const scope = object[ARRAY_SCOPE];
         const array = ObservableScope.Value(scope);
         const arrayValue = (array as any)[prop];
 
@@ -309,7 +322,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     const wrapper: ObservableNodeWrapper = {
       [NODE_VALUE]: value,
       [NODE_PROXY]: null,
-      [ITERATOR_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
+      [OBJECT_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
     };
 
     const proxy = wrapper[NODE_PROXY] = new Proxy(wrapper, {
@@ -334,7 +347,6 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
   }
 
   function ObjectProxyGetter(object: ObservableNodeWrapper, prop: string | symbol) {
-    ObservableScope.Touch(object[OBJECT_SCOPE]);
     switch (prop) {
       case IS_NODE:
         return true;
@@ -376,7 +388,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       case "array": {
         const wrapper = wrapperCache.get(value);
         const proxy = wrapper?.[NODE_PROXY] ?? CreateArrayProxy(value as any[]);
-        ObservableScope.Touch(wrapper?.[OBJECT_SCOPE]);
+        ObservableScope.Touch(wrapper?.[ARRAY_SCOPE]);
         return proxy as T;
       }
       default:
@@ -467,7 +479,7 @@ export namespace ObservableNode {
   export function Update<T>(value: T, prop?: keyof T) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
-      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : (prop && wrapper[prop]) ?? wrapper[ITERATOR_SCOPE];
+      const scope = Array.isArray(wrapper) ? wrapper[ARRAY_SCOPE] : (prop && GetPropertyScope(wrapper, prop as string)) ?? wrapper[OBJECT_SCOPE];
       ObservableScope.Update(scope);
     }
   }
@@ -491,7 +503,7 @@ export namespace ObservableNode {
   export function Touch<T>(value: T, prop?: keyof T) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
-      const scope = prop && GetPropertyScope(wrapper, prop as string) || wrapper[OBJECT_SCOPE];
+      const scope = prop && GetPropertyScope(wrapper, prop as string) || wrapper[ARRAY_SCOPE] || wrapper[OBJECT_SCOPE];
       ObservableScope.Touch(scope);
     }
   }
@@ -499,7 +511,7 @@ export namespace ObservableNode {
   export function Read<T>(value: T, prop: keyof T) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
-      const scope = Array.isArray(wrapper) ? wrapper[OBJECT_SCOPE] : (prop && wrapper[prop]) ?? wrapper[ITERATOR_SCOPE];
+      const scope = Array.isArray(wrapper) ? wrapper[ARRAY_SCOPE] : (prop && wrapper[prop]) ?? wrapper[OBJECT_SCOPE];
       ObservableScope.Update(scope);
     }
   }
