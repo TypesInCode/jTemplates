@@ -1,6 +1,6 @@
 import { JsonDeepClone } from "../../Utils/json";
 import { DiffSync } from "../Diff/diffSync";
-import { DiffTreeProjectionMap } from "../Diff/diffTree.types";
+import { IDiffTreeProjector } from "../Diff/diffTree.types";
 import { Store } from "./store";
 
 /**
@@ -41,13 +41,13 @@ export class StoreSync extends Store {
   /**
    * Creates an instance of StoreSync.
    * @param keyFunc Optional function to generate a key for a given data value.
-   * @param projections Optional map of derived-value projections, keyed by id. A
+   * @param projector Optional projection implementation, e.g. `SequentialProjector`. A
    * projection's result is readable through `Get` at `$projection_<id>`.
    */
-  constructor(keyFunc?: (value: any) => string | undefined, projections?: DiffTreeProjectionMap) {
+  constructor(keyFunc?: (value: any) => string | undefined, projector?: IDiffTreeProjector) {
     super(keyFunc);
 
-    this.diff = new DiffSync(keyFunc, projections);
+    this.diff = new DiffSync(keyFunc, projector);
   }
 
   /**

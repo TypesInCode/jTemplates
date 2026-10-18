@@ -1,6 +1,6 @@
 import { JsonDiffResult } from "../../Utils/json";
 import { DiffTree } from "./diffTree";
-import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeProjectionMap, IDiffMethodBatchResult } from "./diffTree.types";
+import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, IDiffMethodBatchResult, IDiffTreeProjector } from "./diffTree.types";
 
 /**
  * A `DiffTree` that pushes its changes to a `PushStore` instead of answering a store's
@@ -19,7 +19,7 @@ import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeProjectionM
  *
  * @example
  * // engine-worker.ts
- * const tree = new DiffTreeWriter(self, undefined, projections);
+ * const tree = new DiffTreeWriter(self, undefined, new SequentialProjector(projections));
  * tree.DiffPath("results", computeResults());
  * tree.Commit();
  *
@@ -39,11 +39,11 @@ export class DiffTreeWriter extends DiffTree {
    *   event on the store's `EventTarget`; post copies, or construct the store with `cloneData`.
    * @param keyFunc Optional function to extract a key from objects. Pass the same key logic to
    *   the `PushStore` that receives the changes.
-   * @param projections Optional map of derived-value projections, keyed by id. They run once
-   *   per `Commit()`, after the batch's changes.
+   * @param projector Optional projection implementation, e.g. `SequentialProjector`. It runs
+   *   once per `Commit()`, after the batch's changes.
    */
-  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: {(val: any): string}, projections?: DiffTreeProjectionMap) {
-    super(keyFunc, projections);
+  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: {(val: any): string}, projector?: IDiffTreeProjector) {
+    super(keyFunc, projector);
   }
 
   /**

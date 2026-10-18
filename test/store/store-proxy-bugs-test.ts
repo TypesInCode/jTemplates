@@ -6,6 +6,7 @@ import { DiffSync } from "../../src/Store/Diff/diffSync";
 import { DiffTreeWriter } from "../../src/Store/Diff/diffTreeWriter";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
+import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 // The cases in docs/bugs/observable-node-proxy-own-keys.md. Each asserts the fixed behaviour.
 
@@ -213,7 +214,7 @@ describe("large diffs and item lists", () => {
   const projections = { big: { reads: ["n"], projection: (_keys: string[], n: number) => Big(N, n) } };
 
   it("a projection whose result changes in many places (DiffTree.RunProjections)", () => {
-    const tree = new DiffTree(undefined, projections);
+    const tree = new DiffTree(undefined, new SequentialProjector(projections));
     tree.DiffPath("n", 1);
     tree.RunProjections();
     tree.DiffPath("n", 2);
@@ -222,7 +223,7 @@ describe("large diffs and item lists", () => {
 
   it("the same, committed by a DiffTreeWriter", () => {
     const posted: any[] = [];
-    const writer = new DiffTreeWriter({ postMessage: (m) => posted.push(m) }, undefined, projections);
+    const writer = new DiffTreeWriter({ postMessage: (m) => posted.push(m) }, undefined, new SequentialProjector(projections));
     writer.DiffPath("n", 1);
     writer.Commit();
     writer.DiffPath("n", 2);
@@ -233,9 +234,9 @@ describe("large diffs and item lists", () => {
   });
 
   it("a projection that a splice changes in many places (DiffSync.SplicePath)", () => {
-    const sync = new DiffSync(undefined, {
+    const sync = new DiffSync(undefined, new SequentialProjector({
       big: { reads: ["list"], projection: (_keys: string[], list: number[]) => Big(N, list.length) },
-    });
+    }));
     sync.DiffPath("list", [1]);
     const result = sync.SplicePath("list", 0, 0, [2]);
     expect(result.diffResult.filter((e) => e.path[0] === "$projection_big")).toHaveLength(N);

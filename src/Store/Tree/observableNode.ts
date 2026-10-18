@@ -1,6 +1,7 @@
 import { JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
+import { Snapshot } from "./snapshot";
 
 const NODE_VALUE = Symbol("NODE_VALUE");
 const NODE_PROXY = Symbol("NODE_PROXY");
@@ -25,22 +26,10 @@ type ObservableNodeWrapper = {
 }
 
 const wrapperCache = new WeakMap<any, ObservableNodeWrapper>();
-const valueSnapshotCache = new WeakMap<any, any>();
-const valueSnapshotHierarchy = new WeakMap<any, any>();
-
-function CreateSnapshotLink(child: object, parent: object) {
-  let parents = valueSnapshotHierarchy.get(child);
-  if (!parents) valueSnapshotHierarchy.set(child, (parents = new Set()));
-  parents.add(parent);
-}
+const snapshotState = Snapshot.Create();
 
 function InvalidateSnapshotForValue(value: object) {
-  valueSnapshotCache.delete(value);
-  const parents = valueSnapshotHierarchy.get(value);
-  if (parents === undefined) return;
-  valueSnapshotHierarchy.delete(value);
-  for (const parent of parents)
-    if (valueSnapshotCache.has(parent)) InvalidateSnapshotForValue(parent);
+  Snapshot.Invalidate(snapshotState, value);
 }
 
 function getOwnPropertyDescriptor(target: ObservableNodeWrapper, prop: string | symbol) {
@@ -168,58 +157,12 @@ function SetArrayValue(object: ObservableNodeWrapper, prop: string | number, val
 }
 
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
-  /**
-   * An immutable snapshot of a raw node value (arrays and plain objects; other values are
-   * returned as they are). A snapshot is cached per raw value in valueSnapshotCache and
-   * returned as-is until a write invalidates it: every write path calls Invalidate, which
-   * clears the written value and every cached ancestor, found through the parent links
-   * recorded here. A rebuild makes new containers but reuses the cached snapshots of
-   * unchanged children, so a snapshot handed out never changes and unchanged parts are
-   * shared between snapshots. Keyed children are read through their root.
-   */
+  // Keyed children are read through their root. Every factory shares the module-level
+  // snapshotState, matching wrapperCache; only the resolver differs per factory.
+  const resolveSnapshot = alias && ((child: any) => alias(child, false));
+
   function CreateSnapshot(value: any): any {
-    if (JsonType(value) === "value")
-      return value;
-
-    const cached = valueSnapshotCache.get(value);
-    if (cached !== undefined)
-      return cached;
-
-    let snapshot: any;
-    if (Array.isArray(value)) {
-      snapshot = new Array(value.length);
-      for (let x = 0; x < value.length; x++)
-        snapshot[x] = ChildSnapshot(value, value[x]);
-    }
-    else {
-      snapshot = {};
-      const keys = Object.keys(value);
-      for (let x = 0; x < keys.length; x++)
-        snapshot[keys[x]] = ChildSnapshot(value, value[keys[x]]);
-    }
-
-    valueSnapshotCache.set(value, snapshot);
-    return snapshot;
-  }
-
-  /**
-   * A child's snapshot, linking the child to its parent so a write to the child
-   * invalidates the parent. A keyed child's snapshot comes from its root, so the root is
-   * linked too; the parent's own embedded copy stays linked because a positional write
-   * (one that changes which entity a slot holds) mutates that copy in place.
-   */
-  function ChildSnapshot(parent: object, child: unknown) {
-    if (JsonType(child) === "value")
-      return child;
-
-    CreateSnapshotLink(child as object, parent);
-    const resolved = alias?.(child, false);
-    if (resolved !== undefined && resolved !== child) {
-      CreateSnapshotLink(resolved, parent);
-      return CreateSnapshot(resolved);
-    }
-
-    return CreateSnapshot(child);
+    return Snapshot.Get(snapshotState, value, resolveSnapshot);
   }
 
   const readOnly = alias !== undefined;

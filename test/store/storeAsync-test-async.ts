@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { CreateShimDiffWorker } from "./worker-shim";
 import { KeyFunc, projections } from "./projection-cases";
+import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 // StoreAsync over a shim worker. Writes started without awaiting are batched together;
 // Flush is the barrier a caller awaits to see every change made before it applied to the
@@ -22,7 +23,7 @@ describe("Store Async Test", () => {
   });
 
   function CreateStore() {
-    const worker = CreateShimDiffWorker(KeyFunc, projections);
+    const worker = CreateShimDiffWorker(KeyFunc, new SequentialProjector(projections));
     const batches: any[][] = [];
     const postMessage = worker.postMessage.bind(worker);
     worker.postMessage = (data: any) => {

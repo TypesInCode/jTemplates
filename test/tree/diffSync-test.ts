@@ -3,6 +3,7 @@ import { DiffSync } from "../../src/Store/Diff/diffSync";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
 import { PROJECTION_PREFIX } from "../../src/Store/Diff";
 import { JsonType } from "../../src/Utils/json";
+import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 function KeyFunc(val: any) {
   const type = JsonType(val);
@@ -120,7 +121,7 @@ describe("Diff Sync Projection Test", () => {
 
   function CountingSync() {
     const calls = { total: 0 };
-    const sync = new DiffSync(KeyFunc, {
+    const sync = new DiffSync(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -128,7 +129,7 @@ describe("Diff Sync Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
     return { sync, calls };
   }
 
@@ -201,7 +202,7 @@ describe("Diff Sync Projection Test", () => {
   });
 
   it("runs chained projections in order within one operation", () => {
-    const sync = new DiffSync(KeyFunc, {
+    const sync = new DiffSync(KeyFunc, new SequentialProjector({
       doubled: {
         reads: [`${PROJECTION_PREFIX}count`],
         projection: (_keys: string[], count: number) => count * 2,
@@ -210,7 +211,7 @@ describe("Diff Sync Projection Test", () => {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => items.length,
       },
-    });
+    }));
 
     sync.DiffPath("items", [1]);
     const result = sync.PushPath("items", [2, 3]);

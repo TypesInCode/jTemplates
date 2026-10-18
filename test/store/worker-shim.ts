@@ -1,5 +1,5 @@
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
+import type { IDiffTreeProjector } from "../../src/Store/Diff";
 import { ConnectWorkerToDiffTree } from "../../src/Store/Diff/diffTreeWorker";
 
 // jsdom has no Worker, and a real worker entry module (like defaultDiffTreeWorker.ts) can
@@ -16,7 +16,7 @@ const clone = (v: unknown) => (v === undefined ? v : structuredClone(v));
  */
 export function CreateShimDiffWorker(
   keyFunc?: (val: any) => string,
-  projections?: DiffTreeProjectionMap,
+  projector?: IDiffTreeProjector,
 ): Worker {
   const mainSide: any = { onmessage: null, onerror: null };
   const workerSide: any = { onmessage: null, onerror: null };
@@ -44,7 +44,7 @@ export function CreateShimDiffWorker(
     });
   };
 
-  const diffTree = new DiffTree(keyFunc, projections);
+  const diffTree = new DiffTree(keyFunc, projector);
   ConnectWorkerToDiffTree(diffTree, workerSide as Worker);
 
   return mainSide as Worker;

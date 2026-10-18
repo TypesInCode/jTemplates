@@ -1,4 +1,5 @@
 import type { JsonDiffResult } from "../../Utils/json";
+import type { ISnapshotState } from "../Tree/snapshot";
 
 /**
  * `type` of the message a `DiffTreeWriter` posts on `Commit()`: the batch's diff results,
@@ -37,9 +38,9 @@ export interface IDiffTreeConstructor {
   /**
    * Creates a new IDiffTree instance.
    * @param keyFunc - Optional function to extract a key from a value
-   * @param projections - Optional map of derived-value projections, keyed by id
+   * @param projector - Optional projection implementation
    */
-  new (keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap): IDiffTree;
+  new (keyFunc?: { (val: any): string }, projector?: IDiffTreeProjector): IDiffTree;
 }
 
 /**
@@ -71,8 +72,90 @@ export type DiffTreeProjectionDefinition = {
 /** A map of projection id to its declaration, keyed by the id used in `$projection_<id>`. */
 export type DiffTreeProjectionMap = { [id: string]: DiffTreeProjectionDefinition };
 
+/**
+ * Reads a dot-separated path from the tree, returning its immutable snapshot (keyed values
+ * are read through their root entity). The read is tracked: the projection is re-run only
+ * when a value it read changes. Throws `ProjectionMissingReadError` when the path doesn't
+ * exist.
+ */
+export type TrackedProjectionRead = <T = any>(path: string) => T;
+
+/**
+ * Reads every child of a parent whose key matches a trailing wildcard, e.g. `"user_*"` (root
+ * keys starting with `user_`) or `"team.members.*"` (every member). Returns the matched
+ * children's snapshots, by key. The matched key set and each matched child are tracked, so
+ * adding or removing a matching key, or changing a matched child, re-runs the projection.
+ * Throws `ProjectionMissingReadError` when the parent doesn't exist.
+ */
+export type TrackedProjectionReadAny = <T = any>(path: string) => { [key: string]: T };
+
+/**
+ * A pure function computing a derived value from the values it reads. Reads are made on
+ * demand through `read`/`readAny`, so a projection reads exactly the values its result
+ * depends on, e.g. only the entities whose ids a list holds.
+ */
+export type TrackedProjectionFunc = (
+  read: TrackedProjectionRead,
+  readAny: TrackedProjectionReadAny,
+) => any;
+
+/**
+ * A tracked projection's declaration: the path prefixes it may read and the function
+ * computing its result. `reads` isn't a list of exact reads; it bounds what the projection
+ * can read so the tree can topologically sort projections and reject a dependency cycle at
+ * construction. A read outside every declared prefix throws.
+ */
+export type TrackedProjectionDefinition = {
+  reads: string[];
+  projection: TrackedProjectionFunc;
+};
+
+/** A map of tracked projection id to its declaration, keyed by the id used in `$projection_<id>`. */
+export type TrackedProjectionMap = { [id: string]: TrackedProjectionDefinition };
+
 /** Reserved key prefix a projection's result is stored under: `$projection_<id>`. */
 export const PROJECTION_PREFIX = "$projection_";
+
+/**
+ * The access a `DiffTree` gives its projector to the tree's state. Reads and snapshots go
+ * through the tree's own snapshot cache, and writes go through the tree's normal
+ * diff-and-apply, so a projection result is stored exactly like any other write.
+ */
+export interface IDiffTreeProjectionHost {
+  /** The tree's snapshot cache; its default resolver reads keyed children through their root */
+  readonly snapshotState: ISnapshotState;
+  /**
+   * Reads a dot-separated path, resolving keyed values through their root entity.
+   * @returns The value and whether every segment of the path exists
+   */
+  Read(path: string): readonly [any, boolean];
+  /**
+   * Reads a root key as-is, without resolving it through a keyed entity.
+   * @returns The value and whether the key exists
+   */
+  ReadRoot(key: string): readonly [any, boolean];
+  /** Every root key currently in the tree */
+  RootKeys(): string[];
+  /**
+   * Diffs a value against the tree at a path and applies it.
+   * @returns The diff entries for the write
+   */
+  Write(path: string, value: unknown): JsonDiffResult;
+}
+
+/**
+ * A projection implementation: computes derived values from a tree's state and writes them
+ * to `$projection_<id>`. A projector keeps per-tree state, so each `DiffTree` needs its own
+ * instance.
+ */
+export interface IDiffTreeProjector {
+  /**
+   * Brings every projection up to date with the tree.
+   * @param host Access to the tree's state
+   * @returns Diff entries for every projection whose result changed
+   */
+  Run(host: IDiffTreeProjectionHost): JsonDiffResult;
+}
 
 export type DiffSpliceResult<T = unknown> = {
   /** Array path segments (strings for object keys, numbers for array indices) */

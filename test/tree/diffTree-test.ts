@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
 import { PROJECTION_PREFIX } from "../../src/Store/Diff";
 import { JsonType } from "../../src/Utils/json";
+import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 const DiffTreeConstructor = DiffTree;
 
@@ -201,12 +202,12 @@ describe("Diff Tree Snapshot Test", () => {
 // evaluation order and cycle detection are resolved once, at construction.
 describe("Diff Tree Projection Test", () => {
   it("computes a projection and includes its result in the diff", () => {
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => items.length,
       },
-    });
+    }));
 
     const result = Write(tree, "items", [{ _id: "a" }, { _id: "b" }]);
 
@@ -217,7 +218,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("does not run while a declared dependency doesn't exist yet", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -225,7 +226,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     // Nothing has written "items" yet; the projection must not run or produce a diff, so
     // its author never has to guard against an undefined `items`.
@@ -242,7 +243,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("blocks a chained projection until its upstream dependency exists", () => {
     const calls = { count: 0, doubled: 0 };
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       count: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -257,7 +258,7 @@ describe("Diff Tree Projection Test", () => {
           return count * 2;
         },
       },
-    });
+    }));
 
     // "count" is blocked (no "items" yet), so it never writes $projection_count, so
     // "doubled" is blocked in turn without any special-casing for chained dependencies.
@@ -271,7 +272,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("does not re-run when data it didn't read changes", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -279,7 +280,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
@@ -292,7 +293,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("re-runs and diffs when data it read changes", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -300,7 +301,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
@@ -313,7 +314,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("re-runs but emits no diff when the recomputed result is unchanged", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       hasItems: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -321,7 +322,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length > 0;
         },
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }]);
     expect(calls).toBe(1);
@@ -335,7 +336,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("re-runs only after a write to an entity it read by key", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       name: {
         reads: ["a"],
         projection: (_keys: string[], a: any) => {
@@ -343,7 +344,7 @@ describe("Diff Tree Projection Test", () => {
           return a?.value;
         },
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a", value: "one" }]);
     expect(calls).toBe(1);
@@ -359,7 +360,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("chains: a downstream projection reads an upstream projection's output", () => {
     const calls = { count: 0, doubled: 0 };
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       count: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -374,7 +375,7 @@ describe("Diff Tree Projection Test", () => {
           return count * 2;
         },
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }]);
     expect(tree.GetPath(`${PROJECTION_PREFIX}count`)).toBe(1);
@@ -393,7 +394,7 @@ describe("Diff Tree Projection Test", () => {
   });
 
   it("chains correctly regardless of declaration order", () => {
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       // "doubled" is declared before "count", the projection it depends on.
       doubled: {
         reads: [`${PROJECTION_PREFIX}count`],
@@ -403,7 +404,7 @@ describe("Diff Tree Projection Test", () => {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => items.length,
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }, { _id: "b" }, { _id: "c" }]);
 
@@ -413,38 +414,38 @@ describe("Diff Tree Projection Test", () => {
   it("rejects a direct cycle between two projections at construction", () => {
     expect(
       () =>
-        new DiffTreeConstructor(KeyFunc, {
+        new DiffTreeConstructor(KeyFunc, new SequentialProjector({
           a: { reads: [`${PROJECTION_PREFIX}b`], projection: (_keys: string[], b: any) => b },
           b: { reads: [`${PROJECTION_PREFIX}a`], projection: (_keys: string[], a: any) => a },
-        }),
+        })),
     ).toThrow(/cycle/i);
   });
 
   it("rejects a projection that reads its own output at construction", () => {
     expect(
       () =>
-        new DiffTreeConstructor(KeyFunc, {
+        new DiffTreeConstructor(KeyFunc, new SequentialProjector({
           self: { reads: [`${PROJECTION_PREFIX}self`], projection: (_keys: string[], self: any) => self },
-        }),
+        })),
     ).toThrow(/cycle/i);
   });
 
   it("rejects a projection reading an id that isn't registered, at construction", () => {
     expect(
       () =>
-        new DiffTreeConstructor(KeyFunc, {
+        new DiffTreeConstructor(KeyFunc, new SequentialProjector({
           a: { reads: [`${PROJECTION_PREFIX}missing`], projection: (_keys: string[], v: any) => v },
-        }),
+        })),
     ).toThrow(/missing/);
   });
 
   it("flattens a keyed entity embedded in a projection's result to its own root", () => {
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       summary: {
         reads: ["count"],
         projection: (_keys: string[], count: number) => ({ best: { _id: "derived", value: count } }),
       },
-    });
+    }));
 
     Write(tree, "count", 5);
 
@@ -455,7 +456,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("SplicePath leaves projections to the caller", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -463,7 +464,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     const key = `${PROJECTION_PREFIX}total`;
 
@@ -482,7 +483,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("PushPath leaves projections to the caller", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -490,7 +491,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     const key = `${PROJECTION_PREFIX}total`;
 
@@ -509,7 +510,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("runs once per RunProjections call after several DiffPath writes", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       combined: {
         reads: ["a", "b"],
         projection: (_keys: string[], a: any, b: any) => {
@@ -517,7 +518,7 @@ describe("Diff Tree Projection Test", () => {
           return `${a?.value}-${b?.value}`;
         },
       },
-    });
+    }));
 
     tree.DiffPath("a", { value: "x" });
     tree.DiffPath("b", { value: "y" });
@@ -531,7 +532,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("DiffPath and PatchPath leave projections to the caller", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => {
@@ -539,7 +540,7 @@ describe("Diff Tree Projection Test", () => {
           return items.length;
         },
       },
-    });
+    }));
 
     const key = `${PROJECTION_PREFIX}total`;
 
@@ -562,12 +563,12 @@ describe("Diff Tree Projection Test", () => {
   });
 
   it("RunProjections returns nothing when no reads changed", () => {
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["items"],
         projection: (_keys: string[], items: any[]) => items.length,
       },
-    });
+    }));
 
     Write(tree, "items", [{ _id: "a" }]);
     expect(tree.RunProjections()).toEqual([]);
@@ -575,7 +576,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("collects every root key matching a wildcard prefix as rest args", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       taskCount: {
         reads: ["task_*"],
         projection: (_keys: string[], ...tasks: any[]) => {
@@ -583,7 +584,7 @@ describe("Diff Tree Projection Test", () => {
           return tasks.length;
         },
       },
-    });
+    }));
 
     const key = `${PROJECTION_PREFIX}taskCount`;
 
@@ -604,7 +605,7 @@ describe("Diff Tree Projection Test", () => {
 
   it("re-runs a wildcard projection when a matched entity's contents change in place", () => {
     let calls = 0;
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       total: {
         reads: ["task_*"],
         projection: (_keys: string[], ...tasks: any[]) => {
@@ -612,7 +613,7 @@ describe("Diff Tree Projection Test", () => {
           return tasks.reduce((sum, task) => sum + task.value, 0);
         },
       },
-    });
+    }));
 
     const key = `${PROJECTION_PREFIX}total`;
 
@@ -637,7 +638,7 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
   it("re-runs a projection whose read ends on a keyed entity", () => {
     const seen: any[] = [];
     const seen2: any[] = [];
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       p: {
         reads: ["list.0"],
         projection: (_keys: string[], e: any) => {
@@ -652,7 +653,7 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
           return { n };
         }
       }
-    });
+    }));
     Write(tree, "list", [{ _id: "e1", n: 1 }]);
     Write(tree, "e1.n", 2);
 
@@ -662,7 +663,7 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
 
   it("re-runs a projection whose read passes through a keyed entity", () => {
     const seen: any[] = [];
-    const tree: any = new DiffTreeConstructor(KeyFunc, {
+    const tree: any = new DiffTreeConstructor(KeyFunc, new SequentialProjector({
       p: {
         reads: ["list.0.n"],
         projection: (_keys: string[], n: any) => {
@@ -670,7 +671,7 @@ describe("Diff Tree Dotted Reads Through Keyed Entities", () => {
           return n;
         },
       },
-    });
+    }));
     Write(tree, "list", [{ _id: "e1", n: 1 }]);
     Write(tree, "e1.n", 2);
 

@@ -5,6 +5,7 @@ import { DIFF_TREE_ERROR, DIFF_TREE_EVENT } from "../../src/Store/Diff";
 import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 import { CreateShimPushChannel } from "./worker-shim";
+import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 // PushStore fed by a DiffTreeWriter over a shim channel. The writer decides when data
 // changes; the store only ever receives what a Commit() posts, one message per commit.
@@ -28,7 +29,7 @@ describe("PushStore", () => {
 
   function Create(keyFunc?: (val: any) => string, projectionMap?: DiffTreeProjectionMap) {
     const { target, port, posted } = CreateShimPushChannel();
-    const writer = new DiffTreeWriter(port, keyFunc, projectionMap);
+    const writer = new DiffTreeWriter(port, keyFunc, projectionMap && new SequentialProjector(projectionMap));
     const store = new PushStore(target, keyFunc);
     stores.push(store);
     return { writer, store, target, posted };

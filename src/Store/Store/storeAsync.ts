@@ -46,7 +46,7 @@ export class StoreAsync extends Store {
   /**
    * Creates an instance of StoreAsync.
    * @param diffWorker A `Worker` running a `DiffTree` connected via `ConnectWorkerToDiffTree`
-   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/projections the diff needs
+   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/projector the diff needs
    *   must be baked into that worker's own entry file.
    * @param keyFunc Optional function to generate a key for a given data value, used locally by
    *   this store to resolve root objects. Pass the same key logic the worker's `DiffTree` was

@@ -1,6 +1,6 @@
 import { JsonDiffResult } from "../../Utils/json";
 import { DiffTree } from "./diffTree";
-import { DiffSpliceResult, DiffTreeProjectionMap, IDiffTree } from "./diffTree.types";
+import { DiffSpliceResult, IDiffTree, IDiffTreeProjector } from "./diffTree.types";
 
 
 /**
@@ -16,10 +16,10 @@ export class DiffSync implements IDiffTree {
   /**
    * Creates a DiffSync instance.
    * @param keyFunc - Optional function to extract a key from objects
-   * @param projections - Optional map of derived-value projections, keyed by id
+   * @param projector - Optional projection implementation, e.g. `SequentialProjector`
    */
-  constructor(keyFunc?: { (val: any): string }, projections?: DiffTreeProjectionMap) {
-    this.diffTree = new DiffTree(keyFunc, projections);
+  constructor(keyFunc?: { (val: any): string }, projector?: IDiffTreeProjector) {
+    this.diffTree = new DiffTree(keyFunc, projector);
   }
 
   /**
