@@ -86,8 +86,8 @@ export class PushStore extends ReadStore {
    *   A same-thread `EventTarget` delivers the writer's own objects, so either the writer
    *   posts copies or this is true; otherwise the store and the writer's tree share objects.
    */
-  constructor(private eventTarget: EventTarget, keyFunc?: (value: any) => string | undefined, cloneData = false) {
-    super(keyFunc, cloneData);
+  constructor(private eventTarget: EventTarget, keyFunc?: (value: any) => string | undefined) {
+    super(keyFunc);
 
     eventTarget.addEventListener("message", this.messageHandler);
     (eventTarget as Partial<MessagePort>).start?.();

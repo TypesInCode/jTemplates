@@ -1,4 +1,4 @@
-import { JsonDeepClone, JsonDiff, JsonMerge, JsonType, type JsonDiffResult } from "../../Utils/json";
+import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonMerge, JsonType, type JsonDiffResult } from "../../Utils/json";
 import { ISnapshotState, Snapshot } from "../Tree/snapshot";
 import { DiffSpliceResult, IDiffTreeProjectionHost, IDiffTreeProjector } from "./diffTree.types";
 
@@ -54,24 +54,6 @@ function GetPathValue(source: any, path: string, keyFunc?: (value: any) => strin
   } else curr = undefined;
 
   return [curr, x === parts.length] as const;
-}
-
-/**
- * Sets a value in a source object at the specified path.
- * @param source - The source object
- * @param snapshotState - The tree's snapshot cache, invalidated for the written value
- * @param path - Array of path segments (strings for keys, numbers for indices)
- * @param value - The value to set
- */
-function SetPathValue(source: any, snapshotState: ISnapshotState, path: (string | number)[], value: unknown) {
-  if (path.length === 0) return;
-
-  let curr = source;
-  let x = 0;
-  for (; x < path.length - 1; x++) curr = curr[path[x]];
-
-  curr[path[x]] = value;
-  Snapshot.Invalidate(snapshotState, curr);
 }
 
 function ResolveKeyed(source: any, value: any, keyFunc?: (val: any) => string | undefined) {
@@ -153,29 +135,22 @@ function UpdateSource(
     }
   }
 
+  const newDiffStart = diffResult.length;
   const [sourceValue] = GetPathValue(source, path);
   JsonDiff(value, sourceValue, path, diffResult);
 
   if (keyFunc) {
     let flattened: any = {};
     flattened = FlattenValue(flattened, value, keyFunc) as any;
-    flattened = JsonDeepClone(flattened);
     const keys = Object.keys(flattened);
     for (let x = 0; x < keys.length; x++)
       JsonDiff(flattened[keys[x]], source[keys[x]], keys[x], diffResult);
   }
 
-  const filteredDiffResult = diffResult.filter(
-    (diff) => diff.value !== undefined,
-  );
-  for (let x = 0; x < filteredDiffResult.length; x++) {
-    SetPathValue(
-      source,
-      snapshotState,
-      filteredDiffResult[x].path,
-      filteredDiffResult[x].value,
-    );
-  }
+  const newDiff = diffResult.slice(newDiffStart);
+  JsonApplyDiff(source, newDiff, function (obj) {
+    Snapshot.Invalidate(snapshotState, obj);
+  }, true);
 
   return diffResult;
 }
@@ -193,22 +168,22 @@ function PushSource(
   if (!Array.isArray(sourceValue))
     throw `Value found at path ${path} is not an array`;
 
+  // Built without JsonDiff, so cloned here: a diff entry owns its value (see JsonDiff)
   const results: JsonDiffResult = items.map(function (value, index) {
     return {
       path: `${path}.${sourceValue.length + index}`.split('.'),
-      value
+      value: JsonDeepClone(value)
     };
   })
 
-  sourceValue.push(...items);
   if (items.length > 0)
     results.push({
       path: `${path}.length`.split('.'),
-      value: sourceValue.length
+      value: sourceValue.length + items.length
     });
 
   if (keyFunc) {
-    const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc));
+    const flattened = FlattenValue({}, items, keyFunc);
     const keys = Object.keys(flattened);
     for (let x = 0; x < keys.length; x++)
       JsonDiff(
@@ -219,17 +194,9 @@ function PushSource(
       );
   }
 
-  const filteredDiffResult = results.filter(
-    (diff) => diff.value !== undefined,
-  );
-  for (let x = 0; x < filteredDiffResult.length; x++) {
-    SetPathValue(
-      source,
-      snapshotState,
-      filteredDiffResult[x].path,
-      filteredDiffResult[x].value,
-    );
-  }
+  JsonApplyDiff(source, results, function (obj) {
+    Snapshot.Invalidate(snapshotState, obj);
+  }, true);
 
   return results;
 }
@@ -250,22 +217,24 @@ function SpliceSource(
     throw `Value found at path ${path} is not an array`;
 
   deleteCount ??= sourceValue.length - start;
+  // The result and the tree each get their own copy of the items: the result owns its values
+  // like a diff entry (see JsonDiff), and the tree owns what it applies (see SetPathValue).
   const spliceResult: DiffSpliceResult = {
     path: path.split("."),
     start,
-    items,
+    items: JsonDeepClone(items),
     deleteCount,
     spliceResult: null,
     diffResult: [] as JsonDiffResult,
   };
-  spliceResult.spliceResult = sourceValue.splice(start, deleteCount, ...items);
+  spliceResult.spliceResult = sourceValue.splice(start, deleteCount, ...JsonDeepClone(items));
   Snapshot.Invalidate(snapshotState, sourceValue);
 
   if (keyFunc) {
     // Register the keyed entities the new items carry, diffed against the roots
     // already held: a new entity is added whole, one re-inserted unchanged (an undo)
     // produces no diff, so its readers aren't woken.
-    const flattened = JsonDeepClone(FlattenValue({}, items, keyFunc));
+    const flattened = FlattenValue({}, items, keyFunc);
     const keys = Object.keys(flattened);
     for (let x = 0; x < keys.length; x++)
       JsonDiff(
@@ -276,17 +245,9 @@ function SpliceSource(
       );
   }
 
-  const filteredDiffResult = spliceResult.diffResult.filter(
-    (diff) => diff.value !== undefined,
-  );
-  for (let x = 0; x < filteredDiffResult.length; x++) {
-    SetPathValue(
-      source,
-      snapshotState,
-      filteredDiffResult[x].path,
-      filteredDiffResult[x].value,
-    );
-  }
+  JsonApplyDiff(source, spliceResult.diffResult, function (obj) {
+    Snapshot.Invalidate(snapshotState, obj);
+  }, true);
 
   return spliceResult;
 }

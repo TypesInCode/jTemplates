@@ -1,4 +1,4 @@
-import { JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
+import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
 import { Snapshot } from "./snapshot";
@@ -6,6 +6,7 @@ import { Snapshot } from "./snapshot";
 const NODE_VALUE = Symbol("NODE_VALUE");
 const NODE_PROXY = Symbol("NODE_PROXY");
 const NODE_SNAPSHOT = Symbol("NODE_SNAPSHOT");
+const NODE_WRAPPER = Symbol("NODE_WRAPPER");
 const toJSON = "toJSON";
 const IS_NODE = Symbol("IS_NODE");
 const ARRAY_SCOPE = Symbol("ARRAY_SCOPE");
@@ -126,11 +127,8 @@ function CloneProxy(
   return value;
 }
 
-function GetPropertyScope(object: ObservableNodeWrapper, prop: string, create = true) {
+function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
   if (!Object.hasOwn(object, prop)) {
-    if (!create)
-      return undefined;
-
     Object.defineProperty(object, prop, {
       value: ObservableScope.Basic(Property.bind(null, object[NODE_VALUE], prop)),
       writable: true,
@@ -145,15 +143,25 @@ function GetPropertyScope(object: ObservableNodeWrapper, prop: string, create = 
 function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
   const propExists = Object.hasOwn(object[NODE_VALUE], prop);
   object[NODE_VALUE][prop] = value;
-  InvalidateSnapshotForValue(object[NODE_VALUE]);
-  Object.hasOwn(object, prop) && ObservableScope.Update(object[prop]);
-  !propExists && ObservableScope.Update(object[OBJECT_SCOPE]);
+  NodeValueSet(object[NODE_VALUE], prop, !propExists, object);
 }
 
 function SetArrayValue(object: ObservableNodeWrapper, prop: string | number, value: any) {
   object[NODE_VALUE][prop] = value;
-  InvalidateSnapshotForValue(object[NODE_VALUE]);
-  ObservableScope.Update(object[ARRAY_SCOPE]);
+  NodeValueSet(object[NODE_VALUE], prop, false, object);
+}
+
+function NodeValueSet(obj: any, prop: string | number, added: boolean, wrapper = wrapperCache.get(obj)) {
+  InvalidateSnapshotForValue(obj);
+  if (!wrapper)
+    return;
+
+  const propScopeExists = !!prop && Object.hasOwn(wrapper, prop);
+  if (!prop || added || !propScopeExists)
+    ObservableScope.Update(wrapper[ARRAY_SCOPE] ?? wrapper[OBJECT_SCOPE])
+
+  if (propScopeExists)
+    ObservableScope.Update(wrapper[prop]);
 }
 
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
@@ -214,6 +222,8 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
         return function () {
           return CreateSnapshot(object[NODE_VALUE]);
         };
+      case NODE_WRAPPER:
+        return object;
       case NODE_VALUE:
         return object[NODE_VALUE];
       case NODE_SNAPSHOT:
@@ -293,6 +303,8 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     switch (prop) {
       case IS_NODE:
         return true;
+      case NODE_WRAPPER:
+        return object;
       case NODE_SNAPSHOT:
         return CreateSnapshot(object[NODE_VALUE]);
       case toJSON:
@@ -413,49 +425,11 @@ export namespace ObservableNode {
     return undefined;
   }
 
-  /**
-   * Marks an observable node or its property as changed, triggering reactive updates.
-   * Used internally to notify dependencies that a value has been modified.
-   * @param value The observable node to touch.
-   * @param prop Optional property name or index to touch a specific nested property.
-   */
-  export function Update<T>(value: T, prop?: keyof T) {
-    const wrapper = wrapperCache.get(value);
-    if (wrapper) {
-      const scope = Array.isArray(wrapper) ? wrapper[ARRAY_SCOPE] : (prop && GetPropertyScope(wrapper, prop as string)) ?? wrapper[OBJECT_SCOPE];
-      ObservableScope.Update(scope);
-    }
-  }
-
-  export function Assign<T>(value: T, prop: keyof T, propValue: any) {
-    // const propExists = Object.hasOwn(value as Object, prop);
-    // value[prop] = propValue;
-    const wrapper = wrapperCache.get(value);
-    if (wrapper) {
-      if (Array.isArray(wrapper))
-        SetArrayValue(wrapper, prop as string | number, propValue)
-      else
-        SetObjectValue(wrapper, prop as string, propValue);
-    }
-    else {
-      InvalidateSnapshotForValue(value as Object);
-      value[prop] = propValue;
-    }
-  }
-
   export function Touch<T>(value: T, prop?: keyof T) {
     const wrapper = wrapperCache.get(value);
     if (wrapper) {
       const scope = prop && GetPropertyScope(wrapper, prop as string) || wrapper[ARRAY_SCOPE] || wrapper[OBJECT_SCOPE];
       ObservableScope.Touch(scope);
-    }
-  }
-
-  export function Read<T>(value: T, prop: keyof T) {
-    const wrapper = wrapperCache.get(value);
-    if (wrapper) {
-      const scope = Array.isArray(wrapper) ? wrapper[ARRAY_SCOPE] : (prop && wrapper[prop]) ?? wrapper[OBJECT_SCOPE];
-      ObservableScope.Update(scope);
     }
   }
 
@@ -479,6 +453,7 @@ export namespace ObservableNode {
    */
   export function Apply(rootNode: any, value: any) {
     const root = rootNode[NODE_VALUE];
+    // JsonDiff's records already own their values, so ApplyDiff needn't clone them again
     const diff = JsonDiff(value, root);
     ApplyDiff(rootNode, diff);
   }
@@ -493,12 +468,11 @@ export namespace ObservableNode {
    * @param cloneData Whether to deep-clone `items` before inserting them (true by default,
    *   so the store isn't left holding a reference the caller can still mutate).
    */
-  export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[], cloneData = true) {
+  export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[]) {
     const root = rootNode[NODE_VALUE];
-    InvalidateSnapshotForValue(rootNode[NODE_VALUE]);
-    const addItems = cloneData ? JsonDeepClone(items) : items;
+    const addItems = JsonDeepClone(items);
     root.splice(start, deleteCount, ...addItems);
-    ObservableNode.Update(root);
+    NodeValueSet(root, "", false, rootNode[NODE_WRAPPER]);
   }
 
   /**
@@ -509,69 +483,9 @@ export namespace ObservableNode {
    * @param cloneData Whether to deep-clone each diff value before writing it in (true by
    *   default), so the store isn't left holding a reference the caller can still mutate.
    */
-  export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult, cloneData = true) {
+  export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
     const root = rootNode[NODE_VALUE];
-    if (diffResult.length === 1 && diffResult[0].path.length === 0) {
-      // Replacing rootNode
-      InvalidateSnapshotForValue(root);
-      const rootPatch = cloneData ? JsonDeepClone(diffResult[0].value) : diffResult[0].value;
-
-      const rootType = JsonType(root);
-      const rootPatchType = JsonType(rootPatch);
-
-      if (rootType !== rootPatchType)
-        throw new Error("Unable to change type of Root ObservableNode: " + rootType);
-
-      switch (rootType) {
-        case "array": {
-          (root as any[]).splice(0, root.length, ...(rootPatch as any[]));
-          ObservableNode.Update(root);
-          break;
-        }
-        case "object": {
-          const keys = Object.keys(root);
-          const patchKeys = Object.keys(rootPatch);
-          for (let x = 0; x < keys.length; x++)
-            if (!patchKeys.includes(keys[x]))
-              delete root[keys[x]];
-
-          Object.assign(root, rootPatch);
-          for (let x = 0; x < keys.length; x++)
-            ObservableNode.Update(root, keys[x]);
-          break;
-        }
-        case "value":
-          throw new Error("Unable to replace value type: " + root);
-      }
-
-      return;
-    }
-
-    const pathTuples: [string | number, unknown][] = [["", root]];
-    for (let x = 0; x < diffResult.length; x++) {
-      const { path, value } = diffResult[x];
-
-      let y = 0;
-      for (; y < path.length - 1; y++) {
-        const property = path[y];
-        const value = pathTuples[y][1];
-
-        const tupleIndex = y + 1;
-        if (pathTuples.length <= tupleIndex)
-          pathTuples.push([property, (value as any)[property]]);
-        else if (pathTuples[tupleIndex][0] !== property) {
-          pathTuples[tupleIndex][0] = property;
-          pathTuples[tupleIndex][1] = (value as any)[property];
-
-          const next = tupleIndex + 1;
-          if (next < pathTuples.length) pathTuples[next][0] = null;
-        }
-      }
-
-      const assignValue = pathTuples[y][1] as any;
-      const assignData = cloneData ? JsonDeepClone(value) : value;
-      ObservableNode.Assign(assignValue, path[y], assignData);
-    }
+    JsonApplyDiff(root, diffResult, NodeValueSet);
   }
 
   /**

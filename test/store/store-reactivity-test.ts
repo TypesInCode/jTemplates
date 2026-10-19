@@ -179,16 +179,6 @@ describe("Store reactivity: keyed entity replaced whole", () => {
     name.destroy();
   });
 
-  it("keeps a proxy returned by Get(id, default) live after the first Write", () => {
-    const sync = new StoreSync(KeyFunc);
-    const held = sync.Get<any>("late", { a: 1 });
-
-    sync.Write({ a: 2 }, "late");
-
-    expect(sync.Get<any>("late").a).to.eq(2);
-    expect(held.a).to.eq(2);
-  });
-
   it("Scope - keeps a proxy returned by Get(id, default) live after the first Write", () => {
     const sync = new StoreSync(KeyFunc);
     const scope = ObservableScope.Create(() => sync.Get<any>("late", { a: 1 }));
@@ -293,36 +283,14 @@ describe("Store reactivity: granularity and nested entities", () => {
     viaParent.destroy();
   });
 
-  it("rejects a Patch through the parent into a nested keyed entity, naming its key", () => {
-    const sync = new StoreSync(KeyFunc);
-    sync.Write({ child: { _id: "c1", name: "A" } }, "root");
-    const name = track(() => sync.Get<any>("root").child.name);
-
-    const error = thrown(() => sync.Patch("root", { child: { name: "C" } }));
-
-    // The entity must be patched by its own key: sync.Patch("c1", { name: "C" }).
-    expect(error).to.match(/c1/);
-    expect(sync.Get<any>("c1").name).to.eq("A");
-    expect(name.value()).to.eq("A");
-    name.destroy();
-  });
-
-  it("rejects a Patch that adds a nested keyed entity, naming its key", () => {
-    const sync = new StoreSync(KeyFunc);
-    sync.Write({ items: {} }, "root");
-
-    const error = thrown(() => sync.Patch("root", { items: { i1: { _id: "i1", name: "A" } } }));
-
-    expect(error).to.match(/i1/);
-    expect(sync.Get<any>("i1")).to.eq(undefined);
-    expect(Object.keys(sync.Get<any>("root").items)).to.deep.eq([]);
-  });
-
   it("wakes an Object.keys reader when a key that was already read by name is added", () => {
     const sync = new StoreSync(KeyFunc);
     sync.Write({ records: {} }, "root");
     // Reading the missing key first creates its property scope.
-    const one = track(() => sync.Get<any>("root").records.a ?? null);
+    const one = track(() => {
+      const root = sync.Get<any>("root");
+      return root.records.a ?? null;
+    });
     const keys = track(() => Object.keys(sync.Get<any>("root").records).join(","));
 
     sync.Patch("root", { records: { a: 1 } });

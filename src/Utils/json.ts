@@ -124,9 +124,80 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
   }
 }
 
+export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: any, prop: string, added: boolean) => void, skipUndefined = false) {
+  if (diff.length === 1 && diff[0].path.length === 0) {
+    const diffRow = diff[0];
+    const diffPatch = JsonDeepClone(diffRow.value);
+
+    const type = JsonType(root);
+    const patchType = JsonType(diffPatch);
+
+    if (type !== patchType)
+      throw new Error("Unable to change type of root value");
+
+    switch (type) {
+      case "array": {
+        (root as any[]).splice(0, root.length, ...(diffPatch as any[]));
+        callback(root, "", false);
+        break;
+      }
+      case "object": {
+        const keys = Object.keys(root);
+        const patchKeys = Object.keys(diffPatch);
+        for (let x = 0; x < keys.length; x++)
+          if (!patchKeys.includes(keys[x]))
+            delete root[keys[x]];
+
+        Object.assign(root, diffPatch);
+        for (let x = 0; x < patchKeys.length; x++)
+          callback(root, patchKeys[x], keys.includes(patchKeys[x]));
+
+        break;
+      }
+      case "value":
+        throw new Error("Unable to replace root value type: " + root);
+    }
+
+
+    return;
+  }
+
+  const pathTuples: [string | number, unknown][] = [["", root]];
+  for (let x = 0; x < diff.length; x++) {
+    const { path, value } = diff[x];
+    if (skipUndefined && value === undefined)
+      continue;
+
+    let y = 0;
+    for (; y < path.length - 1; y++) {
+      const property = path[y];
+      const value = pathTuples[y][1];
+
+      const tupleIndex = y + 1;
+      if (pathTuples.length <= tupleIndex)
+        pathTuples.push([property, (value as any)[property]]);
+      else if (pathTuples[tupleIndex][0] !== property) {
+        pathTuples[tupleIndex][0] = property;
+        pathTuples[tupleIndex][1] = (value as any)[property];
+
+        const next = tupleIndex + 1;
+        if (next < pathTuples.length) pathTuples[next][0] = null;
+      }
+    }
+
+    const assignValue = pathTuples[y][1] as any;
+    const assignData = JsonDeepClone(value);
+    const added = !Object.hasOwn(assignValue, path[y]);
+    assignValue[path[y]] = assignData;
+    callback(assignValue, path[y] as string, added);
+  }
+}
+
 /**
  * Computes the differences between two JSON values.
- * Returns an array of paths and values that changed from oldValue to newValue.
+ * Returns an array of paths and values that changed from oldValue to newValue. Each change
+ * record's value is a deep clone of the new value: computing a diff doesn't take ownership of
+ * the inputs, so a record never shares an object with `newValue` or with another record.
  * @template T - The type of the JSON values being compared
  * @param newValue - The new value
  * @param oldValue - The old value to compare against
@@ -142,7 +213,14 @@ export function JsonDiff<T>(
 ): JsonDiffResult<T> {
   const result: JsonDiffResult<T> = initResult ?? [];
   const startPath = rootPath ? rootPath.split(".") : [];
+  const start = result.length;
   JsonDiffRecursive(startPath, newValue, oldValue, result);
+
+  // Cloned once the records are final: the recursion replaces a subtree's records with one
+  // record for the whole subtree when every child changed.
+  for (let x = start; x < result.length; x++)
+    result[x].value = JsonDeepClone(result[x].value);
+
   return result;
 }
 

@@ -19,7 +19,7 @@ export abstract class ReadStore {
    * @param keyFunc Optional function to generate a key for a given data value.
    * When provided, enables alias functionality where values can reference other root objects.
    */
-  constructor(protected keyFunc?: (value: any) => string | undefined, private cloneData = true) {
+  constructor(protected keyFunc?: (value: any) => string | undefined) {
     const aliasFunc =
       keyFunc &&
       ((value: unknown, reactive = true) => {
@@ -90,7 +90,7 @@ export abstract class ReadStore {
 
   protected SpliceRootObject(rootPath: string | number, start: number, deleteCount: number, items: any[]) {
     const rootObject = this.rootMap.get(rootPath);
-    ObservableNode.ApplySplice(rootObject[rootPath], start, deleteCount, items, this.cloneData);
+    ObservableNode.ApplySplice(rootObject[rootPath], start, deleteCount, items);
   }
 
   /**
@@ -108,14 +108,14 @@ export abstract class ReadStore {
       if (results.length > 1 || results[0].path.length > 1)
         throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
 
-      const rootData = this.cloneData ? JsonDeepClone(results[0].value) : results[0].value;
+      const rootData = JsonDeepClone(results[0].value);
       const newRootObject = this.createNode({ [rootPath]: rootData }, false);
       this.rootMap.set(rootPath, newRootObject);
 
       return;
     }
 
-    ObservableNode.ApplyDiff(rootObject, results, this.cloneData);
+    ObservableNode.ApplyDiff(rootObject, results);
   }
 }
 
