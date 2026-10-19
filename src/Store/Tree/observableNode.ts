@@ -453,7 +453,6 @@ export namespace ObservableNode {
    */
   export function Apply(rootNode: any, value: any) {
     const root = rootNode[NODE_VALUE];
-    // JsonDiff's records already own their values, so ApplyDiff needn't clone them again
     const diff = JsonDiff(value, root);
     ApplyDiff(rootNode, diff);
   }
@@ -464,9 +463,8 @@ export namespace ObservableNode {
    * @param rootNode The observable array node to splice.
    * @param start Index at which to start changing the array.
    * @param deleteCount Number of elements to remove starting at `start`.
-   * @param items Elements to insert at `start`.
-   * @param cloneData Whether to deep-clone `items` before inserting them (true by default,
-   *   so the store isn't left holding a reference the caller can still mutate).
+   * @param items Elements to insert at `start`. Deep-cloned before they're inserted, so the
+   *   node isn't left holding a reference the caller can still mutate.
    */
   export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[]) {
     const root = rootNode[NODE_VALUE];
@@ -480,8 +478,7 @@ export namespace ObservableNode {
    * Optimizes nested object updates by computing paths incrementally and touching modified properties.
    * @param rootNode The observable node to apply the diff to.
    * @param diffResult The diff result from JsonDiff containing path-value pairs of changes.
-   * @param cloneData Whether to deep-clone each diff value before writing it in (true by
-   *   default), so the store isn't left holding a reference the caller can still mutate.
+   *   Each value is deep-cloned as it's applied (see JsonApplyDiff).
    */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
     const root = rootNode[NODE_VALUE];

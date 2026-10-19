@@ -35,10 +35,9 @@ function track<T>(fn: () => T) {
   };
 }
 
-// Adding a key to an object calls ObservableNode.Update(object, newKey), but object
-// wrappers have no object-level scope and the ownKeys/has traps register no dependency.
-// Readers that enumerate an object (Object.keys, `in`, Clone, toJSON) never wake when a
-// key is added. Reading the new key by name does work.
+// Adding a key to an object updates the object's own scope as well as the key's, so readers
+// that enumerate an object (Object.keys, `in`, Clone) wake when a key is added, as well as
+// readers of the new key by name.
 describe("Store reactivity: keys added to an object", () => {
   it("wakes an Object.keys reader when Patch adds a key", () => {
     const sync = new StoreSync(KeyFunc);

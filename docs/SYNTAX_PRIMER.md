@@ -537,7 +537,7 @@ A store holds reactive data under string keys and diffs every write into existin
 
 |  | `StoreSync` | `StoreAsync` | `PushStore` |
 | --- | --- | --- | --- |
-| Constructor | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(worker, keyFunc?)` | `new PushStore(source, keyFunc?, cloneData?)` |
+| Constructor | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(worker, keyFunc?)` | `new PushStore(source, keyFunc?)` |
 | Diffing | main thread, synchronous | in the `Worker` you supply | in the `DiffTreeWriter` that pushes to it |
 | Writes | `void`; readable immediately | `Promise`; batched per tick, readable only after `await` | none; read-only. Changes arrive when the writer calls `Commit()` |
 | `Destroy()` | none | required; terminates the worker | required; stops listening, leaves the worker running |
@@ -652,7 +652,7 @@ store.Destroy();        // stops listening; terminate the worker yourself
 - **Create the store before the first `Commit()`.** Messages are diffs against the writer's tree, so a store created later misses the earlier changes and holds partial roots (from source). There is no catch-up message.
 - **A failed change doesn't stop either side.** After a write throws, every later write before `Commit()` throws the same error. `Commit()` still sends the writes made before the failure, skips projections, then posts `DIFF_TREE_ERROR`. The store applies the changes and sets `Error` (verified). The next commit brings projections up to date.
 - `store.Error` is reactive: the last commit's error, or `null`. It's cleared when a later commit's changes arrive (verified).
-- `cloneData` (default `false`): a `Worker` or `MessagePort` already delivers a structured-clone copy, so no copy is made. A same-thread `EventTarget` delivers the writer's own objects; post copies, or pass `true`. The flag only covers new roots and splices; changes to an existing root are always copied (from source).
+- The store deep-clones every value it applies, so even a same-thread `EventTarget` that delivers the writer's own objects never leaves the store sharing them with the writer's tree (from source).
 
 ## ObservableScope and ObservableNode
 
@@ -707,13 +707,12 @@ ObservableNode.Unwrap(proxy)          // raw underlying value
 ObservableNode.Apply(node, value)     // merge a full value in place; node identity kept
 ObservableNode.Snapshot(node)         // cached plain copy
 ObservableNode.Clone(value)           // replaces proxies with plain data, mutating plain containers in place; returns value
-ObservableNode.Update(node, prop?)    // force a change notification
 ObservableNode.CreateFactory(alias?)  // proxy factory with aliasing (used by stores)
 ```
 
 - `Snapshot` returns the same object on repeated calls until a write. After a write, unchanged nested parts are shared (`===`) with the previous snapshot. Snapshots are **not frozen**; treat them as read-only.
 - `JSON.stringify(node)` and `node.toJSON()` use the cached snapshot.
-- `ApplyDiff`, `ApplySplice`, `Assign`, `Touch` and `Read` also exist; they are internal to the stores.
+- `ApplyDiff`, `ApplySplice` and `Touch` also exist; they are internal to the stores. `ApplyDiff` and `ApplySplice` deep-clone what they write, so the node never shares objects with the caller.
 
 **Snapshot reads do not subscribe.** `JSON.stringify(node)`, `node.toJSON()` and `ObservableNode.Snapshot(node)` register no dependencies, so a scope that reads only through them never updates (verified). Read properties directly, or use `ObservableNode.Clone(node)`, which tracks every nested field and leaves the source untouched:
 

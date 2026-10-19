@@ -53,7 +53,7 @@ export class StoreAsync extends Store {
    *   constructed with, if any.
    */
   constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined) {
-    super(keyFunc, false);
+    super(keyFunc);
     this.workerQueue = new WorkerQueue(diffWorker);
     this.asyncQueue = new AsyncQueue(true);
   }

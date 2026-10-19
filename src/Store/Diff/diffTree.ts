@@ -168,11 +168,10 @@ function PushSource(
   if (!Array.isArray(sourceValue))
     throw `Value found at path ${path} is not an array`;
 
-  // Built without JsonDiff, so cloned here: a diff entry owns its value (see JsonDiff)
   const results: JsonDiffResult = items.map(function (value, index) {
     return {
       path: `${path}.${sourceValue.length + index}`.split('.'),
-      value: JsonDeepClone(value)
+      value
     };
   })
 
@@ -217,12 +216,12 @@ function SpliceSource(
     throw `Value found at path ${path} is not an array`;
 
   deleteCount ??= sourceValue.length - start;
-  // The result and the tree each get their own copy of the items: the result owns its values
-  // like a diff entry (see JsonDiff), and the tree owns what it applies (see SetPathValue).
+  // The result references the caller's items like a diff record (see JsonDiff). Spliced in
+  // directly rather than through JsonApplyDiff, so the tree's copy is cloned here.
   const spliceResult: DiffSpliceResult = {
     path: path.split("."),
     start,
-    items: JsonDeepClone(items),
+    items,
     deleteCount,
     spliceResult: null,
     diffResult: [] as JsonDiffResult,

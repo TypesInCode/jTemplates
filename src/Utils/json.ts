@@ -124,6 +124,19 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
   }
 }
 
+/**
+ * Applies a diff result to a root value in place. A diff doesn't own its values (see JsonDiff),
+ * so each value is deep-cloned before it's written: the root never shares an object with the
+ * diff, the value it was computed from, or another record.
+ * - A single record with an empty path replaces the root's contents, keeping its identity
+ * - Otherwise each record's value is assigned at its path
+ * @param root - The value to update; must be an object or array
+ * @param diff - The diff result to apply
+ * @param callback - Called with the object written to, the property written ("" when an array
+ *   root is replaced), and whether that property is new to the object
+ * @param skipUndefined - Whether to skip records whose value is undefined
+ * @throws If a root replacement would change the root's JSON type, or the root is a primitive
+ */
 export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: any, prop: string, added: boolean) => void, skipUndefined = false) {
   if (diff.length === 1 && diff[0].path.length === 0) {
     const diffRow = diff[0];
@@ -195,9 +208,9 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: a
 
 /**
  * Computes the differences between two JSON values.
- * Returns an array of paths and values that changed from oldValue to newValue. Each change
- * record's value is a deep clone of the new value: computing a diff doesn't take ownership of
- * the inputs, so a record never shares an object with `newValue` or with another record.
+ * Returns an array of paths and values that changed from oldValue to newValue. A record doesn't
+ * own its value: it references `newValue`'s objects, so two records can share one, and
+ * JsonApplyDiff clones each value as it's applied.
  * @template T - The type of the JSON values being compared
  * @param newValue - The new value
  * @param oldValue - The old value to compare against
@@ -213,13 +226,7 @@ export function JsonDiff<T>(
 ): JsonDiffResult<T> {
   const result: JsonDiffResult<T> = initResult ?? [];
   const startPath = rootPath ? rootPath.split(".") : [];
-  const start = result.length;
   JsonDiffRecursive(startPath, newValue, oldValue, result);
-
-  // Cloned once the records are final: the recursion replaces a subtree's records with one
-  // record for the whole subtree when every child changed.
-  for (let x = start; x < result.length; x++)
-    result[x].value = JsonDeepClone(result[x].value);
 
   return result;
 }

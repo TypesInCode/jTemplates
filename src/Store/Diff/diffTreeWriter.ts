@@ -36,7 +36,8 @@ export class DiffTreeWriter extends DiffTree {
    * Creates a DiffTreeWriter.
    * @param worker Where `Commit()` posts its messages: the worker's `self`, or a `MessagePort`.
    *   On the same thread as the store, anything whose `postMessage` dispatches a `"message"`
-   *   event on the store's `EventTarget`; post copies, or construct the store with `cloneData`.
+   *   event on the store's `EventTarget`. The store clones every value it applies, so it never
+   *   shares objects with the writer's tree.
    * @param keyFunc Optional function to extract a key from objects. Pass the same key logic to
    *   the `PushStore` that receives the changes.
    * @param projector Optional projection implementation, e.g. `SequentialProjector`. It runs

@@ -12,9 +12,9 @@ import { TrackedProjector } from "../../src/Store/Diff/trackedProjector";
 // The cases in docs/bugs/observable-node-proxy-own-keys.md. Each asserts the fixed behaviour.
 
 /** A PushStore and a function that posts one change to it, synchronously. */
-function Push(cloneData?: boolean) {
+function Push() {
   const target = new EventTarget();
-  const store = new PushStore(target, undefined, cloneData);
+  const store = new PushStore(target);
   const post = (path: string[], value: unknown) =>
     target.dispatchEvent(
       new MessageEvent("message", {
@@ -172,9 +172,9 @@ describe("keys named like Object.prototype members (issue 2)", () => {
 
 // Mutating a posted value afterwards is only a probe for whether the store copied it; a real
 // channel delivers copies.
-describe("PushStore cloneData on updates to an existing root (issue 3)", () => {
-  it("clones an update when constructed with cloneData", () => {
-    const { store, post } = Push(true);
+describe("PushStore on updates to an existing root (issue 3)", () => {
+  it("clones an update", () => {
+    const { store, post } = Push();
     post(["r"], { a: { x: 1 } });
     const value = { x: 2 };
     post(["r", "a"], value);
@@ -354,44 +354,44 @@ describe("the tree owns every value it applies", () => {
   });
 });
 
-// A diff entry owns its value: it shares no object with the caller, the tree, or another
-// entry. Entries for a keyed entity and its embedded copy were built from the same caller
-// object, so a consumer that keeps references within one diff (a structured-cloned worker
-// message, or a store applying without cloneData) aliased the embedded copy with its root.
-describe("diff entries own their values", () => {
+// A diff entry doesn't own its value: it references the caller's objects, and entries for a
+// keyed entity and its embedded copy share one. Whatever applies a diff clones each value, so
+// neither the tree nor a store shares an object with the diff, the caller, or another entry.
+describe("diff entries don't own their values", () => {
   const KeyFunc = (v: any) => v?._id;
 
-  it("DiffPath: a keyed entity's root entry doesn't share its embedded copy", () => {
-    const tree = new DiffTree(KeyFunc);
-    const diff = tree.DiffPath("arr", [{ _id: "a", value: "a" }]);
+  it("DiffPath: the tree keeps a keyed entity's root apart from its embedded copy", () => {
+    const tree: any = new DiffTree(KeyFunc);
+    const item = { _id: "a", value: "a" };
+    const diff = tree.DiffPath("arr", [item]);
 
-    const list = diff.find((d) => d.path.join(".") === "arr")!.value as any[];
-    const root = diff.find((d) => d.path.join(".") === "a")!.value;
-    expect(root).toEqual(list[0]);
-    expect(root).not.toBe(list[0]);
+    const list = diff.find((d: any) => d.path.join(".") === "arr")!.value as any[];
+    const root = diff.find((d: any) => d.path.join(".") === "a")!.value;
+    expect(root).toBe(list[0]);
+    expect(tree.rootState.a).not.toBe(item);
+    expect(tree.rootState.arr[0]).not.toBe(tree.rootState.a);
   });
 
-  it("PushPath: entries don't share the caller's items or each other's objects", () => {
-    const tree = new DiffTree(KeyFunc);
+  it("PushPath: the tree doesn't share the caller's items", () => {
+    const tree: any = new DiffTree(KeyFunc);
     tree.DiffPath("arr", []);
     const item = { _id: "a", value: "a" };
-    const diff = tree.PushPath("arr", [item]);
+    tree.PushPath("arr", [item]);
 
-    const pushed = diff.find((d) => d.path.join(".") === "arr.0")!.value;
-    const root = diff.find((d) => d.path.join(".") === "a")!.value;
-    expect(pushed).not.toBe(item);
-    expect(root).not.toBe(pushed);
+    expect(tree.rootState.arr[0]).not.toBe(item);
+    expect(tree.rootState.a).not.toBe(item);
+    expect(tree.rootState.arr[0]).not.toBe(tree.rootState.a);
   });
 
-  it("SplicePath: the result's items share nothing with the caller or the tree", () => {
+  it("SplicePath: the tree doesn't share the caller's items", () => {
     const tree: any = new DiffTree(KeyFunc);
     tree.DiffPath("arr", []);
     const item = { _id: "a", value: "a" };
     const result = tree.SplicePath("arr", 0, 0, [item]);
 
-    expect(result.items[0]).not.toBe(item);
-    expect(result.items[0]).not.toBe(tree.rootState.arr[0]);
-    expect(result.diffResult[0].value).not.toBe(result.items[0]);
+    expect(result.items[0]).toBe(item);
+    expect(tree.rootState.arr[0]).not.toBe(item);
+    expect(tree.rootState.a).not.toBe(item);
   });
 
   it("the returned diff doesn't share objects with the tree", () => {
@@ -399,5 +399,32 @@ describe("diff entries own their values", () => {
     const diff = tree.DiffPath("doc", { a: { x: 1 } });
 
     expect(diff[0].value).not.toBe(tree.rootState.doc);
+  });
+
+  it("a PushStore applying one object from two entries keeps separate copies", () => {
+    const target = new EventTarget();
+    const store = new PushStore(target);
+    const shared = { x: 1 };
+    target.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: DIFF_TREE_EVENT,
+          data: [{ type: "diff", result: [{ path: ["r"], value: { a: {}, b: {} } }] }],
+        },
+      }),
+    );
+    target.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: DIFF_TREE_EVENT,
+          data: [{ type: "diff", result: [{ path: ["r", "a"], value: shared }, { path: ["r", "b"], value: shared }] }],
+        },
+      }),
+    );
+    shared.x = 99;
+
+    const r = ObservableNode.Unwrap(store.Get<any>("r"));
+    expect(r.a).toEqual({ x: 1 });
+    expect(r.a).not.toBe(r.b);
   });
 });

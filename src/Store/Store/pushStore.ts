@@ -81,10 +81,6 @@ export class PushStore extends ReadStore {
    * @param keyFunc Optional function to generate a key for a given data value, used to
    *   resolve root objects. Pass the same key logic the `DiffTreeWriter` was constructed
    *   with, if any.
-   * @param cloneData Whether to deep-clone the values the store adopts (false by default).
-   *   A `Worker` or `MessagePort` already delivers a structured-clone copy of every message.
-   *   A same-thread `EventTarget` delivers the writer's own objects, so either the writer
-   *   posts copies or this is true; otherwise the store and the writer's tree share objects.
    */
   constructor(private eventTarget: EventTarget, keyFunc?: (value: any) => string | undefined) {
     super(keyFunc);
