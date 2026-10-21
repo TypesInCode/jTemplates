@@ -24,7 +24,9 @@ export abstract class ReadStore {
       keyFunc &&
       ((value: unknown, reactive = true) => {
         const key = keyFunc(value);
-        if (key === undefined) return undefined;
+        // A route key names an entity in a DiffTree route instance, which never reaches the
+        // store: read the embedded copy
+        if (key === undefined || key.startsWith("/")) return undefined;
 
         const rootObject = this.rootMap.get(key);
         if (rootObject === undefined)
@@ -105,12 +107,16 @@ export abstract class ReadStore {
     const rootObject = this.rootMap.get(rootPath);
 
     if (rootObject === undefined) {
-      if (results.length > 1 || results[0].path.length > 1)
-        throw `Unable to initialize root path ${rootPath} with ${results.length} results and initial path ${results[0].path}`;
+      if (results[0].path.length > 1)
+        throw `Unable to initialize root path ${rootPath} with initial path ${results[0].path}`;
 
       const rootData = JsonDeepClone(results[0].value);
       const newRootObject = this.createNode({ [rootPath]: rootData }, false);
       this.rootMap.set(rootPath, newRootObject);
+      // Later entries for the same root (e.g. route summaries written one instance at a time)
+      // apply to the root just created
+      if (results.length > 1)
+        ObservableNode.ApplyDiff(newRootObject, results.slice(1));
 
       return;
     }

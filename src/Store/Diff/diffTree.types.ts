@@ -1,5 +1,4 @@
 import type { JsonDiffResult } from "../../Utils/json";
-import type { ISnapshotState } from "../Tree/snapshot";
 
 /**
  * `type` of the message a `DiffTreeWriter` posts on `Commit()`: the batch's diff results,
@@ -39,9 +38,39 @@ export interface IDiffTreeConstructor {
    * Creates a new IDiffTree instance.
    * @param keyFunc - Optional function to extract a key from a value
    * @param projector - Optional projection implementation
+   * @param routes - Optional route patterns, each with the definition of its instances
    */
-  new (keyFunc?: { (val: any): string }, projector?: IDiffTreeProjector): IDiffTree;
+  new (keyFunc?: { (val: any): string }, projector?: IDiffTreeProjector, routes?: DiffTreeRoutes): IDiffTree;
 }
+
+/**
+ * The params a route path matched, by name: `{ color: "red", size: "large" }` for the pattern
+ * `/channel/{color}/{size}` and the path `/channel/red/large/...`.
+ */
+export type DiffTreeRouteConfig = { [param: string]: string };
+
+/**
+ * How a route's instances are defined. Each instance is a standard `DiffTree` created by the
+ * parent on the first write to a path matching the route, sharing the parent's `keyFunc` and
+ * root state.
+ */
+export interface IDiffTreeRouteDefinition {
+  /**
+   * Creates the projector for one instance. Called once per distinct config; a projector
+   * keeps per-tree state, so return a new one each call. Its `ROUTE_SUMMARY` projection, if
+   * any, is the instance's summary; without one, nothing reaches the parent.
+   */
+  projector?: (config: DiffTreeRouteConfig) => IDiffTreeProjector;
+  /** The instances' own routes, resolved relative to the instance */
+  routes?: DiffTreeRoutes;
+}
+
+/**
+ * Route patterns, each with the definition of its instances. A pattern starts with a fixed
+ * segment, which is its output key: the root key the instances' summaries are written to.
+ * Params are written `{name}`, e.g. `"/channel/{channelId}"`.
+ */
+export type DiffTreeRoutes = { [pattern: string]: IDiffTreeRouteDefinition };
 
 /**
  * A pure function computing a derived value from the current values at `reads`. Called with
@@ -117,13 +146,26 @@ export type TrackedProjectionMap = { [id: string]: TrackedProjectionDefinition }
 export const PROJECTION_PREFIX = "$projection_";
 
 /**
+ * Reserved projection id for a route instance's summary. In a route instance, this
+ * projection's result isn't stored in the instance: it's written to the instance's slot under
+ * the route's output key in the parent (`channel.0001`), so it can't be read from within the
+ * instance. Its reads, and the projector's memoization, decide when the summary re-runs. In a
+ * tree that isn't a route instance, it's an ordinary id.
+ */
+export const ROUTE_SUMMARY = "$summary";
+
+/**
  * The access a `DiffTree` gives its projector to the tree's state. Reads and snapshots go
- * through the tree's own snapshot cache, and writes go through the tree's normal
- * diff-and-apply, so a projection result is stored exactly like any other write.
+ * through the tree's snapshot cache, and writes go through the tree's normal
+ * diff-and-apply, so a projection result is stored exactly like any other write (except that
+ * route-keyed entities in it aren't routed: they stay embedded).
  */
 export interface IDiffTreeProjectionHost {
-  /** The tree's snapshot cache; its default resolver reads keyed children through their root */
-  readonly snapshotState: ISnapshotState;
+  /**
+   * An immutable, cached snapshot of a raw value read from the tree, with keyed children read
+   * through their root (in this tree or a route instance).
+   */
+  Snapshot<T>(value: T): T;
   /**
    * Reads a dot-separated path, resolving keyed values through their root entity.
    * @returns The value and whether every segment of the path exists
@@ -192,7 +234,7 @@ export type IDiffPushEvent = {
 
 export interface IDiffMethod {
   /** The method to call */
-  method: "diffpath" | "splicepath" | "pushpath" | "patchpath";
+  method: "diffpath" | "splicepath" | "pushpath" | "patchpath" | "deleteroute";
   /** Arguments for the method call */
   arguments: Array<any>;
 }

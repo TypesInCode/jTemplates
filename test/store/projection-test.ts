@@ -16,3 +16,19 @@ describe("StoreSync projection construction", () => {
     ).toThrow(/cycle/i);
   });
 });
+
+/*
+new SequentialProjector({
+  key: { reads: [`$projection_a`], projection: (b: any) => b }
+}, [
+  {
+    route: '/channel/{channelId}',
+    definition: (params: { [key: string]: string }) => ({
+      a: {
+        reads: [`/river/${params.channelId}`, `names`],
+        projection: (river, names) => "test"
+      }
+    })
+  }
+])
+*/

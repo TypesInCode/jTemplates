@@ -3,6 +3,8 @@ import { DiffTree } from "../../src/Store/Diff/diffTree";
 import { PROJECTION_PREFIX } from "../../src/Store/Diff";
 import { JsonType } from "../../src/Utils/json";
 import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
+import { DiffTreeWriter } from "../../src/Store/Diff/diffTreeWriter";
+import { PushStore } from "../../src/Store/Store/pushStore";
 
 const DiffTreeConstructor = DiffTree;
 
@@ -838,5 +840,60 @@ describe("Diff Tree PushPath Test", () => {
     const tree = new DiffTreeConstructor(KeyFunc);
     tree.DiffPath("root", { a: 1 });
     expect(() => tree.PushPath("root", [1])).toThrow(/not an array/);
+  });
+});
+
+describe("DiffTree undefined writes", () => {
+  /** A writer feeding a PushStore, so the tree and the Store can be compared after each commit. */
+  function Connected(projector?: SequentialProjector) {
+    const target = new EventTarget();
+    const store = new PushStore(target);
+    const writer = new DiffTreeWriter({
+      postMessage(message) { target.dispatchEvent(new MessageEvent("message", { data: message })); },
+    }, undefined, projector);
+    return { store, writer };
+  }
+
+  it("holds undefined for a root key written undefined, as the Store does", () => {
+    const { store, writer } = Connected();
+    writer.DiffPath("a", { x: 1 });
+    writer.Commit();
+    writer.DiffPath("a", undefined);
+    writer.Commit();
+
+    expect(writer.GetPath("a")).toBeUndefined();
+    expect(store.Get("a")).toBeUndefined();
+    store.Destroy();
+  });
+
+  it("holds undefined for a field written undefined, and re-sends a whole value written after it", () => {
+    const { store, writer } = Connected();
+    writer.DiffPath("a", { b: { c: 1 } });
+    writer.Commit();
+    writer.DiffPath("a.b", undefined);
+    writer.Commit();
+    expect(writer.GetPath("a")).toEqual({ b: undefined });
+    expect(store.Get<any>("a").b).toBeUndefined();
+
+    writer.DiffPath("a.b", { c: 2 });
+    writer.Commit();
+    expect(writer.GetPath("a")).toEqual({ b: { c: 2 } });
+    expect(store.Get<any>("a")).toEqual({ b: { c: 2 } });
+    store.Destroy();
+  });
+
+  it("holds undefined for a projection that returns undefined", () => {
+    const { store, writer } = Connected(new SequentialProjector({
+      p: { reads: ["a"], projection: (_keys, a: number) => (a > 1 ? undefined : { a }) },
+    }));
+    writer.DiffPath("a", 1);
+    writer.Commit();
+    expect(store.Get("$projection_p")).toEqual({ a: 1 });
+
+    writer.DiffPath("a", 2);
+    writer.Commit();
+    expect(writer.GetPath("$projection_p")).toBeUndefined();
+    expect(store.Get("$projection_p")).toBeUndefined();
+    store.Destroy();
   });
 });

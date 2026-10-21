@@ -1,6 +1,5 @@
 import { ArraysEqual } from "../../Utils/array";
 import { JsonType, type JsonDiffResult } from "../../Utils/json";
-import { Snapshot } from "../Tree/snapshot";
 import {
   IDiffTreeProjectionHost,
   IDiffTreeProjector,
@@ -93,7 +92,7 @@ function BuildProjectionOrder(projections: TrackedProjectionMap): TrackedProject
 /** The snapshot of the value at `path`, or `MISSING`. */
 function ResolveRead(host: IDiffTreeProjectionHost, path: string) {
   const [value, found] = host.Read(path);
-  return found ? Snapshot.Get(host.snapshotState, value) : MISSING;
+  return found ? host.Snapshot(value) : MISSING;
 }
 
 /** The sorted keys of the value at `parentPath` starting with `keyPrefix`, or `MISSING`. */

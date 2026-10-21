@@ -1,6 +1,5 @@
 import { ArraysEqual } from "../../Utils/array";
 import type { JsonDiffResult } from "../../Utils/json";
-import { Snapshot } from "../Tree/snapshot";
 import {
   DiffTreeProjectionDefinition,
   DiffTreeProjectionMap,
@@ -113,7 +112,7 @@ function RunProjections(
       const [value, found] = host.Read(read);
       allPathsExist = found;
       keys.push(read);
-      values.push((found && Snapshot.Get(host.snapshotState, value)) || value);
+      values.push((found && host.Snapshot(value)) || value);
     }
 
     if (y < reads.length && reads[y].endsWith("*")) {
@@ -124,7 +123,7 @@ function RunProjections(
         const [value, found] = host.ReadRoot(matchedKeys[z]);
         allPathsExist = allPathsExist && found;
         keys.push(matchedKeys[z]);
-        values.push((found && Snapshot.Get(host.snapshotState, value)) || value);
+        values.push((found && host.Snapshot(value)) || value);
       }
     }
 

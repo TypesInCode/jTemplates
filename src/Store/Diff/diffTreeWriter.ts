@@ -1,6 +1,6 @@
 import { JsonDiffResult } from "../../Utils/json";
-import { DiffTree } from "./diffTree";
-import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, IDiffMethodBatchResult, IDiffTreeProjector } from "./diffTree.types";
+import { DiffTree, IsRoutePath } from "./diffTree";
+import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeRoutes, IDiffMethodBatchResult, IDiffTreeProjector } from "./diffTree.types";
 
 /**
  * A `DiffTree` that pushes its changes to a `PushStore` instead of answering a store's
@@ -16,6 +16,8 @@ import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, IDiffMethodBatchRes
  *   `Commit()` brings them up to date.
  * - A `PushStore` only receives the changes committed after it starts listening, so
  *   create it before the writer's first `Commit()`.
+ * - A write to a route path isn't posted: the instance's changes reach the store through its
+ *   summary, which `Commit()` posts with the batch.
  *
  * @example
  * // engine-worker.ts
@@ -42,9 +44,10 @@ export class DiffTreeWriter extends DiffTree {
    *   the `PushStore` that receives the changes.
    * @param projector Optional projection implementation, e.g. `SequentialProjector`. It runs
    *   once per `Commit()`, after the batch's changes.
+   * @param routes Optional route patterns, each with the definition of its instances.
    */
-  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: {(val: any): string}, projector?: IDiffTreeProjector) {
-    super(keyFunc, projector);
+  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: {(val: any): string}, projector?: IDiffTreeProjector, routes?: DiffTreeRoutes) {
+    super(keyFunc, projector, routes);
   }
 
   /**
@@ -70,7 +73,7 @@ export class DiffTreeWriter extends DiffTree {
       
     try {
       const result = super.DiffPath(path, value);
-      result.length > 0 && this.uncommitted.push({
+      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
         type: "diff",
         result
       });
@@ -97,7 +100,7 @@ export class DiffTreeWriter extends DiffTree {
 
     try {
       const result = super.PatchPath(path, patch);
-      result.length > 0 && this.uncommitted.push({
+      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
         type: "diff",
         result
       });
@@ -123,7 +126,7 @@ export class DiffTreeWriter extends DiffTree {
 
     try {  
       const result = super.PushPath(path, items);
-      result.length > 0 && this.uncommitted.push({
+      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
         type: "diff",
         result
       });
@@ -151,12 +154,32 @@ export class DiffTreeWriter extends DiffTree {
 
     try {
       const result = super.SplicePath(path, start, deleteCount, items);
-      this.uncommitted.push({
+      !IsRoutePath(path) && this.uncommitted.push({
         type: "splice",
         result
       });
 
       return result;
+    }
+    catch(err: any) {
+      this.uncommittedError = err;
+      throw err;
+    }
+  }
+
+  /**
+   * Deletes a route instance (see `DiffTree.DeleteRoute`). Records nothing itself: the slot's
+   * removal is posted by the next `Commit()`, with the batch.
+   * @param path - The instance's route path
+   * @returns Whether an instance existed and was deleted
+   * @throws The change's error, or an earlier uncommitted change's error.
+   */
+  public DeleteRoute(path: string): boolean {
+    if (this.uncommittedError)
+      throw this.uncommittedError;
+
+    try {
+      return super.DeleteRoute(path);
     }
     catch(err: any) {
       this.uncommittedError = err;

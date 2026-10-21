@@ -134,10 +134,10 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
  * @param diff - The diff result to apply
  * @param callback - Called with the object written to, the property written ("" when an array
  *   root is replaced), and whether that property is new to the object
- * @param skipUndefined - Whether to skip records whose value is undefined
  * @throws If a root replacement would change the root's JSON type, or the root is a primitive
  */
-export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: any, prop: string, added: boolean) => void, skipUndefined = false) {
+export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: [string | number, any][], prop: string | number, added: boolean, value: any) => void) {
+  const pathTuples: [string | number, unknown][] = [["", root]];
   if (diff.length === 1 && diff[0].path.length === 0) {
     const diffRow = diff[0];
     const diffPatch = JsonDeepClone(diffRow.value);
@@ -151,7 +151,7 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: a
     switch (type) {
       case "array": {
         (root as any[]).splice(0, root.length, ...(diffPatch as any[]));
-        callback(root, "", false);
+        callback(pathTuples, '', false, root);
         break;
       }
       case "object": {
@@ -163,7 +163,7 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: a
 
         Object.assign(root, diffPatch);
         for (let x = 0; x < patchKeys.length; x++)
-          callback(root, patchKeys[x], keys.includes(patchKeys[x]));
+          callback(pathTuples, patchKeys[x], keys.includes(patchKeys[x]), (diffPatch as any)[patchKeys[x]]);
 
         break;
       }
@@ -175,11 +175,8 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: a
     return;
   }
 
-  const pathTuples: [string | number, unknown][] = [["", root]];
   for (let x = 0; x < diff.length; x++) {
     const { path, value } = diff[x];
-    if (skipUndefined && value === undefined)
-      continue;
 
     let y = 0;
     for (; y < path.length - 1; y++) {
@@ -202,7 +199,7 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (obj: a
     const assignData = JsonDeepClone(value);
     const added = !Object.hasOwn(assignValue, path[y]);
     assignValue[path[y]] = assignData;
-    callback(assignValue, path[y] as string, added);
+    callback(pathTuples.slice(0, y + 1), path[y], added, assignData);
   }
 }
 

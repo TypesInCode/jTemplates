@@ -1,5 +1,5 @@
-import { DiffTree } from "./diffTree";
-import { IDiffMethodBatch, IDiffMethodBatchResult } from "./diffTree.types";
+import { DiffTree, IsRoutePath } from "./diffTree";
+import { IDiffMethod, IDiffMethodBatch, IDiffMethodBatchResult } from "./diffTree.types";
 
 export function ConnectWorkerToDiffTree(diffTree: DiffTree, worker: Worker) {
 
@@ -8,6 +8,14 @@ export function ConnectWorkerToDiffTree(diffTree: DiffTree, worker: Worker) {
     const result: IDiffMethodBatchResult = new Array(data.length + 1);
     for (let x = 0; x < data.length; x++) {
       const call = data[x];
+      // A route write's own result describes the instance, not root state; its summary (or a
+      // deleted instance's slot removal) arrives with the projections at the end of the batch
+      if (IsRoutePath(call.arguments[0])) {
+        RunMethod(diffTree, call);
+        result[x] = { type: "diff", result: [] };
+        continue;
+      }
+
       switch (call.method) {
         case "diffpath": {
           result[x] = {
@@ -37,6 +45,11 @@ export function ConnectWorkerToDiffTree(diffTree: DiffTree, worker: Worker) {
           };
           break;
         }
+        case "deleteroute": {
+          // Not a route path, so this throws
+          diffTree.DeleteRoute(call.arguments[0]);
+          break;
+        }
       }
     }
 
@@ -46,4 +59,15 @@ export function ConnectWorkerToDiffTree(diffTree: DiffTree, worker: Worker) {
     };
     worker.postMessage(result);
   };
+}
+
+function RunMethod(diffTree: DiffTree, call: IDiffMethod) {
+  const args = call.arguments;
+  switch (call.method) {
+    case "diffpath": return diffTree.DiffPath(args[0], args[1]);
+    case "splicepath": return diffTree.SplicePath(args[0], args[1], args[2], args[3]);
+    case "pushpath": return diffTree.PushPath(args[0], args[1]);
+    case "patchpath": return diffTree.PatchPath(args[0], args[1]);
+    case "deleteroute": return diffTree.DeleteRoute(args[0]);
+  }
 }
