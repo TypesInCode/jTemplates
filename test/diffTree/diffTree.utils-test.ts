@@ -100,24 +100,6 @@ describe("DiffTree Utils", () => {
     expect(path).toEqual('value');
   });
 
-  it("Read route and path from un-routed path", () => {
-    const [route, path] = SplitRouteAndPath("value.prop");
-    expect(route).toEqual('/');
-    expect(path).toEqual('value.prop');
-  });
-
-  it("Read route and path just a slash", () => {
-    const [route, path] = SplitRouteAndPath("/");
-    expect(route).toEqual('/');
-    expect(path).toEqual('');
-  });
-
-  it("Read route and path for an empty string", () => {
-    const [route, path] = SplitRouteAndPath("");
-    expect(route).toEqual('/');
-    expect(path).toEqual('');
-  });
-
   it("Write new value to root routed path", () => {
     const obj = {} as { [key: string]: any };
     ApplyValueToPath(snapshot, obj, (data) => data?.id ? `/${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });

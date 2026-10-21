@@ -83,9 +83,9 @@ export function ApplyDiffToPath(snapshot: ISnapshotState, keyFunc: { (value: any
             value
           });
         }
-
-        ExpandKeyedDiffFromValue(keyFunc, basePath, value, keyedDiff);
       }
+
+      ExpandKeyedDiffFromValue(keyFunc, basePath, value, keyedDiff);
     }
 
     Snapshot.Invalidate(snapshot, path[path.length - 1][1]);
@@ -124,6 +124,7 @@ export function ApplyValueToPath(snapshot: ISnapshotState, root: any, keyFunc: {
 
   const keyedValues = ApplyDiffToPath(snapshot, keyFunc, basePath, diffRoot, diff);
   ApplyPathValues(snapshot, root, keyedValues);
+  return keyedValues;
 }
 
 export function WritePath(snapshot: ISnapshotState, root: any, path: string, value: any, pathIndex = 0) {
