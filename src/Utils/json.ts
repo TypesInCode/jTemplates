@@ -1,13 +1,23 @@
+import { ArraysEqual } from "./array";
+
+export type JsonWrite = {
+  type: "write",
+  path: (string | number)[],
+  value: unknown
+};
+
+export type JsonMove = {
+  type: "move",
+  basePath: (string | number)[],
+  sourceProp: string | number,
+  targetProp: string | number
+};
+
 /**
  * Result of a JSON diff operation, containing paths and values that changed.
  * @template T - The type of the JSON value being diffed
  */
-export type JsonDiffResult<T = unknown> = {
-  /** Array path segments (strings for object keys, numbers for array indices) */
-  path: (string | number)[];
-  /** The new value at this path */
-  value: unknown;
-}[];
+export type JsonDiffResult<T = unknown> = (JsonMove | JsonWrite)[];
 
 const jsonProto = Object.getPrototypeOf({});
 const arrayProto = Object.getPrototypeOf([]);
@@ -124,6 +134,26 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
   }
 }
 
+export function JsonApplyDiff(root: any, diff: JsonDiffResult, resolve?: (parent: any, prop: string | number) => any, assign?: (parent: any, prop: string | number, value: any) => void) {
+  const moves = diff.filter(function (diff) {
+    return diff.type === "move";
+  });
+  JsonApplyMoves(root, moves, resolve);
+
+  const writes = diff.filter(function (diff) {
+    return diff.type === "write";
+  });
+  JsonApplyWrites(root, writes, resolve, assign);
+}
+
+function DefaultResolve(parent: any, prop: string | number) {
+  return parent[prop];
+}
+
+function DefaultAssign(parent: any, prop: string | number, value: any) {
+  parent[prop] = value;
+}
+
 /**
  * Applies a diff result to a root value in place. A diff doesn't own its values (see JsonDiff),
  * so each value is deep-cloned before it's written: the root never shares an object with the
@@ -136,7 +166,12 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
  *   root is replaced), and whether that property is new to the object
  * @throws If a root replacement would change the root's JSON type, or the root is a primitive
  */
-export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: [string | number, any][], prop: string | number, added: boolean, value: any) => void) {
+export function JsonApplyWrites(
+  root: any,
+  diff: JsonWrite[],
+  resolve: (parent: any, prop: string | number) => any = DefaultResolve,
+  assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign
+) {
   const pathTuples: [string | number, unknown][] = [["", root]];
   if (diff.length === 1 && diff[0].path.length === 0) {
     const diffRow = diff[0];
@@ -151,7 +186,6 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: 
     switch (type) {
       case "array": {
         (root as any[]).splice(0, root.length, ...(diffPatch as any[]));
-        callback(pathTuples, '', false, root);
         break;
       }
       case "object": {
@@ -162,9 +196,6 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: 
             delete root[keys[x]];
 
         Object.assign(root, diffPatch);
-        for (let x = 0; x < patchKeys.length; x++)
-          callback(pathTuples, patchKeys[x], keys.includes(patchKeys[x]), (diffPatch as any)[patchKeys[x]]);
-
         break;
       }
       case "value":
@@ -181,14 +212,17 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: 
     let y = 0;
     for (; y < path.length - 1; y++) {
       const property = path[y];
-      const value = pathTuples[y][1];
+      const value = pathTuples[y][1] as any;
 
       const tupleIndex = y + 1;
-      if (pathTuples.length <= tupleIndex)
-        pathTuples.push([property, (value as any)[property]]);
+      if (pathTuples.length <= tupleIndex) {
+        const childValue = resolve(value, property);
+        value[property] = childValue;
+        pathTuples.push([property, childValue]);
+      }
       else if (pathTuples[tupleIndex][0] !== property) {
         pathTuples[tupleIndex][0] = property;
-        pathTuples[tupleIndex][1] = (value as any)[property];
+        pathTuples[tupleIndex][1] = resolve(value, property);
 
         const next = tupleIndex + 1;
         if (next < pathTuples.length) pathTuples[next][0] = null;
@@ -197,9 +231,42 @@ export function JsonApplyDiff(root: any, diff: JsonDiffResult, callback: (path: 
 
     const assignValue = pathTuples[y][1] as any;
     const assignData = JsonDeepClone(value);
-    const added = !Object.hasOwn(assignValue, path[y]);
-    assignValue[path[y]] = assignData;
-    callback(pathTuples.slice(0, y + 1), path[y], added, assignData);
+    assign(assignValue, path[y], assignData);
+  }
+}
+
+function ReadPath(value: any, path: (string | number)[], resolve: (parent: any, prop: string | number) => any) {
+  let curr = value;
+  let x = 0;
+  for (; curr && x < path.length; x++)
+    curr = resolve(curr, path[x]);
+
+  return curr;
+}
+
+function JsonApplyMoves(
+  root: any,
+  diff: JsonMove[],
+  resolve: (parent: any, prop: string | number) => any = DefaultResolve
+  // assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign
+) {
+  if (diff.length === 0)
+    return;
+
+  let moveRoot = null;
+  let basePath = null;
+  let copy = null;
+  for (let x = diff.length - 1; x >= 0; x--) {
+    if (!ArraysEqual(diff[x].basePath, basePath)) {
+      basePath = diff[x].basePath;
+      moveRoot = ReadPath(root, diff[x].basePath, resolve);
+      const type = JsonType(moveRoot);
+      copy = type === "array" ? moveRoot.slice() : type === "object" ? Object.assign({}, moveRoot) : root;
+    }
+
+    const sourceValue = copy[diff[x].sourceProp];
+    // assign(moveRoot, diff[x].targetProp, sourceValue);
+    moveRoot[diff[x].targetProp] = sourceValue;
   }
 }
 
@@ -224,6 +291,11 @@ export function JsonDiff<T>(
   const result: JsonDiffResult<T> = initResult ?? [];
   const startPath = rootPath ? rootPath.split(".") : [];
   JsonDiffRecursive(startPath, newValue, oldValue, result);
+  result.sort(function (a, b) {
+    const aNum = a.type === "write" ? 1 : 0;
+    const bNum = b.type === "write" ? 1 : 0;
+    return aNum - bNum;
+  })
 
   return result;
 }
@@ -266,6 +338,7 @@ function JsonDiffRecursive(
   if (allChildrenChanged) {
     resp.length > changedPathLength && resp.splice(changedPathLength);
     resp.push({
+      type: "write",
       path,
       value: newValue,
     });
@@ -274,6 +347,8 @@ function JsonDiffRecursive(
 
   return false;
 }
+
+const MOVE_SYMBOL = Symbol("MOVE_SYMBOL");
 
 /**
  * Compares two arrays and records differences.
@@ -294,25 +369,70 @@ function JsonDiffArrays(
     return oldValue.length !== newValue.length;
   }
 
-  let allChildrenChanged = true;
+  const newArraySlice = newValue.slice();
+  const oldArraySlice = oldValue.slice();
 
-  if (newValue.length > 0 || oldValue.length > 0) {
+  for (let x = 0; x < oldValue.length; x++) {
+    const newIndex = newValue.indexOf(oldValue[x]);
+    if (newIndex >= 0 && newIndex !== x) {
+      oldArraySlice[x] = MOVE_SYMBOL;
+      newArraySlice[newIndex] = MOVE_SYMBOL;
+
+      resp.push({
+        type: "move",
+        basePath: path,
+        sourceProp: x,
+        targetProp: newIndex
+      });
+    }
+  }
+
+  for (let x = 0; x < newValue.length; x++) {
+    const arrayPath = path.concat(x);
+    if (newArraySlice[x] !== MOVE_SYMBOL)
+      JsonDiffRecursive(arrayPath, newArraySlice[x], oldArraySlice[x], resp);
+  }
+
+  if (oldValue.length !== newValue.length)
+    resp.push({
+      type: "write",
+      path: path.concat("length"),
+      value: newValue.length,
+    });
+
+  return false;
+
+  /* if (newValue.length > 0 || oldValue.length > 0) {
     for (let y = 0; y < newValue.length; y++) {
+      const oldIndex = oldValue.indexOf(newValue[y]);
       const arrayPath = path.concat(y);
-      const oldValueElem = oldValue[y];
-      allChildrenChanged =
-        JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) &&
-        allChildrenChanged;
+      if (oldIndex >= 0) {
+        oldValue = !sliced ? oldValue.slice() : oldValue;
+        sliced = true;
+        oldValue[oldIndex] = null;
+        resp.push({
+          type: "move",
+          sourcePath: path.concat(oldIndex),
+          path: arrayPath
+        })
+      }
+      else {
+        const oldValueElem = oldValue[y];
+        allChildrenChanged =
+          JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) &&
+          allChildrenChanged;
+      }
     }
   } else allChildrenChanged = false;
 
   if (newValue.length !== oldValue.length)
     resp.push({
+      type: "write",
       path: path.concat("length"),
       value: newValue.length,
     });
 
-  return allChildrenChanged;
+  return allChildrenChanged; */
 }
 
 /**
@@ -355,6 +475,7 @@ function JsonDiffObjects(
       oldKeyIndex++;
     } else if (newValue[newKeys[newKeyIndex]] !== undefined) {
       resp.push({
+        type: "write",
         path: childPath,
         value: newValue[newKeys[newKeyIndex]],
       });

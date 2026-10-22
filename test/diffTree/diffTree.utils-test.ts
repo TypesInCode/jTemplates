@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { ApplyValueToPath, ReadPath, ROUTE_STATE, SplitRouteAndPath, WritePath } from '../../src/Store/Diff/utils/diffTree.utils';
+import { ApplyValueToPath, ReadPath, ROUTE_STATE, SnapshotPathRoute, SplitRouteAndPath, ToSnapshotPath, WritePath } from '../../src/Store/Diff/utils/diffTree.utils';
 import { Snapshot } from "../../src/Store/Tree/snapshot";
 
 describe("DiffTree Utils", () => {
   const snapshot = Snapshot.Create();
 
   it("Write routed path to object", () => {
-    const obj = {} as { [key: string]: any };
+    const obj = {} as any;
     WritePath(snapshot, obj, '/First/Second/value', { test: 1 });
 
     expect(obj[ROUTE_STATE].First[ROUTE_STATE].Second.value.test).toEqual(1);
   });
 
   it("Initialize route without a property", () => {
-    const obj = {} as { [key: string]: any };
+    const obj = {} as any;
     WritePath(snapshot, obj, '/First/Second/', undefined);
     expect(obj[ROUTE_STATE].First[ROUTE_STATE].Second).toEqual({});
   });
@@ -102,7 +102,7 @@ describe("DiffTree Utils", () => {
 
   it("Write new value to root routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, (data) => data?.id ? `/${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
+    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `/${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
     const value = ReadPath(obj, '/First/Second/value.value');
     const value2 = ReadPath(obj, 'MY_ID.value');
     expect(value).toEqual("test");
@@ -111,7 +111,7 @@ describe("DiffTree Utils", () => {
 
   it("Write new value to local routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
+    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
     const value = ReadPath(obj, '/First/Second/value.value');
     const value2 = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("test");
@@ -120,7 +120,7 @@ describe("DiffTree Utils", () => {
 
   it("Write nested keyed value is copied to routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', [{ id: "MY_ID", value: "test" }]);
+    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', [{ id: "MY_ID", value: "test" }]);
     const value = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("test");
   })
@@ -128,8 +128,8 @@ describe("DiffTree Utils", () => {
   it("Write to existing keyed value makes it to the root copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `/${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object.value', "CHANGED");
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "CHANGED");
     const value = ReadPath(obj, '/First/Second/object.value');
     const value2 = ReadPath(obj, '/MY_ID.value');
     expect(value).toEqual("CHANGED");
@@ -139,11 +139,11 @@ describe("DiffTree Utils", () => {
   it("Write alternating values to existing keyed value makes it to the root copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `/${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, keyFunc, '/MY_ID', 'value', "CHANGED");
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/MY_ID', 'value', "CHANGED");
     const value = ReadPath(obj, '/MY_ID.value');
     expect(value).toEqual("CHANGED");
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object.value', "test");
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "test");
     const value2 = ReadPath(obj, '/MY_ID.value');
     expect(value2).toEqual("test");
   });
@@ -151,11 +151,25 @@ describe("DiffTree Utils", () => {
   it("Write to existing keyed value makes it to the local copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, keyFunc, '/First/Second/', 'object.value', "CHANGED");
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "CHANGED");
     const value = ReadPath(obj, '/First/Second/object.value');
     const value2 = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("CHANGED");
     expect(value2).toEqual("CHANGED");
+  });
+
+  it("Convert route path to snapshot path", () => {
+    expect(ToSnapshotPath("/channel/1/item.v")).toEqual([ROUTE_STATE, "channel", ROUTE_STATE, "1", "item", "v"]);
+    expect(ToSnapshotPath("/channel/1/")).toEqual([ROUTE_STATE, "channel", ROUTE_STATE, "1"]);
+    expect(ToSnapshotPath("/item")).toEqual(["item"]);
+    expect(ToSnapshotPath("item.v")).toEqual(["item", "v"]);
+    expect(ToSnapshotPath("")).toEqual([]);
+  });
+
+  it("Read route from snapshot path", () => {
+    expect(SnapshotPathRoute([ROUTE_STATE, "channel", ROUTE_STATE, "1", "item", "v"])).toEqual("/channel/1/");
+    expect(SnapshotPathRoute(["item", 0])).toEqual("/");
+    expect(SnapshotPathRoute([])).toEqual("/");
   });
 });
