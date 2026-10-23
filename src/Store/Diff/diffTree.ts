@@ -128,8 +128,6 @@ export class DiffTree {
     });
 
     ApplyDiff(this.snapshot, this.rootState, this.routeKeyFunc, combinedRoutePath, routeRoot, diff);
-    /* const keyedValues = ApplyDiffToData(this.snapshot, this.rootState, this.routeKeyFunc, combinedRoutePath, routeRoot, diff);
-    ApplyPathValues(this.snapshot, this.rootState, keyedValues); */
   }
 
   /**

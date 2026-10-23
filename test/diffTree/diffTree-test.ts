@@ -274,8 +274,8 @@ describe("DiffTree", () => {
       tree.SplicePath("items", 1, 1, []);
 
       expect(tree.Commit()).toEqual([
-        { type: "move", basePath: ["items"], sourceProp: 2, targetProp: 1 },
-        { type: "move", basePath: ["items"], sourceProp: 3, targetProp: 2 },
+        { type: "move", path: ["items"], sourceProp: 2, targetProp: 1 },
+        { type: "move", path: ["items"], sourceProp: 3, targetProp: 2 },
         { type: "write", path: ["items", "length"], value: 3 }
       ]);
     });
