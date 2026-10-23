@@ -1,10 +1,10 @@
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import type { IDiffTreeProjector } from "../../src/Store/Diff";
+import type { IRouteDefinitions } from "../../src/Store/Diff";
 import { ConnectWorkerToDiffTree } from "../../src/Store/Diff/diffTreeWorker";
 
 // jsdom has no Worker, and a real worker entry module (like defaultDiffTreeWorker.ts) can
 // only be built by a bundler. This shim plays that role for tests: it builds a DiffTree
-// with the given keyFunc/projections baked in, in this thread, and connects it through
+// with the given keyFunc/routes baked in, in this thread, and connects it through
 // ConnectWorkerToDiffTree to a fake Worker pair that delivers messages asynchronously as
 // structured-cloned copies, as a real worker boundary would.
 
@@ -16,7 +16,7 @@ const clone = (v: unknown) => (v === undefined ? v : structuredClone(v));
  */
 export function CreateShimDiffWorker(
   keyFunc?: (val: any) => string,
-  projector?: IDiffTreeProjector,
+  routes?: IRouteDefinitions,
 ): Worker {
   const mainSide: any = { onmessage: null, onerror: null };
   const workerSide: any = { onmessage: null, onerror: null };
@@ -44,7 +44,7 @@ export function CreateShimDiffWorker(
     });
   };
 
-  const diffTree = new DiffTree(keyFunc, projector);
+  const diffTree = new DiffTree(keyFunc, routes);
   ConnectWorkerToDiffTree(diffTree, workerSide as Worker);
 
   return mainSide as Worker;

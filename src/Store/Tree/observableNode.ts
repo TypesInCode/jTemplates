@@ -1,7 +1,7 @@
 import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
-import { Snapshot } from "./snapshot";
+import { Snapshot, SnapshotResolver } from "./snapshot";
 
 const NODE_VALUE = Symbol("NODE_VALUE");
 const NODE_PROXY = Symbol("NODE_PROXY");
@@ -174,7 +174,11 @@ function AssignNodeValue(obj: any, prop: string | number, value: any) {
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
   // Keyed children are read through their root. Every factory shares the module-level
   // snapshotState, matching wrapperCache; only the resolver differs per factory.
-  const resolveSnapshot = alias && ((child: any) => alias(child, false));
+  // The alias ignores paths, so the root is snapshotted at the child's own path
+  const resolveSnapshot: SnapshotResolver | undefined = alias && function (child, path) {
+    const value = alias(child, false);
+    return value === undefined ? undefined : { value, path: path.slice() };
+  };
 
   function CreateSnapshot(value: any): any {
     return Snapshot.Get(snapshotState, value, resolveSnapshot);
@@ -462,22 +466,6 @@ export namespace ObservableNode {
     const root = rootNode[NODE_VALUE];
     const diff = JsonDiff(value, root);
     ApplyDiff(rootNode, diff);
-  }
-
-  /**
-   * Splices an observable node's underlying array in-place, invalidating its snapshot and
-   * touching its scope so reactive readers update.
-   * @param rootNode The observable array node to splice.
-   * @param start Index at which to start changing the array.
-   * @param deleteCount Number of elements to remove starting at `start`.
-   * @param items Elements to insert at `start`. Deep-cloned before they're inserted, so the
-   *   node isn't left holding a reference the caller can still mutate.
-   */
-  export function ApplySplice(rootNode: any, start: number, deleteCount: number, items: any[]) {
-    const root = rootNode[NODE_VALUE];
-    const addItems = JsonDeepClone(items);
-    root.splice(start, deleteCount, ...addItems);
-    NodeValueSet(root, "", false, rootNode[NODE_WRAPPER]);
   }
 
   /**

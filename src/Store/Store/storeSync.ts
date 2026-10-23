@@ -1,6 +1,5 @@
-import { JsonDeepClone } from "../../Utils/json";
-import { DiffSync } from "../Diff/diffSync";
-import { IDiffTreeProjector } from "../Diff/diffTree.types";
+import { DiffTree } from "../Diff/diffTree";
+import { IRouteDefinitions } from "../Diff/utils/diffTree.types";
 import { Store } from "./store";
 
 /**
@@ -25,29 +24,32 @@ import { Store } from "./store";
  * store.Push("user.array", { id: 1 }, { id: 2 });
  *
  * // Splicing an array
- * const deletedItems = store.Splice("user.array", 0, 1, { id: 3 });
+ * store.Splice("user.array", 0, 1, { id: 3 });
  *
  * @see Store
  * @see StoreAsync
- * @see DiffSync
+ * @see DiffTree
  */
 export class StoreSync extends Store {
   /**
-   * The diff instance used to compute differences between current and new data states.
+   * The tree each change is applied to. Its `Commit()` diff keeps the store in sync.
    * @private
    */
-  private diff: DiffSync;
+  private diff: DiffTree;
 
   /**
    * Creates an instance of StoreSync.
    * @param keyFunc Optional function to generate a key for a given data value.
-   * @param projector Optional projection implementation, e.g. `SequentialProjector`. A
-   * projection's result is readable through `Get` at `$projection_<id>`.
+   * @param routes Optional route definitions. A projection in the root route (`"/"`) is
+   * readable through `Get` at `$projection_<key>`.
+   * @throws When projections depend on each other in a cycle.
    */
-  constructor(keyFunc?: (value: any) => string | undefined, projector?: IDiffTreeProjector) {
+  constructor(keyFunc?: (value: any) => string | undefined, routes?: IRouteDefinitions) {
     super(keyFunc);
 
-    this.diff = new DiffSync(keyFunc, projector);
+    this.diff = new DiffTree(keyFunc, routes);
+    // Orders the projections now, so a cycle throws here instead of on the first change
+    this.diff.RunProjections();
   }
 
   /**
@@ -60,8 +62,8 @@ export class StoreSync extends Store {
     key = key || this.keyFunc?.(data);
     if (!key) throw "No key provided for data";
 
-    const diffResult = this.diff.DiffPath(key, data);
-    this.UpdateRootMap(diffResult);
+    this.diff.WritePath(key, data);
+    this.Sync();
   }
 
   /**
@@ -74,8 +76,8 @@ export class StoreSync extends Store {
     if (!this.Has(key))
       throw "Key not found in store";
 
-    const diffResult = this.diff.PatchPath(key, patch);
-    this.UpdateRootMap(diffResult);
+    this.diff.PatchPath(key, patch);
+    this.Sync();
   }
 
   /**
@@ -87,8 +89,8 @@ export class StoreSync extends Store {
     if (!this.Has(key))
       throw "Key not found in store";
 
-    const diffResult = this.diff.PushPath(key, data);
-    this.UpdateRootMap(diffResult);
+    this.diff.PushPath(key, data);
+    this.Sync();
   }
 
   /**
@@ -98,7 +100,6 @@ export class StoreSync extends Store {
    * @param start The position at which to start changing the array.
    * @param deleteCount Optional number of elements to delete. If not provided, all elements from start to end will be deleted.
    * @param items Optional elements to insert into the array.
-   * @returns The array of deleted elements.
    */
   Splice(
     key: string,
@@ -109,10 +110,16 @@ export class StoreSync extends Store {
     if (!this.Has(key))
       throw "Key not found in store";
 
-    const spliceResult = this.diff.SplicePath(key, start, deleteCount, items);
-    this.UpdateRootMap(spliceResult.diffResult);
-    this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, items);
+    this.diff.SplicePath(key, start, deleteCount ?? Infinity, items);
+    this.Sync();
+  }
 
-    return JsonDeepClone(spliceResult.spliceResult);
+  /**
+   * Runs projections and applies everything changed since the last sync to the store.
+   * @private
+   */
+  private Sync() {
+    this.diff.RunProjections();
+    this.UpdateRootMap(this.diff.Commit());
   }
 }

@@ -106,8 +106,7 @@ describe("Store Sync Test", () => {
     expect(root2?.length).to.eq(2);
     expect(root2?.[1].value).to.eq("second changed");
 
-    const result = sync.Splice('root1', 0, 1);
-    expect(result.length).to.eq(1);
+    sync.Splice('root1', 0, 1);
     expect(root1?.length).to.eq(1);
     expect(root1?.[0].value).to.eq("second changed");
   });

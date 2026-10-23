@@ -2,12 +2,9 @@ import { describe, it, expect } from "vitest";
 import { PushStore } from "../../src/Store/Store/pushStore";
 import { DIFF_TREE_EVENT } from "../../src/Store/Diff";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import { DiffSync } from "../../src/Store/Diff/diffSync";
 import { DiffTreeWriter } from "../../src/Store/Diff/diffTreeWriter";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
-import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
-import { TrackedProjector } from "../../src/Store/Diff/trackedProjector";
 
 // The cases in docs/bugs/observable-node-proxy-own-keys.md. Each asserts the fixed behaviour.
 
@@ -18,7 +15,7 @@ function Push() {
   const post = (path: string[], value: unknown) =>
     target.dispatchEvent(
       new MessageEvent("message", {
-        data: { type: DIFF_TREE_EVENT, data: [{ type: "diff", result: [{ path, value }] }] },
+        data: { type: DIFF_TREE_EVENT, data: [{ type: "write", path, value }] },
       }),
     );
   return { store, post };
@@ -95,7 +92,7 @@ describe("membership and key reads on an array proxy wake when the array changes
   ] as const)("%s, after an element is written by a diff", (_name, read) => {
     const { list, scope } = Reader(read);
     const before = ObservableScope.Value(scope);
-    ObservableNode.ApplyDiff(list, [{ path: ["2"], value: 3 }]);
+    ObservableNode.ApplyDiff(list, [{ type: "write", path: ["2"], value: 3 }]);
     expect(ObservableScope.Value(scope)).not.toEqual(before);
     ObservableScope.Destroy(scope);
   });
@@ -164,7 +161,7 @@ describe("keys named like Object.prototype members (issue 2)", () => {
   it("replaces a whole root that held one nobody has read", () => {
     const proxy = ObservableNode.Create({ toString: { v: 1 }, a: 1 } as any);
     expect(proxy.a).toBe(1);
-    ObservableNode.ApplyDiff(proxy, [{ path: [], value: { a: 2 } }]);
+    ObservableNode.ApplyDiff(proxy, [{ type: "write", path: [], value: { a: 2 } }]);
     expect(proxy.a).toBe(2);
     expect(Object.hasOwn(proxy, "toString")).toBe(false);
   });
@@ -196,161 +193,144 @@ describe("large diffs and item lists", () => {
     return out;
   };
   const Items = (n: number) => Array.from({ length: n }, (_, i) => i);
-  const projections = { big: { reads: ["n"], projection: (_keys: string[], n: number) => Big(N, n) } };
+  const routes = { "/": { projections: { big: { reads: ["n"], projection: (n: number) => Big(N, n) } } } };
+  const ProjectionEntries = (diff: any[]) => diff.filter((e) => e.path[0] === "$projection_big");
 
-  it("a projection whose result changes in many places (DiffTree.RunProjections)", () => {
-    const tree = new DiffTree(undefined, new SequentialProjector(projections));
-    tree.DiffPath("n", 1);
+  it("a projection whose result changes in many places (DiffTree.Commit)", () => {
+    const tree = new DiffTree(undefined, routes);
+    tree.WritePath("n", 1);
     tree.RunProjections();
-    tree.DiffPath("n", 2);
-    expect(tree.RunProjections()).toHaveLength(N);
+    tree.Commit();
+    tree.WritePath("n", 2);
+    tree.RunProjections();
+    expect(ProjectionEntries(tree.Commit())).toHaveLength(N);
   });
 
   it("the same, committed by a DiffTreeWriter", () => {
     const posted: any[] = [];
-    const writer = new DiffTreeWriter({ postMessage: (m) => posted.push(m) }, undefined, new SequentialProjector(projections));
-    writer.DiffPath("n", 1);
+    const writer = new DiffTreeWriter({ postMessage: (m) => posted.push(m) }, undefined, routes);
+    writer.WritePath("n", 1);
     writer.Commit();
-    writer.DiffPath("n", 2);
+    writer.WritePath("n", 2);
     writer.Commit();
     expect(posted).toHaveLength(2);
-    const entries = posted[1].data.flatMap((d: any) => d.result);
-    expect(entries.filter((e: any) => e.path[0] === "$projection_big")).toHaveLength(N);
+    expect(ProjectionEntries(posted[1].data)).toHaveLength(N);
   });
 
-  it("a projection that a splice changes in many places (DiffSync.SplicePath)", () => {
-    const sync = new DiffSync(undefined, new SequentialProjector({
-      big: { reads: ["list"], projection: (_keys: string[], list: number[]) => Big(N, list.length) },
-    }));
-    sync.DiffPath("list", [1]);
-    const result = sync.SplicePath("list", 0, 0, [2]);
-    expect(result.diffResult.filter((e) => e.path[0] === "$projection_big")).toHaveLength(N);
+  it("a projection that a splice changes in many places (DiffTree.SplicePath)", () => {
+    const tree = new DiffTree(undefined, {
+      "/": { projections: { big: { reads: ["list"], projection: (list: number[]) => Big(N, list.length) } } },
+    });
+    tree.WritePath("list", [1]);
+    tree.RunProjections();
+    tree.Commit();
+    tree.SplicePath("list", 0, 0, [2]);
+    tree.RunProjections();
+    expect(ProjectionEntries(tree.Commit())).toHaveLength(N);
   });
 
   // A write inside a keyed entity is diffed at the entity's own root as well.
-  it("a write inside a keyed entity that changes it in many places (DiffTree.DiffPath with a keyFunc)", () => {
+  it("a write inside a keyed entity that changes it in many places (DiffTree.WritePath with a keyFunc)", () => {
     const tree = new DiffTree((v: any) => v?._id);
-    tree.DiffPath("list", [{ _id: "a", data: Big(N, 1) }]);
-    tree.DiffPath("list.0.data", Big(N, 2));
+    tree.WritePath("list", [{ _id: "a", data: Big(N, 1) }]);
+    tree.WritePath("list.0.data", Big(N, 2));
     expect(tree.Snapshot("a").data.k0).toBe(2);
   });
 });
 
 // A projection result that embeds a snapshot it read (e.g. returning a read value as-is) was
 // stored in the tree by reference. A later re-run's diff then wrote into that snapshot object
-// in place, changing a snapshot already handed out. The tree now stores a clone of every value
-// it applies (see below).
+// in place, changing a snapshot already handed out. A projection's output is now replaced
+// whole on each run and registered as its own snapshot, so it's never written into.
 describe("projection results that embed a snapshot", () => {
   const KeyFunc = (v: any) => v?._id;
-  const cases = [
-    {
-      name: "SequentialProjector",
-      Create: () => new SequentialProjector({ u: { reads: ["user_1"], projection: (_keys: string[], u: any) => u } }),
-    },
-    {
-      name: "TrackedProjector",
-      Create: () => new TrackedProjector({ u: { reads: ["user_1"], projection: (read) => read("user_1") } }),
-    },
-  ];
+  const routes = { "/": { projections: { u: { reads: ["user_1"], projection: (u: any) => u } } } };
 
-  for (const { name, Create } of cases) {
-    describe(name, () => {
-      function Setup() {
-        const tree = new DiffTree(KeyFunc, Create());
-        tree.DiffPath("users", [{ _id: "user_1", name: "Ann", address: { city: "A" } }]);
-        tree.RunProjections();
-        return tree;
-      }
-
-      it("doesn't change a snapshot handed out before the projection re-runs", () => {
-        const tree = Setup();
-        const before = tree.Snapshot("user_1");
-
-        tree.DiffPath("user_1.name", "Bob");
-        tree.DiffPath("user_1.address.city", "B");
-        tree.RunProjections();
-
-        expect(before).toEqual({ _id: "user_1", name: "Ann", address: { city: "A" } });
-        expect(tree.Snapshot("user_1")).toEqual({ _id: "user_1", name: "Bob", address: { city: "B" } });
-      });
-
-      it("still diffs the projection's result when the entity changes", () => {
-        const tree = Setup();
-
-        tree.DiffPath("user_1.name", "Bob");
-        expect(tree.RunProjections()).toContainEqual({ path: ["$projection_u", "name"], value: "Bob" });
-        expect(tree.GetPath("$projection_u").name).toBe("Bob");
-      });
-
-      it("doesn't put a snapshot object into the tree", () => {
-        const tree = new DiffTree(KeyFunc, Create());
-        tree.DiffPath("users", [{ _id: "user_1", name: "Ann", address: { city: "A" } }]);
-        const snapshot = tree.Snapshot("user_1");
-
-        tree.RunProjections();
-
-        expect((tree as any).rootState.$projection_u).not.toBe(snapshot);
-        expect((tree as any).rootState.$projection_u.address).not.toBe(snapshot.address);
-      });
-    });
+  function Setup() {
+    const tree = new DiffTree(KeyFunc, routes);
+    tree.WritePath("users", [{ _id: "user_1", name: "Ann", address: { city: "A" } }]);
+    tree.RunProjections();
+    tree.Commit();
+    return tree;
   }
+
+  it("doesn't change a snapshot handed out before the projection re-runs", () => {
+    const tree = Setup();
+    const before = tree.Snapshot("user_1");
+
+    tree.WritePath("user_1.name", "Bob");
+    tree.WritePath("user_1.address.city", "B");
+    tree.RunProjections();
+
+    expect(before).toEqual({ _id: "user_1", name: "Ann", address: { city: "A" } });
+    expect(tree.Snapshot("user_1")).toEqual({ _id: "user_1", name: "Bob", address: { city: "B" } });
+  });
+
+  it("still diffs the projection's result when the entity changes", () => {
+    const tree = Setup();
+
+    tree.WritePath("user_1.name", "Bob");
+    tree.RunProjections();
+    expect(tree.Commit()).toContainEqual({ type: "write", path: ["$projection_u", "name"], value: "Bob" });
+    expect(tree.ReadPath("$projection_u").name).toBe("Bob");
+  });
 });
 
 // The general rule behind the case above: every value the tree applies is a copy it owns.
-// DiffPath/PushPath/SplicePath stored the caller's own objects, so a caller mutating its
+// WritePath/PushPath/SplicePath stored the caller's own objects, so a caller mutating its
 // value afterwards changed the tree with no diff and no snapshot invalidation.
 describe("the tree owns every value it applies", () => {
-  it("DiffPath: a caller mutating its value afterwards doesn't change the tree", () => {
+  it("WritePath: a caller mutating its value afterwards doesn't change the tree", () => {
     const tree = new DiffTree();
     const data = { a: { x: 1 } };
-    tree.DiffPath("doc", data);
+    tree.WritePath("doc", data);
     data.a.x = 99;
 
-    expect(tree.GetPath("doc.a.x")).toBe(1);
-    expect(tree.GetPath("doc")).not.toBe(data);
+    expect(tree.ReadPath("doc.a.x")).toBe(1);
+    expect(tree.ReadPath("doc")).not.toBe(data);
   });
 
-  it("DiffPath: only the changed part of an existing value is replaced", () => {
+  it("WritePath: only the changed part of an existing value is replaced", () => {
     const tree = new DiffTree();
-    tree.DiffPath("doc", { a: { x: 1 }, b: { y: 1 } });
-    const unchanged = tree.GetPath("doc.b");
+    tree.WritePath("doc", { a: { x: 1 }, b: { y: 1 } });
+    const unchanged = tree.ReadPath("doc.b");
     const data = { a: { x: 2 }, b: { y: 1 } };
-    tree.DiffPath("doc", data);
+    tree.WritePath("doc", data);
     data.a.x = 99;
 
-    expect(tree.GetPath("doc.a.x")).toBe(2);
-    expect(tree.GetPath("doc.b")).toBe(unchanged);
+    expect(tree.ReadPath("doc.a.x")).toBe(2);
+    expect(tree.ReadPath("doc.b")).toBe(unchanged);
   });
 
   it("PushPath: a caller mutating a pushed item afterwards doesn't change the tree", () => {
     const tree = new DiffTree();
-    tree.DiffPath("list", []);
+    tree.WritePath("list", []);
     const item = { x: 1 };
     tree.PushPath("list", [item]);
     item.x = 99;
 
-    expect(tree.GetPath("list.0.x")).toBe(1);
+    expect(tree.ReadPath("list.0.x")).toBe(1);
   });
 
   it("SplicePath: a caller mutating an inserted item afterwards doesn't change the tree", () => {
     const tree = new DiffTree();
-    tree.DiffPath("list", [{ x: 0 }]);
+    tree.WritePath("list", [{ x: 0 }]);
     const item = { x: 1 };
     tree.SplicePath("list", 1, 0, [item]);
     item.x = 99;
 
-    expect(tree.GetPath("list.1.x")).toBe(1);
+    expect(tree.ReadPath("list.1.x")).toBe(1);
   });
 
   it("keyed entities: the root and the embedded copy stay separate objects", () => {
     const tree: any = new DiffTree((v: any) => v?._id);
-    tree.DiffPath("list", []);
+    tree.WritePath("list", []);
     const item = { _id: "a", x: 1 };
     tree.PushPath("list", [item]);
     item.x = 99;
 
     expect(tree.rootState.list[0]).not.toBe(tree.rootState.a);
-    expect(tree.GetPath("a.x")).toBe(1);
+    expect(tree.ReadPath("a.x")).toBe(1);
   });
 });
 
@@ -360,10 +340,11 @@ describe("the tree owns every value it applies", () => {
 describe("diff entries don't own their values", () => {
   const KeyFunc = (v: any) => v?._id;
 
-  it("DiffPath: the tree keeps a keyed entity's root apart from its embedded copy", () => {
+  it("Commit: the tree keeps a keyed entity's root apart from its embedded copy", () => {
     const tree: any = new DiffTree(KeyFunc);
     const item = { _id: "a", value: "a" };
-    const diff = tree.DiffPath("arr", [item]);
+    tree.WritePath("arr", [item]);
+    const diff = tree.Commit();
 
     const list = diff.find((d: any) => d.path.join(".") === "arr")!.value as any[];
     const root = diff.find((d: any) => d.path.join(".") === "a")!.value;
@@ -374,7 +355,7 @@ describe("diff entries don't own their values", () => {
 
   it("PushPath: the tree doesn't share the caller's items", () => {
     const tree: any = new DiffTree(KeyFunc);
-    tree.DiffPath("arr", []);
+    tree.WritePath("arr", []);
     const item = { _id: "a", value: "a" };
     tree.PushPath("arr", [item]);
 
@@ -385,18 +366,18 @@ describe("diff entries don't own their values", () => {
 
   it("SplicePath: the tree doesn't share the caller's items", () => {
     const tree: any = new DiffTree(KeyFunc);
-    tree.DiffPath("arr", []);
+    tree.WritePath("arr", []);
     const item = { _id: "a", value: "a" };
-    const result = tree.SplicePath("arr", 0, 0, [item]);
+    tree.SplicePath("arr", 0, 0, [item]);
 
-    expect(result.items[0]).toBe(item);
     expect(tree.rootState.arr[0]).not.toBe(item);
     expect(tree.rootState.a).not.toBe(item);
   });
 
-  it("the returned diff doesn't share objects with the tree", () => {
+  it("the committed diff doesn't share objects with the tree", () => {
     const tree: any = new DiffTree();
-    const diff = tree.DiffPath("doc", { a: { x: 1 } });
+    tree.WritePath("doc", { a: { x: 1 } });
+    const diff = tree.Commit();
 
     expect(diff[0].value).not.toBe(tree.rootState.doc);
   });
@@ -409,7 +390,7 @@ describe("diff entries don't own their values", () => {
       new MessageEvent("message", {
         data: {
           type: DIFF_TREE_EVENT,
-          data: [{ type: "diff", result: [{ path: ["r"], value: { a: {}, b: {} } }] }],
+          data: [{ type: "write", path: ["r"], value: { a: {}, b: {} } }],
         },
       }),
     );
@@ -417,7 +398,7 @@ describe("diff entries don't own their values", () => {
       new MessageEvent("message", {
         data: {
           type: DIFF_TREE_EVENT,
-          data: [{ type: "diff", result: [{ path: ["r", "a"], value: shared }, { path: ["r", "b"], value: shared }] }],
+          data: [{ type: "write", path: ["r", "a"], value: shared }, { type: "write", path: ["r", "b"], value: shared }],
         },
       }),
     );

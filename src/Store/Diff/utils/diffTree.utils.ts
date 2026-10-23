@@ -35,7 +35,7 @@ export function ExpandKeyedDiffFromValue(route: string, path: string, keyFunc: K
     const invalidKeyRoute = keyRoute && !keyRoute.startsWith('/') && route.endsWith(keyRoute);
     const fullKeyPath = JoinPaths(route, key);
 
-    if (!invalidKeyRoute && fullKeyPath && !fullKeyPath.startsWith(filterPrefix))
+    if (!invalidKeyRoute && fullKeyPath && !IsPathWithin(fullKeyPath, filterPrefix))
       keyedDiff.push({
         path: fullKeyPath,
         value: value
@@ -56,10 +56,12 @@ export function ExpandKeyedDiffFromValue(route: string, path: string, keyFunc: K
  * left. Each rebase moves a row past one keyed value, so the rows run out.
  */
 export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
+  // The raw value can be a stale copy missing paths the diff's snapshot has; the rebased rows
+  // below write those to the value's home
   JsonApplyDiff(diffRoot, diff, function (parent, prop, value) {
     parent[prop] = value;
     Snapshot.Invalidate(snapshot, parent);
-  });
+  }, true);
 
   const keyFunc = routeKeyFunc(route);
   if (!keyFunc)
@@ -93,7 +95,7 @@ export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKey
 
     if (key) {
       const joinedPath = JoinPaths(route, key);
-      if (!routeAndPath.startsWith(joinedPath)) {
+      if (!IsPathWithin(routeAndPath, joinedPath)) {
         const exists = !!ReadPath(treeRootState, joinedPath);
         const [targetRoute, targetPath] = SplitRouteAndPath(joinedPath);
         rebasedRouteMap[targetRoute] ??= [];
@@ -309,6 +311,11 @@ export function GetKeyedPath(root: any, dotPath: string, keyFunc?: (data: any) =
   }
 
   return keyPath;
+}
+
+/** Whether `path` is `basePath` or a property below it: `/a.b` is within `/a`, `/ab` isn't */
+export function IsPathWithin(path: string, basePath: string) {
+  return path === basePath || path.startsWith(basePath + PROP_DELIMETER);
 }
 
 export function JoinPaths(basePath: string, targetPath: string) {

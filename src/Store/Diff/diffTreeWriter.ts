@@ -1,6 +1,7 @@
 import { JsonDiffResult } from "../../Utils/json";
-import { DiffTree, IsRoutePath } from "./diffTree";
-import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeRoutes, IDiffMethodBatchResult, IDiffTreeProjector } from "./diffTree.types";
+import { DiffTree } from "./diffTree";
+import { DIFF_TREE_ERROR, DIFF_TREE_EVENT } from "./diffTree.types";
+import { IKeyFunc, IRouteDefinitions } from "./utils/diffTree.types";
 
 /**
  * A `DiffTree` that pushes its changes to a `PushStore` instead of answering a store's
@@ -8,21 +9,19 @@ import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeRoutes, IDi
  * computation it runs): write with the usual `DiffTree` methods, then call `Commit()` to run
  * projections and post everything since the last commit as one message.
  *
- * - Push only: don't pass a `DiffTreeWriter` to `ConnectWorkerToDiffTree`. It would record
- *   the request/response batches too and send them again on the next `Commit()`.
+ * - Push only: don't pass a `DiffTreeWriter` to `ConnectWorkerToDiffTree`, which commits
+ *   every batch itself and would post it to the wrong place.
  * - After a change fails, every later change before `Commit()` throws that same error. The
  *   changes made before the failure are already in the tree, so `Commit()` still sends them,
  *   followed by a `DIFF_TREE_ERROR` message. Projections aren't run for that batch; the next
  *   `Commit()` brings them up to date.
  * - A `PushStore` only receives the changes committed after it starts listening, so
  *   create it before the writer's first `Commit()`.
- * - A write to a route path isn't posted: the instance's changes reach the store through its
- *   summary, which `Commit()` posts with the batch.
  *
  * @example
  * // engine-worker.ts
- * const tree = new DiffTreeWriter(self, undefined, new SequentialProjector(projections));
- * tree.DiffPath("results", computeResults());
+ * const tree = new DiffTreeWriter(self, undefined, { "/": { projections } });
+ * tree.WritePath("results", computeResults());
  * tree.Commit();
  *
  * // main thread
@@ -32,7 +31,6 @@ import { DIFF_TREE_ERROR, DIFF_TREE_EVENT, DiffSpliceResult, DiffTreeRoutes, IDi
  */
 export class DiffTreeWriter extends DiffTree {
   private uncommittedError: any = null;
-  private uncommitted: IDiffMethodBatchResult = [];
 
   /**
    * Creates a DiffTreeWriter.
@@ -42,12 +40,11 @@ export class DiffTreeWriter extends DiffTree {
    *   shares objects with the writer's tree.
    * @param keyFunc Optional function to extract a key from objects. Pass the same key logic to
    *   the `PushStore` that receives the changes.
-   * @param projector Optional projection implementation, e.g. `SequentialProjector`. It runs
-   *   once per `Commit()`, after the batch's changes.
-   * @param routes Optional route patterns, each with the definition of its instances.
+   * @param routes Optional route definitions. Projections run once per `Commit()`, after the
+   *   batch's changes.
    */
-  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: {(val: any): string}, projector?: IDiffTreeProjector, routes?: DiffTreeRoutes) {
-    super(keyFunc, projector, routes);
+  constructor(private worker: { postMessage(message: unknown): void }, keyFunc?: IKeyFunc, routes?: IRouteDefinitions) {
+    super(keyFunc, routes);
   }
 
   /**
@@ -55,136 +52,40 @@ export class DiffTreeWriter extends DiffTree {
    * changes. Running them earlier would push a projection result computed from part of a batch.
    * @throws Always.
    */
-  public RunProjections(): JsonDiffResult {
+  public RunProjections(): void {
     throw new Error("RunProjections is called during Commit()");
   }
-  
+
   /**
-   * Computes the diff between a new value and the current value at a path, and records it
-   * for the next `Commit()`.
-   * @param path - Dot-separated path to the value
-   * @param value - The new value to compare
-   * @returns Diff results showing changes
+   * Writes a value at a path.
    * @throws The change's error, or an earlier uncommitted change's error.
    */
-  public DiffPath(path: string, value: any): JsonDiffResult {
-    if (this.uncommittedError)
-      throw this.uncommittedError;
-      
-    try {
-      const result = super.DiffPath(path, value);
-      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
-        type: "diff",
-        result
-      });
-
-      return result;
-    }
-    catch(err: any) {
-      this.uncommittedError = err;
-      throw err;
-    }
-  }
-  
-  /**
-   * Merges a patch into the current value at a path, and records the diff for the next
-   * `Commit()`.
-   * @param path - Dot-separated path to the value
-   * @param patch - The value to merge into the current value
-   * @returns Diff results showing changes
-   * @throws The change's error, or an earlier uncommitted change's error.
-   */
-  public PatchPath(path: string, patch: any): JsonDiffResult {
-    if (this.uncommittedError)
-      throw this.uncommittedError;
-
-    try {
-      const result = super.PatchPath(path, patch);
-      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
-        type: "diff",
-        result
-      });
-
-      return result;
-    }
-    catch(err: any) {
-      this.uncommittedError = err;
-      throw err;
-    }
-  }
-  
-  /**
-   * Appends items to the array at a path, and records the diff for the next `Commit()`.
-   * @param path - Dot-separated path to the array
-   * @param items - The items to append
-   * @returns Diff results showing changes
-   * @throws The change's error, or an earlier uncommitted change's error.
-   */
-  public PushPath(path: string, items: unknown[]): JsonDiffResult {
-    if (this.uncommittedError)
-      throw this.uncommittedError;
-
-    try {  
-      const result = super.PushPath(path, items);
-      result.length > 0 && !IsRoutePath(path) && this.uncommitted.push({
-        type: "diff",
-        result
-      });
-
-      return result;
-    }
-    catch(err: any) {
-      this.uncommittedError = err;
-      throw err;
-    }
-  }
-  
-  /**
-   * Splices the array at a path, and records the splice for the next `Commit()`.
-   * @param path - Dot-separated path to the array
-   * @param start - The position at which to start changing the array
-   * @param deleteCount - The number of elements to delete
-   * @param items - The elements to insert
-   * @returns The splice and its diff results
-   * @throws The change's error, or an earlier uncommitted change's error.
-   */
-  public SplicePath(path: string, start: number, deleteCount: number, items: any[]): DiffSpliceResult<unknown> {
-    if (this.uncommittedError)
-      throw this.uncommittedError;
-
-    try {
-      const result = super.SplicePath(path, start, deleteCount, items);
-      !IsRoutePath(path) && this.uncommitted.push({
-        type: "splice",
-        result
-      });
-
-      return result;
-    }
-    catch(err: any) {
-      this.uncommittedError = err;
-      throw err;
-    }
+  public WritePath(path: string, value: any) {
+    this.Guard(() => super.WritePath(path, value));
   }
 
   /**
-   * Deletes a route instance (see `DiffTree.DeleteRoute`). Records nothing itself: the slot's
-   * removal is posted by the next `Commit()`, with the batch.
-   * @param path - The instance's route path
-   * @returns Whether an instance existed and was deleted
+   * Merges a patch into the current value at a path.
    * @throws The change's error, or an earlier uncommitted change's error.
    */
-  public DeleteRoute(path: string): boolean {
-    if (this.uncommittedError)
-      throw this.uncommittedError;
+  public PatchPath(path: string, patch: any) {
+    this.Guard(() => super.PatchPath(path, patch));
+  }
 
-    try {
-      return super.DeleteRoute(path);
-    }
-    catch(err: any) {
-      this.uncommittedError = err;
-      throw err;
-    }
+  /**
+   * Appends items to the array at a path.
+   * @throws The change's error, or an earlier uncommitted change's error.
+   */
+  public PushPath(path: string, items: unknown[]) {
+    this.Guard(() => super.PushPath(path, items));
+  }
+
+  /**
+   * Splices the array at a path.
+   * @throws The change's error, or an earlier uncommitted change's error.
+   */
+  public SplicePath(path: string, start: number, deleteCount: number, items: any[]) {
+    this.Guard(() => super.SplicePath(path, start, deleteCount, items));
   }
 
   /**
@@ -196,26 +97,25 @@ export class DiffTreeWriter extends DiffTree {
    * throw, since the failed change already did. If a projection throws, the batch's changes
    * and the error are posted the same way, then `Commit()` rethrows. Either way the next batch
    * starts clean.
+   * @returns The diff that was posted.
    * @throws A projection's error.
    */
-  public Commit() {
+  public Commit(): JsonDiffResult {
+    let diff: JsonDiffResult = [];
     try {
-      const result = !this.uncommittedError ? super.RunProjections() : [];
-      result.length > 0 && this.uncommitted.push({
-        type: "diff",
-        result
-      });
+      !this.uncommittedError && super.RunProjections();
     }
-    catch(err: any) {
+    catch (err: any) {
       this.uncommittedError = err;
       throw err;
     }
     finally {
-      this.uncommitted.length > 0 && this.worker.postMessage({
+      diff = super.Commit();
+      diff.length > 0 && this.worker.postMessage({
         type: DIFF_TREE_EVENT,
-        data: this.uncommitted
+        data: diff
       });
-    
+
       if (this.uncommittedError) {
         this.worker.postMessage({
           type: DIFF_TREE_ERROR,
@@ -223,9 +123,22 @@ export class DiffTreeWriter extends DiffTree {
         });
       }
 
-      this.uncommitted = [];
       this.uncommittedError = null;
     }
+
+    return diff;
   }
-  
+
+  private Guard(change: () => void) {
+    if (this.uncommittedError)
+      throw this.uncommittedError;
+
+    try {
+      change();
+    }
+    catch (err: any) {
+      this.uncommittedError = err;
+      throw err;
+    }
+  }
 }

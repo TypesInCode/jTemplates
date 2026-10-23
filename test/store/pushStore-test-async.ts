@@ -2,10 +2,9 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { PushStore } from "../../src/Store/Store/pushStore";
 import { DiffTreeWriter } from "../../src/Store/Diff/diffTreeWriter";
 import { DIFF_TREE_ERROR, DIFF_TREE_EVENT } from "../../src/Store/Diff";
-import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
+import type { IProjectionDefinitions } from "../../src/Store/Diff";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 import { CreateShimPushChannel } from "./worker-shim";
-import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
 
 // PushStore fed by a DiffTreeWriter over a shim channel. The writer decides when data
 // changes; the store only ever receives what a Commit() posts, one message per commit.
@@ -14,8 +13,8 @@ function KeyFunc(val: any) {
   return val._id;
 }
 
-const projections: DiffTreeProjectionMap = {
-  total: { reads: ["items"], projection: (_keys, items: any[]) => items.length },
+const projections: IProjectionDefinitions = {
+  total: { reads: ["items"], projection: (items: any[]) => items.length },
 };
 
 /** Resolves once every message posted so far has been delivered. */
@@ -27,9 +26,9 @@ describe("PushStore", () => {
     stores.splice(0).forEach((s) => s.Destroy());
   });
 
-  function Create(keyFunc?: (val: any) => string, projectionMap?: DiffTreeProjectionMap) {
+  function Create(keyFunc?: (val: any) => string, projectionMap?: IProjectionDefinitions) {
     const { target, port, posted } = CreateShimPushChannel();
-    const writer = new DiffTreeWriter(port, keyFunc, projectionMap && new SequentialProjector(projectionMap));
+    const writer = new DiffTreeWriter(port, keyFunc, projectionMap && { "/": { projections: projectionMap } });
     const store = new PushStore(target, keyFunc);
     stores.push(store);
     return { writer, store, target, posted };
@@ -39,7 +38,7 @@ describe("PushStore", () => {
     it("applies a commit's changes", async () => {
       const { writer, store } = Create();
 
-      writer.DiffPath("a", { value: 1 });
+      writer.WritePath("a", { value: 1 });
       writer.Commit();
       await delivered();
 
@@ -49,7 +48,7 @@ describe("PushStore", () => {
     it("receives nothing until Commit", async () => {
       const { writer, store, posted } = Create();
 
-      writer.DiffPath("a", { value: 1 });
+      writer.WritePath("a", { value: 1 });
       await delivered();
 
       expect(posted).toHaveLength(0);
@@ -59,11 +58,11 @@ describe("PushStore", () => {
     it("posts one message per commit, and none when nothing changed", async () => {
       const { writer, posted } = Create();
 
-      writer.DiffPath("a", { value: 1 });
-      writer.DiffPath("b", { value: 2 });
+      writer.WritePath("a", { value: 1 });
+      writer.WritePath("b", { value: 2 });
       writer.Commit();
       writer.Commit();
-      writer.DiffPath("a", { value: 1 });
+      writer.WritePath("a", { value: 1 });
       writer.Commit();
 
       expect(posted).toHaveLength(1);
@@ -72,7 +71,7 @@ describe("PushStore", () => {
 
     it("applies later commits as changes to what it holds", async () => {
       const { writer, store } = Create();
-      writer.DiffPath("root", { a: 1, b: 2 });
+      writer.WritePath("root", { a: 1, b: 2 });
       writer.Commit();
       await delivered();
 
@@ -85,7 +84,7 @@ describe("PushStore", () => {
 
     it("applies pushes and splices", async () => {
       const { writer, store } = Create();
-      writer.DiffPath("list", [1, 2, 3]);
+      writer.WritePath("list", [1, 2, 3]);
       writer.Commit();
       await delivered();
 
@@ -102,7 +101,7 @@ describe("PushStore", () => {
     it("receives projection results with the commit", async () => {
       const { writer, store } = Create(undefined, projections);
 
-      writer.DiffPath("items", [1, 2]);
+      writer.WritePath("items", [1, 2]);
       writer.Commit();
       await delivered();
       expect(store.Get("$projection_total")).toBe(2);
@@ -118,7 +117,7 @@ describe("PushStore", () => {
     it("resolves keyed entities through their own roots", async () => {
       const { writer, store } = Create(KeyFunc);
 
-      writer.DiffPath("items", [{ _id: "a", value: 1 }]);
+      writer.WritePath("items", [{ _id: "a", value: 1 }]);
       writer.Commit();
       await delivered();
       expect(store.Get<any>("a").value).toBe(1);
@@ -134,7 +133,7 @@ describe("PushStore", () => {
   describe("reactivity", () => {
     it("wakes a reader when a commit changes what it read", async () => {
       const { writer, store } = Create();
-      writer.DiffPath("a", { value: 1 });
+      writer.WritePath("a", { value: 1 });
       writer.Commit();
       await delivered();
 
@@ -180,7 +179,7 @@ describe("PushStore", () => {
       const { writer, store } = Create();
 
       store.Destroy();
-      writer.DiffPath("a", { value: 1 });
+      writer.WritePath("a", { value: 1 });
       writer.Commit();
       await delivered();
 
@@ -190,11 +189,11 @@ describe("PushStore", () => {
 
   describe("errors", () => {
     function FailBatch(writer: DiffTreeWriter) {
-      writer.DiffPath("ok", { value: 1 });
+      writer.WritePath("ok", { value: 1 });
       // Splicing a value that isn't an array fails in the tree.
       expect(() => writer.SplicePath("ok", 0, 1, [])).toThrow();
       // Later changes in the same batch throw the same error.
-      expect(() => writer.DiffPath("later", { value: 2 })).toThrow();
+      expect(() => writer.WritePath("later", { value: 2 })).toThrow();
       writer.Commit();
     }
 
@@ -215,7 +214,7 @@ describe("PushStore", () => {
       FailBatch(writer);
       await delivered();
 
-      writer.DiffPath("next", { value: 3 });
+      writer.WritePath("next", { value: 3 });
       writer.Commit();
       await delivered();
 

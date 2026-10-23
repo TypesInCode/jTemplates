@@ -58,6 +58,35 @@ describe("JsonApplyDiff cloning", () => {
   });
 });
 
+// A record's parents can be missing from the root, e.g. a stale copy of the value it was diffed against
+describe("JsonApplyDiff unresolved paths", () => {
+  it("writes to sibling paths under different parents", () => {
+    const root: any = { a: { x: 1 }, b: { y: 1 } };
+    JsonApplyDiff(root, [{ type: "write", path: ["a", "x"], value: 2 }, { type: "write", path: ["b", "y"], value: 2 }]);
+
+    expect(root).toEqual({ a: { x: 2 }, b: { y: 2 } });
+  });
+
+  it("skips a record whose parent isn't in the root, when asked", () => {
+    const root: any = { a: 1, list: [] };
+    JsonApplyDiff(root, [
+      { type: "write", path: ["a", "x"], value: 1 },
+      { type: "write", path: ["b", "c", "x"], value: 1 },
+      { type: "write", path: ["list", 0, "x"], value: 1 },
+      { type: "write", path: ["d"], value: 1 },
+    ], undefined, true);
+
+    expect(root).toEqual({ a: 1, list: [], d: 1 });
+  });
+
+  it("skips a move whose array isn't in the root, when asked", () => {
+    const root: any = { d: 1 };
+    JsonApplyDiff(root, [{ type: "move", path: ["list"], sourceProp: 1, targetProp: 0 }], undefined, true);
+
+    expect(root).toEqual({ d: 1 });
+  });
+});
+
 describe("JsonApplyDiff moving", () => {
   it("simple move in array", () => {
     const source: any = { data: [{ x: 1 }, { x: 2 }] };

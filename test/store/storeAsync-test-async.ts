@@ -1,8 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { CreateShimDiffWorker } from "./worker-shim";
-import { KeyFunc, projections } from "./projection-cases";
-import { SequentialProjector } from "../../src/Store/Diff/sequentialProjector";
+import { KeyFunc, routes } from "./projection-cases";
 
 // StoreAsync over a shim worker. Writes started without awaiting are batched together;
 // Flush is the barrier a caller awaits to see every change made before it applied to the
@@ -23,7 +22,7 @@ describe("Store Async Test", () => {
   });
 
   function CreateStore() {
-    const worker = CreateShimDiffWorker(KeyFunc, new SequentialProjector(projections));
+    const worker = CreateShimDiffWorker(KeyFunc, routes);
     const batches: any[][] = [];
     const postMessage = worker.postMessage.bind(worker);
     worker.postMessage = (data: any) => {
@@ -56,7 +55,6 @@ describe("Store Async Test", () => {
 
       expect(store.Get("$projection_total")).toBe(2);
       expect(store.Get("$projection_doubled")).toBe(4);
-      expect(store.Get<any>("derived")).toEqual({ _id: "derived", count: 2 });
     });
 
     it("applies every kind of change made before it", async () => {
@@ -142,7 +140,7 @@ describe("Store Async Test", () => {
       await Within(Promise.all([write, push, patch, splice]));
 
       expect(batches.length).toBe(1);
-      expect(batches[0].map((m: any) => m.method)).toEqual(["diffpath", "pushpath", "patchpath", "splicepath"]);
+      expect(batches[0].map((m: any) => m.method)).toEqual(["writepath", "pushpath", "patchpath", "splicepath"]);
       expect(store.Get<any>("items").toJSON()).toEqual([{ _id: "b" }, { _id: "c" }]);
       expect(store.Get("$projection_total")).toBe(2);
     });
@@ -197,7 +195,7 @@ describe("Store Async Test", () => {
       const { store } = CreateStore();
       await store.Write({ notArray: true }, "root");
 
-      await expect(Within(store.Splice("root", 0, 1))).rejects.toMatch(/not an array/);
+      await expect(Within(store.Splice("root", 0, 1))).rejects.toThrow(/not an array/);
     });
 
     it("rejects every later change with the original error", async () => {

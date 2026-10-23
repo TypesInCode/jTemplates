@@ -3,8 +3,9 @@ import { ObservableScope } from "../../src/Store/Tree/observableScope";
 
 // Store.Splice cases shared by StoreSync (storeSplice-test.ts) and StoreAsync
 // (storeSplice-test-async.ts). Every store call is awaited, so the same cases run against
-// both. Each case checks what the store holds afterwards: the array, the removed items,
-// the keyed entities as roots, and which readers woke.
+// both. Each case checks what the store holds afterwards: the array, the keyed entities as
+// roots, and which readers woke. Splice returns nothing; the store is kept in sync by the
+// tree's Commit() diff.
 
 /** The part of the store API the cases use; StoreSync and StoreAsync both fit. */
 export interface SpliceStore {
@@ -77,30 +78,27 @@ export function spliceCases(name: string, create: () => SpliceStore) {
 
     describe("changes the array as Array.prototype.splice does", () => {
       it.each([
-        ["removes the first item", 0, 1, [], ["b", "c", "d"], ["a"]],
-        ["removes from the middle", 1, 2, [], ["a", "d"], ["b", "c"]],
-        ["removes the last item", 3, 1, [], ["a", "b", "c"], ["d"]],
-        ["inserts at the start", 0, 0, ["x"], ["x", "a", "b", "c", "d"], []],
-        ["inserts in the middle", 2, 0, ["x", "y"], ["a", "b", "x", "y", "c", "d"], []],
-        ["inserts at the end", 4, 0, ["x"], ["a", "b", "c", "d", "x"], []],
-        ["replaces a run", 1, 2, ["x"], ["a", "x", "d"], ["b", "c"]],
-        ["clamps a deleteCount past the end", 2, 10, [], ["a", "b"], ["c", "d"]],
-        ["removes nothing for a deleteCount of 0", 1, 0, [], ["a", "b", "c", "d"], []],
-      ] as const)("%s", async (_, start, deleteCount, inserted, expected, removed) => {
+        ["removes the first item", 0, 1, [], ["b", "c", "d"]],
+        ["removes from the middle", 1, 2, [], ["a", "d"]],
+        ["removes the last item", 3, 1, [], ["a", "b", "c"]],
+        ["inserts at the start", 0, 0, ["x"], ["x", "a", "b", "c", "d"]],
+        ["inserts in the middle", 2, 0, ["x", "y"], ["a", "b", "x", "y", "c", "d"]],
+        ["inserts at the end", 4, 0, ["x"], ["a", "b", "c", "d", "x"]],
+        ["replaces a run", 1, 2, ["x"], ["a", "x", "d"]],
+        ["clamps a deleteCount past the end", 2, 10, [], ["a", "b"]],
+        ["removes nothing for a deleteCount of 0", 1, 0, [], ["a", "b", "c", "d"]],
+      ] as const)("%s", async (_, start, deleteCount, inserted, expected) => {
         await seeded();
-        const result = (await store.Splice("arr", start, deleteCount, ...inserted.map((id) => row(id)))) as Row[];
+        await store.Splice("arr", start, deleteCount, ...inserted.map((id) => row(id)));
 
         expect(ids(store)).toEqual(expected);
-        expect(result.map((r) => r._id)).toEqual(removed);
-        expect(result).toEqual(removed.map((id) => row(id)));
       });
 
       it("removes everything from start when deleteCount is omitted", async () => {
         await seeded();
-        const result = (await store.Splice("arr", 1)) as Row[];
+        await store.Splice("arr", 1);
 
         expect(ids(store)).toEqual(["a"]);
-        expect(result.map((r) => r._id)).toEqual(["b", "c", "d"]);
       });
 
       it("keeps the array's length in step", async () => {
@@ -163,8 +161,8 @@ export function spliceCases(name: string, create: () => SpliceStore) {
 
       it("restores the array when a removed entity is re-inserted where it was (undo)", async () => {
         await seeded();
-        const [removed] = (await store.Splice("arr", 1, 1)) as Row[];
-        await store.Splice("arr", 1, 0, removed);
+        await store.Splice("arr", 1, 1);
+        await store.Splice("arr", 1, 0, row("b"));
 
         expect(plain(store, "arr")).toEqual(rows("a", "b", "c", "d"));
         await store.Write("changed", "b.value");
@@ -192,16 +190,6 @@ export function spliceCases(name: string, create: () => SpliceStore) {
     });
 
     describe("copies", () => {
-      it("returns removed items that don't write back to the store", async () => {
-        await seeded();
-        const [removed] = (await store.Splice("arr", 0, 1)) as Row[];
-        removed.value = "mutated";
-
-        expect(plain<Row>(store, "a").value).toBe("a");
-        await store.Splice("arr", 0, 0, row("a"));
-        expect(plain<Row[]>(store, "arr")[0].value).toBe("a");
-      });
-
       it("isn't changed by the caller mutating an inserted item afterwards", async () => {
         await seeded();
         const item = row("x");
@@ -218,10 +206,9 @@ export function spliceCases(name: string, create: () => SpliceStore) {
         store = create();
         stores.push(store);
         await store.Write([1, 2, 3, 4], "nums");
-        const removed = await store.Splice("nums", 1, 2, 9);
+        await store.Splice("nums", 1, 2, 9);
 
         expect(plain(store, "nums")).toEqual([1, 9, 4]);
-        expect(removed).toEqual([2, 3]);
       });
 
       it("splices unkeyed objects, and isn't changed by the caller mutating one afterwards", async () => {
@@ -274,10 +261,10 @@ export function spliceCases(name: string, create: () => SpliceStore) {
 
       it("doesn't wake a reader of an entity re-inserted unchanged", async () => {
         await seeded();
-        const [removed] = (await store.Splice("arr", 1, 1)) as Row[];
+        await store.Splice("arr", 1, 1);
         const b = track(() => store.Get<Row>("b")!.value);
 
-        await store.Splice("arr", 1, 0, removed);
+        await store.Splice("arr", 1, 0, row("b"));
 
         expect(b.value()).toBe("b");
         expect(b.runs()).toBe(1);

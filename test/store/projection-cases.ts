@@ -1,15 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
-import type { DiffTreeProjectionMap } from "../../src/Store/Diff";
+import type { IProjectionDefinitions, IRouteDefinitions } from "../../src/Store/Diff";
 
 // Store wiring for DiffTree projections, shared by StoreSync (projection-test.ts) and
 // StoreAsync (projection-test-async.ts). Every store call is awaited, so the same cases run
 // against both. A projection's result is just another root, reached the same way any other
-// write's diff reaches the store: through UpdateRootMap, keyed by $projection_<id>.
-//
-// Projection functions here are arrow functions on purpose: StoreAsync sends the whole
-// projection map to the worker serialized with `.toString()` and `eval`'d back into
-// functions there, the same mechanic used for keyFunc, and that only round-trips reliably
-// for an expression (an arrow function), not a function declaration.
+// write's diff reaches the store: through UpdateRootMap, keyed by $projection_<key>.
 
 /** The part of the store API the cases use; StoreSync and StoreAsync both fit. */
 export interface ProjectionStore {
@@ -21,22 +16,19 @@ export interface ProjectionStore {
 
 export const KeyFunc = (val: any) => val?._id;
 
-export const projections: DiffTreeProjectionMap = {
+export const projections: IProjectionDefinitions = {
   total: {
     reads: ["items"],
-    projection: (_: string[], items: any[]) => items.length,
+    projection: (items: any[]) => items.length,
   },
   doubled: {
     reads: [`$projection_total`],
-    projection: (_: string[], total: number) => total * 2,
-  },
-  leader: {
-    reads: ["items"],
-    // "derived" exists only inside this result, so it only becomes its own root through
-    // the projection's flatten, the same way any other write's flatten would register it.
-    projection: (_: string[], items: any[]) => ({ best: { _id: "derived", count: items.length } }),
+    projection: (total: number) => total * 2,
   },
 };
+
+/** The projections as the root route's definitions */
+export const routes: IRouteDefinitions = { "/": { projections } };
 
 export function projectionCases(name: string, create: () => ProjectionStore) {
   describe(`${name} projections`, () => {
@@ -72,13 +64,6 @@ export function projectionCases(name: string, create: () => ProjectionStore) {
       await store.Write([{ _id: "a" }, { _id: "b" }], "items");
 
       expect(await store.Get("$projection_doubled")).toBe(4);
-    });
-
-    it("flattens a keyed entity embedded in a projection's result to its own root in the store", async () => {
-      const store = newStore();
-      await store.Write([{ _id: "a" }, { _id: "b" }], "items");
-
-      expect(await store.Get<any>("derived")).toEqual({ _id: "derived", count: 2 });
     });
   });
 }

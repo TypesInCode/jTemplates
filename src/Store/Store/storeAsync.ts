@@ -1,5 +1,6 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { DiffSpliceResult, IDiffMethod, IDiffMethodBatch, IDiffMethodBatchResult } from "../Diff/diffTree.types";
+import { JsonDiffResult } from "../../Utils/json";
+import { IDiffMethod, IDiffMethodBatch } from "../Diff/diffTree.types";
 import { WorkerQueue } from "../Diff/workerQueue";
 import { Store } from "./store";
 
@@ -28,7 +29,7 @@ import { Store } from "./store";
  * await store.Push("users", { id: 1 }, { id: 2 });
  *
  * // Splicing an array asynchronously
- * const deletedItems = await store.Splice("users", 0, 1, { id: 3 });
+ * await store.Splice("users", 0, 1, { id: 3 });
  *
  * // Cleaning up resources
  * store.Destroy();
@@ -38,15 +39,15 @@ import { Store } from "./store";
  */
 export class StoreAsync extends Store {
   private writeKeySet = new Set<string>();
-  private workerQueue: WorkerQueue<IDiffMethodBatch, IDiffMethodBatchResult>;
+  private workerQueue: WorkerQueue<IDiffMethodBatch, JsonDiffResult>;
   private asyncQueue: AsyncQueue;
   private currentBatch: IDiffMethodBatch = [];
-  private currentBatchPromise: Promise<IDiffMethodBatchResult> = Promise.resolve([]);
+  private currentBatchPromise: Promise<void> = Promise.resolve();
 
   /**
    * Creates an instance of StoreAsync.
    * @param diffWorker A `Worker` running a `DiffTree` connected via `ConnectWorkerToDiffTree`
-   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/projector the diff needs
+   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/routes the diff needs
    *   must be baked into that worker's own entry file.
    * @param keyFunc Optional function to generate a key for a given data value, used locally by
    *   this store to resolve root objects. Pass the same key logic the worker's `DiffTree` was
@@ -66,33 +67,14 @@ export class StoreAsync extends Store {
         if (batch === this.currentBatch)
           this.currentBatch = [];
 
-        const results = await this.workerQueue.Push(batch);
-
-        for (let x = 0; x < results.length; x++) {
-          const result = results[x];
-          switch (result.type) {
-            case "diff": {
-              this.UpdateRootMap(result.result);
-              break;
-            }
-            case "splice": {
-              const spliceResult = result.result;
-              this.UpdateRootMap(spliceResult.diffResult);
-              this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, spliceResult.items);
-              break;
-            }
-          }
-        }
-
-        return results;
+        // The worker's Commit() diff covers every change in the batch
+        const diff = await this.workerQueue.Push(batch);
+        this.UpdateRootMap(diff);
       });
     }
 
-    const batchIndex = this.currentBatch.length;
     this.currentBatch.push(method);
-
-    const batchResult = await this.currentBatchPromise;
-    return batchResult[batchIndex].result;
+    await this.currentBatchPromise;
   }
 
   /**
@@ -114,7 +96,7 @@ export class StoreAsync extends Store {
     this.writeKeySet.add(key);
 
     await this.Schedule({
-      method: "diffpath",
+      method: "writepath",
       arguments: [key, data]
     });
 
@@ -166,21 +148,18 @@ export class StoreAsync extends Store {
    * @param start The position at which to start changing the array.
    * @param deleteCount Optional number of elements to delete. If not provided, all elements from start to end will be deleted.
    * @param items Optional elements to insert into the array.
-   * @returns A promise that resolves to the array of deleted elements once the splice has been
-   *   applied to the store.
+   * @returns A promise that resolves once the splice has been applied to the store.
    * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
    *   the original error if an earlier change failed.
    */
-  async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<any[]> {
+  async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<void> {
     if (!this.Has(key) && !this.writeKeySet.has(key))
       throw "Key not found in store";
 
-    const spliceResult = await this.Schedule({
+    await this.Schedule({
       method: "splicepath",
-      arguments: [key, start, deleteCount, items]
-    }) as DiffSpliceResult;
-
-    return spliceResult.spliceResult;
+      arguments: [key, start, deleteCount ?? Infinity, items]
+    });
   }
 
   /**

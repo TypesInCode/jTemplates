@@ -44,23 +44,7 @@ export class PushStore extends ReadStore {
   private messageHandler = (event: Event) => {
     const messageData = (event as MessageEvent).data as IDiffPushEvent;
     if (messageData && messageData.type === DIFF_TREE_EVENT) {
-      const data = messageData.data;
-
-      for (let x=0; x<data.length; x++) {
-        const result = data[x];
-        switch (result.type) {
-          case "diff": {
-            this.UpdateRootMap(result.result);
-            break;
-          }
-          case "splice": {
-            const spliceResult = result.result;
-            this.UpdateRootMap(spliceResult.diffResult);
-            this.SpliceRootObject(spliceResult.path[0], spliceResult.start, spliceResult.deleteCount, spliceResult.items);
-            break;
-          }
-        }
-      }
+      this.UpdateRootMap(messageData.data);
 
       if (this.error !== null) {
         this.error = null;

@@ -84,6 +84,26 @@ describe("DiffTree keyed values", () => {
       expect(tree.Snapshot("value")).toEqual({ item: { id: "E", v: 2, w: 2 } });
     });
 
+    it("Write through a stale embedded value missing a nested object updates the home value", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("arr", [{ id: "a" }, { id: "b" }]);
+      tree.WritePath("a", { id: "a", inner: { n: 1 } });
+      tree.WritePath("arr", [{ id: "b" }, { id: "a", inner: { n: 2 } }]);
+
+      expect(tree.ReadPath("/a")).toEqual({ id: "a", inner: { n: 2 } });
+      expect(tree.Snapshot("arr")).toEqual([{ id: "b" }, { id: "a", inner: { n: 2 } }]);
+    });
+
+    it("Changing the key of a stale embedded value missing a nested object writes it to the new key", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("arr", [{ id: "a" }]);
+      tree.WritePath("a", { id: "a", inner: { n: 1 } });
+      tree.WritePath("arr", [{ id: "c", inner: { n: 2 } }]);
+
+      expect(tree.ReadPath("/c")).toEqual({ id: "c", inner: { n: 2 } });
+      expect(tree.ReadPath("/a")).toEqual({ id: "a", inner: { n: 1 } });
+    });
+
     it("Splice through a stale embedded array uses the home array", () => {
       const tree = new DiffTree(keyFunc);
       tree.WritePath("value", { id: "E", list: [1, 2, 3] });
@@ -270,6 +290,24 @@ describe("DiffTree keyed values", () => {
         { type: "write", path: ["value", "item", "v"], value: 2 },
         { type: "write", path: ["E", "v"], value: 2 }
       ]));
+    });
+  });
+
+  // A key that's a prefix of the slot's path ("a" and "arr") isn't the slot's own home
+  describe("keys that prefix a path", () => {
+    it("Write through a slot whose path starts with the key updates the home value", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("arr", [{ id: "a", v: 1 }]);
+      tree.WritePath("arr", [{ id: "a", v: 2 }]);
+
+      expect(tree.ReadPath("/a")).toEqual({ id: "a", v: 2 });
+    });
+
+    it("A nested key that starts with its parent's key is stored at its own key", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("a", { id: "a", child: { id: "ab" } });
+
+      expect(tree.ReadPath("/ab")).toEqual({ id: "ab" });
     });
   });
 });
