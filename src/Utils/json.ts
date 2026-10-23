@@ -377,11 +377,18 @@ function JsonDiffArrays(
     return oldValue.length !== newValue.length;
   }
 
+  let startIndex = 0;
+  for (; startIndex < newValue.length && startIndex < oldValue.length && newValue[startIndex] === oldValue[startIndex]; startIndex++) { }
+
+  // Arrays are equal, no diffing required
+  if (startIndex === newValue.length && startIndex === oldValue.length)
+    return false;
+
   const newArraySlice = newValue.slice();
   const oldArraySlice = oldValue.slice();
 
-  for (let x = 0; x < oldValue.length; x++) {
-    const newIndex = newValue.indexOf(oldValue[x]);
+  for (let x = startIndex; x < oldValue.length; x++) {
+    const newIndex = newValue.indexOf(oldValue[x], startIndex);
     if (newIndex >= 0 && newIndex !== x) {
       oldArraySlice[x] = MOVE_SYMBOL;
       newArraySlice[newIndex] = MOVE_SYMBOL;
@@ -395,7 +402,7 @@ function JsonDiffArrays(
     }
   }
 
-  for (let x = 0; x < newValue.length; x++) {
+  for (let x = startIndex; x < newValue.length; x++) {
     const arrayPath = path.concat(x);
     if (newArraySlice[x] !== MOVE_SYMBOL)
       JsonDiffRecursive(arrayPath, newArraySlice[x], oldArraySlice[x], resp);

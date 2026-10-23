@@ -1,7 +1,7 @@
 import { JsonDiff, JsonDiffResult, JsonMerge } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IProjection, IRoute, IRouteDefinition, IRouteDefinitions } from './utils/diffTree.types';
-import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, JoinPaths, PROJECTION_PREFIX, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, SplitRouteAndPath, ToSnapshotPath, WritePath } from './utils/diffTree.utils';
+import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SplitRouteAndPath, ToSnapshotPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
@@ -131,6 +131,28 @@ export class DiffTree {
   }
 
   /**
+   * Deletes a route: its state, its child routes and projection outputs, and its route
+   * instances. The projection order is rebuilt on the next `RunProjections`, so deleting
+   * several routes in a row sorts once.
+   * @param routePath The route to delete, e.g. `/channel/1/`
+   * @throws When the path is the root route or has a property path, e.g. `/channel/1/name`
+   */
+  DeleteRoute(routePath: string) {
+    const [route, propertyPath] = SplitRouteAndPath(routePath);
+    const fullRoute = JoinPaths("", route);
+    if (propertyPath || fullRoute === ROOT_ROUTE)
+      throw new Error(`Unable to delete ${routePath}: only a non-root route path, e.g. /channel/1/, can be deleted.`);
+
+    DeleteRouteState(this.snapshot, this.rootState, fullRoute);
+    RemoveRouteInstances(this.rootRoute, fullRoute);
+    for (const cachedPath of this.routeCache.keys())
+      if (cachedPath.startsWith(fullRoute))
+        this.routeCache.delete(cachedPath);
+
+    this.projectionOrder = undefined;
+  }
+
+  /**
    * Reads the raw value at a path, root (`value.prop`) or routed (`/channel/1/value.prop`).
    * @returns The value, or undefined when any segment of the path doesn't exist
    */
@@ -149,7 +171,7 @@ export class DiffTree {
     for (let x = 0; x < order.length; x++) {
       const projection = order[x];
       const values = this.ReadValues(projection.reads);
-      if (!values || SameValues(values, projection.values))
+      if (!values || SameValues(projection.reads, values, projection.values))
         continue;
 
       const output = projection.projection(...values);
@@ -194,7 +216,7 @@ export class DiffTree {
   /**
    * Finds the route instance for a route path (the portion of a path before the last `/`), creating it (and any missing
    * parent instances) from the matching definition on first use.
-   * @returns The deepest route instance, or the root route for a root path or a route no definition matches
+   * @returns The deepest route instance matched by a definition, or the root route when none matches
    */
   private GetRouteInstance(routePath: string) {
     let route = this.routeCache.get(routePath);
@@ -216,43 +238,82 @@ export class DiffTree {
   private ReadValues(paths: string[]) {
     const values = new Array(paths.length);
     for (let x = 0; x < paths.length; x++) {
-      const [route, property] = SplitRouteAndPath(paths[x]);
-      const [routeState, found] = ReadPathFound(this.rootState, route);
+      if (IsWildcardPath(paths[x])) {
+        values[x] = this.ReadWildcardValue(paths[x]);
+        continue;
+      }
+
+      const [value, found] = this.ReadValue(paths[x]);
       if (!found)
         return undefined;
 
-      const routeSnapshot = routeState && Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
-      const [readSnapshot, snapshotFound] = ReadPathFound(routeSnapshot, property);
-      if (!snapshotFound)
-        return undefined;
+      values[x] = value;
+    }
 
-      values[x] = readSnapshot;
+    return values;
+  }
+
+  private ReadValue(path: string) {
+    const [route, property] = SplitRouteAndPath(path);
+    const [routeState, found] = ReadPathFound(this.rootState, route);
+    if (!found)
+      return [undefined, false];
+
+    const routeSnapshot = routeState && Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
+    return ReadPathFound(routeSnapshot, property);
+  }
+
+  /**
+   * Snapshots of the value at every route a wildcard path matches, keyed by the matched segment.
+   * A match missing the value is left out, so no match reads as an empty object.
+   */
+  private ReadWildcardValue(path: string) {
+    const paths = ExpandWildcardPath(this.rootState, path);
+    const values: { [segment: string]: any } = {};
+    for (const segment in paths) {
+      const [value, found] = this.ReadValue(paths[segment]);
+      if (found)
+        values[segment] = value;
     }
 
     return values;
   }
 }
 
-function SameValues(values: any[], lastValues: any[] | undefined) {
+/** Whether every read value is the same as its last run; a wildcard read compares each matched value */
+function SameValues(paths: string[], values: any[], lastValues: any[] | undefined) {
   if (!lastValues)
     return false;
 
   for (let x = 0; x < values.length; x++)
-    if (values[x] !== lastValues[x])
+    if (values[x] !== lastValues[x] && !(IsWildcardPath(paths[x]) && SameEntries(values[x], lastValues[x])))
+      return false;
+
+  return true;
+}
+
+function SameEntries(values: { [segment: string]: any }, lastValues: { [segment: string]: any }) {
+  const keys = Object.keys(values);
+  if (keys.length !== Object.keys(lastValues).length)
+    return false;
+
+  for (let x = 0; x < keys.length; x++)
+    if (!Object.hasOwn(lastValues, keys[x]) || values[keys[x]] !== lastValues[keys[x]])
       return false;
 
   return true;
 }
 
 /**
- * Whether a read and a projection output overlap: same route, and one dot path contains the
- * other. A read of the route's root object (`/channel/1/`) overlaps every output in that route,
- * but not those of its child routes, which a snapshot of the route doesn't include.
+ * Whether a read and a projection output overlap: the read's route matches the output's (see
+ * `RouteMatches` for wildcards), and one dot path contains the other. A read of the route's root
+ * object (`/channel/1/`) overlaps every output in that route, but not those of its child routes,
+ * which a snapshot of the route doesn't include.
  */
 function PathsOverlap(read: string, output: string) {
   const [readRoute, readProperty] = SplitRouteAndPath(read);
   const [outputRoute, outputProperty] = SplitRouteAndPath(output);
-  return readRoute === outputRoute && (
+  return RouteMatches(readRoute, outputRoute) && (
     readProperty === "" ||
     readProperty === outputProperty ||
     readProperty.startsWith(`${outputProperty}.`) ||
@@ -292,10 +353,16 @@ function OrderProjections(rootRoute: IRoute) {
     state.set(projection, "visiting");
     for (let x = 0; x < projection.reads.length; x++) {
       const read = projection.reads[x];
-      const candidates = byRoute.get(SplitRouteAndPath(read)[0]);
-      for (let y = 0; candidates && y < candidates.length; y++)
-        if (candidates[y] !== projection && PathsOverlap(read, candidates[y].output))
-          Visit(candidates[y], stack.concat(projection.output));
+      const readRoute = SplitRouteAndPath(read)[0];
+      // A wildcard read can match outputs in any number of routes
+      const routeCandidates = IsWildcardPath(read) ?
+        Array.from(byRoute).filter(([outputRoute]) => RouteMatches(readRoute, outputRoute)).map(([, candidates]) => candidates) :
+        [byRoute.get(readRoute) ?? []];
+
+      for (const candidates of routeCandidates)
+        for (let y = 0; y < candidates.length; y++)
+          if (candidates[y] !== projection && PathsOverlap(read, candidates[y].output))
+            Visit(candidates[y], stack.concat(projection.output));
     }
 
     state.set(projection, "done");
@@ -311,7 +378,6 @@ function OrderProjections(rootRoute: IRoute) {
 
 function FindRoute(routes: IRoute[], definitions: IRouteDefinitions | undefined, segments: string[], index: number, defaultKeyFunc: IKeyFunc | undefined): IRoute | undefined {
   let route = routes.find(r => PartsMatch(r.parts, segments, index));
-  const created = !route;
   if (!route) {
     const match = MatchRouteDefinition(definitions, segments, index);
     if (!match)
@@ -319,16 +385,22 @@ function FindRoute(routes: IRoute[], definitions: IRouteDefinitions | undefined,
 
     const end = index + match.length;
     route = CreateRoute(segments.slice(index, end), `/${segments.slice(0, end).join("/")}/`, match.definition, defaultKeyFunc);
+    // Kept even when a deeper segment matches no definition, so a write below an undefined
+    // child route still creates the parent routes whose projections may read it
+    routes.push(route);
   }
 
   const nextIndex = index + route.parts.length;
-  const result = nextIndex === segments.length ? route : FindRoute(route.childRoutes, route.routeDefinitions, segments, nextIndex, defaultKeyFunc);
+  // Segments below the deepest defined route belong to it
+  return nextIndex === segments.length ? route : FindRoute(route.childRoutes, route.routeDefinitions, segments, nextIndex, defaultKeyFunc) ?? route;
+}
 
-  // Only keep a new instance when the full path resolved, so a bad child path creates nothing
-  if (result && created)
-    routes.push(route);
-
-  return result;
+/** Removes every route instance at or below a route path from the instances under `route` */
+function RemoveRouteInstances(route: IRoute, routePath: string) {
+  route.childRoutes = route.childRoutes.filter(child => !child.path.startsWith(routePath));
+  for (let x = 0; x < route.childRoutes.length; x++)
+    if (routePath.startsWith(route.childRoutes[x].path))
+      RemoveRouteInstances(route.childRoutes[x], routePath);
 }
 
 function MatchRouteDefinition(definitions: IRouteDefinitions | undefined, segments: string[], index: number) {
@@ -360,12 +432,14 @@ function CreateRoute(parts: string[], routePath: string, definition: IRouteDefin
   const projections: IProjection[] = [];
   for (const key in definition.projections) {
     const { reads, projection } = definition.projections[key];
+    reads.forEach(ValidateWildcardPath);
     const routeReads = reads.map(read => JoinPaths(routePath, read));
     const output = JoinPaths(routePath, `${PROJECTION_PREFIX}${key}`);
     projections.push({ key, reads: routeReads, projection, output, readsOutput: routeReads.some(read => PathsOverlap(read, output)) });
   }
 
   return {
+    path: routePath,
     parts,
     projections,
     childRoutes: [],

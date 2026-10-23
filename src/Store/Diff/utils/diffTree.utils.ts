@@ -7,6 +7,7 @@ export const ROUTE_STATE = Symbol("ROUTE_STATE");
 
 const ROUTE_DELIMETER = "/";
 const PROP_DELIMETER = ".";
+const WILDCARD = "*";
 
 type KeyFunc = { (value: any): string | undefined };
 
@@ -41,14 +42,13 @@ export function ExpandKeyedDiffFromValue(route: string, path: string, keyFunc: K
         value: value
       });
   }
-  // else {
-    const keys = type === "array" ? undefined : Object.keys(value);
-    const length = keys ? keys.length : value.length;
-    for (let x = 0; x < length; x++) {
-      const child = value[keys ? keys[x] : x];
-      ExpandKeyedDiffFromValue(route, path, keyFunc, child, keyedDiff);
-    }
-    // }
+
+  const keys = type === "array" ? undefined : Object.keys(value);
+  const length = keys ? keys.length : value.length;
+  for (let x = 0; x < length; x++) {
+    const child = value[keys ? keys[x] : x];
+    ExpandKeyedDiffFromValue(route, path, keyFunc, child, keyedDiff);
+  }
 }
 
 /**
@@ -380,6 +380,95 @@ export function GetKeyedPath(root: any, dotPath: string, keyFunc?: (data: any) =
   }
 
   return keyPath;
+}
+
+/**
+ * Deletes a route's state, child routes included, from its parent route. Every cached snapshot
+ * that embedded a value from it, such as one reading a keyed value through its home in the
+ * route, is invalidated.
+ * @param route A non-root route path, e.g. `/channel/1/`
+ */
+export function DeleteRouteState(snapshot: ISnapshotState, root: any, route: string) {
+  const parentRoute = route.slice(0, route.lastIndexOf(ROUTE_DELIMETER, route.length - 2) + 1);
+  const segment = route.slice(parentRoute.length, -1);
+  const routeStates = ReadPath(root, parentRoute)?.[ROUTE_STATE];
+  if (!routeStates || !Object.hasOwn(routeStates, segment))
+    return;
+
+  InvalidateState(snapshot, routeStates[segment]);
+  delete routeStates[segment];
+}
+
+function InvalidateState(snapshot: ISnapshotState, value: any) {
+  if (JsonType(value) === "value")
+    return;
+
+  Snapshot.Invalidate(snapshot, value);
+  const keys = Object.keys(value);
+  for (let x = 0; x < keys.length; x++)
+    InvalidateState(snapshot, value[keys[x]]);
+
+  const routeStates = value[ROUTE_STATE];
+  for (const segment in routeStates)
+    InvalidateState(snapshot, routeStates[segment]);
+}
+
+/** Whether a path's route has a wildcard segment, e.g. a `row_*` segment */
+export function IsWildcardPath(path: string) {
+  return SplitRouteAndPath(path)[0].includes(WILDCARD);
+}
+
+/**
+ * Whether a route matches a route pattern segment by segment. A pattern segment ending in `*`
+ * matches any segment starting with the text before it: a `row_*` segment matches `row_1`.
+ */
+export function RouteMatches(pattern: string, route: string) {
+  if (pattern === route)
+    return true;
+
+  const patternParts = pattern.split(ROUTE_DELIMETER);
+  const routeParts = route.split(ROUTE_DELIMETER);
+  if (patternParts.length !== routeParts.length)
+    return false;
+
+  for (let x = 0; x < patternParts.length; x++)
+    if (patternParts[x].endsWith(WILDCARD) ? !routeParts[x].startsWith(patternParts[x].slice(0, -1)) : patternParts[x] !== routeParts[x])
+      return false;
+
+  return true;
+}
+
+/**
+ * Expands a wildcard path's route against the route state under `root`.
+ * @returns Each matching path, keyed by the segment the wildcard matched
+ */
+export function ExpandWildcardPath(root: any, path: string) {
+  const [route, property] = SplitRouteAndPath(path);
+  const parts = route.split(ROUTE_DELIMETER);
+  const index = parts.findIndex(part => part.endsWith(WILDCARD));
+  const prefix = parts[index].slice(0, -1);
+  const parent = ReadPath(root, parts.slice(0, index).join(ROUTE_DELIMETER) + ROUTE_DELIMETER);
+  const children = parent?.[ROUTE_STATE] ?? {};
+
+  const paths: { [segment: string]: string } = {};
+  for (const segment of Object.keys(children))
+    if (segment.startsWith(prefix)) {
+      parts[index] = segment;
+      paths[segment] = parts.join(ROUTE_DELIMETER) + property;
+    }
+
+  return paths;
+}
+
+/**
+ * Throws when a read path's wildcard is invalid: more than one wildcard segment, a `*` that
+ * doesn't end its segment, or a `*` in the property path.
+ */
+export function ValidateWildcardPath(path: string) {
+  const [route, property] = SplitRouteAndPath(path);
+  const wildcards = route.split(ROUTE_DELIMETER).filter(part => part.includes(WILDCARD));
+  if (property.includes(WILDCARD) || wildcards.length > 1 || wildcards.some(part => part.indexOf(WILDCARD) !== part.length - 1))
+    throw new Error(`Invalid wildcard read ${path}: only one route segment may end in ${WILDCARD}.`);
 }
 
 /** Whether `path` is `basePath` or a property below it: `/a.b` is within `/a`, `/ab` isn't */

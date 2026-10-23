@@ -1,5 +1,10 @@
 export type IProjectionDefinitions = {
   [key: string]: {
+    /**
+     * Paths relative to the route, or from the root when starting with `/`. One route segment may
+     * end in `*` to read every matching route, e.g. `child/row_*` + `/name`, which passes an object
+     * keyed by matched segment.
+     */
     reads: string[],
     projection: { (...reads: any): any }
   }
@@ -30,6 +35,8 @@ export type IRouteDefinitions = {
 };
 
 export type IRoute = {
+  /** The instance's full route path from the tree root, e.g. `/channel/1/` */
+  path: string;
   parts: string[];
   projections: IProjection[];
   childRoutes: IRoute[];

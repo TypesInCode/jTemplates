@@ -89,6 +89,14 @@ export class DiffTreeWriter extends DiffTree {
   }
 
   /**
+   * Deletes a route, its child routes and its route instances.
+   * @throws The change's error, or an earlier uncommitted change's error.
+   */
+  public DeleteRoute(routePath: string) {
+    this.Guard(() => super.DeleteRoute(routePath));
+  }
+
+  /**
    * Runs projections and posts every change since the last commit as one `DIFF_TREE_EVENT`
    * message, which a `PushStore` applies as a unit. Posts nothing when nothing changed.
    *
