@@ -106,8 +106,8 @@ export abstract class ReadStore {
   private UpdateRootObject(rootPath: string | number, results: JsonDiffResult) {
     const rootObject = this.rootMap.get(rootPath);
 
-    if (rootObject === undefined && results[0].type === "write") {
-      if (results[0].path.length > 1)
+    if (rootObject === undefined) {
+      if (results[0].type !== "write" || results[0].path.length > 1)
         throw `Unable to initialize root path ${rootPath} with initial path ${results[0].path}`;
 
       const rootData = JsonDeepClone(results[0].value);

@@ -231,7 +231,7 @@ export function JsonApplyWrites(
       }
       else if (pathTuples[tupleIndex][0] !== property) {
         pathTuples[tupleIndex][0] = property;
-        // value[property] = pathTuples[tupleIndex][1] = resolve(value, property);
+        pathTuples[tupleIndex][1] = value[property];
 
         const next = tupleIndex + 1;
         if (next < pathTuples.length) pathTuples[next][0] = null;

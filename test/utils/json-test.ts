@@ -29,12 +29,11 @@ describe("JsonDiff record ownership", () => {
 
 // A diff doesn't own its values, so applying one clones each value it writes.
 describe("JsonApplyDiff cloning", () => {
-  const noop = () => {};
 
   it("doesn't share a record's value with the root", () => {
     const child = { x: 2 };
     const root: any = { a: 1 };
-    JsonApplyDiff(root, [{ type: "write", path: ["a"], value: child }], noop);
+    JsonApplyDiff(root, [{ type: "write", path: ["a"], value: child }]);
 
     expect(root.a).toEqual(child);
     expect(root.a).not.toBe(child);
@@ -43,7 +42,7 @@ describe("JsonApplyDiff cloning", () => {
   it("doesn't share one object between two records it applies", () => {
     const shared = { x: 1 };
     const root: any = {};
-    JsonApplyDiff(root, [{ type: "write", path: ["a"], value: shared }, { type: "write", path: ["b"], value: shared }], noop);
+    JsonApplyDiff(root, [{ type: "write", path: ["a"], value: shared }, { type: "write", path: ["b"], value: shared }]);
 
     expect(root.a).not.toBe(root.b);
     expect(root.a).not.toBe(shared);
@@ -52,7 +51,7 @@ describe("JsonApplyDiff cloning", () => {
   it("doesn't share a root replacement's contents with the record", () => {
     const child = { x: 1 };
     const root: any = { a: 0 };
-    JsonApplyDiff(root, [{ type: "write", path: [], value: { a: child } }], noop);
+    JsonApplyDiff(root, [{ type: "write", path: [], value: { a: child } }]);
 
     expect(root.a).toEqual(child);
     expect(root.a).not.toBe(child);
