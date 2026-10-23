@@ -141,9 +141,6 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
  * @param assign - Assigns a written value (already cloned) to its parent
  * @param move - Assigns a moved value to its new slot. A move relocates a value that's already in
  *   the root, so it's kept separate from `assign`, which handles new values.
- * @param skipUnresolved - Skips a record whose path doesn't resolve to an object or array in the
- *   root, instead of failing. For a root that may hold a different shape than the value the diff
- *   was computed from.
  */
 export function JsonApplyDiff(
   root: any,
@@ -151,17 +148,16 @@ export function JsonApplyDiff(
   /* resolve?: (parent: any, prop: string | number) => any, */
   assign?: (parent: any, prop: string | number, value: any) => void,
   /* move?: (parent: any, prop: string | number, value: any) => void */
-  skipUnresolved = false
 ) {
   const moves = diff.filter(function (diff) {
     return diff.type === "move";
   });
-  JsonApplyMoves(root, moves, assign, skipUnresolved);
+  JsonApplyMoves(root, moves, assign);
 
   const writes = diff.filter(function (diff) {
     return diff.type === "write";
   });
-  JsonApplyWrites(root, writes, assign, skipUnresolved);
+  JsonApplyWrites(root, writes, assign);
 }
 
 function DefaultAssign(parent: any, prop: string | number, value: any) {
@@ -178,14 +174,12 @@ function DefaultAssign(parent: any, prop: string | number, value: any) {
  * @param diff - The diff result to apply
  * @param callback - Called with the object written to, the property written ("" when an array
  *   root is replaced), and whether that property is new to the object
- * @param skipUnresolved - Skips a record whose parent isn't an object or array in the root
  * @throws If a root replacement would change the root's JSON type, or the root is a primitive
  */
 export function JsonApplyWrites(
   root: any,
   diff: JsonWrite[],
-  assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign,
-  skipUnresolved = false
+  assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign
 ) {
   const pathTuples: [string | number, unknown][] = [["", root]];
   if (diff.length === 1 && diff[0].path.length === 0) {
@@ -232,8 +226,6 @@ export function JsonApplyWrites(
       if (tupleIndex >= pathTuples.length || pathTuples[tupleIndex][0] !== property) {
         const parent = pathTuples[y][1] as any;
         const child = parent[property];
-        if (skipUnresolved && JsonType(child) === "value")
-          break;
 
         if (tupleIndex < pathTuples.length) {
           pathTuples[tupleIndex] = [property, child];
@@ -265,8 +257,7 @@ function ReadPath(value: any, path: (string | number)[]) { // , resolve: (parent
 function JsonApplyMoves(
   root: any,
   diff: JsonMove[],
-  move: (parent: any, prop: string | number, value: any) => void = DefaultAssign,
-  skipUnresolved = false
+  move: (parent: any, prop: string | number, value: any) => void = DefaultAssign
 ) {
   if (diff.length === 0)
     return;
@@ -281,9 +272,6 @@ function JsonApplyMoves(
       const type = JsonType(moveRoot);
       copy = type === "array" ? moveRoot.slice() : type === "object" ? Object.assign({}, moveRoot) : root;
     }
-
-    if (skipUnresolved && JsonType(moveRoot) === "value")
-      continue;
 
     const sourceValue = copy[diff[x].sourceProp];
     move(moveRoot, diff[x].targetProp, sourceValue);

@@ -1,4 +1,4 @@
-import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult, JsonMove, JsonType } from "../../../Utils/json";
+import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult, JsonMove, JsonType, JsonWrite } from "../../../Utils/json";
 import { ISnapshotState, Snapshot, SnapshotPath, SnapshotResolver } from "../../Tree/snapshot";
 
 export const ROOT_ROUTE = "/";
@@ -56,14 +56,52 @@ export function ExpandKeyedDiffFromValue(route: string, path: string, keyFunc: K
  * left. Each rebase moves a row past one keyed value, so the rows run out.
  */
 export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
+  const keyFunc = routeKeyFunc(route);
+  const fixupDiff: JsonDiffResult = [];
+  for (let x = 0; keyFunc && x < diff.length; x++) {
+    const row = diff[x];
+    const path = row.path;
+
+    let curr = diffRoot;
+    let key = null;
+    let keyIndex = -1;
+    let y = 0;
+    for (; curr && y < path.length; y++) {
+      const currKey = keyFunc(curr);
+      if (currKey) {
+        key = currKey;
+        keyIndex = y;
+      }
+      curr = curr[path[y]];
+    }
+
+    if (y < path.length && key) {
+      const joinedKey = JoinPaths(route, key);
+      const keyedValue = ReadPath(treeRootState, joinedKey);
+      if (keyedValue) {
+        const write: JsonWrite = {
+          type: "write",
+          value: keyedValue,
+          path: path.slice(0, keyIndex)
+        };
+
+        fixupDiff.push(write);
+      }
+    }
+  }
+
+  JsonApplyDiff(diffRoot, fixupDiff, function (parent, prop, value) {
+    parent[prop] = value;
+    Snapshot.Invalidate(snapshot, parent);
+  });
+
   // The raw value can be a stale copy missing paths the diff's snapshot has; the rebased rows
   // below write those to the value's home
   JsonApplyDiff(diffRoot, diff, function (parent, prop, value) {
     parent[prop] = value;
     Snapshot.Invalidate(snapshot, parent);
-  }, true);
+  });
 
-  const keyFunc = routeKeyFunc(route);
   if (!keyFunc)
     return;
 

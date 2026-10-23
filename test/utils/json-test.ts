@@ -66,25 +66,6 @@ describe("JsonApplyDiff unresolved paths", () => {
 
     expect(root).toEqual({ a: { x: 2 }, b: { y: 2 } });
   });
-
-  it("skips a record whose parent isn't in the root, when asked", () => {
-    const root: any = { a: 1, list: [] };
-    JsonApplyDiff(root, [
-      { type: "write", path: ["a", "x"], value: 1 },
-      { type: "write", path: ["b", "c", "x"], value: 1 },
-      { type: "write", path: ["list", 0, "x"], value: 1 },
-      { type: "write", path: ["d"], value: 1 },
-    ], undefined, true);
-
-    expect(root).toEqual({ a: 1, list: [], d: 1 });
-  });
-
-  it("skips a move whose array isn't in the root, when asked", () => {
-    const root: any = { d: 1 };
-    JsonApplyDiff(root, [{ type: "move", path: ["list"], sourceProp: 1, targetProp: 0 }], undefined, true);
-
-    expect(root).toEqual({ d: 1 });
-  });
 });
 
 describe("JsonApplyDiff moving", () => {

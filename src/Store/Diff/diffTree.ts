@@ -5,7 +5,6 @@ import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, Cr
 
 export class DiffTree {
   private rootState = {};
-  private snapshot = Snapshot.Create();
 
   private rootRoute: IRoute;
   private commitedSnapshot: { [key: string]: any } = {};
@@ -13,6 +12,7 @@ export class DiffTree {
   private routeCache = new Map<string, IRoute>();
   private routeKeyFunc: RouteKeyFunc = (routePath) => this.GetRouteInstance(routePath).keyFunc;
   private resolver = CreateKeyResolver(this.rootState, this.routeKeyFunc);
+  private snapshot = Snapshot.Create(this.resolver);
   // Every projection of every route instance, dependencies first; rebuilt when an instance may have been created
   private projectionOrder: IProjection[] | undefined;
 
@@ -186,7 +186,7 @@ export class DiffTree {
   public Snapshot(path: string) {
     const [routePath, propertyPath] = SplitRouteAndPath(path);
     const routeState = ReadPath(this.rootState, routePath);
-    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(routePath));
+    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, undefined, ToSnapshotPath(routePath));
     const snapshot = ReadPath(routeSnapshot, propertyPath);
     return snapshot;
   }
