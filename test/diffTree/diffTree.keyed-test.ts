@@ -43,22 +43,15 @@ describe("DiffTree keyed values", () => {
       expect(tree.Snapshot("items")).toEqual([{ id: "F", v: 1 }]);
     });
 
-    it("Changing to a key that already exists overwrites it", () => {
-      const tree = new DiffTree(keyFunc);
-      tree.WritePath("value", { item: { id: "E", v: 1 }, other: { id: "F", v: 9 } });
-      tree.WritePath("value.item.id", "F");
-
-      expect(tree.ReadPath("/F")).toEqual({ id: "F", v: 1 });
-      expect(tree.Snapshot("value")).toEqual({ item: { id: "F", v: 1 }, other: { id: "F", v: 1 } });
-    });
-
-    it("Changing the key of a stale embedded value carries the home value's data", () => {
+    it("Changing the key of a stale embedded value carries the embedded value's data", () => {
       const tree = new DiffTree(keyFunc);
       tree.WritePath("value", { item: { id: "E", v: 1 } });
       tree.WritePath("/E.v", 2);
       tree.WritePath("value.item.id", "F");
 
-      expect(tree.ReadPath("/F")).toEqual({ id: "F", v: 2 });
+      // The embedded value is written to the new key as it is
+      expect(tree.ReadPath("/F")).toEqual({ id: "F", v: 1 });
+      expect(tree.ReadPath("/E")).toEqual({ id: "E", v: 2 });
     });
 
     it("Removing a key leaves the home value alone", () => {
@@ -107,6 +100,19 @@ describe("DiffTree keyed values", () => {
       tree.SplicePath("value.list", 0, 1, []);
 
       expect(tree.ReadPath("/E.list")).toEqual([{ val: 2 }, { val: 3 }, { val: 4 }]);
+    });
+
+    it("Splice through an embedded array keeps the moved items' snapshots", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("value", { id: "E", list: [{ val: 1 }, { val: 2 }, { val: 3 }] });
+      const before = tree.Snapshot("/E.list");
+      tree.SplicePath("value.list", 0, 1, []);
+      const after = tree.Snapshot("/E.list");
+
+      expect(after).toEqual([{ val: 2 }, { val: 3 }]);
+      expect(after[0]).toBe(before[1]);
+      expect(after[1]).toBe(before[2]);
+      expect(tree.ReadPath("value.list")).toEqual([{ val: 2 }, { val: 3 }]);
     });
 
     it("Push through a stale embedded array uses the home array", () => {

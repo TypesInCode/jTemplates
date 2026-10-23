@@ -1,4 +1,4 @@
-import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult, JsonType } from "../../../Utils/json";
+import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult, JsonMove, JsonType } from "../../../Utils/json";
 import { ISnapshotState, Snapshot, SnapshotPath, SnapshotResolver } from "../../Tree/snapshot";
 
 export const ROOT_ROUTE = "/";
@@ -23,198 +23,114 @@ export function ResolveKey(keyFunc: KeyFunc | undefined, route: string, value: a
   return key ? JoinPaths(route, key) : undefined;
 }
 
-// export function ExpandKeyedDiffFromValue(routeKeyFunc: RouteKeyFunc, route: string, keyFunc: KeyFunc, value: any, keyedDiff: { path: string, value: any }[]) {
-export function ExpandKeyedDiffFromValue(route: string, keyFunc: KeyFunc, value: any, keyedDiff: { path: string, value: any }[]) {
+export function ExpandKeyedDiffFromValue(route: string, path: string, keyFunc: KeyFunc, value: any, keyedDiff: { path: string, value: any }[]) {
   const type = JsonType(value);
   if (type === 'value')
     return;
 
-  const keys = type === "array" ? undefined : Object.keys(value);
-  const length = keys ? keys.length : value.length;
-  for (let x = 0; x < length; x++) {
-    const child = value[keys ? keys[x] : x];
-    const keyedPath = ResolveKey(keyFunc, route, child);
-    if (keyedPath) {
-      keyedDiff.push({
-        path: keyedPath,
-        value: child
-      });
+  const filterPrefix = JoinPaths(route, path);
+  const key = keyFunc(value);
+  if (key) {
+    const [keyRoute] = SplitRouteAndPath(key);
+    const invalidKeyRoute = keyRoute && !keyRoute.startsWith('/') && route.endsWith(keyRoute);
+    const fullKeyPath = JoinPaths(route, key);
 
-      // A keyed entity's children are keyed in the route it lives in
-      /* const [childRoute] = SplitRouteAndPath(keyedPath);
-      const childKeyFunc = routeKeyFunc(childRoute);
-      childKeyFunc && ExpandKeyedDiffFromValue(routeKeyFunc, childRoute, childKeyFunc, child, keyedDiff); */
-    }
-    else
-      ExpandKeyedDiffFromValue(route, keyFunc, child, keyedDiff);
+    if (!invalidKeyRoute && fullKeyPath && !fullKeyPath.startsWith(filterPrefix))
+      keyedDiff.push({
+        path: fullKeyPath,
+        value: value
+      });
   }
+  // else {
+    const keys = type === "array" ? undefined : Object.keys(value);
+    const length = keys ? keys.length : value.length;
+    for (let x = 0; x < length; x++) {
+      const child = value[keys ? keys[x] : x];
+      ExpandKeyedDiffFromValue(route, path, keyFunc, child, keyedDiff);
+    }
+    // }
 }
 
-export function ApplyDiffToData(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
-  const keyedDiff: { path: string, value: any }[] = [];
-  // The route each walked object's children are keyed in: a keyed copy's home route, otherwise its parent's
-  const routeOf = new Map<any, string>([[diffRoot, route]]);
-  // Keyed copies made by this apply by the path they were read from, with the route they were found in
-  const copies = new Map<string, { value: any, route: string }>();
-
-  JsonApplyDiff(diffRoot, diff, function (parent, prop) {
-    // Invalidate snapshot for current object because we know something below it is changing
-    Snapshot.Invalidate(snapshot, parent);
-    // find the context route for the parent which is guaranteed set by the object traversal
-    const parentRoute = routeOf.get(parent)!;
-    // get the context keyFunc from the route of the parent
-    const parentKeyFunc = routeKeyFunc(parentRoute);
-
-    // resolving to target
-    const target = parent[prop];
-    // Read key for current target
-    const keyedPath = ResolveKey(parentKeyFunc, parentRoute, target);
-    // If current target does not resolve a key then continue
-    if (!keyedPath) {
-      routeOf.set(target, parentRoute);
-      return target;
-    }
-
-    const home = ReadPath(treeRootState, keyedPath);
-    if (home === target) {
-      routeOf.set(target, SplitRouteAndPath(keyedPath)[0]);
-      return target;
-    }
-
-    // Find an existing copy for the resolved key
-    let copy = copies.get(keyedPath);
-    if (!copy) {
-      // Create an initialize copy cache remember the parent route context it was created from
-      copy = { value: JsonDeepClone(home ?? target), route: parentRoute };
-      copies.set(keyedPath, copy);
-      // Map the copy instance to its actual route
-      routeOf.set(copy.value, SplitRouteAndPath(keyedPath)[0]);
-    }
-
-    // Return the copy
-    return copy.value;
-  }, function (parent, prop, value) {
-    // assign the value to its parent
+/**
+ * Applies a diff to `diffRoot`, then each keyed value and rebased row it produced, until none are
+ * left. Each rebase moves a row past one keyed value, so the rows run out.
+ */
+export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
+  JsonApplyDiff(diffRoot, diff, function (parent, prop, value) {
     parent[prop] = value;
-    // invalidate the parent because it just changed
     Snapshot.Invalidate(snapshot, parent);
-
-    // get the route of the parent object
-    const parentRoute = routeOf.get(parent)!;
-    // get the route-specific keyfunc of the parent's route
-    const keyFunc = routeKeyFunc(parentRoute);
-    // does the value just assigned have a key
-    const valuePath = ResolveKey(keyFunc, parentRoute, value);
-    if (valuePath) {
-      // If the value does have a key, register it to get written
-      keyedDiff.push({ path: valuePath, value });
-      // Get the route for the keyed value
-      const [valueRoute] = SplitRouteAndPath(valuePath);
-      // Get the keyfunc for the keyd value's route
-      const valueKeyFunc = routeKeyFunc(valueRoute);
-      // Traverse the object to find any children that are also keyed values so they can be flattened
-      valueKeyFunc && ExpandKeyedDiffFromValue(valueRoute, valueKeyFunc, value, keyedDiff);
-    }
-    else
-      // Traverse the object to find any children that are keyed using the parent's route and keyfunc
-      keyFunc && ExpandKeyedDiffFromValue(parentRoute, keyFunc, value, keyedDiff);
   });
 
-  // A copy is keyed again after the writes, so a write that changed its key moves it to the new path.
-  // The old path is left alone; other values may still embed it.
-  for (const copy of copies.values()) {
-    const copyPath = ResolveKey(routeKeyFunc(copy.route), copy.route, copy.value);
-    copyPath && keyedDiff.push({ path: copyPath, value: copy.value });
+  const keyFunc = routeKeyFunc(route);
+  if (!keyFunc)
+    return;
+
+  const rebasedRouteMap: { [route: string]: JsonDiffResult } = {};
+  const keyedWrites: { path: string, value: any }[] = [];
+
+  for (let x = 0; x < diff.length; x++) {
+    const diffRow = diff[x];
+    const path = diffRow.type === "move" ? diffRow.basePath : diffRow.path;
+    const pathStr = path.join('.');
+    const routeAndPath = JoinPaths(route, pathStr);
+
+    if (diffRow.type === "write")
+      ExpandKeyedDiffFromValue(route, pathStr, keyFunc, diffRow.value, keyedWrites);
+
+    let curr = diffRoot;
+    let key = null;
+    let keyIndex = -1;
+    let keyCurr = null;
+    for (let y = 0; curr && y < path.length; y++) {
+      const currKey = keyFunc(curr);
+      if (currKey) {
+        key = currKey;
+        keyIndex = y;
+        keyCurr = curr;
+      }
+      curr = curr[path[y]];
+    }
+
+    if (key) {
+      const joinedPath = JoinPaths(route, key);
+      if (!routeAndPath.startsWith(joinedPath)) {
+        const exists = !!ReadPath(treeRootState, joinedPath);
+        const [targetRoute, targetPath] = SplitRouteAndPath(joinedPath);
+        rebasedRouteMap[targetRoute] ??= [];
+
+        if (!exists) {
+          rebasedRouteMap[targetRoute].push({
+            type: 'write',
+            path: targetPath.split('.'),
+            value: keyCurr
+          });
+        }
+        else {
+          const rebasedDiffRow = diffRow.type === "move" ? {
+            ...diffRow,
+            basePath: [targetPath, ...diffRow.basePath.slice(keyIndex)]
+          } : {
+            ...diffRow,
+            path: [targetPath, ...diffRow.path.slice(keyIndex)]
+          };
+
+          if (rebasedDiffRow.type === "move" || rebasedDiffRow.value !== ReadPath(treeRootState, JoinPaths(targetRoute, rebasedDiffRow.path.join('.'))))
+            rebasedRouteMap[targetRoute].push(rebasedDiffRow);
+        }
+      }
+    }
   }
 
-  return keyedDiff;
-}
+  for (let x = 0; x < keyedWrites.length; x++) {
+    const [keyedRoute, keyedPath] = SplitRouteAndPath(keyedWrites[x].path);
+    ApplyValueToPath(snapshot, treeRootState, routeKeyFunc, keyedRoute, keyedPath, keyedWrites[x].value);
+  }
 
-export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
-  const keyedValues = ApplyDiffToData(snapshot, treeRootState, routeKeyFunc, route, diffRoot, diff);
-  for (let x = 0; x < keyedValues.length; x++) {
-    const [keyedRoute, keyedPath] = SplitRouteAndPath(keyedValues[x].path);
-    ApplyValueToPath(snapshot, treeRootState, routeKeyFunc, keyedRoute, keyedPath, keyedValues[x].value);
+  for (const rebasedRoute in rebasedRouteMap) {
+    const rebasedRoot = ReadPath(treeRootState, rebasedRoute);
+    ApplyDiff(snapshot, treeRootState, routeKeyFunc, rebasedRoute, rebasedRoot, rebasedRouteMap[rebasedRoute]);
   }
 }
-
-// export function ApplyDiffToPath(snapshot: ISnapshotState, treeRootState: any, routeKeyFunc: RouteKeyFunc, route: string, diffRoot: any, diff: JsonDiffResult) {
-//   const keyedDiff: { path: string, value: any }[] = [];
-//   const applyKeyFunc = routeKeyFunc(route);
-//
-//   const pathToCopyCache = new Map<string, any>();
-//   const copyToPathCache = new Map<any, string>();
-//
-//   JsonApplyDiff(diffRoot, diff, function (path: [(string | number), any][], parent, prop) {
-//     // If we're here we are on the way to updating a child property. Invalidate snapshot
-//     Snapshot.Invalidate(snapshot, parent);
-//     const target = parent[prop];
-//     let currKeyFunc: typeof applyKeyFunc = null;
-//     let currRoute: string = null;
-//
-//     for (let x = path.length - 1; !currKeyFunc && x >= 0; x--) {
-//       currKeyFunc = copyToPathCache.has(path[x][1]) ? routeKeyFunc(copyToPathCache.get(path[x][1])) : null;
-//       currRoute = currKeyFunc ? copyToPathCache.get(path[x][1]) : null;
-//     }
-//
-//     currKeyFunc ??= applyKeyFunc;
-//     currRoute ??= route;
-//     const keyedPath = ResolveKey(currKeyFunc, currRoute, target);
-//
-//     if (!keyedPath)
-//       return parent[prop];
-//
-//     if (pathToCopyCache.has(keyedPath))
-//       return pathToCopyCache.get(keyedPath);
-//
-//     const keyedObject = ReadPath(treeRootState, keyedPath);
-//     const keyedObjectCopy = JsonDeepClone(keyedObject);
-//     pathToCopyCache.set(keyedPath, keyedObjectCopy);
-//     copyToPathCache.set(keyedObjectCopy, keyedPath);
-//
-//     return keyedObjectCopy;
-//   });
-//
-//   JsonApplyDiff(diffRoot, diff, function (path, prop, _, value) {
-//     // Walk down from the diff root, moving into each keyed ancestor's route. The nearest
-//     // keyed ancestor's own copy gets the write too.
-//     let currRoute = route;
-//     let keyFunc = routeKeyFunc;
-//     let ancestorPath: string | undefined;
-//     let dotPath = "";
-//     for (let x = 1; x < path.length; x++) {
-//       const keyedPath = ResolveKey(keyFunc, currRoute, path[x][1]);
-//       if (keyedPath) {
-//         ancestorPath = keyedPath;
-//         dotPath = "";
-//         [currRoute] = SplitRouteAndPath(keyedPath);
-//         keyFunc = routeKeyFunc(currRoute);
-//       }
-//       else
-//         dotPath += `${path[x][0]}.`;
-//     }
-//
-//     const valuePath = ResolveKey(keyFunc, currRoute, value);
-//     if (valuePath) {
-//       keyedDiff.push({
-//         path: valuePath,
-//         value
-//       });
-//       [currRoute] = SplitRouteAndPath(valuePath);
-//       keyFunc = routeKeyFunc(currRoute);
-//     }
-//     else if (ancestorPath)
-//       keyedDiff.push({
-//         path: `${ancestorPath}.${dotPath}${prop}`,
-//         value
-//       });
-//
-//     keyFunc && ExpandKeyedDiffFromValue(routeKeyFunc, currRoute, keyFunc, value, keyedDiff);
-//     Snapshot.Invalidate(snapshot, path[path.length - 1][1]);
-//   });
-//
-//   return keyedDiff;
-// }
 
 export function ApplyPathValues(snapshot: ISnapshotState, root: any, pathValues: { path: string, value: any }[]) {
   for (let x = 0; x < pathValues.length; x++)
@@ -237,6 +153,21 @@ export function CreateKeyResolver(root: any, routeKeyFunc: RouteKeyFunc): Snapsh
   };
 }
 
+/**
+ * The snapshot of `routeRoot[property]`, read through its home value when it's keyed, as a
+ * snapshot of the whole route would hold it.
+ */
+function ResolvedSnapshot(snapshot: ISnapshotState, root: any, routeKeyFunc: RouteKeyFunc, routeRoot: any, route: string, property: string) {
+  const value = routeRoot[property];
+  if (JsonType(value) === "value")
+    return value;
+
+  const resolver = CreateKeyResolver(root, routeKeyFunc);
+  const path = ToSnapshotPath(JoinPaths(route, property));
+  const resolved = resolver(value, path);
+  return resolved ? Snapshot.Get(snapshot, resolved.value, resolver, resolved.path) : Snapshot.Get(snapshot, value, resolver, path);
+}
+
 export function ApplyValueToPath(snapshot: ISnapshotState, root: any, routeKeyFunc: RouteKeyFunc, basePath: string, path: string, value: any) {
   const [route, property] = SplitRouteAndPath(path);
   if (!property)
@@ -249,18 +180,14 @@ export function ApplyValueToPath(snapshot: ISnapshotState, root: any, routeKeyFu
     diffRoot = ReadPath(root, combinedRoute);
   }
 
-  const diffRootSnapshot = Snapshot.Get(snapshot, diffRoot, CreateKeyResolver(root, routeKeyFunc), ToSnapshotPath(combinedRoute));
-  const currentValue = ReadPath(diffRootSnapshot, property);
+  // Only the written value is snapshotted. A snapshot of the whole route would cache values that
+  // embed keys whose home values this apply hasn't written yet, and nothing would update them.
+  const propertyIndex = property.indexOf(PROP_DELIMETER);
+  const rootProperty = propertyIndex < 0 ? property : property.slice(0, propertyIndex);
+  const currentValue = ReadPath(ResolvedSnapshot(snapshot, root, routeKeyFunc, diffRoot, combinedRoute, rootProperty), propertyIndex < 0 ? "" : property.slice(propertyIndex + 1));
   const diff = JsonDiff(value, currentValue, property);
 
   ApplyDiff(snapshot, root, routeKeyFunc, combinedRoute, diffRoot, diff);
-  // const keyedValues = ApplyDiffToData(snapshot, root, routeKeyFunc, combinedRoute, diffRoot, diff);
-  // for (let x = 0; x < keyedValues.length; x++) {
-  //   const [keyedRoute, keyedPath] = SplitRouteAndPath(keyedValues[x].path);
-  //   ApplyValueToPath(snapshot, root, routeKeyFunc, keyedRoute, keyedPath, keyedValues[x].value);
-  // }
-  // ApplyPathValues(snapshot, root, keyedValues);
-  // return keyedValues;
 }
 
 /**

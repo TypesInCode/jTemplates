@@ -1,7 +1,7 @@
 import { JsonDiff, JsonDiffResult, JsonMerge } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IProjection, IRoute, IRouteDefinition, IRouteDefinitions } from './utils/diffTree.types';
-import { ApplyDiff, ApplyDiffToData, ApplyPathValues, ApplyValueToPath, CreateKeyResolver, JoinPaths, PROJECTION_PREFIX, ReadPath, ROOT_ROUTE, RouteKeyFunc, SplitRouteAndPath, ToSnapshotPath, WritePath } from './utils/diffTree.utils';
+import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, JoinPaths, PROJECTION_PREFIX, ReadPath, ROOT_ROUTE, RouteKeyFunc, SplitRouteAndPath, ToSnapshotPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
@@ -51,7 +51,7 @@ export class DiffTree {
 
     const combinedRoutePath = JoinPaths("", routePath);
     const routeRoot = ReadPath(this.rootState, combinedRoutePath);
-    const value = ReadPath(routeRoot, valuePath);
+    const value = ReadPath(this.Snapshot(combinedRoutePath), valuePath);
 
     if (!value) throw new Error(`Array not found at path: ${path}`);
 
@@ -188,7 +188,7 @@ export class DiffTree {
   public Snapshot(path: string) {
     const [routePath, propertyPath] = SplitRouteAndPath(path);
     const routeState = ReadPath(this.rootState, routePath);
-    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver);
+    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(routePath));
     const snapshot = ReadPath(routeSnapshot, propertyPath);
     return snapshot;
   }

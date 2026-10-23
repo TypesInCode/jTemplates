@@ -134,20 +134,30 @@ export function JsonDeepClone<T>(value: T, type = JsonType(value)): T {
   }
 }
 
-export function JsonApplyDiff(root: any, diff: JsonDiffResult, resolve?: (parent: any, prop: string | number) => any, assign?: (parent: any, prop: string | number, value: any) => void) {
+/**
+ * Applies a diff result to a root value in place: moves first, then writes.
+ * @param resolve - Returns the object to walk into for `parent[prop]`; the walk stores it back at
+ *   `parent[prop]` when it's a different object
+ * @param assign - Assigns a written value (already cloned) to its parent
+ * @param move - Assigns a moved value to its new slot. A move relocates a value that's already in
+ *   the root, so it's kept separate from `assign`, which handles new values.
+ */
+export function JsonApplyDiff(
+  root: any,
+  diff: JsonDiffResult,
+  /* resolve?: (parent: any, prop: string | number) => any, */
+  assign?: (parent: any, prop: string | number, value: any) => void,
+  /* move?: (parent: any, prop: string | number, value: any) => void */
+) {
   const moves = diff.filter(function (diff) {
     return diff.type === "move";
   });
-  JsonApplyMoves(root, moves, resolve);
+  JsonApplyMoves(root, moves, assign);
 
   const writes = diff.filter(function (diff) {
     return diff.type === "write";
   });
-  JsonApplyWrites(root, writes, resolve, assign);
-}
-
-function DefaultResolve(parent: any, prop: string | number) {
-  return parent[prop];
+  JsonApplyWrites(root, writes, assign);
 }
 
 function DefaultAssign(parent: any, prop: string | number, value: any) {
@@ -169,7 +179,6 @@ function DefaultAssign(parent: any, prop: string | number, value: any) {
 export function JsonApplyWrites(
   root: any,
   diff: JsonWrite[],
-  resolve: (parent: any, prop: string | number) => any = DefaultResolve,
   assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign
 ) {
   const pathTuples: [string | number, unknown][] = [["", root]];
@@ -216,13 +225,13 @@ export function JsonApplyWrites(
 
       const tupleIndex = y + 1;
       if (pathTuples.length <= tupleIndex) {
-        const childValue = resolve(value, property);
+        const childValue = value[property]; // resolve(value, property);
         value[property] = childValue;
         pathTuples.push([property, childValue]);
       }
       else if (pathTuples[tupleIndex][0] !== property) {
         pathTuples[tupleIndex][0] = property;
-        pathTuples[tupleIndex][1] = resolve(value, property);
+        // value[property] = pathTuples[tupleIndex][1] = resolve(value, property);
 
         const next = tupleIndex + 1;
         if (next < pathTuples.length) pathTuples[next][0] = null;
@@ -235,11 +244,11 @@ export function JsonApplyWrites(
   }
 }
 
-function ReadPath(value: any, path: (string | number)[], resolve: (parent: any, prop: string | number) => any) {
+function ReadPath(value: any, path: (string | number)[]) { // , resolve: (parent: any, prop: string | number) => any) {
   let curr = value;
   let x = 0;
   for (; curr && x < path.length; x++)
-    curr = resolve(curr, path[x]);
+    curr = curr[path[x]];
 
   return curr;
 }
@@ -247,8 +256,7 @@ function ReadPath(value: any, path: (string | number)[], resolve: (parent: any, 
 function JsonApplyMoves(
   root: any,
   diff: JsonMove[],
-  resolve: (parent: any, prop: string | number) => any = DefaultResolve
-  // assign: (parent: any, prop: string | number, value: any) => void = DefaultAssign
+  move: (parent: any, prop: string | number, value: any) => void = DefaultAssign
 ) {
   if (diff.length === 0)
     return;
@@ -259,14 +267,13 @@ function JsonApplyMoves(
   for (let x = diff.length - 1; x >= 0; x--) {
     if (!ArraysEqual(diff[x].basePath, basePath)) {
       basePath = diff[x].basePath;
-      moveRoot = ReadPath(root, diff[x].basePath, resolve);
+      moveRoot = ReadPath(root, diff[x].basePath); //, resolve);
       const type = JsonType(moveRoot);
       copy = type === "array" ? moveRoot.slice() : type === "object" ? Object.assign({}, moveRoot) : root;
     }
 
     const sourceValue = copy[diff[x].sourceProp];
-    // assign(moveRoot, diff[x].targetProp, sourceValue);
-    moveRoot[diff[x].targetProp] = sourceValue;
+    move(moveRoot, diff[x].targetProp, sourceValue);
   }
 }
 
@@ -401,38 +408,6 @@ function JsonDiffArrays(
     });
 
   return false;
-
-  /* if (newValue.length > 0 || oldValue.length > 0) {
-    for (let y = 0; y < newValue.length; y++) {
-      const oldIndex = oldValue.indexOf(newValue[y]);
-      const arrayPath = path.concat(y);
-      if (oldIndex >= 0) {
-        oldValue = !sliced ? oldValue.slice() : oldValue;
-        sliced = true;
-        oldValue[oldIndex] = null;
-        resp.push({
-          type: "move",
-          sourcePath: path.concat(oldIndex),
-          path: arrayPath
-        })
-      }
-      else {
-        const oldValueElem = oldValue[y];
-        allChildrenChanged =
-          JsonDiffRecursive(arrayPath, newValue[y], oldValueElem, resp) &&
-          allChildrenChanged;
-      }
-    }
-  } else allChildrenChanged = false;
-
-  if (newValue.length !== oldValue.length)
-    resp.push({
-      type: "write",
-      path: path.concat("length"),
-      value: newValue.length,
-    });
-
-  return allChildrenChanged; */
 }
 
 /**

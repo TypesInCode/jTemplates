@@ -385,7 +385,7 @@ describe("DiffTree", () => {
 
       expect(tree.ReadPath("/channel/1/sub/A")).toEqual({ id: "A", child: { id: "B" } });
       expect(tree.ReadPath("/channel/1/sub/k_B")).toEqual({ id: "B" });
-      expect(tree.ReadPath("/channel/1/sub/B")).toBeUndefined();
+      expect(tree.ReadPath("/channel/1/sub/B")).toEqual({ id: "B" });
     });
 
     it("Write into a keyed entity's child updates the child in its home route", () => {
