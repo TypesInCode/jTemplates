@@ -4,19 +4,18 @@ import { KeyFunc, routes, projectionCases } from "./projection-cases";
 
 projectionCases("StoreSync", () => new StoreSync(KeyFunc, routes));
 
-describe("StoreSync projection construction", () => {
-  it("rejects a projection cycle at construction, synchronously", () => {
-    expect(
-      () =>
-        new StoreSync(KeyFunc, {
-          "/": {
-            projections: {
-              a: { reads: [`$projection_b`], projection: (b: any) => b },
-              b: { reads: [`$projection_a`], projection: (a: any) => a },
-            }
-          }
-        }),
-    ).toThrow(/cycle/i);
+describe("StoreSync projection cycles", () => {
+  it("throws a projection cycle on the first change", () => {
+    const store = new StoreSync(KeyFunc, {
+      "/": {
+        projections: {
+          a: { reads: [`$projection_b`], projection: (b: any) => b },
+          b: { reads: [`$projection_a`], projection: (a: any) => a },
+        }
+      }
+    });
+
+    expect(() => store.Write({ value: 1 }, "x")).toThrow(/cycle/i);
   });
 });
 

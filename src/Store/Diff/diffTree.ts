@@ -1,7 +1,7 @@
 import { JsonDiff, JsonDiffResult, JsonMerge } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IProjection, IRoute, IRouteDefinition, IRouteDefinitions } from './utils/diffTree.types';
-import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, JoinPaths, PROJECTION_PREFIX, ReadPath, ROOT_ROUTE, RouteKeyFunc, SplitRouteAndPath, ToSnapshotPath, WritePath } from './utils/diffTree.utils';
+import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, JoinPaths, PROJECTION_PREFIX, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, SplitRouteAndPath, ToSnapshotPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
@@ -145,9 +145,9 @@ export class DiffTree {
    * @throws When projections depend on each other in a cycle
    */
   RunProjections() {
-    this.projectionOrder ??= OrderProjections(this.rootRoute);
-    for (let x = 0; x < this.projectionOrder.length; x++) {
-      const projection = this.projectionOrder[x];
+    const order = this.projectionOrder ??= OrderProjections(this.rootRoute);
+    for (let x = 0; x < order.length; x++) {
+      const projection = order[x];
       const values = this.ReadValues(projection.reads);
       if (!values || SameValues(values, projection.values))
         continue;
@@ -217,11 +217,16 @@ export class DiffTree {
     const values = new Array(paths.length);
     for (let x = 0; x < paths.length; x++) {
       const [route, property] = SplitRouteAndPath(paths[x]);
-      const routeState = ReadPath(this.rootState, route);
-      const routeSnapshot = routeState && Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
-      values[x] = ReadPath(routeSnapshot, property);
-      if (values[x] === undefined)
+      const [routeState, found] = ReadPathFound(this.rootState, route);
+      if (!found)
         return undefined;
+
+      const routeSnapshot = routeState && Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
+      const [readSnapshot, snapshotFound] = ReadPathFound(routeSnapshot, property);
+      if (!snapshotFound)
+        return undefined;
+
+      values[x] = readSnapshot;
     }
 
     return values;

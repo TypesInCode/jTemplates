@@ -619,25 +619,61 @@ describe("DiffTree", () => {
       expect(tree.ReadPath("$projection_sum")).toEqual(3);
     });
 
-    it("Projection is skipped when a read value is missing", () => {
+    it("Projection runs with undefined for a missing read value", () => {
+      let read: any[] | undefined;
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { sum: { reads: ["a", "b"], projection: (a: number, b: number) => (read = [a, b], a + (b ?? 0)) } } }
+      });
+      tree.WritePath("a", 1);
+      tree.RunProjections();
+
+      expect(read).toEqual([1, undefined]);
+      expect(tree.ReadPath("$projection_sum")).toEqual(1);
+    });
+
+    it("Projection is skipped when a read's parent is missing", () => {
       let runs = 0;
       const tree = new DiffTree(undefined, {
-        "/": { projections: { sum: { reads: ["a", "b"], projection: (a: number, b: number) => (runs++, a + b) } } }
+        "/": { projections: { copy: { reads: ["a", "x.b"], projection: (a: number) => (runs++, a) } } }
       });
       tree.WritePath("a", 1);
       tree.RunProjections();
 
       expect(runs).toEqual(0);
-      expect(tree.ReadPath("$projection_sum")).toBeUndefined();
+      expect(tree.ReadPath("$projection_copy")).toBeUndefined();
     });
 
-    it("Projection keeps its last output when a read value goes missing", () => {
+    it("Projection is skipped when a read's route instance is missing", () => {
+      let runs = 0;
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { reads: ["/other/1/x"], projection: (x: any) => (runs++, x) } } },
+        "/other/{id}": { projections: {} }
+      });
+      tree.WritePath("a", 1);
+      tree.RunProjections();
+
+      expect(runs).toEqual(0);
+    });
+
+    it("Projection outputs undefined when a read value goes missing", () => {
       const tree = new DiffTree(undefined, {
         "/": { projections: { copy: { reads: ["a"], projection: (a: number) => a } } }
       });
       tree.WritePath("a", 1);
       tree.RunProjections();
       tree.WritePath("a", undefined);
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_copy")).toBeUndefined();
+    });
+
+    it("Projection keeps its last output when a read's parent goes missing", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { reads: ["x.b"], projection: (b: number) => b } } }
+      });
+      tree.WritePath("x", { b: 1 });
+      tree.RunProjections();
+      tree.WritePath("x", undefined);
       tree.RunProjections();
 
       expect(tree.ReadPath("$projection_copy")).toEqual(1);

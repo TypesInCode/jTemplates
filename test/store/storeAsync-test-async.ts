@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { CreateShimDiffWorker } from "./worker-shim";
+import type { IRouteDefinitions } from "../../src/Store/Diff";
 import { KeyFunc, routes } from "./projection-cases";
 
 // StoreAsync over a shim worker. Writes started without awaiting are batched together;
@@ -21,7 +22,8 @@ describe("Store Async Test", () => {
     stores.splice(0).forEach((s) => s.Destroy());
   });
 
-  function CreateStore() {
+  /** A store over a shim worker, with projections only for the cases about them */
+  function CreateStore(routes?: IRouteDefinitions) {
     const worker = CreateShimDiffWorker(KeyFunc, routes);
     const batches: any[][] = [];
     const postMessage = worker.postMessage.bind(worker);
@@ -48,7 +50,7 @@ describe("Store Async Test", () => {
     });
 
     it("applies projection updates from writes that weren't awaited", async () => {
-      const { store } = CreateStore();
+      const { store } = CreateStore(routes);
 
       store.Write([{ _id: "a" }, { _id: "b" }], "items");
       await Within(store.Flush());
@@ -115,7 +117,7 @@ describe("Store Async Test", () => {
     });
 
     it("applies projections from every batch when batches overlap", async () => {
-      const { store } = CreateStore();
+      const { store } = CreateStore(routes);
 
       const first = store.Write([{ _id: "a" }], "items");
       await Promise.resolve();
@@ -131,7 +133,7 @@ describe("Store Async Test", () => {
     // key has been applied to the store, so StoreAsync also accepts a key with a Write in
     // flight. The worker applies changes in order, so the change can go in the same batch.
     it("accepts a change to a key whose Write hasn't been applied yet, in the same batch", async () => {
-      const { store, batches } = CreateStore();
+      const { store, batches } = CreateStore(routes);
 
       const write = store.Write([{ _id: "a" }], "items");
       const push = store.Push("items", { _id: "b" });
@@ -167,7 +169,7 @@ describe("Store Async Test", () => {
     });
 
     it("accepts a change to a key once its Write has been awaited", async () => {
-      const { store } = CreateStore();
+      const { store } = CreateStore(routes);
 
       await store.Write([{ _id: "a" }], "items");
       const push = store.Push("items", { _id: "b" }, { _id: "c" });
@@ -179,7 +181,7 @@ describe("Store Async Test", () => {
     });
 
     it("applies the projection update from a write followed by an unrelated one", async () => {
-      const { store } = CreateStore();
+      const { store } = CreateStore(routes);
 
       const write = store.Write([{ _id: "a" }, { _id: "b" }], "items");
       const unrelated = store.Write({ value: 1 }, "other");

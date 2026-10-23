@@ -327,6 +327,37 @@ export function ReadPath(root: any, path: string, pathIndex = 0) {
   return curr?.[parts[x]];
 }
 
+export function ReadPathFound(root: any, path: string, pathIndex = 0) {
+  if (root === undefined)
+    return [undefined, false];
+
+  if (path === '')
+    return [root, !!root];
+
+  const startingSlash = path[pathIndex] === ROUTE_DELIMETER;
+  if (startingSlash && pathIndex === path.length - 1)
+    return [root, !!root];
+
+  if (startingSlash && path.includes(ROUTE_DELIMETER, pathIndex + 1)) {
+    const routeKey = path.slice(pathIndex + 1, path.indexOf(ROUTE_DELIMETER, pathIndex + 1));
+
+    const nextRoot = root[ROUTE_STATE]?.[routeKey];
+    return ReadPathFound(nextRoot, path, pathIndex + routeKey.length + 1);
+  }
+
+  const sliceIndex = startingSlash ? pathIndex + 1 : pathIndex;
+  const dotPath = path.slice(sliceIndex);
+
+  const parts = dotPath.split(PROP_DELIMETER);
+
+  let curr = root;
+  let x = 0;
+  for (; curr && x < parts.length - 1; x++)
+    curr = curr[parts[x]];
+
+  return [curr?.[parts[x]], !!curr];
+}
+
 export function SplitRouteAndPath(path: string) {
   const lastSlash = path.lastIndexOf(ROUTE_DELIMETER);
   const route = path.slice(0, lastSlash + 1);

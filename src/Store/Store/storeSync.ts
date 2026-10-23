@@ -48,8 +48,6 @@ export class StoreSync extends Store {
     super(keyFunc);
 
     this.diff = new DiffTree(keyFunc, routes);
-    // Orders the projections now, so a cycle throws here instead of on the first change
-    this.diff.RunProjections();
   }
 
   /**
