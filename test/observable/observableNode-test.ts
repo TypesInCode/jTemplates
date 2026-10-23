@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
+import { JsonWrite } from "../../src/Utils/json";
 
 describe("Observable Node", () => {
     it('Create - Basic Object', () => {
@@ -25,11 +26,12 @@ describe("Observable Node", () => {
 
     it('ApplyDiff - Basic Object Update', () => {
         const proxy = ObservableNode.Create({ test: "value" });
-        const diffResult = [
-            {
-                path: ["test"],
-                value: "changed"
-            }
+        const diffResult: JsonWrite[] = [
+          {
+            type: "write",
+            path: ["test"],
+            value: "changed"
+          }
         ];
 
         // Apply the diff
@@ -45,11 +47,12 @@ describe("Observable Node", () => {
                 test: "value"
             }
         });
-        const diffResult = [
-            {
-                path: ["child", "test"],
-                value: "changed"
-            }
+        const diffResult: JsonWrite[] = [
+          {
+            type: "write",
+            path: ["child", "test"],
+            value: "changed"
+          }
         ];
 
         // Apply the diff

@@ -164,6 +164,13 @@ function NodeValueSet(obj: any, prop: string | number, added: boolean, wrapper =
     ObservableScope.Update(wrapper[prop]);
 }
 
+function AssignNodeValue(obj: any, prop: string | number, value: any) {
+  const added = Object.hasOwn(obj, prop);
+  obj[prop] = value;
+
+  NodeValueSet(obj, prop, added);
+}
+
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
   // Keyed children are read through their root. Every factory shares the module-level
   // snapshotState, matching wrapperCache; only the resolver differs per factory.
@@ -482,7 +489,7 @@ export namespace ObservableNode {
    */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
     const root = rootNode[NODE_VALUE];
-    JsonApplyDiff(root, diffResult, NodeValueSet);
+    JsonApplyDiff(root, diffResult, AssignNodeValue);
   }
 
   /**

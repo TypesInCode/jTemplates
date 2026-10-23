@@ -70,7 +70,7 @@ export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKey
 
   for (let x = 0; x < diff.length; x++) {
     const diffRow = diff[x];
-    const path = diffRow.type === "move" ? diffRow.basePath : diffRow.path;
+    const path = diffRow.path;
     const pathStr = path.join('.');
     const routeAndPath = JoinPaths(route, pathStr);
 
@@ -108,7 +108,7 @@ export function ApplyDiff(snapshot: ISnapshotState, treeRootState: any, routeKey
         else {
           const rebasedDiffRow = diffRow.type === "move" ? {
             ...diffRow,
-            basePath: targetPath.split('.').concat(diffRow.basePath.slice(keyIndex) as string[])
+            basePath: targetPath.split('.').concat(diffRow.path.slice(keyIndex) as string[])
           } : {
             ...diffRow,
             path: targetPath.split('.').concat(diffRow.path.slice(keyIndex) as string[])

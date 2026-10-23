@@ -108,7 +108,7 @@ export class DiffTree {
     for (let x = moveStartIndex; x < value.length; x++)
       diff.push({
         type: "move",
-        basePath,
+        path: basePath,
         sourceProp: x,
         targetProp: moveEndIndex + (x - moveStartIndex)
       });

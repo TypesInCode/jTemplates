@@ -8,7 +8,7 @@ export type JsonWrite = {
 
 export type JsonMove = {
   type: "move",
-  basePath: (string | number)[],
+  path: (string | number)[],
   sourceProp: string | number,
   targetProp: string | number
 };
@@ -265,9 +265,9 @@ function JsonApplyMoves(
   let basePath = null;
   let copy = null;
   for (let x = diff.length - 1; x >= 0; x--) {
-    if (!ArraysEqual(diff[x].basePath, basePath)) {
-      basePath = diff[x].basePath;
-      moveRoot = ReadPath(root, diff[x].basePath); //, resolve);
+    if (!ArraysEqual(diff[x].path, basePath)) {
+      basePath = diff[x].path;
+      moveRoot = ReadPath(root, diff[x].path); //, resolve);
       const type = JsonType(moveRoot);
       copy = type === "array" ? moveRoot.slice() : type === "object" ? Object.assign({}, moveRoot) : root;
     }
@@ -387,7 +387,7 @@ function JsonDiffArrays(
 
       resp.push({
         type: "move",
-        basePath: path,
+        path: path,
         sourceProp: x,
         targetProp: newIndex
       });
