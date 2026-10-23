@@ -426,6 +426,11 @@ export function RouteMatches(pattern: string, route: string) {
   if (pattern === route)
     return true;
 
+  // Every route but a few fails on the text before the wildcard, so that's checked before splitting
+  const wildcard = pattern.indexOf(WILDCARD);
+  if (wildcard < 0 || !route.startsWith(pattern.slice(0, wildcard)))
+    return false;
+
   const patternParts = pattern.split(ROUTE_DELIMETER);
   const routeParts = route.split(ROUTE_DELIMETER);
   if (patternParts.length !== routeParts.length)

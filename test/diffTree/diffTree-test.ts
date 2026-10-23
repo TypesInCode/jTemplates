@@ -1,9 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DiffTree } from '../../src/Store/Diff/diffTree';
+import { Snapshot } from '../../src/Store/Tree/snapshot';
 
 // Route instances are private; tests inspect them through the root route
 function RootRoute(tree: DiffTree) {
   return (tree as any).rootRoute;
+}
+
+// A route's child instances, in creation order
+function Children(route: any): any[] {
+  return [...route.childRoutes.values()];
 }
 
 describe("DiffTree", () => {
@@ -31,7 +37,7 @@ describe("DiffTree", () => {
       tree.WritePath("/unknown/1/name", "test");
 
       expect(tree.ReadPath("/unknown/1/name")).toEqual("test");
-      expect(RootRoute(tree).childRoutes.length).toEqual(0);
+      expect(Children(RootRoute(tree)).length).toEqual(0);
     });
 
     it("Written values are cloned", () => {
@@ -364,8 +370,8 @@ describe("DiffTree", () => {
       tree.WritePath("/channel/1/value", { id: "MY_ID" });
 
       expect(tree.ReadPath("/channel/1/sub/MY_ID")).toEqual({ id: "MY_ID" });
-      const channel = RootRoute(tree).childRoutes[0];
-      expect(channel.childRoutes.map((r: any) => r.parts)).toEqual([["sub"]]);
+      const channel = Children(RootRoute(tree))[0];
+      expect(Children(channel).map((r: any) => r.parts)).toEqual([["sub"]]);
     });
   });
 
@@ -473,7 +479,26 @@ describe("DiffTree", () => {
       tree.WritePath("/channel/1/other", "b");
       tree.WritePath("/channel/2/name", "c");
 
-      expect(RootRoute(tree).childRoutes.map((r: any) => r.parts)).toEqual([["channel", "1"], ["channel", "2"]]);
+      expect(Children(RootRoute(tree)).map((r: any) => r.parts)).toEqual([["channel", "1"], ["channel", "2"]]);
+    });
+
+    it("Route instances of patterns with different segment counts are each found again", () => {
+      const tree = new DiffTree(undefined, {
+        "/flag/{id}": { projections: {}, routes: { "/note/{noteId}": { projections: {} } } },
+        "/item/{id}/{rev}": { projections: {}, routes: { "/note/{noteId}": { projections: {} } } }
+      });
+      tree.WritePath("/flag/1/name", "a");
+      tree.WritePath("/item/1/2/name", "b");
+      // A deeper path is a new route path, so it's resolved through the instances already made
+      tree.WritePath("/flag/1/note/n1/text", "c");
+      tree.WritePath("/item/1/2/note/n1/text", "d");
+
+      expect(Children(RootRoute(tree)).map((r: any) => r.parts)).toEqual([["flag", "1"], ["item", "1", "2"]]);
+      expect(Children(RootRoute(tree)).map((r: any) => Children(r).map((c: any) => c.path))).toEqual([
+        ["/flag/1/note/n1/"],
+        ["/item/1/2/note/n1/"]
+      ]);
+      expect(tree.ReadPath("/item/1/2/note/n1/text")).toEqual("d");
     });
 
     it("Nested route instance is created under its parent", () => {
@@ -482,9 +507,9 @@ describe("DiffTree", () => {
       });
       tree.WritePath("/channel/1/user/u1/name", "test");
 
-      const channel = RootRoute(tree).childRoutes[0];
+      const channel = Children(RootRoute(tree))[0];
       expect(channel.parts).toEqual(["channel", "1"]);
-      expect(channel.childRoutes[0].parts).toEqual(["user", "u1"]);
+      expect(Children(channel)[0].parts).toEqual(["user", "u1"]);
     });
 
     it("Unmatched child route still creates its matched parent instances", () => {
@@ -493,9 +518,9 @@ describe("DiffTree", () => {
       });
       tree.WritePath("/channel/1/bogus/x/name", "test");
 
-      const channel = RootRoute(tree).childRoutes[0];
+      const channel = Children(RootRoute(tree))[0];
       expect(channel.parts).toEqual(["channel", "1"]);
-      expect(channel.childRoutes.length).toEqual(0);
+      expect(Children(channel).length).toEqual(0);
       expect(tree.ReadPath("/channel/1/bogus/x/name")).toEqual("test");
     });
 
@@ -518,10 +543,10 @@ describe("DiffTree", () => {
       });
       tree.WritePath("/channel/1234/user/u1/name", "test");
 
-      const channel = RootRoute(tree).childRoutes[0];
+      const channel = Children(RootRoute(tree))[0];
       expect(channel.projections[0].key).toEqual("count");
       expect(channel.projections[0].reads).toEqual(["/channel/1234/name", "/channel/1234/meta.value", "/other/value"]);
-      expect(channel.childRoutes[0].projections[0].reads).toEqual(["/channel/1234/user/u1/name"]);
+      expect(Children(channel)[0].projections[0].reads).toEqual(["/channel/1234/user/u1/name"]);
     });
 
     it("Root route projection reads are pathed to the root", () => {
@@ -904,6 +929,255 @@ describe("DiffTree", () => {
     });
   });
 
+  describe("keyed projections", () => {
+    it("Projects each entry with its key", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { labels: { read: "rows", projection: (row: any, key: string) => `${key}:${row.name}` } } }
+      });
+      tree.WritePath("rows", { a: { name: "x" }, b: { name: "y" } });
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_labels")).toEqual({ a: "a:x", b: "b:y" });
+    });
+
+    it("Keeps an unchanged entry's output without calling the projection", () => {
+      const calls: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { upper: { read: "rows", projection: (row: any, key: string) => (calls.push(key), { name: row.name.toUpperCase() }) } } }
+      });
+      tree.WritePath("rows", { a: { name: "x" }, b: { name: "y" } });
+      tree.RunProjections();
+      const before = tree.ReadPath("$projection_upper") as any;
+      tree.WritePath("rows.b.name", "z");
+      tree.RunProjections();
+      const after = tree.ReadPath("$projection_upper") as any;
+
+      expect(calls).toEqual(["a", "b", "b"]);
+      expect(after).not.toBe(before);
+      expect(after.a).toBe(before.a);
+      expect(after.b).toEqual({ name: "Z" });
+    });
+
+    it("Leaves out an entry the projection returns undefined for, without calling it again while it's unchanged", () => {
+      const calls: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { even: { read: "values", projection: (value: number, key: string) => (calls.push(key), value % 2 === 0 ? value : undefined) } } }
+      });
+      tree.WritePath("values", { a: 1, b: 2 });
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_even")).toEqual({ b: 2 });
+      expect(Object.keys(tree.ReadPath("$projection_even") as object)).toEqual(["b"]);
+
+      tree.WritePath("values.c", 4);
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_even")).toEqual({ b: 2, c: 4 });
+      expect(calls).toEqual(["a", "b", "c"]);
+    });
+
+    it("Keeps its output when only left-out entries change", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { even: { read: "values", projection: (value: number) => value % 2 === 0 ? value : undefined } } }
+      });
+      tree.WritePath("values", { a: 1, b: 2 });
+      tree.RunProjections();
+      const before = tree.ReadPath("$projection_even");
+      tree.WritePath("values.a", 3);
+      tree.WritePath("values.c", 5);
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_even")).toBe(before);
+    });
+
+    it("Drops a removed key", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { read: "values", projection: (value: number) => value } } }
+      });
+      tree.WritePath("values", { a: 1, b: 2 });
+      tree.RunProjections();
+      tree.WritePath("values", { a: 1 });
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_copy")).toEqual({ a: 1 });
+    });
+
+    it("Reads a missing record as an empty one, and skips while the record's parent is missing", () => {
+      let runs = 0;
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { read: "group.values", projection: (value: number) => (runs++, value) } } }
+      });
+      tree.WritePath("other", 1);
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_copy")).toBeUndefined();
+
+      tree.WritePath("group", {});
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_copy")).toEqual({});
+      expect(runs).toEqual(0);
+    });
+
+    it("Without a read, projects its route's own state, without the route's projection outputs", () => {
+      const tree = new DiffTree(undefined, {
+        "/row/{id}": {
+          projections: {
+            fields: { projection: (value: any, key: string) => `${key}=${value}` },
+            // Reads the keyed projection's output in the same route, without a cycle
+            count: { reads: ["$projection_fields"], projection: (fields: any) => Object.keys(fields).length }
+          }
+        }
+      });
+      tree.WritePath("/row/1/a", 1);
+      tree.WritePath("/row/1/b", 2);
+      tree.RunProjections();
+      tree.RunProjections();
+
+      expect(tree.ReadPath("/row/1/$projection_fields")).toEqual({ a: "a=1", b: "b=2" });
+      expect(tree.ReadPath("/row/1/$projection_count")).toEqual(2);
+    });
+
+    it("Chains on another keyed projection's output, running after it", () => {
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            doubled: { read: "$projection_even", projection: (value: number) => value * 2 },
+            even: { read: "values", projection: (value: number) => value % 2 === 0 ? value : undefined }
+          }
+        }
+      });
+      tree.WritePath("values", { a: 1, b: 2, c: 4 });
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_doubled")).toEqual({ b: 4, c: 8 });
+
+      tree.WritePath("values.b", 3);
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_doubled")).toEqual({ c: 8 });
+    });
+
+    it("Rejects a wildcard read when its route is created", () => {
+      expect(() => new DiffTree(undefined, {
+        "/": { projections: { all: { read: "/row/*/name", projection: (value: any) => value } } }
+      })).toThrow(/keyed projection/);
+
+      const tree = new DiffTree(undefined, {
+        "/row/{id}": { projections: { all: { read: "/other/*/name", projection: (value: any) => value } } }
+      });
+      expect(() => tree.WritePath("/row/1/name", "a")).toThrow(/keyed projection/);
+    });
+  });
+
+  describe("unchanged routes", () => {
+    it("A run with no writes reads nothing", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { all: { reads: ["/row/*/name"], projection: (names: any) => names } } },
+        "/row/{id}": { projections: { upper: { reads: ["name"], projection: (name: string) => name.toUpperCase() } } }
+      });
+      tree.WritePath("/row/1/name", "a");
+      tree.WritePath("/row/2/name", "b");
+      tree.RunProjections();
+      // `all` doesn't read `upper`'s output, so it may run first and read the rows once more
+      // after `upper` writes into them
+      tree.RunProjections();
+
+      const get = vi.spyOn(Snapshot, "Get");
+      tree.RunProjections();
+      expect(get).not.toHaveBeenCalled();
+      get.mockRestore();
+    });
+
+    it("Projections sharing a route each see its change", () => {
+      const runs: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/row/{id}": {
+          projections: {
+            first: { reads: ["a"], projection: (a: number) => (runs.push("first"), a) },
+            second: { reads: ["a"], projection: (a: number) => (runs.push("second"), a * 2) }
+          }
+        }
+      });
+      tree.WritePath("/row/1/a", 1);
+      tree.RunProjections();
+      tree.WritePath("/row/1/a", 2);
+      tree.RunProjections();
+
+      // The first projection's read rebuilds the route's snapshot before the second checks it
+      expect(runs).toEqual(["first", "second", "first", "second"]);
+      expect(tree.ReadPath("/row/1/$projection_second")).toEqual(4);
+    });
+
+    it("A write elsewhere in the route reads again but doesn't rerun", () => {
+      let runs = 0;
+      const tree = new DiffTree(undefined, {
+        "/row/{id}": { projections: { copy: { reads: ["a"], projection: (a: number) => (runs++, a) } } }
+      });
+      tree.WritePath("/row/1/a", 1);
+      tree.RunProjections();
+      tree.WritePath("/row/1/b", 1);
+      tree.RunProjections();
+
+      expect(runs).toEqual(1);
+    });
+
+    it("A keyed value changed through its own route reruns a projection reading it elsewhere", () => {
+      const tree = new DiffTree((data: any) => data?.uid ? `/users/${data.uid}/data` : undefined, {
+        "/": { projections: { name: { reads: ["item.name"], projection: (name: string) => name } } }
+      });
+      tree.WritePath("item", { uid: "1", name: "a" });
+      tree.RunProjections();
+      tree.WritePath("/users/1/data.name", "b");
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_name")).toEqual("b");
+    });
+
+    it("A wildcard read reads again only the match that changed", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { all: { reads: ["/row/*/name"], projection: (names: any) => names } } },
+        "/row/{id}": { projections: {} }
+      });
+      for (let x = 0; x < 5; x++)
+        tree.WritePath(`/row/${x}/name`, `n${x}`);
+      tree.RunProjections();
+      tree.WritePath("/row/3/name", "changed");
+
+      const get = vi.spyOn(Snapshot, "Get");
+      tree.RunProjections();
+      expect(get).toHaveBeenCalledTimes(1);
+      get.mockRestore();
+      expect(tree.ReadPath("$projection_all")).toEqual({ 0: "n0", 1: "n1", 2: "n2", 3: "changed", 4: "n4" });
+    });
+
+    it("A wildcard read sees a match added, changed and deleted", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { all: { reads: ["/row/*/name"], projection: (names: any) => names } } },
+        "/row/{id}": { projections: {} }
+      });
+      tree.WritePath("/row/1/name", "a");
+      tree.RunProjections();
+      tree.WritePath("/row/2/name", "b");
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_all")).toEqual({ 1: "a", 2: "b" });
+
+      tree.WritePath("/row/1/name", "c");
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_all")).toEqual({ 1: "c", 2: "b" });
+
+      tree.DeleteRoute("/row/2/");
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_all")).toEqual({ 1: "c" });
+    });
+
+    it("A read of a route that doesn't exist yet runs once it's written", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { reads: ["/row/1/name"], projection: (name: string) => name } } },
+        "/row/{id}": { projections: {} }
+      });
+      tree.RunProjections();
+      tree.WritePath("/row/1/name", "a");
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_copy")).toEqual("a");
+    });
+  });
+
   describe("delete route", () => {
     it("Deletes the route's state and instance, leaving siblings", () => {
       const tree = new DiffTree(undefined, { "/channel/{id}": { projections: {} } });
@@ -913,7 +1187,7 @@ describe("DiffTree", () => {
 
       expect(tree.ReadPath("/channel/1/name")).toBeUndefined();
       expect(tree.ReadPath("/channel/10/name")).toEqual("b");
-      expect(RootRoute(tree).childRoutes.map((r: any) => r.parts)).toEqual([["channel", "10"]]);
+      expect(Children(RootRoute(tree)).map((r: any) => r.parts)).toEqual([["channel", "10"]]);
     });
 
     it("Deletes child routes with their parent", () => {
@@ -925,7 +1199,7 @@ describe("DiffTree", () => {
       tree.WritePath("/channel/1/name", "b");
 
       expect(tree.ReadPath("/channel/1/user/u1/name")).toBeUndefined();
-      expect(RootRoute(tree).childRoutes[0].childRoutes.length).toEqual(0);
+      expect(Children(Children(RootRoute(tree))[0]).length).toEqual(0);
     });
 
     it("Deleted route's projections stop running and run again once it's rewritten", () => {

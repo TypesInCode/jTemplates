@@ -166,6 +166,18 @@ export namespace Snapshot {
   }
 
   /**
+   * The cached snapshot of a raw value, without building one. A write to the value, or to
+   * anything its snapshot embeds, clears the cache, so a reader that kept the snapshot it got
+   * can tell nothing under the value changed when this returns that same snapshot.
+   * @param state The snapshot cache.
+   * @param value The raw value.
+   * @returns The cached snapshot, or undefined when there's none.
+   */
+  export function Peek<T>(state: ISnapshotState, value: T): T | undefined {
+    return state.rawToSnapshotCache.get(value as object);
+  }
+
+  /**
    * Registers a value as its own snapshot. Use in a case where an immutable value can
    * represent itself as a valid snapshot without cloning.
    * @param state The snapshot cache.
