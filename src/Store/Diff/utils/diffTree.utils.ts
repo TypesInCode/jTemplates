@@ -6,7 +6,7 @@ export const PROJECTION_PREFIX = "$projection_";
 export const ROUTE_STATE = Symbol("ROUTE_STATE");
 
 const ROUTE_DELIMETER = "/";
-const PROP_DELIMETER = ".";
+export const PROP_DELIMETER = ".";
 const WILDCARD = "*";
 
 type KeyFunc = { (value: any): string | undefined };
@@ -183,6 +183,19 @@ export function ApplyPathValues(snapshot: ISnapshotState, root: any, pathValues:
  */
 export function CreateKeyResolver(root: any, routeKeyFunc: RouteKeyFunc): SnapshotResolver {
   return function (child, snapshotPath) {
+    // Most children are in the root route: its key function, and a plain key is the root's own
+    // property, without building and parsing a path
+    if (!snapshotPath.includes(ROUTE_STATE)) {
+      const key = routeKeyFunc(ROUTE_DELIMETER)?.(child);
+      if (!key)
+        return undefined;
+
+      if (!key.includes(ROUTE_DELIMETER) && !key.includes(PROP_DELIMETER)) {
+        const value = root[key];
+        return value === undefined ? undefined : { value, path: [key] };
+      }
+    }
+
     const route = SnapshotPathRoute(snapshotPath);
     const keyedPath = ResolveKey(routeKeyFunc(route), route, child);
     if (!keyedPath)

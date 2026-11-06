@@ -312,24 +312,35 @@ export function spliceCases(name: string, create: () => SpliceStore) {
       });
     });
 
+    describe("at a dotted path", () => {
+      it("splices an array in a root, and later writes find its members where they are", async () => {
+        store = create();
+        stores.push(store);
+        await store.Write({ list: rows("a", "b") }, "doc");
+
+        await store.Splice("doc.list", 0, 1, row("x"), row("y"));
+        expect(plain<{ list: Row[] }>(store, "doc").list.map((r) => r._id)).toEqual(["x", "y", "b"]);
+        expect(plain(store, "x")).toEqual(row("x"));
+
+        await store.Push("doc.list", row("z"));
+        await store.Write("changed", "doc.list.2.value");
+        expect(plain<{ list: Row[] }>(store, "doc").list.map((r) => r._id)).toEqual(["x", "y", "b", "z"]);
+        expect(plain(store, "b")).toEqual(row("b", "changed"));
+      });
+
+      it("rejects a path in a root the store doesn't hold", async () => {
+        await seeded();
+
+        expect(await failure(() => store.Splice("missing.list", 0, 1))).toBeTruthy();
+      });
+    });
+
     describe("rejects", () => {
       it("a key the store doesn't hold, changing nothing", async () => {
         await seeded();
 
         expect(await failure(() => store.Splice("missing", 0, 1))).toBeTruthy();
         expect(ids(store)).toEqual(["a", "b", "c", "d"]);
-      });
-
-      it("a dotted path, changing nothing", async () => {
-        store = create();
-        stores.push(store);
-        await store.Write({ list: rows("a", "b") }, "doc");
-
-        expect(await failure(() => store.Splice("doc.list", 0, 1))).toBeTruthy();
-        expect(plain<{ list: Row[] }>(store, "doc").list.map((r) => r._id)).toEqual(["a", "b"]);
-        // The diff side changed nothing either: a write by index still finds "b".
-        await store.Write("changed", "doc.list.1.value");
-        expect(plain(store, "b")).toEqual(row("b", "changed"));
       });
 
       it("a root that isn't an array, changing nothing", async () => {

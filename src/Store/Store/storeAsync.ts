@@ -2,7 +2,7 @@ import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonDiffResult } from "../../Utils/json";
 import { IDiffMethod, IDiffMethodBatch } from "../Diff/diffTree.types";
 import { WorkerQueue } from "../Diff/workerQueue";
-import { Store } from "./store";
+import { RootOf, Store } from "./store";
 
 /**
  * StoreAsync class extends the base Store class to provide asynchronous data management operations.
@@ -93,14 +93,15 @@ export class StoreAsync extends Store {
     if (!key)
       throw new Error("No key provided for data");
 
-    this.writeKeySet.add(key);
+    // Pending writes by root, so a change to a path in a root being written isn't refused
+    this.writeKeySet.add(RootOf(key));
 
     await this.Schedule({
       method: "writepath",
       arguments: [key, data]
     });
 
-    this.writeKeySet.delete(key);
+    this.writeKeySet.delete(RootOf(key));
   }
 
   /**
@@ -114,7 +115,7 @@ export class StoreAsync extends Store {
    *   the original error if an earlier change failed.
    */
   async Patch(key: string, patch: unknown): Promise<void> {
-    if (!this.Has(key) && !this.writeKeySet.has(key))
+    if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
     await this.Schedule({
@@ -132,7 +133,7 @@ export class StoreAsync extends Store {
    *   the original error if an earlier change failed.
    */
   async Push(key: string, ...data: unknown[]): Promise<void> {
-    if (!this.Has(key) && !this.writeKeySet.has(key))
+    if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
     await this.Schedule({
@@ -153,7 +154,7 @@ export class StoreAsync extends Store {
    *   the original error if an earlier change failed.
    */
   async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<void> {
-    if (!this.Has(key) && !this.writeKeySet.has(key))
+    if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
     await this.Schedule({

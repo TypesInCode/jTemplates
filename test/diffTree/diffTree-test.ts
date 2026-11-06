@@ -1138,10 +1138,11 @@ describe("DiffTree", () => {
       tree.RunProjections();
       tree.WritePath("/row/3/name", "changed");
 
-      const get = vi.spyOn(Snapshot, "Get");
+      // A match's read of `name` snapshots only that key
+      const child = vi.spyOn(Snapshot, "Child");
       tree.RunProjections();
-      expect(get).toHaveBeenCalledTimes(1);
-      get.mockRestore();
+      expect(child).toHaveBeenCalledTimes(1);
+      child.mockRestore();
       expect(tree.ReadPath("$projection_all")).toEqual({ 0: "n0", 1: "n1", 2: "n2", 3: "changed", 4: "n4" });
     });
 
@@ -1369,6 +1370,116 @@ describe("DiffTree", () => {
       tree.RunProjections();
 
       expect(tree.ReadPath("$projection_count")).toEqual(2);
+    });
+  });
+
+  describe("outputs the same as the last", () => {
+    it("Keeps the last output when a projection's new one is the same, so a projection reading it is skipped", () => {
+      const runs: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            copy: { reads: ["a"], projection: (a: any) => (runs.push("copy"), { x: { n: a.n } }) },
+            reader: { reads: ["$projection_copy.x"], projection: (x: any) => (runs.push("reader"), x.n) }
+          }
+        }
+      });
+      tree.WritePath("a", { n: 1, pos: 0 });
+      tree.RunProjections();
+      const before = tree.ReadPath("$projection_copy");
+
+      tree.WritePath("a.pos", 1);
+      tree.RunProjections();
+      expect(runs).toEqual(["copy", "reader", "copy"]);
+      expect(tree.ReadPath("$projection_copy")).toBe(before);
+
+      tree.WritePath("a.n", 2);
+      tree.RunProjections();
+      expect(runs).toEqual(["copy", "reader", "copy", "copy", "reader"]);
+      expect(tree.ReadPath("$projection_reader")).toBe(2);
+    });
+
+    it("Keeps a keyed entry's last output when its new one is the same", () => {
+      const runs: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            names: { read: "rows", projection: (row: any) => ({ name: row.name }) },
+            reader: { reads: ["$projection_names"], projection: (names: any) => (runs.push("reader"), Object.keys(names).length) }
+          }
+        }
+      });
+      tree.WritePath("rows", { a: { name: "x", pos: 0 }, b: { name: "y", pos: 0 } });
+      tree.RunProjections();
+      const before = tree.ReadPath("$projection_names") as any;
+
+      tree.WritePath("rows.a.pos", 1);
+      tree.RunProjections();
+      expect(tree.ReadPath("$projection_names")).toBe(before);
+      expect(runs).toEqual(["reader"]);
+
+      tree.WritePath("rows.b.name", "z");
+      tree.RunProjections();
+      const after = tree.ReadPath("$projection_names") as any;
+      expect(after.a).toBe(before.a);
+      expect(after.b).toEqual({ name: "z" });
+      expect(runs).toEqual(["reader", "reader"]);
+    });
+  });
+
+  describe("path-scoped reads", () => {
+    it("Doesn't snapshot the route or rerun for a write to the route's other keys", () => {
+      let runs = 0;
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { reads: ["a.b"], projection: (b: any) => (runs++, b) } } }
+      });
+      tree.WritePath("a", { b: 1 });
+      tree.WritePath("other", 1);
+      tree.RunProjections();
+
+      tree.WritePath("other", 2);
+      const get = vi.spyOn(Snapshot, "Get");
+      const child = vi.spyOn(Snapshot, "Child");
+      tree.RunProjections();
+      expect(get).not.toHaveBeenCalled();
+      expect(child).not.toHaveBeenCalled();
+      get.mockRestore();
+      child.mockRestore();
+      expect(runs).toBe(1);
+    });
+
+    it("Reruns when the key read is written with a new value, or under a keyed entity it holds", () => {
+      const seen: any[] = [];
+      const tree = new DiffTree((value: any) => value?.id, {
+        "/": { projections: { copy: { reads: ["list"], projection: (list: any) => (seen.push(list), list.length) } } }
+      });
+      tree.WritePath("list", [{ id: "e1", n: 1 }]);
+      tree.RunProjections();
+
+      tree.WritePath("list", [{ id: "e1", n: 1 }, { id: "e2", n: 2 }]);
+      tree.RunProjections();
+      tree.WritePath("e1.n", 5);
+      tree.RunProjections();
+      expect(seen).toEqual([
+        [{ id: "e1", n: 1 }],
+        [{ id: "e1", n: 1 }, { id: "e2", n: 2 }],
+        [{ id: "e1", n: 5 }, { id: "e2", n: 2 }],
+      ]);
+    });
+
+    it("Doesn't read again after a projection writes its output into the route it reads", () => {
+      let runs = 0;
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { copy: { reads: ["a"], projection: (a: any) => (runs++, { a }) } } }
+      });
+      tree.WritePath("a", { n: 1 });
+      tree.RunProjections();
+
+      const child = vi.spyOn(Snapshot, "Child");
+      tree.RunProjections();
+      expect(child).not.toHaveBeenCalled();
+      child.mockRestore();
+      expect(runs).toBe(1);
     });
   });
 });

@@ -279,6 +279,60 @@ function JsonApplyMoves(
 }
 
 /**
+ * Whether two JSON values differ, without recording how: it stops at the first difference and
+ * skips any subtree both values share, so it costs no more than walking what differs. An
+ * undefined property counts as absent, as in JSON. Arrays are compared by position.
+ * @param newValue - The new value
+ * @param oldValue - The old value to compare against
+ * @returns true when the values differ
+ */
+export function JsonHasChanges(newValue: unknown, oldValue: unknown): boolean {
+  if (newValue === oldValue) return false;
+
+  const type = JsonType(newValue);
+  if (type !== JsonType(oldValue)) return true;
+
+  switch (type) {
+    case "array": {
+      const newArray = newValue as unknown[];
+      const oldArray = oldValue as unknown[];
+      if (newArray.length !== oldArray.length) return true;
+
+      for (let x = 0; x < newArray.length; x++)
+        if (JsonHasChanges(newArray[x], oldArray[x])) return true;
+
+      return false;
+    }
+    case "object": {
+      const newObject = newValue as { [key: string]: unknown };
+      const oldObject = oldValue as { [key: string]: unknown };
+      const newKeys = Object.keys(newObject);
+      let defined = 0;
+      for (let x = 0; x < newKeys.length; x++) {
+        const value = newObject[newKeys[x]];
+        if (value === undefined) continue;
+
+        defined++;
+        if (!Object.hasOwn(oldObject, newKeys[x]) || JsonHasChanges(value, oldObject[newKeys[x]])) return true;
+      }
+
+      // Every defined key of the new value is in the old one, so they differ only when the old
+      // one defines more
+      const oldKeys = Object.keys(oldObject);
+      if (oldKeys.length === defined) return false;
+
+      let oldDefined = 0;
+      for (let x = 0; x < oldKeys.length; x++)
+        if (oldObject[oldKeys[x]] !== undefined) oldDefined++;
+
+      return oldDefined !== defined;
+    }
+    default:
+      return true;
+  }
+}
+
+/**
  * Computes the differences between two JSON values.
  * Returns an array of paths and values that changed from oldValue to newValue. A record doesn't
  * own its value: it references `newValue`'s objects, so two records can share one, and
@@ -297,13 +351,46 @@ export function JsonDiff<T>(
   initResult?: JsonDiffResult<T>,
 ): JsonDiffResult<T> {
   const result: JsonDiffResult<T> = initResult ?? [];
-  const startPath = rootPath ? rootPath.split(".") : [];
-  JsonDiffRecursive(startPath, newValue, oldValue, result);
-  result.sort(function (a, b) {
-    const aNum = a.type === "write" ? 1 : 0;
-    const bNum = b.type === "write" ? 1 : 0;
-    return aNum - bNum;
-  })
+  JsonDiffInto(newValue, oldValue, rootPath ? rootPath.split(".") : [], result);
+  return JsonDiffOrder(result);
+}
+
+/**
+ * Appends the differences between two JSON values to `result`, unordered: diffing several values
+ * into one result, order it once at the end with JsonDiffOrder.
+ * @param path - The path the values are at
+ * @returns The result
+ */
+export function JsonDiffInto<T>(
+  newValue: T,
+  oldValue: T,
+  path: (string | number)[],
+  result: JsonDiffResult<T>,
+): JsonDiffResult<T> {
+  JsonDiffRecursive(path, newValue, oldValue, result);
+  return result;
+}
+
+/**
+ * Orders a diff result in place, moves before writes, each in the order they were found.
+ * @returns The result
+ */
+export function JsonDiffOrder<T>(result: JsonDiffResult<T>): JsonDiffResult<T> {
+  let moves = 0;
+  for (let x = 0; x < result.length; x++)
+    if (result[x].type === "move") moves++;
+
+  if (moves === 0 || moves === result.length)
+    return result;
+
+  const writes: JsonDiffResult<T> = [];
+  let next = 0;
+  for (let x = 0; x < result.length; x++)
+    if (result[x].type === "move") result[next++] = result[x];
+    else writes.push(result[x]);
+
+  for (let x = 0; x < writes.length; x++)
+    result[next++] = writes[x];
 
   return result;
 }
@@ -359,6 +446,99 @@ function JsonDiffRecursive(
 const MOVE_SYMBOL = Symbol("MOVE_SYMBOL");
 
 /**
+ * Past this many elements after the common prefix, an array diff finds where each old element
+ * went through a map of the new array instead of `indexOf`, which is quadratic.
+ */
+const MOVE_SCAN_LIMIT = 32;
+
+/**
+ * Where each old element is in the new array from `startIndex` to `endIndex`, as `indexOf` finds
+ * it: the first index holding the same value, or -1.
+ */
+function NewIndexOf(newValue: any[], startIndex: number, endIndex: number) {
+  if (endIndex - startIndex <= MOVE_SCAN_LIMIT)
+    return (value: any) => {
+      const index = newValue.indexOf(value, startIndex);
+      return index < endIndex ? index : -1;
+    };
+
+  const indexes = new Map<any, number>();
+  // From the end, so the first index of a repeated value is the one kept
+  for (let x = endIndex - 1; x >= startIndex; x--)
+    indexes.set(newValue[x], x);
+
+  // indexOf never finds NaN, which a Map does
+  return (value: any) => value !== value ? -1 : indexes.get(value) ?? -1;
+}
+
+export enum SPLICE_ACTION {
+  MOVE = 1,
+  INSERT = 2
+}
+
+export function JsonDiffArraySpliceV2(
+  newValue: any[],
+  oldValue: any[],
+  resp: any[]
+) {
+
+  const oldValueActions = [] as any[];
+
+  const oldIndexMap = new Map<any, number[]>();
+  for (let x = 0; x < oldValue.length; x++) {
+    const indexArray = oldIndexMap.get(oldValue[x]) ?? [];
+    indexArray.push(x);
+    oldIndexMap.set(oldValue[x], indexArray);
+  }
+
+  let indexOffset = 0;
+  let splice: any = null;
+
+  for (let x = 0; x < newValue.length; x++) {
+    if (x + indexOffset < oldValue.length && oldValue[x + indexOffset] === newValue[x]) {
+      // KEEP. Break splice
+      if (splice !== null) {
+        oldValueActions.push(splice);
+        splice = null;
+      }
+      continue;
+    }
+
+    splice ??= { index: x, delete: 0, insert: [] as any[] };
+    const indexArray = oldIndexMap.get(newValue[x]);
+    let indexArrayIndex = 0;
+    for (; indexArray && indexArrayIndex < indexArray.length && x + indexOffset > indexArray[indexArrayIndex]; indexArrayIndex++) {}
+
+    // If we found a matching element later, let's delete to it and reset
+    // if (x + nextIndexOffset < oldValue.length) {
+    if (indexArray && indexArrayIndex < indexArray.length) {
+      const deleteCount = indexArray[indexArrayIndex] - (x + indexOffset);
+      splice.delete += deleteCount;
+      indexOffset += deleteCount;
+
+      oldValueActions.push(splice);
+      splice = null;
+    }
+    else {
+      indexOffset--;
+      const moveFromIndex = oldIndexMap.get(newValue[x]);
+      if (moveFromIndex !== undefined) {
+        splice.insert.push({ type: SPLICE_ACTION.MOVE, from: moveFromIndex[0] });
+      }
+      else
+        splice.insert.push({ type: SPLICE_ACTION.INSERT, data: newValue[x] });
+    }
+  }
+
+  if (splice !== null) {
+    oldValueActions.push(splice);
+    splice = null;
+  }
+
+  return oldValueActions;
+}
+
+/**
  * Compares two arrays and records differences.
  * @internal
  * @param path - Current path being evaluated
@@ -384,14 +564,23 @@ function JsonDiffArrays(
   if (startIndex === newValue.length && startIndex === oldValue.length)
     return false;
 
-  const newArraySlice = newValue.slice();
-  const oldArraySlice = oldValue.slice();
+  // With the same length, the elements after the last change are where they were: only the
+  // middle is diffed, and an element moved within it is found there
+  let oldEnd = oldValue.length;
+  let newEnd = newValue.length;
+  if (oldEnd === newEnd)
+    for (; newEnd > startIndex && newValue[newEnd - 1] === oldValue[newEnd - 1]; newEnd--, oldEnd--) { }
 
-  for (let x = startIndex; x < oldValue.length; x++) {
-    const newIndex = newValue.indexOf(oldValue[x], startIndex);
+  // The indexes moves come from and go to: a moved-to slot isn't diffed, and a moved-from slot
+  // isn't diffed against
+  const movedFrom = new Set<number>();
+  const movedTo = new Set<number>();
+  const newIndexOf = NewIndexOf(newValue, startIndex, newEnd);
+  for (let x = startIndex; x < oldEnd; x++) {
+    const newIndex = newIndexOf(oldValue[x]);
     if (newIndex >= 0 && newIndex !== x) {
-      oldArraySlice[x] = MOVE_SYMBOL;
-      newArraySlice[newIndex] = MOVE_SYMBOL;
+      movedFrom.add(x);
+      movedTo.add(newIndex);
 
       resp.push({
         type: "move",
@@ -402,10 +591,9 @@ function JsonDiffArrays(
     }
   }
 
-  for (let x = startIndex; x < newValue.length; x++) {
-    const arrayPath = path.concat(x);
-    if (newArraySlice[x] !== MOVE_SYMBOL)
-      JsonDiffRecursive(arrayPath, newArraySlice[x], oldArraySlice[x], resp);
+  for (let x = startIndex; x < newEnd; x++) {
+    if (!movedTo.has(x))
+      JsonDiffRecursive(path.concat(x), newValue[x], movedFrom.has(x) ? MOVE_SYMBOL : oldValue[x], resp);
   }
 
   if (oldValue.length !== newValue.length)

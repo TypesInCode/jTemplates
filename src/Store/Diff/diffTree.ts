@@ -1,13 +1,14 @@
-import { JsonDiff, JsonDiffResult, JsonMerge, JsonType } from '../../Utils/json';
+import { JsonDiffInto, JsonDiffOrder, JsonDiffResult, JsonHasChanges, JsonMerge, JsonType } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IKeyedProjectionDefinition, IKeyedState, IProjection, IProjectionDefinition, IReadSource, IRoute, IRouteDefinition, IRouteDefinitions, IRouteSource, IWildcardMatch, IWildcardSource } from './utils/diffTree.types';
-import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SplitRouteAndPath, ToSnapshotPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
+import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, PROP_DELIMETER, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SplitRouteAndPath, ToSnapshotPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
 
   private rootRoute: IRoute;
-  private commitedSnapshot: { [key: string]: any } = {};
+  /** Each root key's snapshot as of the last commit */
+  private commitedSnapshot = new Map<string, any>();
   // Definitions are fixed and instances are never removed, so a route path always finds the same instance
   private routeCache = new Map<string, IRoute>();
   private routeKeyFunc: RouteKeyFunc = (routePath) => this.GetRouteInstance(routePath).keyFunc;
@@ -57,7 +58,8 @@ export class DiffTree {
 
     const combinedRoutePath = JoinPaths("", routePath);
     const routeRoot = ReadPath(this.rootState, combinedRoutePath);
-    const value = ReadPath(this.Snapshot(combinedRoutePath), valuePath);
+    // Only the array's length is needed: read the one key it's under, not the whole route
+    const [value] = this.ReadValue(path);
 
     if (!value) throw new Error(`Array not found at path: ${path}`);
 
@@ -98,8 +100,8 @@ export class DiffTree {
 
     const combinedRoutePath = JoinPaths("", routePath);
     const routeRoot = this.ReadPath(combinedRoutePath);
-    const routeRootSnapshot = this.Snapshot(combinedRoutePath);
-    const value = ReadPath(routeRootSnapshot, valuePath);
+    // Only the array's length is needed: read the one key it's under, not the whole route
+    const [value] = this.ReadValue(path);
 
     if (!value) throw new Error(`Array not found at path: ${path}`);
 
@@ -171,7 +173,8 @@ export class DiffTree {
    * Runs every projection of every route instance, dependencies first. A projection is skipped
    * when no route it reads through changed since its last run, when a read's parent is missing,
    * or when every read value is the same as its last run. Outputs are written as-is to
-   * `$projection_<key>` in their route, without a diff.
+   * `$projection_<key>` in their route, without a diff; an output the same as the last one written
+   * (JsonHasChanges) isn't written, so the last one's objects stay and its readers are skipped.
    * @throws When projections depend on each other in a cycle
    */
   RunProjections() {
@@ -195,8 +198,15 @@ export class DiffTree {
           continue;
         }
       }
-      else
+      else {
         output = projection.projection(...values);
+        // An output the same as the last one written leaves that one in place, so the projections
+        // reading it see the same objects and are skipped
+        if (projection.values !== undefined && !JsonHasChanges(output, ReadPath(this.rootState, projection.output))) {
+          projection.values = values;
+          continue;
+        }
+      }
 
       WritePath(this.snapshot, this.rootState, projection.output, output, false);
       Snapshot.Register(this.snapshot, output);
@@ -210,27 +220,49 @@ export class DiffTree {
     }
   }
 
+  /**
+   * The changes since the last commit. The root is a flat record of keys, so each key's snapshot
+   * is taken and compared on its own, without building a snapshot of the whole root: a key no
+   * write touched has the same cached snapshot as the last commit, and is skipped.
+   */
   Commit() {
-    const nextSnapshot = Snapshot.Get(this.snapshot, this.rootState, this.resolver) as {[key: string]: any};
+    const committed = this.commitedSnapshot;
+    const keys = Object.keys(this.rootState);
+    // Diffed key by key into one result, ordered once at the end
+    const diff: JsonDiffResult = [];
+    // How many of the committed keys are still in the root, to tell whether any are gone
+    let kept = 0;
+    for (let x = 0; x < keys.length; x++) {
+      const key = keys[x];
+      const had = committed.has(key);
+      had && kept++;
+      const last = committed.get(key);
+      // A value with no cached snapshot was written to; one whose cached snapshot is the one
+      // committed wasn't, which a cache lookup tells without taking the snapshot
+      const value = (this.rootState as { [key: string]: any })[key];
+      if (had && (value === last || JsonType(value) !== "value" && Snapshot.Peek(this.snapshot, value) === last))
+        continue;
 
-    const currentKeys = new Set(Object.keys(this.commitedSnapshot));
-    const nextKeys = Object.keys(nextSnapshot);
+      const next = Snapshot.Child(this.snapshot, this.rootState, key, this.resolver);
+      if (had && next === last)
+        continue;
 
-    let diff: JsonDiffResult = [];
-    for (let x = 0; x < nextKeys.length; x++) {
-      currentKeys.delete(nextKeys[x]);
-      diff = JsonDiff(nextSnapshot[nextKeys[x]], this.commitedSnapshot[nextKeys[x]], nextKeys[x], diff);
+      JsonDiffInto(next, last, [key], diff);
+      committed.set(key, next);
     }
 
-    for (let key of currentKeys)
-      diff.push({
-        type: "write",
-        path: [key],
-        value: undefined
-      });
+    if (kept < committed.size)
+      for (const key of committed.keys())
+        if (!Object.hasOwn(this.rootState, key)) {
+          committed.delete(key);
+          diff.push({
+            type: "write",
+            path: [key],
+            value: undefined
+          });
+        }
 
-    this.commitedSnapshot = nextSnapshot;
-    return diff;
+    return JsonDiffOrder(diff);
   }
 
   public Snapshot(path: string) {
@@ -260,8 +292,8 @@ export class DiffTree {
   }
 
   /**
-   * Whether every route a projection's reads resolved through on its last full read still has
-   * the snapshot it read: a write anywhere under a route clears its cached snapshot, so then no
+   * Whether every source a projection's reads resolved through on its last full read still has
+   * the snapshot it read: a write anywhere under a value clears its cached snapshot, so then no
    * read can have changed. A wildcard read also needs the same route instances to exist.
    */
   private SourcesUnchanged(sources: (IReadSource | undefined)[] | undefined) {
@@ -278,10 +310,10 @@ export class DiffTree {
           return false;
 
         for (let y = 0; y < source.matches.length; y++)
-          if (Snapshot.Peek(this.snapshot, source.matches[y].state) !== source.matches[y].snapshot)
+          if (!this.SourceUnchanged(source.matches[y]))
             return false;
       }
-      else if (Snapshot.Peek(this.snapshot, source.state) !== source.snapshot)
+      else if (!this.SourceUnchanged(source))
         return false;
     }
 
@@ -289,23 +321,48 @@ export class DiffTree {
   }
 
   /**
-   * Takes a new snapshot of every source in the route a projection just wrote its output to. The
-   * write cleared that route's snapshot, but nothing the projection read changed between its read
-   * and the write, so without this the next run would read everything again for nothing.
+   * Whether a source still has the snapshot it was read with. A key's value is read from the
+   * state again, so a key written with a new value is a change too; a primitive value has no
+   * snapshot of its own and is compared as it is.
+   */
+  private SourceUnchanged(source: IRouteSource) {
+    if (source.key === undefined)
+      return Snapshot.Peek(this.snapshot, source.state) === source.snapshot;
+
+    const value = (source.state as { [key: string]: any })[source.key];
+    if (JsonType(value) === "value")
+      return value === source.snapshot;
+
+    // A value with no cached snapshot was written since, even where the key read as missing
+    const snapshot = Snapshot.Peek(this.snapshot, value);
+    return snapshot !== undefined && snapshot === source.snapshot;
+  }
+
+  /**
+   * Takes a new snapshot of every source in the route a projection just wrote its output to that
+   * the write cleared. Nothing the projection read changed between its read and the write, so
+   * without this the next run would read everything again for nothing. A source of one key keeps
+   * its snapshot unless the output is under that key.
    */
   private RefreshSources(sources: (IReadSource | undefined)[], outputRoute: string) {
     for (let x = 0; x < sources.length; x++) {
       const source = sources[x];
       const routes = source && ("matches" in source ? source.matches : [source]);
-      for (let y = 0; routes && y < routes.length; y++)
-        if (routes[y].route === outputRoute)
-          routes[y].snapshot = Snapshot.Get(this.snapshot, routes[y].state, this.resolver, ToSnapshotPath(outputRoute));
+      for (let y = 0; routes && y < routes.length; y++) {
+        const route = routes[y];
+        if (route.route !== outputRoute || this.SourceUnchanged(route))
+          continue;
+
+        route.snapshot = route.key === undefined ?
+          Snapshot.Get(this.snapshot, route.state, this.resolver, ToSnapshotPath(outputRoute)) :
+          Snapshot.Child(this.snapshot, route.state, route.key, this.resolver, ToSnapshotPath(outputRoute));
+      }
     }
   }
 
   /**
-   * Snapshots of the values at each path, read through the route's root object so keyed
-   * values resolve through their own copy.
+   * Snapshots of the values at each path, read through the route's state so keyed values resolve
+   * through their own copy.
    * @param sources Filled with what each read resolved through; a read after a missing one is left undefined
    * @param previous The sources of the last full read, so a wildcard read reuses its unchanged matches
    * @returns The values, or undefined when any of them is missing
@@ -331,16 +388,31 @@ export class DiffTree {
     return values;
   }
 
-  /** The value at a path, whether it was found, and the route it was read through, when there is one */
+  /**
+   * The value at a path, whether it was found, and the route it was read through, when there is
+   * one. A property path is read from the snapshot of its first segment alone, not of the whole
+   * route, so a write to the route's other keys neither rebuilds what it reads nor changes it.
+   */
   private ReadValue(path: string): [any, boolean, IRouteSource | undefined] {
     const [route, property] = SplitRouteAndPath(path);
     const [routeState, found] = ReadPathFound(this.rootState, route);
     if (!found || !routeState)
       return [undefined, false, undefined];
 
-    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
-    const [value, valueFound] = ReadPathFound(routeSnapshot, property);
-    return [value, valueFound, { route, state: routeState, snapshot: routeSnapshot }];
+    if (property === "") {
+      const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
+      return [routeSnapshot, !!routeSnapshot, { route, state: routeState, snapshot: routeSnapshot }];
+    }
+
+    const dot = property.indexOf(PROP_DELIMETER);
+    const key = dot < 0 ? property : property.slice(0, dot);
+    const keySnapshot = Snapshot.Child(this.snapshot, routeState, key, this.resolver, ToSnapshotPath(route));
+    const source = { route, state: routeState, key, snapshot: keySnapshot };
+    if (dot < 0)
+      return [keySnapshot, true, source];
+
+    const [value, valueFound] = ReadPathFound(keySnapshot, property.slice(dot + 1));
+    return [value, valueFound, source];
   }
 
   /**
@@ -351,7 +423,7 @@ export class DiffTree {
   private ReadWildcard(path: string, previous: IWildcardSource | undefined): IWildcardSource {
     if (previous && previous.version === this.routeVersion) {
       const matches = previous.matches.map(match =>
-        Snapshot.Peek(this.snapshot, match.state) === match.snapshot ? match : this.ReadMatch(match.segment, match.path));
+        this.SourceUnchanged(match) ? match : this.ReadMatch(match.segment, match.path));
       return { version: this.routeVersion, matches };
     }
 
@@ -440,7 +512,8 @@ function RunKeyed(projection: IProjection, state: IKeyedState, record: any) {
 
     const value = record[key];
     const last = state.entries.get(key);
-    const entry = last && last.value === value ? last : { value, output: projection.projection(value, key) };
+    const entry = last && last.value === value ? last : { value, output: KeptOutput(projection.projection(value, key), last) };
+
     entries.set(key, entry);
     changed ||= entry !== last && entry.output !== last?.output;
     if (entry.output !== undefined)
@@ -454,6 +527,11 @@ function RunKeyed(projection: IProjection, state: IKeyedState, record: any) {
 
   state.entries = entries;
   return changed ? output : UNCHANGED;
+}
+
+/** A key's new output, or its last one when the two are the same, so the last one's objects are kept */
+function KeptOutput(output: any, last: { output: any } | undefined) {
+  return last && !JsonHasChanges(output, last.output) ? last.output : output;
 }
 
 /** Sets a key as an own property, even `__proto__`, which plain assignment would make the prototype */

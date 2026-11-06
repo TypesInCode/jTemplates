@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { JsonApplyDiff, JsonDiff, JsonWrite } from "../../src/Utils/json";
+import { JsonApplyDiff, JsonDiff, JsonDiffInto, JsonDiffOrder, JsonDiffResult, JsonHasChanges, JsonMove, JsonWrite } from "../../src/Utils/json";
 
 // Computing a diff doesn't take ownership of its inputs: a record references the new value.
 describe("JsonDiff record ownership", () => {
@@ -137,5 +137,120 @@ describe("JsonApplyDiff moving", () => {
     expect(diff2.some(diff => diff.type === "move"));
     JsonApplyDiff(destination, diff2);
     expect(source2).toEqual(destination);
+  });
+});
+
+describe("JsonHasChanges", () => {
+  it("finds no change between equal values, shared or not", () => {
+    const shared = { x: [1, 2, { y: "a" }] };
+    expect(JsonHasChanges(shared, shared)).toBe(false);
+    expect(JsonHasChanges({ a: 1, b: [1, { c: null }] }, { b: [1, { c: null }], a: 1 })).toBe(false);
+    expect(JsonHasChanges([], [])).toBe(false);
+    expect(JsonHasChanges("a", "a")).toBe(false);
+    expect(JsonHasChanges(undefined, undefined)).toBe(false);
+  });
+
+  it("finds a change of value, type, length or keys", () => {
+    expect(JsonHasChanges({ a: { b: 1 } }, { a: { b: 2 } })).toBe(true);
+    expect(JsonHasChanges({ a: [1] }, { a: { 0: 1 } })).toBe(true);
+    expect(JsonHasChanges([1, 2], [1, 2, 3])).toBe(true);
+    expect(JsonHasChanges([2, 1], [1, 2])).toBe(true);
+    expect(JsonHasChanges({ a: 1 }, { a: 1, b: 2 })).toBe(true);
+    expect(JsonHasChanges({ a: 1, b: 2 }, { a: 1 })).toBe(true);
+    expect(JsonHasChanges({ a: 1 }, { b: 1 })).toBe(true);
+    expect(JsonHasChanges(null, {})).toBe(true);
+  });
+
+  it("counts an undefined property as absent", () => {
+    expect(JsonHasChanges({ a: 1, b: undefined }, { a: 1 })).toBe(false);
+    expect(JsonHasChanges({ a: 1 }, { a: 1, b: undefined })).toBe(false);
+    expect(JsonHasChanges({ a: undefined }, { b: undefined })).toBe(false);
+    expect(JsonHasChanges({ b: undefined }, { b: 1 })).toBe(true);
+  });
+
+  it("doesn't read a key the old value only inherits", () => {
+    expect(JsonHasChanges({ constructor: Object }, {})).toBe(true);
+  });
+
+  it("stops at the first change", () => {
+    let reads = 0;
+    const tail = new Proxy({}, { ownKeys: () => (reads++, []) });
+    expect(JsonHasChanges([1, tail], [2, {}])).toBe(true);
+    expect(reads).toBe(0);
+  });
+});
+
+describe("JsonDiff moves in long arrays", () => {
+  /** The moves the diff made with `indexOf` for every array: each old element's first index in the new array */
+  function indexOfMoves(newValue: unknown[], oldValue: unknown[]) {
+    let start = 0;
+    for (; start < newValue.length && start < oldValue.length && newValue[start] === oldValue[start]; start++) { }
+    const moves: [number, number][] = [];
+    for (let x = start; x < oldValue.length; x++) {
+      const index = newValue.indexOf(oldValue[x], start);
+      if (index >= 0 && index !== x) moves.push([x, index]);
+    }
+    return moves;
+  }
+
+  const movesOf = (diff: ReturnType<typeof JsonDiff>) =>
+    diff.filter((d): d is JsonMove => d.type === "move").map((d) => [d.sourceProp, d.targetProp]);
+
+  it("moves each element as indexOf would find it, repeated and missing values included", () => {
+    const rows = Array.from({ length: 200 }, (_, x) => ({ x }));
+    const oldValue: unknown[] = [...rows, "a", "b", "a", 1, 1, NaN, rows[3]];
+    const newValue: unknown[] = [{ x: -1 }, "a", ...rows.slice(0, 100).reverse(), NaN, 1, "b", ...rows.slice(150), "a", rows[3]];
+
+    const diff = JsonDiff(newValue, oldValue);
+    expect(movesOf(diff)).toEqual(indexOfMoves(newValue, oldValue));
+
+    const destination = structuredClone(oldValue);
+    JsonApplyDiff(destination, diff);
+    expect(destination).toEqual(newValue);
+  });
+
+  it("diffs only the changed middle of an array of the same length", () => {
+    const rows = Array.from({ length: 1000 }, (_, x) => ({ x }));
+    const changed = rows.slice();
+    changed[500] = { x: -1 };
+    expect(JsonDiff(changed, rows)).toEqual([{ type: "write", path: [500, "x"], value: -1 }]);
+
+    const swapped = rows.slice();
+    [swapped[100], swapped[900]] = [rows[900], rows[100]];
+    const diff = JsonDiff(swapped, rows);
+    expect(movesOf(diff)).toEqual([[100, 900], [900, 100]]);
+    const destination = structuredClone(rows);
+    JsonApplyDiff(destination, diff);
+    expect(destination).toEqual(swapped);
+  });
+
+  it("moves every element of a long array an insert at the start shifts", () => {
+    const rows = Array.from({ length: 5000 }, (_, x) => ({ x }));
+    const diff = JsonDiff([{ x: -1 }, ...rows], rows);
+
+    expect(movesOf(diff)).toEqual(rows.map((_, x) => [x, x + 1]));
+    const destination = structuredClone(rows);
+    JsonApplyDiff(destination, diff);
+    expect(destination).toEqual([{ x: -1 }, ...rows]);
+  });
+});
+
+describe("JsonDiffInto and JsonDiffOrder", () => {
+  it("diff several values into one result, then order it moves first, each in the order found", () => {
+    const a = { x: 1 };
+    const b = { x: 2 };
+    const result: JsonDiffResult = [];
+    JsonDiffInto({ n: 2 }, { n: 1 }, ["first"], result);
+    JsonDiffInto([b, a], [a, b], ["second"], result);
+    JsonDiffInto("v", undefined, ["third"], result);
+    expect(result.map((r) => r.type)).toEqual(["write", "move", "move", "write"]);
+
+    expect(JsonDiffOrder(result)).toBe(result);
+    expect(result).toEqual([
+      { type: "move", path: ["second"], sourceProp: 0, targetProp: 1 },
+      { type: "move", path: ["second"], sourceProp: 1, targetProp: 0 },
+      { type: "write", path: ["first", "n"], value: 2 },
+      { type: "write", path: ["third"], value: "v" },
+    ]);
   });
 });

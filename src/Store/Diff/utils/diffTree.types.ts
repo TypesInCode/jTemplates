@@ -41,8 +41,12 @@ export type IKeyedState = {
   routeState: boolean
 };
 
-/** A route a read resolved through on its last full read: its path, raw state and the snapshot read from it */
-export type IRouteSource = { route: string, state: object, snapshot: any };
+/**
+ * A route a read resolved through on its last full read: its path, raw state and the snapshot read
+ * from it. A read of a property path reads only the route state's `key`, the path's first segment,
+ * and `snapshot` is that key's; a read of the whole route has no `key`, and `snapshot` is the route's.
+ */
+export type IRouteSource = { route: string, state: object, key?: string, snapshot: any };
 
 /** A route a wildcard read matched: the segment, the path read in it, and what was read */
 export type IWildcardMatch = IRouteSource & { segment: string, path: string, value: any, found: boolean };

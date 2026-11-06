@@ -156,7 +156,9 @@ function NodeValueSet(obj: any, prop: string | number, added: boolean, wrapper =
   if (!wrapper)
     return;
 
-  const propScopeExists = !!prop && Object.hasOwn(wrapper, prop);
+  // An array's wrapper is an array with no property scopes: its own `length` isn't one, and a
+  // diff that only shrinks an array writes nothing but `length`
+  const propScopeExists = !!prop && !wrapper[ARRAY_SCOPE] && Object.hasOwn(wrapper, prop);
   if (!prop || added || !propScopeExists)
     ObservableScope.Update(wrapper[ARRAY_SCOPE] ?? wrapper[OBJECT_SCOPE])
 

@@ -156,6 +156,28 @@ export namespace Snapshot {
   }
 
   /**
+   * The snapshot of one property of a raw value, as the value's own snapshot would hold it:
+   * cached, keyed children read through their root, and linked to the value so a write to the
+   * property invalidates the value's snapshot. Reads one property without building a snapshot of
+   * the whole value.
+   * @param state The snapshot cache to read from and populate.
+   * @param parent The raw value the property is on.
+   * @param key The property.
+   * @param resolve Resolver for keyed children; defaults to the state's resolver.
+   * @param path The parent's own path.
+   * @returns The property's snapshot.
+   */
+  export function Child(
+    state: ISnapshotState,
+    parent: any,
+    key: string | number,
+    resolve: SnapshotResolver | undefined = state.resolve,
+    path: SnapshotPath = []
+  ): any {
+    return ChildSnapshot(state, resolve, parent, key, path.slice());
+  }
+
+  /**
    * Invalidates the cached snapshot of a raw value that was just written to, along with
    * every cached ancestor that embedded it.
    * @param state The snapshot cache to invalidate.

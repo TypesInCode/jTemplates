@@ -62,6 +62,15 @@ describe("Observable Node", () => {
         expect(proxy.child.test).to.eq("changed");
     });
 
+    it('ApplyDiff - a length write that shrinks an array updates a scope over the array', () => {
+        const proxy = ObservableNode.Create({ rows: ["a", "b", "c"] });
+        const scope = ObservableScope.Create(() => proxy.rows.map((r: string) => r));
+        expect(ObservableScope.Value(scope)).to.deep.eq(["a", "b", "c"]);
+
+        ObservableNode.ApplyDiff(proxy, [{ type: "write", path: ["rows", "length"], value: 2 }]);
+        expect(ObservableScope.Value(scope)).to.deep.eq(["a", "b"]);
+    });
+
     it('Apply - Basic Object Update', () => {
         const proxy = ObservableNode.Create({ test: "value" });
         ObservableNode.Apply(proxy, { test: "changed" });

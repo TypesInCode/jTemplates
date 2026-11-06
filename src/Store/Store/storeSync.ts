@@ -71,7 +71,7 @@ export class StoreSync extends Store {
    * @throws Will throw an error if the value to be patched is undefined.
    */
   Patch(key: string, patch: unknown) {
-    if (!this.Has(key))
+    if (!this.HasRootOf(key))
       throw "Key not found in store";
 
     this.diff.PatchPath(key, patch);
@@ -84,7 +84,7 @@ export class StoreSync extends Store {
    * @param data The data items to be pushed into the array.
    */
   Push(key: string, ...data: unknown[]) {
-    if (!this.Has(key))
+    if (!this.HasRootOf(key))
       throw "Key not found in store";
 
     this.diff.PushPath(key, data);
@@ -105,7 +105,7 @@ export class StoreSync extends Store {
     deleteCount?: number,
     ...items: unknown[]
   ) {
-    if (!this.Has(key))
+    if (!this.HasRootOf(key))
       throw "Key not found in store";
 
     this.diff.SplicePath(key, start, deleteCount ?? Infinity, items);

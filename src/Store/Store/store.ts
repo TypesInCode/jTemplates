@@ -73,6 +73,15 @@ export abstract class ReadStore {
   }
 
   /**
+   * Whether the store holds the root a path is in: its key, before the first `.`. Push, Splice
+   * and Patch take a path into a root, e.g. `rows.t_1`.
+   * @param path The path, e.g. `user.items`.
+   */
+  protected HasRootOf(path: string): boolean {
+    return this.Has(RootOf(path));
+  }
+
+  /**
    * Updates the root map with diff results by grouping changes by root path.
    * @param results - Array of diff results to apply
    * @protected
@@ -132,4 +141,10 @@ export abstract class Store extends ReadStore {
   abstract Patch(key: string, patch: unknown): Promise<void> | void;
   abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
   abstract Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<void> | void;
+}
+
+/** The root key a path is in: its text before the first `.` */
+export function RootOf(path: string) {
+  const dot = path.indexOf(".");
+  return dot < 0 ? path : path.slice(0, dot);
 }
