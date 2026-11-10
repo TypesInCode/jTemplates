@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { JsonApplyDiff, JsonApplySplices, JsonDiff, JsonDiffInto, JsonDiffResult, JsonHasChanges, JsonWrite, SPLICE_ACTION } from "../../src/Utils/json";
+import { JsonApplyDiff, JsonApplySplices, JsonDiff, JsonDiffInto, JsonDiffResult, JsonHasChanges, JsonMaintainUnchanged, JsonWrite, SPLICE_ACTION } from "../../src/Utils/json";
 
 // Computing a diff doesn't take ownership of its inputs: a record references the new value.
 describe("JsonDiff record ownership", () => {
@@ -490,5 +490,71 @@ describe("JsonDiffInto", () => {
       { type: "write", path: ["second", 1], value: 1 },
       { type: "write", path: ["third"], value: "v" },
     ]);
+  });
+});
+
+describe("JsonMaintainUnchanged", () => {
+  it("returns the old value when nothing changed", () => {
+    const oldValue = { a: { x: [1, 2] }, b: "s" };
+    expect(JsonMaintainUnchanged({ a: { x: [1, 2] }, b: "s" }, oldValue)).toBe(oldValue);
+    expect(JsonMaintainUnchanged([{ a: 1 }], [{ a: 1 }])).toEqual([{ a: 1 }]);
+  });
+
+  it("keeps the old value's unchanged parts in a copy of the new value, changing neither", () => {
+    const oldValue = { a: { x: 1 }, b: { y: 1 }, list: [{ n: 1 }, { n: 2 }] };
+    const newValue = { a: { x: 1 }, b: { y: 2 }, list: [{ n: 1 }, { n: 3 }] };
+    const oldCopy = structuredClone(oldValue);
+    const newCopy = structuredClone(newValue);
+    const result = JsonMaintainUnchanged(newValue, oldValue);
+
+    expect(result).toEqual(newCopy);
+    expect(result).not.toBe(newValue);
+    expect(result.a).toBe(oldValue.a);
+    expect(result.b).toBe(newValue.b);
+    expect(result.list).not.toBe(newValue.list);
+    expect(result.list[0]).toBe(oldValue.list[0]);
+    expect(result.list[1]).toBe(newValue.list[1]);
+    expect(oldValue).toEqual(oldCopy);
+    expect(newValue).toEqual(newCopy);
+    expect(newValue.a).not.toBe(oldValue.a);
+  });
+
+  it("returns the new value itself when none of its parts are kept", () => {
+    const newValue = { a: { x: 2 } };
+    expect(JsonMaintainUnchanged(newValue, { a: { x: 1 } })).toBe(newValue);
+    expect(JsonMaintainUnchanged(newValue, [1])).toBe(newValue);
+    expect(JsonMaintainUnchanged(newValue, undefined)).toBe(newValue);
+  });
+
+  it("compares arrays by position, keeping unchanged elements when the length changes", () => {
+    const oldValue = [{ n: 1 }, { n: 2 }];
+    const grown = JsonMaintainUnchanged([{ n: 1 }, { n: 2 }, { n: 3 }], oldValue);
+    expect(grown).toEqual([{ n: 1 }, { n: 2 }, { n: 3 }]);
+    expect(grown).not.toBe(oldValue);
+    expect(grown[0]).toBe(oldValue[0]);
+    expect(grown[1]).toBe(oldValue[1]);
+
+    const shrunk = JsonMaintainUnchanged([{ n: 1 }], oldValue);
+    expect(shrunk).toEqual([{ n: 1 }]);
+    expect(shrunk).not.toBe(oldValue);
+    expect(shrunk[0]).toBe(oldValue[0]);
+  });
+
+  it("treats an undefined property as absent, as JsonHasChanges does", () => {
+    const oldValue = { a: 1 };
+    expect(JsonMaintainUnchanged({ a: 1, b: undefined }, oldValue)).toBe(oldValue);
+
+    const withB = { a: 1, b: 2 };
+    expect(JsonMaintainUnchanged({ a: 1, b: undefined }, withB)).not.toBe(withB);
+    expect(JsonMaintainUnchanged({ a: 1 }, { a: 1, b: 2 })).toEqual({ a: 1 });
+  });
+
+  it("keeps an own __proto__ key as a property", () => {
+    const oldValue = JSON.parse('{"__proto__": {"v": 1}, "x": 1}');
+    const result = JsonMaintainUnchanged(JSON.parse('{"__proto__": {"v": 1}, "x": 2}'), oldValue);
+
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyDescriptor(result, "__proto__")!.value).toBe(Object.getOwnPropertyDescriptor(oldValue, "__proto__")!.value);
+    expect(result.x).toBe(2);
   });
 });

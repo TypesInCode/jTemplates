@@ -65,9 +65,10 @@ export type JsonDiffStrategyFunc = (newValue: any, oldValue: any, path: readonly
 
 /**
  * What a spliced array's element is compared by: two elements whose identities are === are the same
- * element, so it's matched and never diffed into. It's called for every element, primitives
- * included. When two different elements share an identity, they're treated as the same element;
- * avoiding that is up to the function.
+ * element, so it's matched and never diffed into. It's called for elements of any type, primitives
+ * included, but not to compare two elements that are already ===, so it must give the same identity
+ * for the same value. When two different elements share an identity, they're treated as the same
+ * element; avoiding that is up to the function.
  */
 export type JsonDiffIdentityFunc = (value: any) => unknown;
 
@@ -233,16 +234,12 @@ export function JsonApplyDiff(
     if (path.length === 0 && record.type !== "splice")
       throw new Error("Unable to replace the root of a diff: apply it to an object holding the root");
 
-    if (record.type === "write") {
+    if (record.type !== "splice") {
       const parent = Walk(walked, path, path.length - 1);
-      assign(parent, path[path.length - 1], clone(record.value));
-      // The value at the path was replaced, so anything walked through it is gone
-      walked.length > path.length && (walked.length = path.length);
-    }
-    else if (record.type === "delete") {
-      const parent = Walk(walked, path, path.length - 1);
-      remove(parent, path[path.length - 1]);
-      walked.length > path.length && (walked.length = path.length);
+      const prop = path[path.length - 1];
+      record.type === "write" ? assign(parent, prop, clone(record.value)) : remove(parent, prop);
+      // The value at the path was replaced or removed, so anything walked through it is gone
+      walked.length = Math.min(walked.length, path.length);
     }
     else {
       const array = Walk(walked, path, path.length);
@@ -251,7 +248,7 @@ export function JsonApplyDiff(
 
       JsonApplySplices(array, record.splices, clone);
       // The array is the same object, but its elements moved
-      walked.length > path.length + 1 && (walked.length = path.length + 1);
+      walked.length = Math.min(walked.length, path.length + 1);
       spliced?.(array);
     }
   }
@@ -307,7 +304,7 @@ export function JsonApplySplices(array: unknown[], splices: readonly JsonSplice[
   if (splices.length === 0)
     return;
 
-  const original = array.slice();
+  // `array` isn't changed until the end, so it's read as the original throughout
   const result: unknown[] = [];
   // The next old element to copy. The array as the splices so far left it is `result`, then the old
   // elements from `read` on.
@@ -319,18 +316,18 @@ export function JsonApplySplices(array: unknown[], splices: readonly JsonSplice[
 
     // Copy the old elements up to the splice; an index past the end splices at the end, as
     // Array.prototype.splice does
-    for (; result.length < splice.index && read < original.length; read++)
-      result.push(original[read]);
+    for (; result.length < splice.index && read < array.length; read++)
+      result.push(array[read]);
 
-    read = Math.min(read + splice.delete, original.length);
+    read = Math.min(read + splice.delete, array.length);
     for (let y = 0; y < splice.insert.length; y++) {
       const item = splice.insert[y];
-      result.push(item.type === SPLICE_ACTION.MOVE ? original[item.from] : clone(item.value));
+      result.push(item.type === SPLICE_ACTION.MOVE ? array[item.from] : clone(item.value));
     }
   }
 
-  for (; read < original.length; read++)
-    result.push(original[read]);
+  for (; read < array.length; read++)
+    result.push(array[read]);
 
   ReplaceArrayContents(array, result);
 }
@@ -387,6 +384,91 @@ export function JsonHasChanges(newValue: unknown, oldValue: unknown): boolean {
     default:
       return true;
   }
+}
+
+/**
+ * `newValue`, with every part that has no changes from the same place in `oldValue` (as
+ * JsonHasChanges compares them) replaced by `oldValue`'s object, so unchanged parts keep their
+ * identity. Neither value is changed: a container of `newValue` is copied only when one of its
+ * children is replaced, and kept as it is otherwise. Arrays are compared by position.
+ *
+ *   old: { a: { x: 1 }, b: { y: 1 } }
+ *   new: { a: { x: 1 }, b: { y: 2 } }
+ *   result: { a: old.a, b: new.b }, a new object
+ *
+ * @param newValue - The new value
+ * @param oldValue - The value whose objects are kept where nothing changed
+ * @returns `oldValue` itself when nothing changed, otherwise `newValue` or a copy of it holding
+ *   `oldValue`'s unchanged parts
+ */
+export function JsonMaintainUnchanged<T>(newValue: T, oldValue: unknown): T {
+  if (newValue === oldValue) return newValue;
+
+  const type = JsonType(newValue);
+  if (type !== JsonType(oldValue)) return newValue;
+
+  switch (type) {
+    case "array": {
+      const newArray = newValue as unknown[];
+      const oldArray = oldValue as unknown[];
+      let copy: unknown[] | undefined;
+      let unchanged = newArray.length === oldArray.length;
+      for (let x = 0; x < newArray.length; x++) {
+        const value = x < oldArray.length ? JsonMaintainUnchanged(newArray[x], oldArray[x]) : newArray[x];
+        unchanged &&= value === oldArray[x];
+        if (value !== newArray[x])
+          (copy ??= newArray.slice())[x] = value;
+      }
+
+      return unchanged ? oldValue as T : (copy ?? newValue) as T;
+    }
+    case "object": {
+      const newObject = newValue as { [key: string]: unknown };
+      const oldObject = oldValue as { [key: string]: unknown };
+      const newKeys = Object.keys(newObject);
+      let copy: { [key: string]: unknown } | undefined;
+      let unchanged = true;
+      let defined = 0;
+      for (let x = 0; x < newKeys.length; x++) {
+        const key = newKeys[x];
+        const newProp = newObject[key];
+        if (newProp === undefined) continue;
+
+        defined++;
+        if (!Object.hasOwn(oldObject, key)) {
+          unchanged = false;
+          continue;
+        }
+
+        const value = JsonMaintainUnchanged(newProp, oldObject[key]);
+        unchanged &&= value === oldObject[key];
+        if (value !== newProp)
+          SetOwnProperty(copy ??= { ...newObject }, key, value);
+      }
+
+      // Every defined key of the new value matched, so the old one is kept unless it defines more
+      if (unchanged) {
+        const oldKeys = Object.keys(oldObject);
+        let oldDefined = 0;
+        for (let x = 0; x < oldKeys.length && oldDefined <= defined; x++)
+          if (oldObject[oldKeys[x]] !== undefined) oldDefined++;
+
+        if (oldDefined === defined) return oldValue as T;
+      }
+
+      return (copy ?? newValue) as T;
+    }
+    default:
+      return newValue;
+  }
+}
+
+/** Sets a key as an own property, even `__proto__`, which plain assignment would make the prototype */
+export function SetOwnProperty(target: { [key: string]: unknown }, key: string, value: unknown) {
+  if (key === "__proto__")
+    Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+  else
+    target[key] = value;
 }
 
 /**
@@ -516,15 +598,15 @@ function JsonDiffRecursive(
  *   splice(3, 1, X)   [A, E, B, X, D, E, F]
  *   splice(5, 1)      [A, E, B, X, D, F]
  *
- * @param identity - What elements are compared by, called once for every element. See
- *   JsonDiffIdentityFunc
+ * @param identity - What elements are compared by; see JsonDiffIdentityFunc. Elements that are
+ *   === are the same element without calling it, and it's called at most a few times for each
+ *   other element, so it must give the same identity for the same value.
  */
 export function JsonDiffArraySplice(newValue: readonly unknown[], oldValue: readonly unknown[], identity: JsonDiffIdentityFunc = JsonDiffDefaultIdentity): JsonSplice[] {
   const newLength = newValue.length;
   const oldLength = oldValue.length;
   // Every comparison below is between identities. Inserted values are still read from newValue.
-  const newIds = identity === JsonDiffDefaultIdentity ? newValue : newValue.map(identity);
-  const oldIds = identity === JsonDiffDefaultIdentity ? oldValue : oldValue.map(identity);
+  const same = (a: unknown, b: unknown) => a === b || identity(a) === identity(b);
 
   // Stage 1: trim the elements with the same identity at the start and end. An append, a delete or a single
   // replaced element leaves little or nothing in the middle, so the stages after this cost little.
@@ -535,14 +617,14 @@ export function JsonDiffArraySplice(newValue: readonly unknown[], oldValue: read
   //   middle new (indexes 1-4): [E, B, X, D]
   const shared = Math.min(newLength, oldLength);
   let start = 0;
-  for (; start < shared && newIds[start] === oldIds[start]; start++) { }
+  for (; start < shared && same(newValue[start], oldValue[start]); start++) { }
 
   if (start === newLength && start === oldLength)
     return [];
 
   let newEnd = newLength;
   let oldEnd = oldLength;
-  for (; newEnd > start && oldEnd > start && newIds[newEnd - 1] === oldIds[oldEnd - 1]; newEnd--, oldEnd--) { }
+  for (; newEnd > start && oldEnd > start && same(newValue[newEnd - 1], oldValue[oldEnd - 1]); newEnd--, oldEnd--) { }
 
   // Stage 2: match each new element in the middle to an old index holding an element with the same
   // identity.
@@ -555,8 +637,9 @@ export function JsonDiffArraySplice(newValue: readonly unknown[], oldValue: read
   //   oldIndexes: B → [1], C → [2], D → [3], E → [4]
   const oldIndexes = new Map<unknown, number[]>();
   for (let x = oldEnd - 1; x >= start; x--) {
-    const indexes = oldIndexes.get(oldIds[x]);
-    indexes ? indexes.push(x) : oldIndexes.set(oldIds[x], [x]);
+    const id = identity(oldValue[x]);
+    const indexes = oldIndexes.get(id);
+    indexes ? indexes.push(x) : oldIndexes.set(id, [x]);
   }
 
   // matched[x] is the old index the new element at start + x matched, or -1 when it has none.
@@ -566,7 +649,7 @@ export function JsonDiffArraySplice(newValue: readonly unknown[], oldValue: read
   const middle = newEnd - start;
   const matched = new Int32Array(middle);
   for (let x = 0; x < middle; x++)
-    matched[x] = oldIndexes.get(newIds[start + x])?.pop() ?? -1;
+    matched[x] = oldIndexes.get(identity(newValue[start + x]))?.pop() ?? -1;
 
   // Stage 3: choose which matched elements stay in place. They're the longest run whose old
   // indexes increase from left to right, because only those can keep their order without moving.
@@ -714,7 +797,8 @@ function JsonDiffArrays(
     for (; end > start && newValue[end - 1] === oldValue[end - 1]; end--) { }
 
   for (let x = start; x < end; x++)
-    JsonDiffRecursive(path.concat(x), newValue[x], oldValue[x], resp, options);
+    // Checked before the path is built: most elements of a diffed array are often unchanged
+    newValue[x] !== oldValue[x] && JsonDiffRecursive(path.concat(x), newValue[x], oldValue[x], resp, options);
 
   if (!sameLength)
     resp.push({
@@ -767,7 +851,8 @@ function JsonDiffObjects(
       oldKeyIndex++;
     }
     else {
-      JsonDiffRecursive(path.concat(newKey), newValue[newKey], oldValue[oldKey], resp, options);
+      // Checked before the path is built: most properties of a diffed object are often unchanged
+      newValue[newKey] !== oldValue[oldKey] && JsonDiffRecursive(path.concat(newKey), newValue[newKey], oldValue[oldKey], resp, options);
       newKeyIndex++;
       oldKeyIndex++;
     }

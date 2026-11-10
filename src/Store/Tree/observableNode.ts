@@ -141,9 +141,7 @@ function GetPropertyScope(object: ObservableNodeWrapper, prop: string) {
 }
 
 function SetObjectValue(object: ObservableNodeWrapper, prop: string, value: any) {
-  const propExists = Object.hasOwn(object[NODE_VALUE], prop);
-  object[NODE_VALUE][prop] = value;
-  NodeValueSet(object[NODE_VALUE], prop, !propExists, object);
+  AssignNodeValue(object[NODE_VALUE], prop, value, object);
 }
 
 function SetArrayValue(object: ObservableNodeWrapper, prop: string | number, value: any) {
@@ -177,21 +175,17 @@ function SplicedNodeValue(array: unknown[]) {
   NodeValueSet(array, "", false);
 }
 
-function AssignNodeValue(obj: any, prop: string | number, value: any) {
+/** A property assigned: the object's scope updates when it's new, and the property's does */
+function AssignNodeValue(obj: any, prop: string | number, value: any, wrapper?: ObservableNodeWrapper) {
   const added = !Object.hasOwn(obj, prop);
   obj[prop] = value;
-
-  NodeValueSet(obj, prop, added);
+  NodeValueSet(obj, prop, added, wrapper);
 }
 
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
   // Keyed children are read through their root. Every factory shares the module-level
   // snapshotState, matching wrapperCache; only the resolver differs per factory.
-  // The alias ignores paths, so the root is snapshotted at the child's own path
-  const resolveSnapshot: SnapshotResolver | undefined = alias && function (child, path) {
-    const value = alias(child, false);
-    return value === undefined ? undefined : { value, path: path.slice() };
-  };
+  const resolveSnapshot: SnapshotResolver | undefined = alias && (child => alias(child, false));
 
   function CreateSnapshot(value: any): any {
     return Snapshot.Get(snapshotState, value, resolveSnapshot);

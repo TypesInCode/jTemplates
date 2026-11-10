@@ -173,8 +173,17 @@ describe("JsonDiffArraySplice identity", () => {
     const seen: unknown[] = [];
     const splices = JsonDiffArraySplice(["k", 1], [{ id: "k" }, 1], (value) => (seen.push(value), byId(value)));
 
-    expect(seen).toEqual(expect.arrayContaining(["k", 1, { id: "k" }]));
+    expect(seen).toEqual(expect.arrayContaining(["k", { id: "k" }]));
     expect(splices).toEqual([]);
+  });
+
+  it("isn't called to compare elements that are already ===", () => {
+    const shared = { id: 1 };
+    const seen: unknown[] = [];
+    JsonDiffArraySplice([shared, 1, { id: 2 }], [shared, 1, { id: 3 }], (value) => (seen.push(value), byId(value)));
+
+    expect(seen).not.toContain(shared);
+    expect(seen).not.toContain(1);
   });
 
   it("matches by === with the default identity", () => {

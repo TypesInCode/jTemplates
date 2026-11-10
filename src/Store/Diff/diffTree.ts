@@ -1,7 +1,7 @@
-import { JsonDiffIdentityFunc, JsonDiffInto, JsonDiffResult, JsonDiffStrategyFunc, JsonHasChanges, JsonMerge, JsonType } from '../../Utils/json';
+import { JsonDiffIdentityFunc, JsonDiffInto, JsonDiffResult, JsonDiffStrategyFunc, JsonMaintainUnchanged, JsonMerge, JsonType, SetOwnProperty } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IKeyedProjectionDefinition, IKeyedState, IProjection, IProjectionDefinition, IReadSource, IRoute, IRouteDefinition, IRouteDefinitions, IRouteSource, IWildcardMatch, IWildcardSource } from './utils/diffTree.types';
-import { ApplyValueToPath, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, PROP_DELIMETER, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SpliceValueAtPath, SplitRouteAndPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
+import { ApplyValueToPath, DeleteRouteState, ExpandWildcardPath, IsPathWithin, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, PROP_DELIMETER, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SpliceValueAtPath, SplitRouteAndPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
@@ -12,7 +12,6 @@ export class DiffTree {
   // Definitions are fixed and instances are never removed, so a route path always finds the same instance
   private routeCache = new Map<string, IRoute>();
   private routeKeyFunc: RouteKeyFunc = (routePath) => this.GetRouteInstance(routePath).keyFunc;
-  // Slots hold their homes' objects, so a snapshot reads keyed values as it finds them: no resolver
   private snapshot = Snapshot.Create();
   // Every projection of every route instance, dependencies first; rebuilt when an instance may have been created
   private projectionOrder: IProjection[] | undefined;
@@ -37,9 +36,7 @@ export class DiffTree {
 
   WritePath(path: string, value: any) {
     const [routePath, propertyPath] = SplitRouteAndPath(path);
-    if (propertyPath.startsWith(PROJECTION_PREFIX))
-      throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
-
+    AssertWritable(propertyPath);
     this.GetRouteInstance(routePath);
     // Keyed entities are local to the route written to; a key starting with "/" is a route path from the root
     ApplyValueToPath(this.snapshot, this.rootState, this.routeKeyFunc, routePath, path, value);
@@ -52,12 +49,8 @@ export class DiffTree {
   }
 
   public PushPath(path: string, items: unknown[]) {
-    if (SplitRouteAndPath(path)[1].startsWith(PROJECTION_PREFIX))
-      throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
-
-    const array = ReadPath(this.rootState, path);
-    // A missing array throws in SpliceValueAtPath
-    SpliceValueAtPath(this.snapshot, this.rootState, this.routeKeyFunc, path, Array.isArray(array) ? array.length : 0, 0, items);
+    // A start past the end appends
+    this.Splice(path, Infinity, 0, items);
   }
 
   public SplicePath(
@@ -66,9 +59,12 @@ export class DiffTree {
     deleteCount: number,
     items: any[]
   ) {
-    if (SplitRouteAndPath(path)[1].startsWith(PROJECTION_PREFIX))
-      throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
+    this.Splice(path, start, deleteCount, items);
+  }
 
+  // Shared by PushPath and SplicePath, which a DiffTreeWriter guards separately
+  private Splice(path: string, start: number, deleteCount: number, items: readonly unknown[]) {
+    AssertWritable(SplitRouteAndPath(path)[1]);
     SpliceValueAtPath(this.snapshot, this.rootState, this.routeKeyFunc, path, start, deleteCount, items);
   }
 
@@ -106,9 +102,12 @@ export class DiffTree {
   /**
    * Runs every projection of every route instance, dependencies first. A projection is skipped
    * when no route it reads through changed since its last run, when a read's parent is missing,
-   * or when every read value is the same as its last run. Outputs are written as-is to
-   * `$projection_<key>` in their route, without a diff; an output the same as the last one written
-   * (JsonHasChanges) isn't written, so the last one's objects stay and its readers are skipped.
+   * or when every read value is the same as its last run. Outputs are written to
+   * `$projection_<key>` in their route without a diff, and are their own snapshots, so they're
+   * never changed in place. Instead, each part of an output with no changes from the last one
+   * written is replaced by the last one's object (JsonMaintainUnchanged): unchanged parts keep
+   * their identity, so the projections and readers using them are skipped and `Commit` passes
+   * over them. An output with no changes at all isn't written.
    * @throws When projections depend on each other in a cycle
    */
   RunProjections() {
@@ -133,20 +132,24 @@ export class DiffTree {
         }
       }
       else {
-        output = projection.projection(...values);
-        // An output the same as the last one written leaves that one in place, so the projections
-        // reading it see the same objects and are skipped
-        if (projection.values !== undefined && !JsonHasChanges(output, ReadPath(this.rootState, projection.output))) {
+        const last = ReadPath(this.rootState, projection.output);
+        // The last output is its own snapshot, so it's never changed and its parts can be shared
+        output = JsonMaintainUnchanged(projection.projection(...values), last);
+        // An output with no changes leaves the last one in place, so the projections reading it
+        // see the same objects and are skipped
+        if (projection.values !== undefined && output === last) {
           projection.values = values;
           continue;
         }
       }
 
-      WritePath(this.snapshot, this.rootState, projection.output, output, false);
+      WritePath(this.snapshot, this.rootState, projection.output, output);
       Snapshot.Register(this.snapshot, output);
-      if (projection.readsOutput)
+      if (projection.readsOutput) {
         // Its own output is one of its reads, so the output it just wrote isn't a change
-        projection.values = this.ReadValues(projection.reads, projection.sources = new Array(projection.reads.length), projection.sources);
+        const read = projection.sources;
+        projection.values = this.ReadValues(projection.reads, projection.sources = new Array(projection.reads.length), read);
+      }
       else {
         projection.values = values;
         this.RefreshSources(projection.sources, SplitRouteAndPath(projection.output)[0]);
@@ -193,9 +196,8 @@ export class DiffTree {
         if (!Object.hasOwn(this.rootState, key)) {
           committed.delete(key);
           diff.push({
-            type: "write",
-            path: [key],
-            value: undefined
+            type: "delete",
+            path: [key]
           });
         }
 
@@ -298,8 +300,7 @@ export class DiffTree {
   }
 
   /**
-   * Snapshots of the values at each path, read through the route's state so keyed values resolve
-   * through their own copy.
+   * Snapshots of the values at each path.
    * @param sources Filled with what each read resolved through; a read after a missing one is left undefined
    * @param previous The sources of the last full read, so a wildcard read reuses its unchanged matches
    * @returns The values, or undefined when any of them is missing
@@ -384,7 +385,7 @@ export class DiffTree {
  * - An array whose first element is keyed is spliced, its elements matched by CommitIdentity.
  * - A keyed value below a root key, with the same key as before, is skipped when the Store reads it
  *   through its root key (any key not starting with `/`): that root key's own diff carries the
- *   change. The Store reads a route key's embedded copy, so that one is diffed.
+ *   change. The Store doesn't read a route key through its key, so that one is diffed.
  * - A keyed value with a different key is written.
  * Each root key's own value is diffed, keyed or not: it's the entity's home.
  */
@@ -412,8 +413,8 @@ function CommitStrategy(keyFunc: IKeyFunc | undefined): JsonDiffStrategyFunc | u
  * - An entity the Store reads by its root key (any key not starting with `/`) is matched by that
  *   key. Editing it leaves the array unchanged, and its root key's own diff carries the change. An
  *   entity whose key changed doesn't match, so it's deleted and the new one inserted.
- * - Anything else, route-key entities included, is matched by ===: the Store reads a route key's
- *   embedded copy, so a changed one must be replaced.
+ * - Anything else, route-key entities included, is matched by ===: the Store doesn't read a route
+ *   key through its key, so a changed one must be replaced.
  */
 function CommitIdentity(keyFunc: IKeyFunc | undefined): JsonDiffIdentityFunc | undefined {
   return keyFunc && function (value) {
@@ -495,12 +496,13 @@ function RunKeyed(projection: IProjection, state: IKeyedState, record: any) {
 
     const value = record[key];
     const last = state.entries.get(key);
-    const entry = last && last.value === value ? last : { value, output: KeptOutput(projection.projection(value, key), last) };
+    // A new output keeps every part of the last one with no changes (see RunProjections)
+    const entry = last && last.value === value ? last : { value, output: JsonMaintainUnchanged(projection.projection(value, key), last?.output) };
 
     entries.set(key, entry);
     changed ||= entry !== last && entry.output !== last?.output;
     if (entry.output !== undefined)
-      SetOwnKey(output, key, entry.output);
+      SetOwnProperty(output, key, entry.output);
   }
 
   // A key that's gone changes the output unless it was left out of it
@@ -512,25 +514,15 @@ function RunKeyed(projection: IProjection, state: IKeyedState, record: any) {
   return changed ? output : UNCHANGED;
 }
 
-/** A key's new output, or its last one when the two are the same, so the last one's objects are kept */
-function KeptOutput(output: any, last: { output: any } | undefined) {
-  return last && !JsonHasChanges(output, last.output) ? last.output : output;
-}
-
-/** Sets a key as an own property, even `__proto__`, which plain assignment would make the prototype */
-function SetOwnKey(target: { [key: string]: any }, key: string, value: any) {
-  if (key === "__proto__")
-    Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
-  else
-    target[key] = value;
-}
-
 /** Whether a read's property path and an output's in a matching route overlap; see `PathsOverlap` */
 function PropertiesOverlap(readProperty: string, outputProperty: string) {
-  return readProperty === "" ||
-    readProperty === outputProperty ||
-    readProperty.startsWith(`${outputProperty}.`) ||
-    outputProperty.startsWith(`${readProperty}.`);
+  return readProperty === "" || IsPathWithin(readProperty, outputProperty) || IsPathWithin(outputProperty, readProperty);
+}
+
+/** Projection outputs are written only by RunProjections */
+function AssertWritable(propertyPath: string) {
+  if (propertyPath.startsWith(PROJECTION_PREFIX))
+    throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
 }
 
 function CollectProjections(route: IRoute, byRoute: Map<string, IProjection[]>) {

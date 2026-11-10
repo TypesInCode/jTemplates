@@ -1460,6 +1460,81 @@ describe("DiffTree", () => {
       expect(after.b).toEqual({ name: "z" });
       expect(runs).toEqual(["reader", "reader"]);
     });
+
+    it("Keeps the unchanged parts of a changed output, so their readers are skipped and Commit records only the change", () => {
+      const runs: string[] = [];
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            summaries: {
+              reads: ["items"],
+              projection: (items: any) => Object.fromEntries(Object.keys(items).map(key => [key, { name: items[key].name, tags: [items[key].name] }]))
+            },
+            readerA: { reads: ["$projection_summaries.a"], projection: (a: any) => (runs.push("a"), a.name) },
+            readerB: { reads: ["$projection_summaries.b"], projection: (b: any) => (runs.push("b"), b.name) },
+          }
+        }
+      });
+      tree.WritePath("items", { a: { name: "x" }, b: { name: "y" }, c: { name: "z" } });
+      tree.RunProjections();
+      tree.Commit();
+      const before = tree.ReadPath("$projection_summaries") as any;
+
+      tree.WritePath("items.b.name", "y2");
+      tree.RunProjections();
+      const after = tree.ReadPath("$projection_summaries") as any;
+      expect(after).not.toBe(before);
+      expect(after.a).toBe(before.a);
+      expect(after.c).toBe(before.c);
+      expect(after.b).toEqual({ name: "y2", tags: ["y2"] });
+      // The last output is its own snapshot and is never changed
+      expect(before.b).toEqual({ name: "y", tags: ["y"] });
+      expect(runs).toEqual(["a", "b", "b"]);
+      expect(tree.Commit()).toEqual(expect.arrayContaining([
+        { type: "write", path: ["$projection_summaries", "b", "name"], value: "y2" },
+        { type: "write", path: ["$projection_summaries", "b", "tags", 0], value: "y2" },
+      ]));
+    });
+
+    it("Commits only a delete for an entry removed from a rebuilt output", () => {
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            summaries: {
+              reads: ["items"],
+              projection: (items: any) => Object.fromEntries(Object.keys(items).map(key => [key, { name: items[key].name }]))
+            },
+          }
+        }
+      });
+      tree.WritePath("items", { a: { name: "x" }, b: { name: "y" } });
+      tree.RunProjections();
+      tree.Commit();
+
+      tree.WritePath("items", { a: { name: "x" } });
+      tree.RunProjections();
+      expect(tree.Commit()).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_summaries", "b"] }]));
+      expect(tree.Commit()).toEqual([]);
+    });
+
+    it("Keeps the unchanged parts of a keyed entry's changed output", () => {
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            views: { read: "rows", projection: (row: any) => ({ name: row.name, meta: { kind: row.kind } }) },
+          }
+        }
+      });
+      tree.WritePath("rows", { a: { name: "x", kind: "k" } });
+      tree.RunProjections();
+      const before = (tree.ReadPath("$projection_views") as any).a;
+
+      tree.WritePath("rows.a.name", "y");
+      tree.RunProjections();
+      const after = (tree.ReadPath("$projection_views") as any).a;
+      expect(after).toEqual({ name: "y", meta: { kind: "k" } });
+      expect(after.meta).toBe(before.meta);
+    });
   });
 
   describe("path-scoped reads", () => {

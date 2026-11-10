@@ -1,18 +1,10 @@
 import { JsonType } from "../../Utils/json";
 
 /**
- * The keys walked from the snapshot's seed to a value: property names, array indices and
- * hidden (symbol) props. A resolved child continues from the path its resolver returns.
+ * Resolves a keyed child to the root entity it should be read through. Returns the entity, or
+ * undefined when the child isn't keyed (or has no root), in which case the child itself is used.
  */
-export type SnapshotPath = (string | number | symbol)[];
-
-/**
- * Resolves a keyed child to the root entity it should be read through, given the child's
- * path. Returns the entity and its path, or undefined when the child isn't keyed (or has no
- * root), in which case the child itself is used. `path` is the walk's own stack, so a
- * resolver must not keep it.
- */
-export type SnapshotResolver = (child: any, path: Readonly<SnapshotPath>) => { value: object, path: SnapshotPath } | undefined;
+export type SnapshotResolver = (child: any) => object | undefined;
 
 /**
  * Snapshot cache state. Each owner (a `DiffTree` instance, or `ObservableNode` at module
@@ -23,8 +15,6 @@ export interface ISnapshotState {
   rawToSnapshotCache: WeakMap<object, any>;
   /** Raw value -> every parent whose cached snapshot embedded it */
   hierarchy: WeakMap<object, Set<object>>;
-  /** Default resolver for keyed children; a call to `Snapshot.Get` may override it */
-  resolve: SnapshotResolver | undefined;
 }
 
 function CreateSnapshotLink(state: ISnapshotState, child: object, parent: object) {
@@ -57,8 +47,7 @@ function InvalidateValue(state: ISnapshotState, value: object) {
 function CreateSnapshot(
   state: ISnapshotState,
   resolve: SnapshotResolver | undefined,
-  value: any,
-  path: SnapshotPath
+  value: any
 ): any {
   if (JsonType(value) === "value") return value;
 
@@ -69,12 +58,12 @@ function CreateSnapshot(
   if (Array.isArray(value)) {
     snapshot = new Array(value.length);
     for (let x = 0; x < value.length; x++)
-      snapshot[x] = ChildSnapshot(state, resolve, value, x, path);
+      snapshot[x] = ChildSnapshot(state, resolve, value, x);
   } else {
     snapshot = {};
     const keys = Object.keys(value);
     for (let x = 0; x < keys.length; x++)
-      snapshot[keys[x]] = ChildSnapshot(state, resolve, value, keys[x], path);
+      snapshot[keys[x]] = ChildSnapshot(state, resolve, value, keys[x]);
   }
 
   state.rawToSnapshotCache.set(value, snapshot);
@@ -91,26 +80,19 @@ function ChildSnapshot(
   state: ISnapshotState,
   resolve: SnapshotResolver | undefined,
   parent: any,
-  key: string | number | symbol,
-  path: SnapshotPath
+  key: string | number
 ) {
   const child = parent[key];
   if (JsonType(child) === "value") return child;
 
   CreateSnapshotLink(state, child as object, parent);
-  path.push(key);
-  try {
-    const resolved = resolve?.(child, path);
-    if (resolved !== undefined && resolved.value !== child) {
-      CreateSnapshotLink(state, resolved.value, parent);
-      return CreateSnapshot(state, resolve, resolved.value, resolved.path);
-    }
+  const resolved = resolve?.(child);
+  if (resolved !== undefined && resolved !== child) {
+    CreateSnapshotLink(state, resolved, parent);
+    return CreateSnapshot(state, resolve, resolved);
+  }
 
-    return CreateSnapshot(state, resolve, child, path);
-  }
-  finally {
-    path.pop();
-  }
+  return CreateSnapshot(state, resolve, child);
 }
 
 function RegisterSnapshot(
@@ -124,14 +106,12 @@ function RegisterSnapshot(
 export namespace Snapshot {
   /**
    * Creates a new, empty snapshot cache.
-   * @param resolve Optional default resolver for keyed children.
    * @returns A new snapshot state.
    */
-  export function Create(resolve?: SnapshotResolver): ISnapshotState {
+  export function Create(): ISnapshotState {
     return {
       rawToSnapshotCache: new WeakMap(),
       hierarchy: new WeakMap(),
-      resolve,
     };
   }
 
@@ -141,18 +121,12 @@ export namespace Snapshot {
    * so `===` holds for any part that hasn't changed.
    * @param state The snapshot cache to read from and populate.
    * @param value The raw value to snapshot.
-   * @param resolve Resolver for keyed children; defaults to the state's resolver.
-   * @param path The value's own path. Snapshots are cached per raw value, so a value must
-   * always be seeded with the same path or a resolver may see a different one.
+   * @param resolve Resolver for keyed children. Snapshots are cached per raw value, so a value
+   * must always be read with the same resolver.
    * @returns The snapshot.
    */
-  export function Get<T>(
-    state: ISnapshotState,
-    value: T,
-    resolve: SnapshotResolver | undefined = state.resolve,
-    path: SnapshotPath = []
-  ): T {
-    return CreateSnapshot(state, resolve, value, path.slice());
+  export function Get<T>(state: ISnapshotState, value: T, resolve?: SnapshotResolver): T {
+    return CreateSnapshot(state, resolve, value);
   }
 
   /**
@@ -163,18 +137,11 @@ export namespace Snapshot {
    * @param state The snapshot cache to read from and populate.
    * @param parent The raw value the property is on.
    * @param key The property.
-   * @param resolve Resolver for keyed children; defaults to the state's resolver.
-   * @param path The parent's own path.
+   * @param resolve Resolver for keyed children.
    * @returns The property's snapshot.
    */
-  export function Child(
-    state: ISnapshotState,
-    parent: any,
-    key: string | number,
-    resolve: SnapshotResolver | undefined = state.resolve,
-    path: SnapshotPath = []
-  ): any {
-    return ChildSnapshot(state, resolve, parent, key, path.slice());
+  export function Child(state: ISnapshotState, parent: any, key: string | number, resolve?: SnapshotResolver): any {
+    return ChildSnapshot(state, resolve, parent, key);
   }
 
   /**

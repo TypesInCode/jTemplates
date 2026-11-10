@@ -1,5 +1,6 @@
 import { JsonApplyDiff, JsonApplySplices, JsonDiff, JsonDiffStrategyFunc, JsonType, SPLICE_ACTION } from "../../../Utils/json";
 import { ISnapshotState, Snapshot } from "../../Tree/snapshot";
+import { ArraysEqual } from "../../../Utils/array";
 
 export const ROOT_ROUTE = "/";
 export const PROJECTION_PREFIX = "$projection_";
@@ -63,8 +64,7 @@ export function ApplyValueToPath(snapshot: ISnapshotState, root: any, routeKeyFu
     throw new Error("Unable to write to root path");
 
   const combinedRoute = JoinPaths(basePath, route);
-  if (ReadPath(root, combinedRoute) === undefined)
-    WritePath(snapshot, root, combinedRoute, undefined);
+  EnsureRoute(snapshot, root, combinedRoute);
 
   WriteValue({ snapshot, root, routeKeyFunc }, combinedRoute, property.split(PROP_DELIMETER), value);
 }
@@ -198,7 +198,7 @@ function IngestStrategy(keyFunc: KeyFunc | undefined, route: string, rootValue: 
       if (newValue.length === 0 || HomePath(keyFunc, route, newValue[0]) === undefined)
         return undefined;
 
-      return SameElements(newValue, oldValue) ? "skip" : "write";
+      return Array.isArray(oldValue) && ArraysEqual(newValue, oldValue) ? "skip" : "write";
     }
 
     return HomePath(keyFunc, route, newValue) !== undefined || HomePath(keyFunc, route, oldValue) !== undefined ? "write" : undefined;
@@ -223,8 +223,7 @@ function Flatten(context: WriteContext, keyFunc: KeyFunc | undefined, route: str
       return home;
 
     const [homeRoute, homeProperty] = SplitRouteAndPath(homePath);
-    if (home === undefined && ReadPath(context.root, homeRoute) === undefined)
-      WritePath(context.snapshot, context.root, homeRoute, undefined);
+    home === undefined && EnsureRoute(context.snapshot, context.root, homeRoute);
 
     WriteValue(context, homeRoute, homeProperty.split(PROP_DELIMETER), value);
     // An existing home is updated in place, so only a new one needs reading
@@ -247,17 +246,6 @@ function Flatten(context: WriteContext, keyFunc: KeyFunc | undefined, route: str
   return result;
 }
 
-/** Whether `oldValue` is an array holding the same elements (===) in the same order */
-function SameElements(newValue: unknown[], oldValue: unknown) {
-  if (!Array.isArray(oldValue) || oldValue.length !== newValue.length)
-    return false;
-
-  for (let x = 0; x < newValue.length; x++)
-    if (newValue[x] !== oldValue[x])
-      return false;
-
-  return true;
-}
 
 /** The flattened value is already the tree's own, slots included, so it's written as is */
 function KeepValue(value: unknown) {
@@ -301,7 +289,14 @@ function SetPath(value: any, path: string[], set: any): any {
   return copy;
 }
 
-export function WritePath(snapshot: ISnapshotState, root: any, path: string, value: any, guardPath = true, pathIndex = 0) {
+/** Creates a route's state, and its parents', when it doesn't exist yet */
+function EnsureRoute(snapshot: ISnapshotState, root: any, route: string) {
+  // Only when missing: for a path that isn't a route (no trailing "/"), the write would replace its value
+  if (ReadPath(root, route) === undefined)
+    WritePath(snapshot, root, route, undefined);
+}
+
+export function WritePath(snapshot: ISnapshotState, root: any, path: string, value: any, pathIndex = 0) {
   const startingSlash = path[pathIndex] === ROUTE_DELIMETER;
   if (startingSlash && path.includes(ROUTE_DELIMETER, pathIndex + 1)) {
     const routeKey = path.slice(pathIndex + 1, path.indexOf(ROUTE_DELIMETER, pathIndex + 1));
@@ -311,15 +306,12 @@ export function WritePath(snapshot: ISnapshotState, root: any, path: string, val
       });
 
     root[ROUTE_STATE][routeKey] ??= {};
-    WritePath(snapshot, root[ROUTE_STATE][routeKey], path, value, guardPath, pathIndex + routeKey.length + 1);
+    WritePath(snapshot, root[ROUTE_STATE][routeKey], path, value, pathIndex + routeKey.length + 1);
     return;
   }
 
   const sliceIndex = startingSlash ? pathIndex + 1 : pathIndex;
   const dotPath = path.slice(sliceIndex);
-  if (guardPath && dotPath.startsWith(PROJECTION_PREFIX))
-    throw new Error(`Cannot write to ${path}: ${PROJECTION_PREFIX} keys are reserved for projection results.`);
-
   if (dotPath === '')
     return;
 
@@ -340,38 +332,16 @@ export function WritePath(snapshot: ISnapshotState, root: any, path: string, val
   Snapshot.Invalidate(snapshot, curr);
 }
 
-export function ReadPath(root: any, path: string, pathIndex = 0) {
-  if (root === undefined)
-    return undefined;
-
-  if (path === '')
-    return root;
-
-  const startingSlash = path[pathIndex] === ROUTE_DELIMETER;
-  if (startingSlash && pathIndex === path.length - 1)
-    return root;
-
-  if (startingSlash && path.includes(ROUTE_DELIMETER, pathIndex + 1)) {
-    const routeKey = path.slice(pathIndex + 1, path.indexOf(ROUTE_DELIMETER, pathIndex + 1));
-
-    const nextRoot = root[ROUTE_STATE]?.[routeKey];
-    return ReadPath(nextRoot, path, pathIndex + routeKey.length + 1);
-  }
-
-  const sliceIndex = startingSlash ? pathIndex + 1 : pathIndex;
-  const dotPath = path.slice(sliceIndex);
-
-  const parts = dotPath.split(PROP_DELIMETER);
-
-  let curr = root;
-  let x = 0;
-  for (; curr && x < parts.length - 1; x++)
-    curr = curr[parts[x]];
-
-  return curr?.[parts[x]];
+/** The value at a path, or undefined when any segment of it doesn't exist; see ReadPathFound */
+export function ReadPath(root: any, path: string) {
+  return ReadPathFound(root, path)[0];
 }
 
-export function ReadPathFound(root: any, path: string, pathIndex = 0) {
+/**
+ * The value at a path, and whether its parent was found: a property missing from an existing
+ * parent is found as undefined.
+ */
+export function ReadPathFound(root: any, path: string, pathIndex = 0): [any, boolean] {
   if (root === undefined)
     return [undefined, false];
 
@@ -394,12 +364,8 @@ export function ReadPathFound(root: any, path: string, pathIndex = 0) {
 
   const parts = dotPath.split(PROP_DELIMETER);
 
-  let curr = root;
-  let x = 0;
-  for (; curr && x < parts.length - 1; x++)
-    curr = curr[parts[x]];
-
-  return [curr?.[parts[x]], !!curr];
+  const parent = ReadPathParts(root, parts, parts.length - 1);
+  return [parent?.[parts[parts.length - 1]], !!parent];
 }
 
 export function SplitRouteAndPath(path: string) {
@@ -506,7 +472,7 @@ export function ValidateWildcardPath(path: string) {
 
 /** Whether `path` is `basePath` or a property below it: `/a.b` is within `/a`, `/ab` isn't */
 export function IsPathWithin(path: string, basePath: string) {
-  return path === basePath || path.startsWith(basePath + PROP_DELIMETER);
+  return path.startsWith(basePath) && (path.length === basePath.length || path[basePath.length] === PROP_DELIMETER);
 }
 
 export function JoinPaths(basePath: string, targetPath: string) {

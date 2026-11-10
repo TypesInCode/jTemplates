@@ -1,9 +1,9 @@
 # Next steps: DiffTree / JSON diff rework
 
 Branch `diff-tree-route-enhancements`, on top of `2985d8f`. Everything below is **uncommitted**
-in the working tree, as of 2026-11-09.
+in the working tree, as of 2026-11-10.
 
-**State:** `npx tsc --noEmit -p .` is clean, and `npx vitest run` passes (574 tests).
+**State:** `npx tsc --noEmit -p .` is clean, and `npx vitest run` passes (584 tests).
 
 ## Why
 
@@ -70,6 +70,19 @@ to skip work.
   `GetKeyedPath`, `CreateKeyResolver`, `ResolvedSnapshot`, `ToSnapshotPath` and
   `SnapshotPathRoute`.
 
+- **A root key that's gone commits a `delete` record** (it used to be a `write` of `undefined`,
+  which predates `delete`). Nothing in the public API removes a root key yet: `WritePath(key,
+  undefined)` assigns `undefined` and still commits a `write`.
+- **Keyed arrays are detected by their first element** (`CommitStrategy`, `IngestStrategy`). This
+  is on purpose, to avoid scanning whole arrays; a mixed array is diffed by position, and that
+  edge case is accepted.
+
+### `Snapshot` (`src/Store/Tree/snapshot.ts`)
+Dead code removed: the `SnapshotPath` threaded through every snapshot walk (its only resolver,
+ObservableNode's alias, ignored it), and the default resolver stored on `ISnapshotState`
+(nothing set it). `SnapshotResolver` is now `(child) => object | undefined`, and `Snapshot.Get`
+and `Snapshot.Child` take an optional `resolve` and no `path`.
+
 ### `ObservableNode`
 `ApplyDiff` passes callbacks for deletes (they fire the object's scope and the property's) and
 for splices (the array's scope fires, and moved elements keep their nodes). The workaround that
@@ -121,7 +134,8 @@ hooks to `json.ts`.
    `ROUTE_STATE`-nested state and `routeVersion` with one `Map<routePath, { state, projections,
    keyFunc }>`, plus a `parent → children` index for wildcard reads and `DeleteRoute`. Decide what
    happens to paths that match no route definition.
-6. **Cleanup:**
+6. **Cleanup** (after the current changes are committed):
+   - Go through the existing comments and bring them up to date with the new behaviour.
    - The unused `T` on `JsonDiffResult`.
    - Spelling: `commitedSnapshot`, and `PROP_DELIMETER`/`ROUTE_DELIMETER` (exported, so renaming
      is an API change).
@@ -154,6 +168,9 @@ hooks to `json.ts`.
   - `ReadPath` returns home objects for slots.
   - Nested entities get a single home.
   - `SplicePath` past the end appends.
+- **`Snapshot`:** `SnapshotPath` is removed, `SnapshotResolver` takes only the child and returns
+  the entity, `Snapshot.Create` takes no resolver, and `Get`/`Child` take no `path`.
+- **A removed root key** commits a `delete` record instead of a `write` of `undefined`.
 - **Store and `ObservableNode.Apply`:**
   - Unkeyed arrays update by position: nodes stay at their index instead of following their
     object.
