@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApplyValueToPath, ReadPath, ROUTE_STATE, SnapshotPathRoute, SplitRouteAndPath, ToSnapshotPath, WritePath } from '../../src/Store/Diff/utils/diffTree.utils';
+import { ApplyValueToPath, ReadPath, ROUTE_STATE, SplitRouteAndPath, WritePath } from '../../src/Store/Diff/utils/diffTree.utils';
 import { Snapshot } from "../../src/Store/Tree/snapshot";
 
 describe("DiffTree Utils", () => {
@@ -159,17 +159,4 @@ describe("DiffTree Utils", () => {
     expect(value2).toEqual("CHANGED");
   });
 
-  it("Convert route path to snapshot path", () => {
-    expect(ToSnapshotPath("/channel/1/item.v")).toEqual([ROUTE_STATE, "channel", ROUTE_STATE, "1", "item", "v"]);
-    expect(ToSnapshotPath("/channel/1/")).toEqual([ROUTE_STATE, "channel", ROUTE_STATE, "1"]);
-    expect(ToSnapshotPath("/item")).toEqual(["item"]);
-    expect(ToSnapshotPath("item.v")).toEqual(["item", "v"]);
-    expect(ToSnapshotPath("")).toEqual([]);
-  });
-
-  it("Read route from snapshot path", () => {
-    expect(SnapshotPathRoute([ROUTE_STATE, "channel", ROUTE_STATE, "1", "item", "v"])).toEqual("/channel/1/");
-    expect(SnapshotPathRoute(["item", 0])).toEqual("/");
-    expect(SnapshotPathRoute([])).toEqual("/");
-  });
 });

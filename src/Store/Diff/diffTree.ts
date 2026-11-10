@@ -1,7 +1,7 @@
-import { JsonDiffInto, JsonDiffOrder, JsonDiffResult, JsonHasChanges, JsonMerge, JsonType } from '../../Utils/json';
+import { JsonDiffIdentityFunc, JsonDiffInto, JsonDiffResult, JsonDiffStrategyFunc, JsonHasChanges, JsonMerge, JsonType } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IKeyedProjectionDefinition, IKeyedState, IProjection, IProjectionDefinition, IReadSource, IRoute, IRouteDefinition, IRouteDefinitions, IRouteSource, IWildcardMatch, IWildcardSource } from './utils/diffTree.types';
-import { ApplyDiff, /* ApplyDiffToData, */ ApplyPathValues, ApplyValueToPath, CreateKeyResolver, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, PROP_DELIMETER, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SplitRouteAndPath, ToSnapshotPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
+import { ApplyValueToPath, DeleteRouteState, ExpandWildcardPath, IsWildcardPath, JoinPaths, PROJECTION_PREFIX, PROP_DELIMETER, ReadPath, ReadPathFound, ROOT_ROUTE, RouteKeyFunc, RouteMatches, SpliceValueAtPath, SplitRouteAndPath, ValidateWildcardPath, WritePath } from './utils/diffTree.utils';
 
 export class DiffTree {
   private rootState = {};
@@ -12,8 +12,8 @@ export class DiffTree {
   // Definitions are fixed and instances are never removed, so a route path always finds the same instance
   private routeCache = new Map<string, IRoute>();
   private routeKeyFunc: RouteKeyFunc = (routePath) => this.GetRouteInstance(routePath).keyFunc;
-  private resolver = CreateKeyResolver(this.rootState, this.routeKeyFunc);
-  private snapshot = Snapshot.Create(this.resolver);
+  // Slots hold their homes' objects, so a snapshot reads keyed values as it finds them: no resolver
+  private snapshot = Snapshot.Create();
   // Every projection of every route instance, dependencies first; rebuilt when an instance may have been created
   private projectionOrder: IProjection[] | undefined;
   // Changes whenever the order is reset, so a wildcard read can tell its matches may have changed
@@ -52,40 +52,12 @@ export class DiffTree {
   }
 
   public PushPath(path: string, items: unknown[]) {
-    const [routePath, valuePath] = SplitRouteAndPath(path);
-    if (valuePath.startsWith(PROJECTION_PREFIX))
+    if (SplitRouteAndPath(path)[1].startsWith(PROJECTION_PREFIX))
       throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
 
-    const combinedRoutePath = JoinPaths("", routePath);
-    const routeRoot = ReadPath(this.rootState, combinedRoutePath);
-    // Only the array's length is needed: read the one key it's under, not the whole route
-    const [value] = this.ReadValue(path);
-
-    if (!value) throw new Error(`Array not found at path: ${path}`);
-
-    if (!Array.isArray(value))
-      throw new Error(`Value at path ${path} is not an array`);
-
-    if (items.length === 0)
-      return;
-
-    const diff: JsonDiffResult = [];
-    for (let x = 0; x < items.length; x++)
-      diff.push({
-        type: "write",
-        path: `${valuePath}.${value.length + x}`.split('.'),
-        value: items[x]
-      });
-
-    diff.push({
-      type: "write",
-      path: `${valuePath}.length`.split('.'),
-      value: value.length + items.length
-    });
-
-    ApplyDiff(this.snapshot, this.rootState, this.routeKeyFunc, combinedRoutePath, routeRoot, diff);
-    /* const keyedValues = ApplyDiffToData(this.snapshot, this.rootState, this.routeKeyFunc, combinedRoutePath, routeRoot, diff);
-    ApplyPathValues(this.snapshot, this.rootState, keyedValues); */
+    const array = ReadPath(this.rootState, path);
+    // A missing array throws in SpliceValueAtPath
+    SpliceValueAtPath(this.snapshot, this.rootState, this.routeKeyFunc, path, Array.isArray(array) ? array.length : 0, 0, items);
   }
 
   public SplicePath(
@@ -94,48 +66,10 @@ export class DiffTree {
     deleteCount: number,
     items: any[]
   ) {
-    const [routePath, valuePath] = SplitRouteAndPath(path);
-    if (valuePath.startsWith(PROJECTION_PREFIX))
+    if (SplitRouteAndPath(path)[1].startsWith(PROJECTION_PREFIX))
       throw new Error(`${PROJECTION_PREFIX} keys are read-only.`);
 
-    const combinedRoutePath = JoinPaths("", routePath);
-    const routeRoot = this.ReadPath(combinedRoutePath);
-    // Only the array's length is needed: read the one key it's under, not the whole route
-    const [value] = this.ReadValue(path);
-
-    if (!value) throw new Error(`Array not found at path: ${path}`);
-
-    if (!Array.isArray(value))
-      throw new Error(`Value at path ${path} is not an array`);
-
-    const moveStartIndex = start + deleteCount;
-    const moveEndIndex = start + items.length;
-
-    const diff: JsonDiffResult = [];
-    const basePath = valuePath.split('.') as (string | number)[];
-    for (let x = moveStartIndex; x < value.length; x++)
-      diff.push({
-        type: "move",
-        path: basePath,
-        sourceProp: x,
-        targetProp: moveEndIndex + (x - moveStartIndex)
-      });
-
-    for (let x = 0; x < items.length; x++)
-      diff.push({
-        type: "write",
-        path: basePath.concat(start + x),
-        value: items[x]
-      });
-
-    const actualDelete = start + deleteCount > value.length ? value.length - start : deleteCount;
-    diff.push({
-      type: "write",
-      path: basePath.concat("length"),
-      value: value.length - actualDelete + items.length
-    });
-
-    ApplyDiff(this.snapshot, this.rootState, this.routeKeyFunc, combinedRoutePath, routeRoot, diff);
+    SpliceValueAtPath(this.snapshot, this.rootState, this.routeKeyFunc, path, start, deleteCount, items);
   }
 
   /**
@@ -228,8 +162,11 @@ export class DiffTree {
   Commit() {
     const committed = this.commitedSnapshot;
     const keys = Object.keys(this.rootState);
-    // Diffed key by key into one result, ordered once at the end
+    // Diffed key by key into one result
     const diff: JsonDiffResult = [];
+    const rootKeyFunc = this.routeKeyFunc(ROOT_ROUTE);
+    const strategy = CommitStrategy(rootKeyFunc);
+    const identity = CommitIdentity(rootKeyFunc);
     // How many of the committed keys are still in the root, to tell whether any are gone
     let kept = 0;
     for (let x = 0; x < keys.length; x++) {
@@ -243,11 +180,11 @@ export class DiffTree {
       if (had && (value === last || JsonType(value) !== "value" && Snapshot.Peek(this.snapshot, value) === last))
         continue;
 
-      const next = Snapshot.Child(this.snapshot, this.rootState, key, this.resolver);
+      const next = Snapshot.Child(this.snapshot, this.rootState, key);
       if (had && next === last)
         continue;
 
-      JsonDiffInto(next, last, [key], diff);
+      JsonDiffInto(next, last, [key], diff, strategy, identity);
       committed.set(key, next);
     }
 
@@ -262,13 +199,13 @@ export class DiffTree {
           });
         }
 
-    return JsonDiffOrder(diff);
+    return diff;
   }
 
   public Snapshot(path: string) {
     const [routePath, propertyPath] = SplitRouteAndPath(path);
     const routeState = ReadPath(this.rootState, routePath);
-    const routeSnapshot = Snapshot.Get(this.snapshot, routeState, undefined, ToSnapshotPath(routePath));
+    const routeSnapshot = Snapshot.Get(this.snapshot, routeState);
     const snapshot = ReadPath(routeSnapshot, propertyPath);
     return snapshot;
   }
@@ -354,8 +291,8 @@ export class DiffTree {
           continue;
 
         route.snapshot = route.key === undefined ?
-          Snapshot.Get(this.snapshot, route.state, this.resolver, ToSnapshotPath(outputRoute)) :
-          Snapshot.Child(this.snapshot, route.state, route.key, this.resolver, ToSnapshotPath(outputRoute));
+          Snapshot.Get(this.snapshot, route.state) :
+          Snapshot.Child(this.snapshot, route.state, route.key);
       }
     }
   }
@@ -400,13 +337,13 @@ export class DiffTree {
       return [undefined, false, undefined];
 
     if (property === "") {
-      const routeSnapshot = Snapshot.Get(this.snapshot, routeState, this.resolver, ToSnapshotPath(route));
+      const routeSnapshot = Snapshot.Get(this.snapshot, routeState);
       return [routeSnapshot, !!routeSnapshot, { route, state: routeState, snapshot: routeSnapshot }];
     }
 
     const dot = property.indexOf(PROP_DELIMETER);
     const key = dot < 0 ? property : property.slice(0, dot);
-    const keySnapshot = Snapshot.Child(this.snapshot, routeState, key, this.resolver, ToSnapshotPath(route));
+    const keySnapshot = Snapshot.Child(this.snapshot, routeState, key);
     const source = { route, state: routeState, key, snapshot: keySnapshot };
     if (dot < 0)
       return [keySnapshot, true, source];
@@ -440,6 +377,52 @@ export class DiffTree {
     // An expanded path's route exists, so a source is always found
     return { ...source!, segment, path, value, found };
   }
+}
+
+/**
+ * How `Commit` diffs the root's snapshots for a Store with the same keyFunc:
+ * - An array whose first element is keyed is spliced, its elements matched by CommitIdentity.
+ * - A keyed value below a root key, with the same key as before, is skipped when the Store reads it
+ *   through its root key (any key not starting with `/`): that root key's own diff carries the
+ *   change. The Store reads a route key's embedded copy, so that one is diffed.
+ * - A keyed value with a different key is written.
+ * Each root key's own value is diffed, keyed or not: it's the entity's home.
+ */
+function CommitStrategy(keyFunc: IKeyFunc | undefined): JsonDiffStrategyFunc | undefined {
+  return keyFunc && function (newValue, oldValue, path) {
+    if (Array.isArray(newValue))
+      return newValue.length > 0 && JsonType(newValue[0]) !== "value" && keyFunc(newValue[0]) !== undefined ? "splice" : undefined;
+
+    if (path.length <= 1)
+      return undefined;
+
+    const key = keyFunc(newValue);
+    if (key === undefined)
+      return undefined;
+
+    if (key !== (JsonType(oldValue) === "value" ? undefined : keyFunc(oldValue)))
+      return "write";
+
+    return key.startsWith(ROOT_ROUTE) ? undefined : "skip";
+  };
+}
+
+/**
+ * What `Commit` matches a spliced array's elements by:
+ * - An entity the Store reads by its root key (any key not starting with `/`) is matched by that
+ *   key. Editing it leaves the array unchanged, and its root key's own diff carries the change. An
+ *   entity whose key changed doesn't match, so it's deleted and the new one inserted.
+ * - Anything else, route-key entities included, is matched by ===: the Store reads a route key's
+ *   embedded copy, so a changed one must be replaced.
+ */
+function CommitIdentity(keyFunc: IKeyFunc | undefined): JsonDiffIdentityFunc | undefined {
+  return keyFunc && function (value) {
+    if (JsonType(value) === "value")
+      return value;
+
+    const key = keyFunc(value);
+    return key === undefined || key.startsWith(ROOT_ROUTE) ? value : key;
+  };
 }
 
 /**

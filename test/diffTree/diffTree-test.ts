@@ -213,6 +213,40 @@ describe("DiffTree", () => {
       expect(tree.ReadPath("items")).toEqual([1]);
     });
 
+    it("Splice past the end of the array appends", () => {
+      const tree = new DiffTree();
+      tree.WritePath("items", [1, 2]);
+      tree.SplicePath("items", 5, 0, [3]);
+
+      expect(tree.ReadPath("items")).toEqual([1, 2, 3]);
+    });
+
+    it("Splice with an Infinity delete count removes the rest of the array", () => {
+      const tree = new DiffTree();
+      tree.WritePath("items", [1, 2, 3]);
+      tree.SplicePath("items", 1, Infinity, [9]);
+
+      expect(tree.ReadPath("items")).toEqual([1, 9]);
+    });
+
+    it("Splice that changes nothing commits nothing", () => {
+      const tree = new DiffTree();
+      tree.WritePath("items", [1, 2]);
+      tree.Commit();
+      tree.SplicePath("items", 1, 0, []);
+
+      expect(tree.Commit()).toEqual([]);
+    });
+
+    it("Splice keeps moved items' objects", () => {
+      const tree = new DiffTree();
+      tree.WritePath("items", [{ a: 1 }, { a: 2 }]);
+      const second = (tree.ReadPath("items") as any[])[1];
+      tree.SplicePath("items", 0, 1, []);
+
+      expect((tree.ReadPath("items") as any[])[0]).toBe(second);
+    });
+
     it("Splice a routed array", () => {
       const tree = new DiffTree(undefined, { "/channel/{id}": { projections: {} } });
       tree.WritePath("/channel/1/items", [1, 2, 3]);
@@ -280,8 +314,8 @@ describe("DiffTree", () => {
       tree.SplicePath("items", 1, 1, []);
 
       expect(tree.Commit()).toEqual([
-        { type: "move", path: ["items"], sourceProp: 2, targetProp: 1 },
-        { type: "move", path: ["items"], sourceProp: 3, targetProp: 2 },
+        { type: "write", path: ["items", 1], value: 3 },
+        { type: "write", path: ["items", 2], value: 4 },
         { type: "write", path: ["items", "length"], value: 3 }
       ]);
     });
@@ -391,7 +425,8 @@ describe("DiffTree", () => {
 
       expect(tree.ReadPath("/channel/1/sub/A")).toEqual({ id: "A", child: { id: "B" } });
       expect(tree.ReadPath("/channel/1/sub/k_B")).toEqual({ id: "B" });
-      expect(tree.ReadPath("/channel/1/sub/B")).toEqual({ id: "B" });
+      // B has one home: the one its parent's route keys it to
+      expect(tree.ReadPath("/channel/1/sub/B")).toBeUndefined();
     });
 
     it("Write into a keyed entity's child updates the child in its home route", () => {
@@ -637,9 +672,9 @@ describe("DiffTree", () => {
       tree.WritePath("value", { item: { id: "A", child: { id: "B", v: 1 } } });
       tree.Commit();
 
-      // Only the entity's home copy changes; the root's embedded copy is read through it
+      // The root's slot holds the entity's home object, so it reads the change
       tree.WritePath("/sub/k_B.v", 2);
-      expect(tree.ReadPath("value.item.child.v")).toEqual(1);
+      expect(tree.ReadPath("value.item.child.v")).toEqual(2);
       expect(tree.Commit()).toEqual([{ type: "write", path: ["value", "item", "child", "v"], value: 2 }]);
     });
 
@@ -1480,6 +1515,49 @@ describe("DiffTree", () => {
       expect(child).not.toHaveBeenCalled();
       child.mockRestore();
       expect(runs).toBe(1);
+    });
+  });
+
+  describe("deletes", () => {
+    it("Writing a record without a key deletes it in place and commits a delete", () => {
+      const tree: any = new DiffTree();
+      tree.WritePath("positions", { a: { x: 1, y: 1 }, b: { x: 2, y: 2 } });
+      tree.Commit();
+      const record = tree.rootState.positions;
+      const a = tree.rootState.positions.a;
+      tree.WritePath("positions", { a: { x: 1, y: 1 } });
+
+      expect(tree.rootState.positions).toBe(record);
+      expect(tree.rootState.positions.a).toBe(a);
+      expect(Object.hasOwn(record, "b")).toBe(false);
+      expect(tree.Snapshot("positions")).toEqual({ a: { x: 1, y: 1 } });
+      expect(tree.Commit()).toEqual([{ type: "delete", path: ["positions", "b"] }]);
+    });
+
+    it("A deleted key reruns a projection reading the record", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { count: { reads: ["record"], projection: (record: any) => Object.keys(record).length } } }
+      });
+      tree.WritePath("record", { a: 1, b: 2 });
+      tree.RunProjections();
+      tree.WritePath("record", { a: 1 });
+      tree.RunProjections();
+
+      expect(tree.ReadPath("$projection_count")).toEqual(1);
+    });
+
+    it("A projection output that lost an entry commits a delete for it alone", () => {
+      const tree = new DiffTree(undefined, {
+        "/": { projections: { byName: { reads: ["names"], projection: (names: string[]) => Object.fromEntries(names.map(n => [n, { n }])) } } }
+      });
+      tree.WritePath("names", ["a", "b", "c"]);
+      tree.RunProjections();
+      tree.Commit();
+      tree.WritePath("names", ["a", "c"]);
+      tree.RunProjections();
+
+      expect(tree.Commit()).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_byName", "b"] }]));
+      expect(tree.Commit()).toEqual([]);
     });
   });
 });

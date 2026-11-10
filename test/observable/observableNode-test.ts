@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
-import { JsonWrite } from "../../src/Utils/json";
+import { JsonWrite, SPLICE_ACTION } from "../../src/Utils/json";
 
 describe("Observable Node", () => {
     it('Create - Basic Object', () => {
@@ -69,6 +69,47 @@ describe("Observable Node", () => {
 
         ObservableNode.ApplyDiff(proxy, [{ type: "write", path: ["rows", "length"], value: 2 }]);
         expect(ObservableScope.Value(scope)).to.deep.eq(["a", "b"]);
+    });
+
+    it('ApplyDiff - a splice updates a scope over the array and keeps moved elements\' nodes', () => {
+        const proxy = ObservableNode.Create({ rows: [{ v: "a" }, { v: "b" }, { v: "c" }] });
+        const scope = ObservableScope.Create(() => proxy.rows.map((r: any) => r.v));
+        const movedNode = proxy.rows[2];
+        const movedScope = ObservableScope.Create(() => movedNode.v);
+        expect(ObservableScope.Value(scope)).to.deep.eq(["a", "b", "c"]);
+        expect(ObservableScope.Value(movedScope)).to.eq("c");
+
+        ObservableNode.ApplyDiff(proxy, [{
+            type: "splice",
+            path: ["rows"],
+            splices: [
+                // [a, b, c] → [c, a, b, c] → [c, a, d, c] → [c, a, d]
+                { index: 0, delete: 0, insert: [{ type: SPLICE_ACTION.MOVE, from: 2 }] },
+                { index: 2, delete: 1, insert: [{ type: SPLICE_ACTION.INSERT, value: { v: "d" } }] },
+                { index: 3, delete: 1, insert: [] },
+            ]
+        }]);
+
+        expect(ObservableScope.Value(scope)).to.deep.eq(["c", "a", "d"]);
+        expect(proxy.rows[0]).to.eq(movedNode);
+
+        // The moved element's node is still live
+        ObservableNode.ApplyDiff(proxy, [{ type: "write", path: ["rows", 0, "v"], value: "e" }]);
+        expect(ObservableScope.Value(movedScope)).to.eq("e");
+    });
+
+    it('ApplyDiff - a delete updates scopes over the object\'s keys and the deleted property', () => {
+        const proxy = ObservableNode.Create({ record: { a: 1, b: 2 } });
+        const keys = ObservableScope.Create(() => Object.keys(proxy.record));
+        const b = ObservableScope.Create(() => proxy.record.b);
+        expect(ObservableScope.Value(keys)).to.deep.eq(["a", "b"]);
+        expect(ObservableScope.Value(b)).to.eq(2);
+
+        ObservableNode.ApplyDiff(proxy, [{ type: "delete", path: ["record", "b"] }]);
+
+        expect(ObservableScope.Value(keys)).to.deep.eq(["a"]);
+        expect(ObservableScope.Value(b)).to.eq(undefined);
+        expect("b" in proxy.record).to.eq(false);
     });
 
     it('Apply - Basic Object Update', () => {

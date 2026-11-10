@@ -158,10 +158,10 @@ describe("keys named like Object.prototype members (issue 2)", () => {
     expect(() => ObservableNode.Read(raw, "toString")).not.toThrow();
   }); */
 
-  it("replaces a whole root that held one nobody has read", () => {
+  it("deletes one nobody has read", () => {
     const proxy = ObservableNode.Create({ toString: { v: 1 }, a: 1 } as any);
     expect(proxy.a).toBe(1);
-    ObservableNode.ApplyDiff(proxy, [{ type: "write", path: [], value: { a: 2 } }]);
+    ObservableNode.Apply(proxy, { a: 2 });
     expect(proxy.a).toBe(2);
     expect(Object.hasOwn(proxy, "toString")).toBe(false);
   });
@@ -322,14 +322,14 @@ describe("the tree owns every value it applies", () => {
     expect(tree.ReadPath("list.1.x")).toBe(1);
   });
 
-  it("keyed entities: the root and the embedded copy stay separate objects", () => {
+  it("keyed entities: a slot holds the entity's home, not the caller's object", () => {
     const tree: any = new DiffTree((v: any) => v?._id);
     tree.WritePath("list", []);
     const item = { _id: "a", x: 1 };
     tree.PushPath("list", [item]);
     item.x = 99;
 
-    expect(tree.rootState.list[0]).not.toBe(tree.rootState.a);
+    expect(tree.rootState.list[0]).toBe(tree.rootState.a);
     expect(tree.ReadPath("a.x")).toBe(1);
   });
 });
@@ -340,7 +340,7 @@ describe("the tree owns every value it applies", () => {
 describe("diff entries don't own their values", () => {
   const KeyFunc = (v: any) => v?._id;
 
-  it("Commit: the tree keeps a keyed entity's root apart from its embedded copy", () => {
+  it("Commit: the tree's slot holds the keyed entity's home, apart from the caller's object", () => {
     const tree: any = new DiffTree(KeyFunc);
     const item = { _id: "a", value: "a" };
     tree.WritePath("arr", [item]);
@@ -350,7 +350,7 @@ describe("diff entries don't own their values", () => {
     const root = diff.find((d: any) => d.path.join(".") === "a")!.value;
     expect(root).toBe(list[0]);
     expect(tree.rootState.a).not.toBe(item);
-    expect(tree.rootState.arr[0]).not.toBe(tree.rootState.a);
+    expect(tree.rootState.arr[0]).toBe(tree.rootState.a);
   });
 
   it("PushPath: the tree doesn't share the caller's items", () => {
@@ -361,7 +361,7 @@ describe("diff entries don't own their values", () => {
 
     expect(tree.rootState.arr[0]).not.toBe(item);
     expect(tree.rootState.a).not.toBe(item);
-    expect(tree.rootState.arr[0]).not.toBe(tree.rootState.a);
+    expect(tree.rootState.arr[0]).toBe(tree.rootState.a);
   });
 
   it("SplicePath: the tree doesn't share the caller's items", () => {
@@ -372,6 +372,7 @@ describe("diff entries don't own their values", () => {
 
     expect(tree.rootState.arr[0]).not.toBe(item);
     expect(tree.rootState.a).not.toBe(item);
+    expect(tree.rootState.arr[0]).toBe(tree.rootState.a);
   });
 
   it("the committed diff doesn't share objects with the tree", () => {

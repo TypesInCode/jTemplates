@@ -125,3 +125,66 @@ describe("Store Sync Test", () => {
     expect(root2?.[0].value).to.eq("first changed");
   });
 });
+
+describe("Store Sync keyed arrays", () => {
+  it("Reordering a keyed array moves the Store's nodes and keeps them live", () => {
+    const sync = new StoreSync(KeyFunc);
+    sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }, { _id: "c", value: "c" }], "list");
+    const list = sync.Get<{ _id: string; value: string }[]>("list")!;
+    const scope = ObservableScope.Create(() => list.map((item) => item.value));
+    expect(ObservableScope.Value(scope)).to.deep.eq(["a", "b", "c"]);
+
+    sync.Write([{ _id: "c", value: "c" }, { _id: "a", value: "a" }, { _id: "b", value: "b" }], "list");
+    expect(ObservableScope.Value(scope)).to.deep.eq(["c", "a", "b"]);
+
+    sync.Write({ _id: "c", value: "c changed" });
+    expect(ObservableScope.Value(scope)).to.deep.eq(["c changed", "a", "b"]);
+    expect(sync.Get<any>("c").value).to.eq("c changed");
+  });
+
+  it("Editing a keyed entity's field updates its readers without firing the array's scope", () => {
+    const sync = new StoreSync(KeyFunc);
+    sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }, { _id: "c", value: "c" }], "list");
+    const list = sync.Get<{ _id: string; value: string }[]>("list")!;
+    let listReads = 0;
+    const ids = ObservableScope.Create(() => (listReads++, list.map((item) => item._id)));
+    const b = ObservableScope.Create(() => list[1].value);
+    expect(ObservableScope.Value(ids)).to.deep.eq(["a", "b", "c"]);
+    expect(ObservableScope.Value(b)).to.eq("b");
+
+    sync.Write("b changed", "b.value");
+    expect(ObservableScope.Value(b)).to.eq("b changed");
+    expect(ObservableScope.Value(ids)).to.deep.eq(["a", "b", "c"]);
+
+    sync.Write([{ _id: "a", value: "a changed" }, { _id: "b", value: "b changed" }, { _id: "c", value: "c" }], "list");
+    expect(list[0].value).to.eq("a changed");
+    expect(ObservableScope.Value(ids)).to.deep.eq(["a", "b", "c"]);
+    expect(listReads).to.eq(1);
+  });
+
+  it("Removing and adding keyed entities updates the Store's array", () => {
+    const sync = new StoreSync(KeyFunc);
+    sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }], "list");
+    sync.Write([{ _id: "b", value: "b" }, { _id: "d", value: "d" }], "list");
+
+    expect(sync.Get<any[]>("list")!.map((item) => item.value)).to.deep.eq(["b", "d"]);
+  });
+});
+
+describe("Store Sync deletes", () => {
+  it("Writing a record without an entry removes it from the store and updates its readers", () => {
+    const sync = new StoreSync(KeyFunc);
+    sync.Write({ a: { x: 1 }, b: { x: 2 } }, "positions");
+    const positions = sync.Get<Record<string, { x: number }>>("positions")!;
+    const keys = ObservableScope.Create(() => Object.keys(positions));
+    const a = ObservableScope.Create(() => positions.a.x);
+    expect(ObservableScope.Value(keys)).to.deep.eq(["a", "b"]);
+    expect(ObservableScope.Value(a)).to.eq(1);
+
+    sync.Write({ a: { x: 1 } }, "positions");
+
+    expect(ObservableScope.Value(keys)).to.deep.eq(["a"]);
+    expect("b" in positions).to.eq(false);
+    expect(ObservableScope.Value(a)).to.eq(1);
+  });
+});

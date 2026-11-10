@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DiffTree } from '../../src/Store/Diff/diffTree';
+import { SPLICE_ACTION } from '../../src/Utils/json';
 
-// Keyed values are stored at their key ("home") and embedded wherever they're written. Writes
-// through an embedded slot reach the home value, and reads resolve embedded slots through it.
+// Keyed values are stored at their key ("home"), and every other place one is written (a slot)
+// holds the home object itself. Writes through a slot reach the home value, and reads through a
+// slot read it.
 describe("DiffTree keyed values", () => {
   const keyFunc = (data: any) => data?.id;
 
@@ -43,14 +45,14 @@ describe("DiffTree keyed values", () => {
       expect(tree.Snapshot("items")).toEqual([{ id: "F", v: 1 }]);
     });
 
-    it("Changing the key of a stale embedded value carries the embedded value's data", () => {
+    it("Changing the key through a slot carries the home value's current data", () => {
       const tree = new DiffTree(keyFunc);
       tree.WritePath("value", { item: { id: "E", v: 1 } });
       tree.WritePath("/E.v", 2);
       tree.WritePath("value.item.id", "F");
 
-      // The embedded value is written to the new key as it is
-      expect(tree.ReadPath("/F")).toEqual({ id: "F", v: 1 });
+      // The slot holds /E itself, so there's no stale copy: the new key gets /E's data
+      expect(tree.ReadPath("/F")).toEqual({ id: "F", v: 2 });
       expect(tree.ReadPath("/E")).toEqual({ id: "E", v: 2 });
     });
 
@@ -284,12 +286,8 @@ describe("DiffTree keyed values", () => {
       tree.Commit();
       tree.WritePath("value.item.v", 2);
 
-      const diff = tree.Commit();
-      expect(diff).toHaveLength(2);
-      expect(diff).toEqual(expect.arrayContaining([
-        { type: "write", path: ["value", "item", "v"], value: 2 },
-        { type: "write", path: ["E", "v"], value: 2 }
-      ]));
+      // The Store reads value.item through its root key E, so only E's own change is sent
+      expect(tree.Commit()).toEqual([{ type: "write", path: ["E", "v"], value: 2 }]);
     });
   });
 
@@ -308,6 +306,234 @@ describe("DiffTree keyed values", () => {
       tree.WritePath("a", { id: "a", child: { id: "ab" } });
 
       expect(tree.ReadPath("/ab")).toEqual({ id: "ab" });
+    });
+  });
+
+  describe("slots hold their home", () => {
+    it("A keyed array's slots are its entities' home objects", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 2 }]);
+
+      expect(tree.rootState.items[0]).toBe(tree.rootState.A);
+      expect(tree.rootState.items[1]).toBe(tree.rootState.B);
+    });
+
+    it("Rewriting the same entities leaves the array alone and diffs each home", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 2 }]);
+      const array = tree.rootState.items;
+      const a = tree.rootState.A;
+      const before = tree.Snapshot("items");
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 3 }]);
+
+      expect(tree.rootState.items).toBe(array);
+      expect(tree.rootState.A).toBe(a);
+      const after = tree.Snapshot("items");
+      expect(after[0]).toBe(before[0]);
+      expect(after[1]).toEqual({ id: "B", v: 3 });
+    });
+
+    it("A keyed array nested in a value is replaced whole, as its homes' objects", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("value", { list: [{ id: "A" }, { id: "B" }] });
+      tree.WritePath("value", { list: [{ id: "B" }, { id: "C" }] });
+
+      expect(tree.rootState.value.list[0]).toBe(tree.rootState.B);
+      expect(tree.rootState.value.list[1]).toBe(tree.rootState.C);
+      expect(tree.ReadPath("/A")).toEqual({ id: "A" });
+    });
+
+    it("Rewriting an entity whose keyed children didn't change keeps its snapshot", () => {
+      const key = (v: any) => typeof v?.key === "string" ? v.key : undefined;
+      const types = () => [{ key: "t_1", name: "T", props: [{ key: "p_1", name: "a" }, { key: "p_2", name: "b" }] }];
+      let runs = 0;
+      const tree = new DiffTree(key, { "/": { projections: { count: { reads: ["types"], projection: (t: any[]) => (runs++, t.length) } } } });
+      tree.WritePath("types", types());
+      tree.RunProjections();
+      tree.Commit();
+      const before = tree.Snapshot("t_1");
+      tree.WritePath("types", types());
+      tree.RunProjections();
+
+      expect(tree.Snapshot("t_1")).toBe(before);
+      expect(runs).toBe(1);
+      expect(tree.Commit()).toEqual([]);
+    });
+
+    it("A home keeps its identity when its entity is rewritten whole", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("value", { item: { id: "E", a: 1 } });
+      const home = tree.rootState.E;
+      tree.WritePath("other", { id: "E", b: 2 });
+
+      expect(tree.rootState.E).toBe(home);
+      expect(home).toEqual({ id: "E", b: 2 });
+      expect(tree.rootState.value.item).toBe(home);
+    });
+
+    it("Replacing a home with another type throws", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("value", { item: { id: "E", a: 1 } });
+
+      expect(() => tree.WritePath("E", [1])).toThrow();
+      expect(() => tree.WritePath("E", 1)).toThrow();
+      expect(tree.ReadPath("/E")).toEqual({ id: "E", a: 1 });
+    });
+
+    it("A slot written with a plain value is replaced, leaving the home alone", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("value", { item: { id: "E", a: 1 } });
+      tree.WritePath("value.item", { a: 2 });
+
+      expect(tree.ReadPath("/E")).toEqual({ id: "E", a: 1 });
+      expect(tree.ReadPath("value.item")).toEqual({ a: 2 });
+      expect(tree.rootState.value.item).not.toBe(tree.rootState.E);
+    });
+
+    it("A write through a slot invalidates the snapshots of the home and every slot", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("one", { item: { id: "E", v: 1 } });
+      tree.WritePath("two", [{ id: "E", v: 1 }]);
+      const home = tree.Snapshot("/E");
+      const two = tree.Snapshot("two");
+      tree.WritePath("one.item.v", 2);
+
+      expect(tree.Snapshot("/E")).not.toBe(home);
+      expect(tree.Snapshot("two")).not.toBe(two);
+      expect(tree.Snapshot("two")).toEqual([{ id: "E", v: 2 }]);
+    });
+
+    it("Pushed and spliced keyed items are written to their homes and held as them", () => {
+      const tree: any = new DiffTree(keyFunc);
+      tree.WritePath("items", []);
+      tree.PushPath("items", [{ id: "A", v: 1 }]);
+      tree.SplicePath("items", 0, 0, [{ id: "B", v: 1 }, { id: "A", v: 2 }]);
+
+      expect(tree.rootState.items).toEqual([{ id: "B", v: 1 }, { id: "A", v: 2 }, { id: "A", v: 2 }]);
+      expect(tree.rootState.items[1]).toBe(tree.rootState.A);
+      expect(tree.rootState.items[2]).toBe(tree.rootState.A);
+    });
+  });
+
+  describe("Commit splices keyed arrays", () => {
+    it("Reordering a keyed array commits a splice that moves the entity", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A" }, { id: "B" }, { id: "C" }]);
+      tree.Commit();
+      tree.WritePath("items", [{ id: "C" }, { id: "A" }, { id: "B" }]);
+
+      expect(tree.Commit()).toEqual([{
+        type: "splice",
+        path: ["items"],
+        splices: [
+          { index: 0, delete: 0, insert: [{ type: SPLICE_ACTION.MOVE, from: 2 }] },
+          { index: 3, delete: 1, insert: [] },
+        ]
+      }]);
+    });
+
+    it("Reordering a keyed array keeps every entity's snapshot", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A" }, { id: "B" }, { id: "C" }, { id: "D" }]);
+      const before = ["A", "B", "C", "D"].map(id => tree.Snapshot(id));
+      tree.WritePath("items", [{ id: "A" }, { id: "C" }, { id: "B" }, { id: "D" }]);
+
+      expect(["A", "B", "C", "D"].map(id => tree.Snapshot(id))).toEqual(before);
+      ["A", "B", "C", "D"].forEach((id, x) => expect(tree.Snapshot(id)).toBe(before[x]));
+    });
+
+    it("An entity that changed is only diffed at its home, not spliced in its arrays", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 1 }]);
+      tree.Commit();
+      tree.WritePath("/B.v", 2);
+
+      expect(tree.Commit()).toEqual([{ type: "write", path: ["B", "v"], value: 2 }]);
+    });
+
+    it("An entity changed through its array is only diffed at its home", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 1 }, { id: "C", v: 1 }]);
+      tree.Commit();
+      tree.WritePath("items", [{ id: "A", v: 2 }, { id: "B", v: 1 }, { id: "C", v: 1 }]);
+
+      expect(tree.Commit()).toEqual([{ type: "write", path: ["A", "v"], value: 2 }]);
+    });
+
+    it("An entity that changed and moved is moved in its array and diffed at its home", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A", v: 1 }, { id: "B", v: 1 }, { id: "C", v: 1 }]);
+      tree.Commit();
+      tree.WritePath("items", [{ id: "C", v: 2 }, { id: "A", v: 1 }, { id: "B", v: 1 }]);
+
+      const diff = tree.Commit();
+      expect(diff).toHaveLength(2);
+      expect(diff).toEqual(expect.arrayContaining([
+        { type: "write", path: ["C", "v"], value: 2 },
+        {
+          type: "splice", path: ["items"], splices: [
+            { index: 0, delete: 0, insert: [{ type: SPLICE_ACTION.MOVE, from: 2 }] },
+            { index: 3, delete: 1, insert: [] },
+          ]
+        },
+      ]));
+    });
+
+    it("An entity whose key changed is deleted and the new one inserted in its array", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("items", [{ id: "A" }, { id: "B" }]);
+      tree.Commit();
+      tree.WritePath("items", [{ id: "A" }, { id: "X" }]);
+
+      expect(tree.Commit()).toEqual(expect.arrayContaining([
+        { type: "splice", path: ["items"], splices: [{ index: 1, delete: 1, insert: [{ type: SPLICE_ACTION.INSERT, value: { id: "X" } }] }] },
+        { type: "write", path: ["X"], value: { id: "X" } },
+      ]));
+    });
+
+    it("A route-key entity that changed is still deleted and inserted in its array", () => {
+      const tree = new DiffTree((data: any) => data?.id ? `/sub/${data.id}` : undefined, { "/sub": { projections: {} } });
+      tree.WritePath("value", { items: [{ id: "A", v: 1 }, { id: "B", v: 1 }] });
+      tree.Commit();
+      tree.WritePath("/sub/B.v", 2);
+
+      expect(tree.Commit()).toEqual([{
+        type: "splice", path: ["value", "items"],
+        splices: [{ index: 1, delete: 1, insert: [{ type: SPLICE_ACTION.INSERT, value: { id: "B", v: 2 } }] }]
+      }]);
+    });
+
+    it("A different entity in an object slot is written", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("value", { item: { id: "E" } });
+      tree.Commit();
+      tree.WritePath("value.item", { id: "F" });
+
+      expect(tree.Commit()).toEqual(expect.arrayContaining([
+        { type: "write", path: ["value", "item"], value: { id: "F" } },
+        { type: "write", path: ["F"], value: { id: "F" } },
+      ]));
+    });
+
+    it("An entity the Store reads by its route key is diffed, not skipped", () => {
+      const tree = new DiffTree((data: any) => data?.id ? `/sub/${data.id}` : undefined, { "/sub": { projections: {} } });
+      tree.WritePath("value", { item: { id: "A", v: 1 } });
+      tree.Commit();
+      tree.WritePath("/sub/A.v", 2);
+
+      expect(tree.Commit()).toEqual([{ type: "write", path: ["value", "item", "v"], value: 2 }]);
+    });
+
+    it("An array of primitives or unkeyed objects is diffed by position", () => {
+      const tree = new DiffTree(keyFunc);
+      tree.WritePath("value", { tags: ["a", "b"], points: [{ x: 1 }] });
+      tree.Commit();
+      tree.WritePath("value", { tags: ["a", "c"], points: [{ x: 2 }] });
+
+      expect(tree.Commit()).toEqual([
+        { type: "write", path: ["value", "points", 0, "x"], value: 2 },
+        { type: "write", path: ["value", "tags", 1], value: "c" },
+      ]);
     });
   });
 });

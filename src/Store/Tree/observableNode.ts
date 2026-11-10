@@ -166,6 +166,17 @@ function NodeValueSet(obj: any, prop: string | number, added: boolean, wrapper =
     ObservableScope.Update(wrapper[prop]);
 }
 
+/** A deleted property: the object's keys changed, so its scope updates, and so does the property's. */
+function RemoveNodeValue(obj: any, prop: string | number) {
+  delete obj[prop];
+  NodeValueSet(obj, prop, true);
+}
+
+/** An array spliced in place: its elements changed, so its scope updates. Moved elements keep their nodes. */
+function SplicedNodeValue(array: unknown[]) {
+  NodeValueSet(array, "", false);
+}
+
 function AssignNodeValue(obj: any, prop: string | number, value: any) {
   const added = !Object.hasOwn(obj, prop);
   obj[prop] = value;
@@ -479,10 +490,7 @@ export namespace ObservableNode {
    */
   export function ApplyDiff(rootNode: any, diffResult: JsonDiffResult) {
     const root = rootNode[NODE_VALUE];
-    JsonApplyDiff(root, diffResult, AssignNodeValue);
-    // A root replacement is applied in place without calling AssignNodeValue
-    if (diffResult.length === 1 && diffResult[0].path.length === 0)
-      NodeValueSet(root, "", false, rootNode[NODE_WRAPPER]);
+    JsonApplyDiff(root, diffResult, AssignNodeValue, RemoveNodeValue, SplicedNodeValue);
   }
 
   /**
