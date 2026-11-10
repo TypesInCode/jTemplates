@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ApplyValueToPath, ReadPath } from '../../src/Store/Diff/utils/diffTree.utils';
+import { ApplyValueToPath } from '../../src/Store/Diff/utils/homes';
+import { ReadPath } from '../../src/Store/Diff/utils/state';
 import { Snapshot } from "../../src/Store/Tree/snapshot";
 
 describe("DiffTree Utils Snapshots", () => {
@@ -9,13 +10,13 @@ describe("DiffTree Utils Snapshots", () => {
     const snapshot = Snapshot.Create();
     const obj = {} as { [key: string]: any };
 
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'wrap', { item: { id: "MY_ID", value: "test" } });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/wrap', { item: { id: "MY_ID", value: "test" } });
     expect(ReadPath(obj, '/First/Second/wrap.item')).toBe(ReadPath(obj, '/MY_ID'));
     const before = Snapshot.Get(snapshot, ReadPath(obj, '/First/Second/wrap'));
     expect(before.item.value).toEqual("test");
 
     // Writing the whole keyed value elsewhere updates its home in place
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'other', { id: "MY_ID", value: "CHANGED" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/other', { id: "MY_ID", value: "CHANGED" });
     expect(ReadPath(obj, '/MY_ID.value')).toEqual("CHANGED");
 
     const after = Snapshot.Get(snapshot, ReadPath(obj, '/First/Second/wrap'));

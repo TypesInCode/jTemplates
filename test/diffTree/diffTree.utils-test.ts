@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ApplyValueToPath, ReadPath, ROUTE_STATE, SplitRouteAndPath, WritePath } from '../../src/Store/Diff/utils/diffTree.utils';
+import { ApplyValueToPath } from '../../src/Store/Diff/utils/homes';
+import { SplitRouteAndPath } from '../../src/Store/Diff/utils/paths';
+import { ReadPath, ROUTE_STATE, WritePath } from '../../src/Store/Diff/utils/state';
 import { Snapshot } from "../../src/Store/Tree/snapshot";
 
 describe("DiffTree Utils", () => {
@@ -102,7 +104,7 @@ describe("DiffTree Utils", () => {
 
   it("Write new value to root routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `/${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => (data) => data?.id ? `/${data.id}` : undefined }, '/First/Second/value', { id: "MY_ID", value: "test" });
     const value = ReadPath(obj, '/First/Second/value.value');
     const value2 = ReadPath(obj, 'MY_ID.value');
     expect(value).toEqual("test");
@@ -111,7 +113,7 @@ describe("DiffTree Utils", () => {
 
   it("Write new value to local routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', { id: "MY_ID", value: "test" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => (data) => data?.id ? `${data.id}` : undefined }, '/First/Second/value', { id: "MY_ID", value: "test" });
     const value = ReadPath(obj, '/First/Second/value.value');
     const value2 = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("test");
@@ -120,7 +122,7 @@ describe("DiffTree Utils", () => {
 
   it("Write nested keyed value is copied to routed path", () => {
     const obj = {} as { [key: string]: any };
-    ApplyValueToPath(snapshot, obj, () => (data) => data?.id ? `${data.id}` : undefined, '/First/Second/', 'value', [{ id: "MY_ID", value: "test" }]);
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => (data) => data?.id ? `${data.id}` : undefined }, '/First/Second/value', [{ id: "MY_ID", value: "test" }]);
     const value = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("test");
   })
@@ -128,8 +130,8 @@ describe("DiffTree Utils", () => {
   it("Write to existing keyed value makes it to the root copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `/${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "CHANGED");
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object.value', "CHANGED");
     const value = ReadPath(obj, '/First/Second/object.value');
     const value2 = ReadPath(obj, '/MY_ID.value');
     expect(value).toEqual("CHANGED");
@@ -139,11 +141,11 @@ describe("DiffTree Utils", () => {
   it("Write alternating values to existing keyed value makes it to the root copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `/${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/MY_ID', 'value', "CHANGED");
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/MY_ID.value', "CHANGED");
     const value = ReadPath(obj, '/MY_ID.value');
     expect(value).toEqual("CHANGED");
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "test");
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object.value', "test");
     const value2 = ReadPath(obj, '/MY_ID.value');
     expect(value2).toEqual("test");
   });
@@ -151,8 +153,8 @@ describe("DiffTree Utils", () => {
   it("Write to existing keyed value makes it to the local copy", () => {
     const obj = {} as { [key: string]: any };
     const keyFunc = (data: any) => data?.id ? `${data.id}` : undefined;
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object', { id: "MY_ID", value: "test" });
-    ApplyValueToPath(snapshot, obj, () => keyFunc, '/First/Second/', 'object.value', "CHANGED");
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object', { id: "MY_ID", value: "test" });
+    ApplyValueToPath({ snapshot, root: obj, routeKeyFunc: () => keyFunc }, '/First/Second/object.value', "CHANGED");
     const value = ReadPath(obj, '/First/Second/object.value');
     const value2 = ReadPath(obj, '/First/Second/MY_ID.value');
     expect(value).toEqual("CHANGED");

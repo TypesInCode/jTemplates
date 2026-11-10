@@ -3,7 +3,7 @@
 Branch `diff-tree-route-enhancements`, on top of `2985d8f`. Everything below is **uncommitted**
 in the working tree, as of 2026-11-10.
 
-**State:** `npx tsc --noEmit -p .` is clean, and `npx vitest run` passes (584 tests).
+**State:** `npx tsc --noEmit -p .` is clean, and `npx vitest run` passes (585 tests).
 
 ## Why
 
@@ -45,7 +45,28 @@ to skip work.
 - **`JsonApplySplices(array, splices, clone)`:** one linear pass, written back into the same
   array object. No spread into `splice()`, so large inserts can't overflow the call stack.
 
-### DiffTree (`src/Store/Diff/diffTree.ts`, `utils/diffTree.utils.ts`)
+### Module layout (2026-11-10)
+`utils/diffTree.utils.ts` is gone. `diffTree.ts` is the public class plus `Commit`'s strategy
+and identity, and the rest is split by concern under `src/Store/Diff/utils/`:
+- `paths.ts`: path strings (constants, `SplitRouteAndPath`, `JoinPaths`, wildcard matching, overlap).
+- `state.ts`: raw route state. `RouteState(root, route, create?)` is the only code that knows how
+  route state is nested under `ROUTE_STATE`. Also reads, plain writes, `ReadSnapshot`,
+  `KeyUnchanged`, `DeleteRouteState`, `ExpandWildcardPath`.
+- `homes.ts`: homes and slots writes (`ApplyValueToPath`, `SpliceValueAtPath`, `Flatten`,
+  `IngestStrategy`), taking one `WriteContext`.
+- `routes.ts`: `RouteInstances`, which holds the instance tree, the lookup cache and a `version`
+  that moves whenever an instance may have been created or removed.
+- `projections.ts`: `Projections`, the run loop and source tracking. It rebuilds its order when
+  `RouteInstances.version` moves.
+
+Simplifications made along the way, with no behaviour change intended:
+- `DiffTree.Snapshot(path)` (and so `PatchPath`) snapshots only the path's first key instead of
+  the whole route: 200 `PatchPath`s over 5,000 root keys went from 12.7 ms to 2.1 ms.
+- `Commit` and projection sources share `KeyUnchanged`. This fixed a bug: a root key going
+  object → `undefined` → object committed nothing the third time (test added).
+- `WritePath` (projection outputs) no longer clears the replaced value's snapshot, matching `Assign`.
+
+### DiffTree (`src/Store/Diff/diffTree.ts`, `utils/homes.ts`)
 - **Slots hold their homes' objects.** Every keyed value lives at its home (its key in the route
   it's written in), and every other place it appears (a slot) holds that **same object**. There's
   no embedded copy and no snapshot resolver. Homes are only changed in place, so they keep their
@@ -108,6 +129,8 @@ hooks to `json.ts`.
 2. **Rebuild and recopy into builder-app** (see below) after L1, then test there, including
    `tests/perf/store-writes-perf.test.ts` and `tests/perf/result-push-perf.test.ts`.
 3. **builder-app changes** (in procedures-engine, not here):
+   - **A0 (required for the recopy):** `PROJECTION_PREFIX` moved. Four files import it from
+     `j-templates/Store/Diff/utils/diffTree.utils`; import it from `j-templates/Store/Diff`.
    - **A1:** `writeChanges` awaits each change, so every change is its own `StoreAsync` batch,
      with its own projection run, `Commit` and render. Read kept members from the plain docs
      (`e.after`, or `peekDoc()` for undo) instead of `target.read`, and issue an edit's writes in
@@ -130,7 +153,7 @@ hooks to `json.ts`.
    ~11.5–12.5 ms at `2985d8f`, because `Flatten` copies every row up front. Instead, diff the
    caller's value directly and swap keyed values for home objects as the diff is applied, so
    only what changed gets cloned.
-5. **Flat route map (not started):** replace the `IRoute` tree, `routeCache`, the
+5. **Flat route map (not started):** now confined to `routes.ts` and `RouteState` in `state.ts`; replace the `IRoute` tree, `routeCache`, the
    `ROUTE_STATE`-nested state and `routeVersion` with one `Map<routePath, { state, projections,
    keyFunc }>`, plus a `parent → children` index for wildcard reads and `DeleteRoute`. Decide what
    happens to paths that match no route definition.
@@ -140,7 +163,6 @@ hooks to `json.ts`.
    - Spelling: `commitedSnapshot`, and `PROP_DELIMETER`/`ROUTE_DELIMETER` (exported, so renaming
      is an API change).
    - Mixed `public`/no access modifiers in `diffTree.ts`.
-   - The `routeCache` comment says instances are never removed, which `DeleteRoute` contradicts.
    - The Store's `/`-prefix check (`store.ts`) ties it to DiffTree route syntax; a hook the
      DiffTree provides would be better.
 7. **Docs and release:**
@@ -164,6 +186,8 @@ hooks to `json.ts`.
   - `JsonApplyDiff`'s callbacks are now `(assign, remove, spliced, clone)`.
   - An empty-path write or delete throws.
 - **DiffTree:**
+  - `Store/Diff/utils/diffTree.utils` is removed. `PROJECTION_PREFIX` is exported from
+    `Store/Diff`; the internals live in `utils/paths`, `state`, `homes`, `routes`, `projections`.
   - Replacing a home with another type, or a different key, throws.
   - `ReadPath` returns home objects for slots.
   - Nested entities get a single home.

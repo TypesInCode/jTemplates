@@ -4,7 +4,7 @@ import { Snapshot } from '../../src/Store/Tree/snapshot';
 
 // Route instances are private; tests inspect them through the root route
 function RootRoute(tree: DiffTree) {
-  return (tree as any).rootRoute;
+  return (tree as any).routes.root;
 }
 
 // A route's child instances, in creation order
@@ -655,6 +655,17 @@ describe("DiffTree", () => {
       tree.WritePath("value", undefined);
 
       expect(tree.Commit()).toEqual([{ type: "write", path: ["value"], value: undefined }]);
+    });
+
+    it("Commit writes an object to a key that was committed as undefined", () => {
+      const tree = new DiffTree();
+      tree.WritePath("value", { a: 1 });
+      tree.Commit();
+      tree.WritePath("value", undefined);
+      tree.Commit();
+      tree.WritePath("value", { b: 2 });
+
+      expect(tree.Commit()).toEqual([{ type: "write", path: ["value"], value: { b: 2 } }]);
     });
 
     it("Commit excludes route state", () => {
