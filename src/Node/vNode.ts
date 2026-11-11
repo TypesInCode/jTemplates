@@ -412,6 +412,9 @@ function ScheduledAssignment(assign: (data: any) => void) {
 
     scheduled = true;
     NodeConfig.scheduleUpdate(function () {
+      if (ObservableScope.IsDestroyed(scope))
+        return;
+
       scheduled = false;
       const value = ObservableScope.Peek(scope);
       assign(value);

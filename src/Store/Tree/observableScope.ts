@@ -883,6 +883,10 @@ export namespace ObservableScope {
     Emitter.On(scope.onDestroyed, callback);
   }
 
+  export function IsDestroyed(scope: IObservableScope<unknown>) {
+    return scope.destroyed;
+  }
+
   /**
    * Marks a scope as dirty, triggering recomputation on next access or batch.
    * No-op for static scopes (created when a `Create` valueFunction reads no reactive
