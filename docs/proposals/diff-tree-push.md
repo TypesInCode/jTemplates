@@ -240,8 +240,10 @@ hub.Register("engine", () => {
   worker.postMessage({ type: "load", project });   // the worker's starting intent, sent on every start
   return worker;
 });
-hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), { releaseDebounce: 5_000 });
-hub.Connect("trace", "engine");        // while trace runs, it has a port to engine's tree
+hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), {
+  sources: ["engine"],                 // while trace runs, it has a port to engine's tree: one way
+  releaseDebounce: 5_000,
+});
 
 const engine = hub.Open("engine");     // the app's own lease: engine lives as long as the app
 const traceLease = hub.Open("trace");  // the Trace tab's: trace starts, and engine is opened for it
@@ -264,14 +266,15 @@ OnConnect("engine", port => {       // once per port: on start, and after each e
 });
 ```
 
-- **`Register(name, factory, { releaseDebounce? })`** records how to create a worker; it creates nothing. The factory is the start hook: it creates the worker and sends the worker's starting intent, so every start, the first and each restart, begins the same way.
+- **`Register(name, factory, { sources?, releaseDebounce? })`** records how to create a worker and the workers it reads from; it creates nothing. The factory is the start hook: it creates the worker and sends the worker's starting intent, so every start, the first and each restart, begins the same way. Each source must be registered first, so the order of registrations is the dependency order, and a cycle can't be written.
 - **`Open(name)` returns a lease:** a `MessagePort` to the worker, served by its host (the hub sends the other end in a `jt-serve` message). The first lease creates the worker. Main-thread stores use leases, never the `Worker` object, so the hub counts every use and a store has a port of its own.
 - **A worker is released when its last lease ends**: at once, or `releaseDebounce` milliseconds later, cancelled when a lease is opened meanwhile (a component remounting). Releasing terminates the worker and ends its own leases on other workers, which can release them in turn. The next `Open` creates it again, from its factory. A worker that must outlive every view, like the engine, is held by a lease the app keeps.
 - **`lease.Release()`** sends the worker `jt-unserve` with the lease's id on its own channel, so the host stops serving the lease's port and ends its subscriptions, releasing their keys; then it closes the port. The hub uses the worker's channel, not the port, because a connection's port was transferred to the consumer. Releasing twice does nothing.
-- **`Connect(consumer, source)`** declares that the consumer has a port to the source while it runs. When the consumer starts, the hub opens a lease on the source for it (starting the source if needed) and sends the consumer its port in a `jt-connect` message naming the source; the consumer's `OnConnect` handler gets it; the handler may return a cleanup, which runs (and the old port closes) before it gets a new port. A port that arrives before the handler is registered is kept for it: `HostPublisher` starts listening for them. The lease ends when the consumer is released. A `Connect` that would make a cycle throws: two workers holding leases on each other would never be released.
-- **`Restart(name)`** terminates the worker, creates a new one from its factory, and re-issues every port to it: each lease gets a new port (a store over it reconnects), and each connected consumer gets a new `jt-connect`. A restarted consumer gets its own connections again. Detecting that a worker is unhealthy is the app's (builder-app restarts the engine when a run times out); an uncaught error in a worker doesn't end it, so the hub doesn't restart on `error`.
-- **`Unregister(name)`** terminates the worker now, ends every lease on it, and forgets the factory. `Open` on a name that isn't registered throws.
-- **`Destroy()`** unregisters every name, as the framework's other `Destroy()` methods end what they own: every worker is terminated and every lease ended.
+- **`sources`** makes a one-way connection: the worker reads from each source's tree, and the source knows nothing of it. When the worker starts, the hub opens a lease on each source for it (starting the source if needed) and sends the worker the port in a `jt-connect` message naming the source; the worker's `OnConnect` handler gets it. The handler may return a cleanup, which runs (and the old port closes) before it gets a new port. A port that arrives before the handler is registered is kept for it: `HostPublisher` starts listening for them. The leases end when the worker is released.
+- **A worker knows its sources.** The hub's first message to a worker it creates, on every start, is `jt-sources` with the worker's `sources`. `OnConnect` for any other source throws: at once when the list has arrived, or, for a handler registered while the worker's module first ran, as the worker's uncaught error when it arrives (the main thread's `Worker` `error` event). A worker the hub didn't create is never checked.
+- **`Restart(name)`** terminates the worker, creates a new one from its factory, and re-issues every port to it: each lease gets a new port (a store over it reconnects), and each worker reading from it gets a new `jt-connect`. A restarted worker gets new ports to its own sources. Detecting that a worker is unhealthy is the app's (builder-app restarts the engine when a run times out); an uncaught error in a worker doesn't end it, so the hub doesn't restart on `error`.
+- **`Unregister(name)`** terminates the worker now, ends every lease on it, releases its sources, and forgets the factory. It throws while a registered worker reads from it: unregister that one first. `Open` on a name that isn't registered throws.
+- **`Destroy()`** unregisters every name, the last registered first, so each worker goes before its sources; as the framework's other `Destroy()` methods end what they own, every worker is terminated and every lease ended.
 - **It never carries data.** Posts go directly between each port's two ends, so the main thread stays out of the source plane (builder-app's invariant 1).
 
 ### A worker subscribing to another tree
@@ -311,7 +314,7 @@ The store knows which batches are in flight and which roots each writes. `IsPend
 | Trace: `pending` note on a notes port, `tick` root, `write()`/`note()`, `tree.committed()` after each batch | The tree runs projections and commits when its work finishes |
 | Trace: `flowStatus` reaches the view only with the next batch's reply | The worker commits the status as soon as it changes, without rerunning the views |
 | Trace: `trace-host.ts` routes control messages around `ConnectWorkerToDiffTree` | `HostPublisher` ignores non-`jt-` messages |
-| Trace: `trace-engine` control message carries a port from `EngineClient.connect` | `hub.Connect("trace", "engine")` |
+| Trace: `trace-engine` control message carries a port from `EngineClient.connect` | `hub.Register("trace", factory, { sources: ["engine"] })` |
 | Engine: `EngineClient` creates, restarts and re-connects the worker after a timeout | `hub.Register` with a factory; `hub.Restart("engine")` on a timeout |
 | Trace: the service creates the worker and terminates it | `hub.Open("trace")` per view and `Release()` in teardown, with a `releaseDebounce` |
 | Engine: `ResultPushWriter` over `DiffTreeWriter`, `PushStore` on the main thread | A `DiffTree` that commits per run; a read-only `StoreAsync` |
@@ -341,7 +344,7 @@ What stays the app's: which versions the source keeps and for how long (its time
 7. **Settled (revised): the hub owns a worker's lifetime, by its leases.** It creates a worker from its factory on the first lease and terminates it when the last ends, after an optional `releaseDebounce`. `StoreAsync.Destroy()` only unsubscribes and stops listening. A derived worker is scoped to its components by their leases; a long-lived one by a lease the app keeps (§Connecting workers). A worker created outside the hub is its creator's to terminate, as `@ComputedAsync` does.
 8. **Settled: a same-thread listener that writes to the tree during a delivery throws**, as the emitter does on re-entry.
 9. **Settled (revised): deciding to restart is the app's; restarting is the hub's.** The app detects an unhealthy worker (a timeout, its own error reports) and calls `hub.Restart(name)`. The hub re-creates it from its factory, which also sends its starting intent, re-issues every lease's port and connection, and each store over a lease reconnects with `reseed`, writing back the roots it wrote and resending its unacknowledged batches (§A store that outlives its tree).
-10. **Settled: names.** `SubscriptionManager` (subscriptions for any use), `DiffTreePublisher` (owns a tree, the only way to commit it, shapes deliveries), `HostPublisher(publisher, scope)` (serves a publisher on a worker's channels), `WorkerHub` (owns workers by name: factories, leases, connections and restarts; carries no data; `Destroy()` ends them all), `Open` and `Release` (a lease on a worker), `releaseDebounce` (the one `Register` option), `OnConnect` (a consumer's side of a hub connection), `Subscribe` and `Once` (subscribing over a port), and the `jt-` message prefix.
+10. **Settled: names.** `SubscriptionManager` (subscriptions for any use), `DiffTreePublisher` (owns a tree, the only way to commit it, shapes deliveries), `HostPublisher(publisher, scope)` (serves a publisher on a worker's channels), `WorkerHub` (owns workers by name: factories, leases, connections and restarts; carries no data; `Destroy()` ends them all), `Open` and `Release` (a lease on a worker), `sources` and `releaseDebounce` (the `Register` options: the workers it reads from, and how long it outlives its last lease), `OnConnect` (a consumer's side of a hub connection), `Subscribe` and `Once` (subscribing over a port), and the `jt-` message prefix.
 11. **Settled: every commit goes through the publisher, which owns its tree.** Subscriptions are managed in two layers: a `SubscriptionManager` for any use (keys, wildcards, groups, exact-key counts, release), and a `DiffTreePublisher` that creates its `DiffTree`, exposes its write API and `Commit()` but never the tree, and shapes each commit per subscription (§Subscriptions outside the tree). No code holds a tree it could commit past the publisher. Acks are their own message (`jt-ack`), sent by the host after the commit's posts.
 
 ## Deferred: scheduled projections
@@ -358,7 +361,7 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 
 1. **Done. The tree and the publisher:** `Committed`, `CommittedKeys` and `DeleteRoot` on the tree; `SubscriptionManager` (filters, wildcards, ids, groups, counts, `SubscriberCount`, `OnReleased`); `DiffTreePublisher` over it (the two forms, the committed state on subscribe, `seq`, `Once`). `StoreSync` over it, with no behaviour change.
 2. **Done. The worker side:** `HostPublisher` (with `Serve` for ports, `jt-subscribed`, and `jt-disconnect` handling), and `StoreAsync` over posts with acks, `Flush()` by ack, per-batch failure and a `roots` option. `Subscribe` and `Once` over a channel. `WorkerQueue`, `ConnectWorkerToDiffTree`, `PushStore` and `DiffTreeWriter` are gone. `StoreAsync.Destroy()` no longer terminates the worker; `@ComputedAsync` terminates the one it creates.
-3. **Done. The hub:** `WorkerHub` (`Register` with a factory and `releaseDebounce`, `Open` and leases, `Connect`, `Restart`, `Unregister`, `Destroy`), `jt-serve` and `jt-connect` handling in the host and `OnConnect`, `StoreAsync` over a lease, `Reconnect` with `reseed` (using `jt-subscribed`). Not yet in a phase: `IsPending(root)` (§Pending state).
+3. **Done. The hub:** `WorkerHub` (`Register` with a factory, `sources` and `releaseDebounce`, `Open` and leases, `Restart`, `Unregister`, `Destroy`), `jt-serve` and `jt-connect` handling in the host and `OnConnect`, `StoreAsync` over a lease, `Reconnect` with `reseed` (using `jt-subscribed`). Not yet in a phase: `IsPending(root)` (§Pending state).
 4. **builder-app:** the trace store first (it has the most workarounds), then the result index, then the project store. Measure posts per action, bytes per post and the main thread's time applying them against today, including a stepped build that commits its status while the user types, and bytes per update and the time to receive it between workers.
 
 ## Tests
@@ -387,12 +390,13 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 - `Register` creates nothing; the first `Open` creates the worker, and the factory runs again on each restart and after each release.
 - The last `Release` terminates the worker at once without `releaseDebounce`, and after it with one; an `Open` during the debounce keeps the same worker.
 - Releasing a consumer ends its leases on its sources, which can release them in turn; a source another lease holds keeps running.
-- `Connect` gives a consumer its port when it starts, again after the source restarts, and again when the consumer itself restarts; a `Connect` cycle throws.
+- A worker's first message from the hub, on every start, is `jt-sources`; `OnConnect` for a source it doesn't list throws, at once or when the list arrives.
+- A worker with `sources` gets its port to each when it starts, again after a source restarts, and again when it restarts itself; a source must be registered before the worker that reads from it.
 - `Restart` re-issues every lease's port, and a store over a lease reconnects with its readers kept.
 - `Reconnect` with `reseed` writes back the roots the store wrote and resends its unacknowledged batches; projection roots come from the new tree.
-- `Release` sends `jt-disconnect`, so the worker ends the lease's subscriptions and releases their keys.
-- `Unregister` terminates the worker, ends its leases, and makes `Open` throw.
-- `Destroy` unregisters every name: every worker is terminated and every lease ended.
+- `Release` sends `jt-unserve`, so the worker ends the lease's subscriptions and releases their keys.
+- `Unregister` terminates the worker, ends its leases, and makes `Open` throw; it throws while another registered worker reads from it.
+- `Destroy` unregisters every name, the last registered first: every worker is terminated and every lease ended.
 - A same-thread listener that writes to the tree during a delivery throws.
 - Two publishers on one thread: a `"snapshot"` subscription receives the source's commits inside `Commit()`, the derived tree's commit reaches its own subscribers in the same call, and a write back to the source from that chain throws.
 - `source.Once(keys)` on one thread resolves from the delivery that adds the last key.

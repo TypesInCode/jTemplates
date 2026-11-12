@@ -90,6 +90,16 @@ export interface IConnectMessage {
 }
 
 /**
+ * From a `WorkerHub` to a worker it created, on the worker's own channel, first on every start:
+ * the sources it reads from (`Register(name, factory, { sources })`). `OnConnect` throws for a
+ * source that isn't listed.
+ */
+export interface ISourcesMessage {
+  type: "jt-sources";
+  sources: readonly string[];
+}
+
+/**
  * A lease on a worker a `WorkerHub` owns: a port to it, served by its `HostPublisher`. The worker
  * runs while it has leases. A `StoreAsync` given a lease follows its port across restarts.
  */

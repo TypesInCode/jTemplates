@@ -54,7 +54,7 @@ describe("WorkerHub", () => {
         return shim.worker as any;
       }, options);
 
-    /** The trace: a consumer that derives `$projection_count` from the engine's list, in a route */
+    /** The trace: reads from the engine, and derives `$projection_count` from its list in a route */
     const trace = (options = {}) =>
       hub.Register("trace", () => {
         const shim = CreateShimWorker(undefined, deriveRoutes);
@@ -69,7 +69,7 @@ describe("WorkerHub", () => {
           });
         }, shim.scope);
         return shim.worker as any;
-      }, options);
+      }, { sources: ["engine"], ...options });
 
     const Store = (lease: any) => {
       const store = new StoreAsync(lease);
@@ -145,12 +145,11 @@ describe("WorkerHub", () => {
     });
   });
 
-  describe("connections", () => {
+  describe("sources", () => {
     it("a consumer gets its port when it starts, and derives from the source", async () => {
       const { latest, engine, trace, Store } = Setup();
       engine([1, 2, 3]);
       trace();
-      hub.Connect("trace", "engine");
       const store = Store(hub.Open("trace"));
       expect(hub.IsRunning("engine")).toBe(true);
       await WaitFor(() => expect(store.Get("$projection_count")).toBe(3));
@@ -161,22 +160,10 @@ describe("WorkerHub", () => {
       await WaitFor(() => expect(store.Get("$projection_count")).toBe(4));
     });
 
-    it("Connect on a running consumer sends its port at once", async () => {
-      const { engine, trace, Store } = Setup();
-      engine();
-      trace();
-      const store = Store(hub.Open("trace"));
-      expect(hub.IsRunning("engine")).toBe(false);
-      hub.Connect("trace", "engine");
-      expect(hub.IsRunning("engine")).toBe(true);
-      await WaitFor(() => expect(store.Get("$projection_count")).toBe(2));
-    });
-
     it("releasing a consumer releases its source, unless another lease holds it", () => {
       const { engine, trace } = Setup();
       engine();
       trace();
-      hub.Connect("trace", "engine");
       const app = hub.Open("engine");
       const lease = hub.Open("trace");
       lease.Release();
@@ -188,16 +175,14 @@ describe("WorkerHub", () => {
       expect(hub.IsRunning("engine")).toBe(false);
     });
 
-    it("a Connect that makes a cycle throws, and so does a name that isn't registered", () => {
+    it("a worker's sources are registered before it; a name isn't registered twice", () => {
       const { engine, trace } = Setup();
+      expect(() => trace()).toThrow(/register a worker's sources before it/);
       engine();
       trace();
-      hub.Connect("trace", "engine");
-      expect(() => hub.Connect("engine", "trace")).toThrow(/cycle/);
-      expect(() => hub.Connect("engine", "engine")).toThrow(/cycle/);
-      expect(() => hub.Connect("trace", "missing")).toThrow(/isn't registered/);
-      expect(() => hub.Open("missing")).toThrow(/isn't registered/);
       expect(() => engine()).toThrow(/already registered/);
+      expect(() => hub.Register("self", () => ({}) as any, { sources: ["self"] })).toThrow(/isn't registered/);
+      expect(() => hub.Open("missing")).toThrow(/isn't registered/);
     });
   });
 
@@ -213,7 +198,6 @@ describe("WorkerHub", () => {
         return shim.worker as any;
       });
       trace();
-      hub.Connect("trace", "engine");
       const store = Store(hub.Open("trace"));
       await WaitFor(() => expect(store.Get("$projection_count")).toBe(2));
 
@@ -230,7 +214,6 @@ describe("WorkerHub", () => {
       const { created, engine, trace, Store } = Setup();
       engine([1, 2, 3]);
       trace();
-      hub.Connect("trace", "engine");
       const store = Store(hub.Open("trace"));
       await WaitFor(() => expect(store.Get("$projection_count")).toBe(3));
 
@@ -281,23 +264,22 @@ describe("WorkerHub", () => {
       expect(() => hub.Open("engine")).toThrow(/isn't registered/);
     });
 
-    it("Unregister of a source ends a consumer's connection to it", () => {
+    it("Unregister of a worker another reads from throws; unregistering the reader first releases it", () => {
       const { engine, trace } = Setup();
       engine();
       trace();
-      hub.Connect("trace", "engine");
       hub.Open("trace");
+      expect(() => hub.Unregister("engine")).toThrow(/trace reads from engine; unregister it first/);
+      expect(hub.IsRunning("engine")).toBe(true);
+      hub.Unregister("trace");
+      expect(hub.IsRunning("engine")).toBe(false);
       hub.Unregister("engine");
-      expect(hub.IsRunning("trace")).toBe(true);
-      hub.Restart("trace");
-      expect(hub.IsRunning("trace")).toBe(true);
     });
 
     it("Destroy unregisters every name", () => {
       const { latest, engine, trace } = Setup();
       engine();
       trace();
-      hub.Connect("trace", "engine");
       hub.Open("trace");
       hub.Destroy();
       expect(latest("engine").worker.terminated).toBe(true);
@@ -343,6 +325,53 @@ describe("StoreAsync.Reconnect", () => {
 });
 
 describe("OnConnect", () => {
+  it("throws for a source the hub didn't list, once the list has arrived", async () => {
+    const [hubSide, scope] = CreateShimChannel();
+    HostPublisher(new DiffTreePublisher(), scope);
+    hubSide.postMessage({ type: "jt-sources", sources: ["engine"] });
+    await Settle();
+    expect(() => OnConnect("results", () => {}, scope)).toThrow(/results isn't a source this worker was registered with \(sources: engine\)/);
+    expect(() => OnConnect("engine", () => {}, scope)).not.toThrow();
+  });
+
+  it("checks a handler registered before the list when it arrives, as an uncaught error", async () => {
+    const [hubSide, scope] = CreateShimChannel();
+    // jsdom swallows a listener's exception; in a worker it's the worker's uncaught error
+    const errors: unknown[] = [];
+    const addEventListener = scope.addEventListener.bind(scope);
+    scope.addEventListener = ((type: string, listener: any) =>
+      addEventListener(type, (event: Event) => {
+        try {
+          listener(event);
+        } catch (err) {
+          errors.push(err);
+        }
+      })) as any;
+    HostPublisher(new DiffTreePublisher(), scope);
+    OnConnect("results", () => {}, scope);
+    hubSide.postMessage({ type: "jt-sources", sources: [] });
+    await Settle();
+    expect(String(errors[0])).toMatch(/results isn't a source this worker was registered with \(sources: none\)/);
+  });
+
+  it("the hub tells each worker its sources first, on every start", async () => {
+    const hub = new WorkerHub();
+    const workers: ReturnType<typeof CreateShimWorker>[] = [];
+    hub.Register("engine", () => CreateShimWorker().worker as any);
+    hub.Register("trace", () => {
+      const shim = CreateShimWorker();
+      workers.push(shim);
+      return shim.worker as any;
+    }, { sources: ["engine"] });
+    hub.Open("trace");
+    hub.Restart("trace");
+    for (const shim of workers) {
+      expect(shim.worker.sent[0]).toEqual({ type: "jt-sources", sources: ["engine"] });
+      expect(shim.worker.sent[1].type).toBe("jt-connect");
+    }
+    hub.Destroy();
+  });
+
   it("keeps a port that arrives before the handler, and cleans up when a new one arrives", async () => {
     const [hubSide, scope] = CreateShimChannel();
     HostPublisher(new DiffTreePublisher(), scope);

@@ -707,11 +707,13 @@ hub.Register("engine", () => {
   worker.postMessage({ type: "load", project });   // starting intent: runs on every start
   return worker;
 });
-hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), { releaseDebounce: 5000 });
-hub.Connect("trace", "engine");
+hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), {
+  sources: ["engine"],                    // trace reads engine's tree: one way, registered after it
+  releaseDebounce: 5000,
+});
 
 const app = hub.Open("engine");           // held for the app's lifetime
-const lease = hub.Open("trace");          // starts trace; trace's connection keeps engine open
+const lease = hub.Open("trace");          // starts trace; its lease on its source keeps engine open
 const store = new StoreAsync(lease, keyFunc);
 // teardown
 store.Destroy();
@@ -733,10 +735,11 @@ OnConnect("engine", port => {
 });
 ```
 
-- `Register` creates nothing; the first `Open` does. The factory runs again on `Restart` and on the next `Open` after a release, so it should send whatever the worker needs to start.
+- `Register` creates nothing; the first `Open` does. A worker's `sources` must be registered before it, and the worker's `OnConnect(source, …)` handler gets a port to each while it runs.
+- The hub tells each worker its sources first, on every start. `OnConnect` for a source the worker wasn't registered with throws: at once if the list has arrived, otherwise when it does, as the worker's uncaught error (the `Worker`'s `error` event on the main thread). The factory runs again on `Restart` and on the next `Open` after a release, so it should send whatever the worker needs to start.
 - A worker is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing terminates it and ends its leases on its sources. Keep a lease for a worker that must outlive every view.
 - Give leases, not the `Worker`, to stores: a store over a lease follows a restart with `Reconnect(port, { reseed: true })`, keeping its readers. `store.Destroy()` never terminates a worker.
-- `Restart` is the app's call when it decides a worker is unhealthy; the hub doesn't restart on `error`. `Connect` throws on a cycle. `Unregister(name)` ends one worker; `Destroy()` all of them.
+- `Restart` is the app's call when it decides a worker is unhealthy; the hub doesn't restart on `error`. `Unregister(name)` ends one worker, and throws while another registered worker reads from it; `Destroy()` ends all of them, the last registered first.
 
 ## ObservableScope and ObservableNode
 

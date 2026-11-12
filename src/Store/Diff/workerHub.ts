@@ -1,4 +1,4 @@
-import { IConnectMessage, IHostRequest, IWorkerLease } from "./diffTree.types";
+import { IConnectMessage, IHostRequest, ISourcesMessage, IWorkerLease } from "./diffTree.types";
 
 /** What a `WorkerHub` needs of a worker: a `Worker`, or anything shaped like one */
 export interface IHubWorker {
@@ -11,6 +11,12 @@ export type WorkerFactory = () => IHubWorker;
 
 /** `WorkerHub.Register` options */
 export interface IWorkerOptions {
+  /**
+   * Registered workers this one reads from. While it runs, it holds a lease on each, and its
+   * `OnConnect(source, …)` handler gets a port to the source's tree: one way, from the source to
+   * this worker. Each must be registered first.
+   */
+  sources?: readonly string[];
   /**
    * Milliseconds to keep the worker after its last lease ends; a lease opened meanwhile keeps
    * the same worker. Omitted, the worker is released at once.
@@ -25,8 +31,8 @@ interface IEntry {
   worker?: IHubWorker;
   /** Leases on this worker */
   leases: Set<Lease>;
-  /** The sources this worker is connected to */
-  sources: string[];
+  /** The workers this one reads from */
+  sources: readonly string[];
   /** The leases this worker holds on its sources while it runs */
   held: Map<string, Lease>;
   timer?: ReturnType<typeof setTimeout>;
@@ -65,20 +71,20 @@ class Lease implements IWorkerLease {
  * one on request, and terminates each one when its last lease ends. It never carries data: posts
  * go directly between each port's two ends.
  *
- * - **`Register`** records how to create a worker; it creates nothing.
+ * - **`Register`** records how to create a worker, and the workers it reads from (`sources`, each
+ *   registered before it); it creates nothing.
  * - **`Open`** returns a lease, a `MessagePort` the worker's `HostPublisher` serves. The first
  *   lease creates the worker. Give the lease to a `StoreAsync`, and release it in teardown.
  * - **A worker is released when its last lease ends**, at once or after its `releaseDebounce`.
  *   A worker that must outlive every view is held by a lease the app keeps.
- * - **`Connect(consumer, source)`**: while the consumer runs, it holds a lease on the source, and
- *   its `OnConnect` handler gets the port.
+ * - **A worker with `sources`** holds a lease on each while it runs, and its `OnConnect` handler
+ *   gets a port to each source's tree.
  * - **`Restart`** re-creates a worker and re-issues every port to it.
  *
  * @example
  * const hub = new WorkerHub();
  * hub.Register("engine", () => new Worker(engineUrl, { type: "module" }));
- * hub.Register("trace", () => new Worker(traceUrl, { type: "module" }), { releaseDebounce: 5_000 });
- * hub.Connect("trace", "engine");
+ * hub.Register("trace", () => new Worker(traceUrl, { type: "module" }), { sources: ["engine"], releaseDebounce: 5_000 });
  * const lease = hub.Open("trace");          // starts trace, and engine for it
  * const store = new StoreAsync(lease, keyFunc);
  * // teardown
@@ -89,15 +95,22 @@ export class WorkerHub {
   private entries = new Map<string, IEntry>();
 
   /**
-   * Records how to create a worker. Creates nothing: the first lease does.
+   * Records how to create a worker, and the workers it reads from. Creates nothing: the first
+   * lease does.
    * @param factory Creates the worker and sends it its starting intent; runs on every start.
-   * @throws When the name is already registered.
+   * @param options `sources`: registered workers it reads from; `releaseDebounce`: see `IWorkerOptions`.
+   * @throws When the name is already registered, or a source isn't registered yet.
    */
   Register(name: string, factory: WorkerFactory, options: IWorkerOptions = {}) {
     if (this.entries.has(name))
       throw new Error(`WorkerHub: ${name} is already registered.`);
 
-    this.entries.set(name, { name, factory, options, leases: new Set(), sources: [], held: new Map() });
+    const sources = Array.from(new Set(options.sources ?? []));
+    for (const source of sources)
+      if (!this.entries.has(source))
+        throw new Error(`WorkerHub: ${name} reads from ${source}, which isn't registered; register a worker's sources before it.`);
+
+    this.entries.set(name, { name, factory, options, leases: new Set(), sources, held: new Map() });
   }
 
   /**
@@ -109,27 +122,9 @@ export class WorkerHub {
   }
 
   /**
-   * While `consumer` runs, it holds a lease on `source`, and its `OnConnect(source, …)` handler
-   * gets the lease's port: when it starts, and again whenever either worker restarts.
-   * @throws When either isn't registered, or the connection would make a cycle.
-   */
-  Connect(consumer: string, source: string) {
-    const from = this.Entry(consumer);
-    const to = this.Entry(source);
-    if (from.sources.includes(source))
-      return;
-
-    if (consumer === source || this.Reaches(to, consumer))
-      throw new Error(`WorkerHub: connecting ${consumer} to ${source} makes a cycle; workers holding leases on each other are never released.`);
-
-    from.sources.push(source);
-    from.worker && from.held.set(source, this.Lease(to, from));
-  }
-
-  /**
    * Terminates a running worker, creates a new one from its factory, and re-issues every port to
-   * it: each lease gets a new port (`IWorkerLease.OnPort`), each connected consumer a new
-   * `jt-connect`, and the worker its own connections. Does nothing when the worker isn't running.
+   * it: each lease gets a new port (`IWorkerLease.OnPort`), each worker reading from it a new
+   * `jt-connect`, and the worker new ports to its own sources. Does nothing when the worker isn't running.
    * @throws When the name isn't registered.
    */
   Restart(name: string) {
@@ -138,7 +133,7 @@ export class WorkerHub {
       return;
 
     entry.worker.terminate();
-    entry.worker = entry.factory();
+    this.Create(entry);
 
     // New leases on the sources first, so releasing the old ones doesn't release a source
     const old = Array.from(entry.held.values());
@@ -152,34 +147,32 @@ export class WorkerHub {
   }
 
   /**
-   * Terminates the worker if it runs, ends every lease on it and every connection to or from it,
-   * and forgets it. `Open` on the name throws after.
+   * Terminates the worker if it runs, ends every lease on it, releases its sources, and forgets
+   * it. `Open` on the name throws after.
+   * @throws When a registered worker reads from it: unregister that one first.
    */
   Unregister(name: string) {
     const entry = this.entries.get(name);
     if (!entry)
       return;
 
-    this.entries.delete(name);
-    for (const other of this.entries.values()) {
-      const index = other.sources.indexOf(name);
-      if (index >= 0) {
-        other.sources.splice(index, 1);
-        const held = other.held.get(name);
-        other.held.delete(name);
-        held && this.End(held);
-      }
-    }
+    for (const other of this.entries.values())
+      if (other.sources.includes(name))
+        throw new Error(`WorkerHub: ${other.name} reads from ${name}; unregister it first.`);
 
+    this.entries.delete(name);
     for (const lease of Array.from(entry.leases))
       this.End(lease);
 
     this.Stop(entry);
   }
 
-  /** Unregisters every name: every worker is terminated and every lease ended */
+  /**
+   * Unregisters every name, the last registered first, so each worker goes before its sources:
+   * every worker is terminated and every lease ended.
+   */
   Destroy() {
-    for (const name of Array.from(this.entries.keys()))
+    for (const name of Array.from(this.entries.keys()).reverse())
       this.Unregister(name);
   }
 
@@ -196,11 +189,6 @@ export class WorkerHub {
     return entry;
   }
 
-  /** Whether `entry`'s connections lead to `name` */
-  private Reaches(entry: IEntry, name: string): boolean {
-    return entry.sources.some(source => source === name || this.Reaches(this.Entry(source), name));
-  }
-
   private Lease(entry: IEntry, holder: IEntry | undefined) {
     clearTimeout(entry.timer);
     entry.timer = undefined;
@@ -212,9 +200,16 @@ export class WorkerHub {
   }
 
   private Start(entry: IEntry) {
-    entry.worker = entry.factory();
+    this.Create(entry);
     for (const source of entry.sources)
       entry.held.set(source, this.Lease(this.Entry(source), entry));
+  }
+
+  /** Creates the worker, and tells it its sources before anything else the hub sends */
+  private Create(entry: IEntry) {
+    const worker = entry.worker = entry.factory();
+    const sources: ISourcesMessage = { type: "jt-sources", sources: entry.sources };
+    worker.postMessage(sources, []);
   }
 
   /** Serves a new channel for the lease on its worker, and gives the other end to its holder */
