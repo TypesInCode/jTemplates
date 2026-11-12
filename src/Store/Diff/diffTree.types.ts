@@ -27,7 +27,7 @@ export type IDiffPushEvent = {
 /** A `DiffTree` method call sent to a worker connected with `ConnectWorkerToDiffTree` */
 export interface IDiffMethod {
   /** The method to call */
-  method: "writepath" | "patchpath" | "pushpath" | "splicepath";
+  method: "writepath" | "patchpath" | "pushpath" | "splicepath" | "markopaque";
   /** Arguments for the method call */
   arguments: Array<any>;
 }

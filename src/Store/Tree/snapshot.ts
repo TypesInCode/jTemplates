@@ -1,4 +1,5 @@
 import { JsonType } from "../../Utils/json";
+import { Opaque } from "./opaque";
 
 /**
  * Resolves a keyed child to the root entity it should be read through. Returns the entity, or
@@ -38,8 +39,8 @@ function InvalidateValue(state: ISnapshotState, value: object) {
 }
 
 /**
- * An immutable snapshot of a raw value (arrays and plain objects; other values are
- * returned as they are). A snapshot is cached per raw value and returned as-is until a
+ * An immutable snapshot of a raw value (arrays and plain objects; an Opaque gives its raw
+ * value, and other values are returned as they are). A snapshot is cached per raw value and returned as-is until a
  * write invalidates it. A rebuild makes new containers but reuses the cached snapshots of
  * unchanged children, so a snapshot handed out never changes and unchanged parts are
  * shared between snapshots. Keyed children are read through their root.
@@ -49,7 +50,7 @@ function CreateSnapshot(
   resolve: SnapshotResolver | undefined,
   value: any
 ): any {
-  if (JsonType(value) === "value") return value;
+  if (JsonType(value) === "value") return Opaque.Open(value);
 
   const cached = state.rawToSnapshotCache.get(value);
   if (cached !== undefined) return cached;
@@ -83,7 +84,7 @@ function ChildSnapshot(
   key: string | number
 ) {
   const child = parent[key];
-  if (JsonType(child) === "value") return child;
+  if (JsonType(child) === "value") return Opaque.Open(child);
 
   CreateSnapshotLink(state, child as object, parent);
   const resolved = resolve?.(child);

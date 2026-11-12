@@ -537,7 +537,7 @@ A store holds reactive data under string keys and diffs every write into existin
 
 |  | `StoreSync` | `StoreAsync` | `PushStore` |
 | --- | --- | --- | --- |
-| Constructor | `new StoreSync(keyFunc?, projections?)` | `new StoreAsync(worker, keyFunc?)` | `new PushStore(source, keyFunc?)` |
+| Constructor | `new StoreSync(keyFunc?, projections?, options?)` | `new StoreAsync(worker, keyFunc?, options?)` | `new PushStore(source, keyFunc?)` |
 | Diffing | main thread, synchronous | in the `Worker` you supply | in the `DiffTreeWriter` that pushes to it |
 | Writes | `void`; readable immediately | `Promise`; batched per tick, readable only after `await` | none; read-only. Changes arrive when the writer calls `Commit()` |
 | `Destroy()` | none | required; terminates the worker | required; stops listening, leaves the worker running |
@@ -622,6 +622,21 @@ store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 - A cycle or a read of an undefined projection throws at construction.
 - A dotted read can pass through a keyed entity (`"doc.owner.name"`, where `owner` has an id). It reads the entity's own root, so a `Patch` to the entity reruns the projection with the new value (verified; before 8.0.24 such a read returned the stale embedded copy).
 - `StoreSync` and the `StoreAsync` worker run projections for you, and a `DiffTreeWriter` runs them in `Commit()`. `DiffTree.DiffPath`, `PatchPath`, `PushPath` and `SplicePath` don't (8.0.27): code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
+
+### Opaque roots
+
+A root that only grows with the data, such as a drawing of every row, is expensive to diff field by field and to read through proxies. List its key in the store's `opaque` option to hold it whole:
+
+```typescript
+const store = new StoreSync(keyFunc, routes, { opaque: ["$projection_layout"] });
+const layout = store.Get<Layout>("$projection_layout"); // the raw value: no proxies inside it
+```
+
+- The key can be a written root or a projection's `$projection_<key>`. The store tells its `DiffTree` (`DiffTree.MarkOpaque`), which writes the root whole whenever it changes. `StoreAsync` sends the keys to its worker ahead of the first change.
+- `Get` returns the same reference until the root changes, and only that change updates its readers. A write that changes nothing updates no one.
+- The value is the store's own: treat it as read-only. A change made inside it notifies no one, and under `StoreSync` it is also the `DiffTree`'s committed snapshot.
+- Write the raw value. Don't pass an `Opaque` to `Write`, `Patch`, `Push` or `Splice`, at any depth: the store boxes the root itself, and a box written to a store isn't opened (under `StoreAsync` it arrives as a plain `{ value }`).
+- An opaque root can't be read through a key: a `keyFunc` alias that resolves to one throws.
 
 ### PushStore and DiffTreeWriter
 
@@ -712,6 +727,7 @@ ObservableNode.CreateFactory(alias?)  // proxy factory with aliasing (used by st
 
 - `Snapshot` returns the same object on repeated calls until a write. After a write, unchanged nested parts are shared (`===`) with the previous snapshot. Snapshots are **not frozen**; treat them as read-only.
 - `JSON.stringify(node)` and `node.toJSON()` use the cached snapshot.
+- **`Opaque`** (`j-templates/Store`) holds a value whole inside a node. Assign one (`node.view = new Opaque(view)`), push or splice it into a node's array, or return it inside a `@Computed` result. The node stores the box and every read opens it, so readers get the raw value, never proxied, and re-run only when the box is replaced. Array callbacks, `pop`, `shift`, `splice`'s removed items and a `sort` comparator get raw values too. Spread, `Object.assign`, property descriptors, snapshots and `JSON.stringify` give the raw value too, so an object composed from reads holds no box. `Unwrap` gives the node's storage, boxes included (`Create(Unwrap(node))` is `node` itself), and `Clone` keeps a box it's given: fine to write back into a node, not to a store.
 - `ApplyDiff`, `ApplySplice` and `Touch` also exist; they are internal to the stores. `ApplyDiff` and `ApplySplice` deep-clone what they write, so the node never shares objects with the caller.
 
 **Snapshot reads do not subscribe.** `JSON.stringify(node)`, `node.toJSON()` and `ObservableNode.Snapshot(node)` register no dependencies, so a scope that reads only through them never updates (verified). Read properties directly, or use `ObservableNode.Clone(node)`, which tracks every nested field and leaves the source untouched:
@@ -975,6 +991,7 @@ Component.Attach(document.getElementById("app")!, app({}));
 24) **`JSON.stringify(node)` and `ObservableNode.Snapshot(node)` don't subscribe.** Read properties directly, or `ObservableNode.Clone(node)` to track everything.
 25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
 26) **A `PushStore` sees only what's committed after it exists.** Create it before the writer's first `Commit()`, and call `Commit()` after every batch of writes.
+27) **An opaque value read and written elsewhere is plain data again.** A read opens the box, so writing the value into another node or returning it from `@Computed` proxies it there, and a `@Computed` result merges into it in place. Build from it, or box it again (`new Opaque(value)`). Never mutate it.
 
 ## Debugging
 

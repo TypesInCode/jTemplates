@@ -2,7 +2,7 @@ import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonDiffResult } from "../../Utils/json";
 import { IDiffMethod, IDiffMethodBatch } from "../Diff/diffTree.types";
 import { WorkerQueue } from "../Diff/workerQueue";
-import { RootOf, Store } from "./store";
+import { IStoreOptions, RootOf, Store } from "./store";
 
 /**
  * StoreAsync class extends the base Store class to provide asynchronous data management operations.
@@ -52,11 +52,17 @@ export class StoreAsync extends Store {
    * @param keyFunc Optional function to generate a key for a given data value, used locally by
    *   this store to resolve root objects. Pass the same key logic the worker's `DiffTree` was
    *   constructed with, if any.
+   * @param options Optional settings; `opaque` lists the root keys held whole (`IStoreOptions`).
+   *   They're sent to the worker's `DiffTree` ahead of the first change, so its entry file needn't
+   *   list them.
    */
-  constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined) {
-    super(keyFunc);
+  constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined, options: IStoreOptions = {}) {
+    super(keyFunc, options.opaque);
     this.workerQueue = new WorkerQueue(diffWorker);
     this.asyncQueue = new AsyncQueue(true);
+    // The first call of the first batch; a failure rejects the changes after it
+    if (options.opaque && options.opaque.length > 0)
+      this.Schedule({ method: "markopaque", arguments: [options.opaque] }).catch(() => { });
   }
 
   private async Schedule(method: IDiffMethod) {

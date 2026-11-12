@@ -23,5 +23,6 @@ function RunMethod(diffTree: DiffTree, call: IDiffMethod) {
     case "splicepath": return diffTree.SplicePath(args[0], args[1], args[2], args[3]);
     case "pushpath": return diffTree.PushPath(args[0], args[1]);
     case "patchpath": return diffTree.PatchPath(args[0], args[1]);
+    case "markopaque": return diffTree.MarkOpaque(args[0]);
   }
 }

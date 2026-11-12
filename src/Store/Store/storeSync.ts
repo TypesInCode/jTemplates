@@ -1,6 +1,6 @@
 import { DiffTree } from "../Diff/diffTree";
 import { IRouteDefinitions } from "../Diff/utils/diffTree.types";
-import { Store } from "./store";
+import { IStoreOptions, Store } from "./store";
 
 /**
  * StoreSync class extends the base Store class to provide synchronous data management operations.
@@ -42,12 +42,14 @@ export class StoreSync extends Store {
    * @param keyFunc Optional function to generate a key for a given data value.
    * @param routes Optional route definitions. A projection in the root route (`"/"`) is
    * readable through `Get` at `$projection_<key>`.
+   * @param options Optional settings; `opaque` lists the root keys held whole (`IStoreOptions`).
    * @throws When projections depend on each other in a cycle.
    */
-  constructor(keyFunc?: (value: any) => string | undefined, routes?: IRouteDefinitions) {
-    super(keyFunc);
+  constructor(keyFunc?: (value: any) => string | undefined, routes?: IRouteDefinitions, options: IStoreOptions = {}) {
+    super(keyFunc, options.opaque);
 
     this.diff = new DiffTree(keyFunc, routes);
+    options.opaque && this.diff.MarkOpaque(options.opaque);
   }
 
   /**

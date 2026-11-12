@@ -1,6 +1,7 @@
 import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
+import { Opaque } from "./opaque";
 import { Snapshot, SnapshotResolver } from "./snapshot";
 
 const NODE_VALUE = Symbol("NODE_VALUE");
@@ -182,6 +183,48 @@ function AssignNodeValue(obj: any, prop: string | number, value: any, wrapper?: 
   NodeValueSet(obj, prop, added, wrapper);
 }
 
+/** `Array.prototype.sort`'s order when it's given no compare function: by each value as a string */
+function DefaultCompare(a: unknown, b: unknown) {
+  const x = String(a);
+  const y = String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/**
+ * Runs a mutating array method on a node's stored array. Values passed in are stored as
+ * `UnwrapProxy` leaves them, values handed out (removed elements, a sort's compared pair) are read
+ * as `read` gives them, so nothing already stored is rewritten. Returns the array itself for `sort`
+ * and `reverse`, which the caller hands out as the array's proxy.
+ */
+function MutateArray(array: any[], prop: string, args: any[], read: (value: any) => any) {
+  switch (prop) {
+    case "push":
+    case "unshift":
+      return array[prop](...args.map(StoredValue));
+    case "splice": {
+      // Spread so a call without a delete count still deletes to the end
+      const stored = args.length > 2 ? [args[0], args[1], ...args.slice(2).map(StoredValue)] : args;
+      return (array.splice as any)(...stored).map(read);
+    }
+    case "pop":
+    case "shift": {
+      // An empty array returns undefined, which reads as itself
+      return read(array[prop]());
+    }
+    case "sort": {
+      const compare = args[0] ?? DefaultCompare;
+      return array.sort((a, b) => compare(read(a), read(b)));
+    }
+    case "reverse":
+      return array.reverse();
+  }
+}
+
+/** A value as a node stores it: proxies removed, an Opaque kept as its box */
+function StoredValue(value: any) {
+  return UnwrapProxy(value);
+}
+
 function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | undefined) {
   // Keyed children are read through their root. Every factory shares the module-level
   // snapshotState, matching wrapperCache; only the resolver differs per factory.
@@ -192,6 +235,23 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
   }
 
   const readOnly = alias !== undefined;
+
+  /**
+   * A descriptor trap whose value is what a read gives: a proxy for an object or array, an
+   * Opaque's raw value, never the stored value itself
+   */
+  function ReadDescriptor(trap: (target: ObservableNodeWrapper, prop: string | symbol) => PropertyDescriptor | undefined) {
+    return function (target: ObservableNodeWrapper, prop: string | symbol) {
+      const descriptor = trap(target, prop);
+      if (descriptor && "value" in descriptor)
+        descriptor.value = CreateProxyFromValue(descriptor.value);
+
+      return descriptor;
+    };
+  }
+
+  const readObjectDescriptor = ReadDescriptor(getOwnPropertyDescriptor);
+  const readArrayDescriptor = ReadDescriptor(getOwnPropertyDescriptorArray);
 
   function CreateArrayProxy(value: any[]) {
     const wrapper: ObservableNodeWrapper = Object.assign([] as any as ObservableNodeWrapper, {
@@ -205,7 +265,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       set: ArrayProxySetter,
       has: hasArray,
       ownKeys: ownKeysArray,
-      getOwnPropertyDescriptor: getOwnPropertyDescriptorArray,
+      getOwnPropertyDescriptor: readArrayDescriptor,
     });
 
     wrapperCache.set(value, wrapper);
@@ -255,14 +315,6 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
 
         if (typeof arrayValue === "function")
           return function ArrayFunction(...args: any[]) {
-            const proxyArray =
-              prop === "slice" ? array.slice(...args).map(CreateProxyFromValue) : array.map(CreateProxyFromValue);
-
-            let result =
-              prop === "slice"
-                ? proxyArray
-                : (proxyArray as any)[prop as any](...args);
-
             switch (prop) {
               case "push":
               case "unshift":
@@ -270,17 +322,22 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
               case "pop":
               case "shift":
               case "sort":
-              case "reverse":
-                array.length = proxyArray.length;
-                for (let x = 0; x < proxyArray.length; x++)
-                  array[x] = UnwrapProxy(proxyArray[x]);
-
-                InvalidateSnapshotForValue(object[NODE_VALUE])
+              case "reverse": {
+                // Run on the stored array, so what it holds (an Opaque's box included) stays as
+                // it is: arguments go in as stored values, results come out as read values
+                const result = MutateArray(array, prop, args, CreateProxyFromValue);
+                InvalidateSnapshotForValue(object[NODE_VALUE]);
                 ObservableScope.Update(scope);
-                break;
+                return result === array ? object[NODE_PROXY] : result;
+              }
             }
 
-            return result;
+            const proxyArray =
+              prop === "slice" ? array.slice(...args).map(CreateProxyFromValue) : array.map(CreateProxyFromValue);
+
+            return prop === "slice"
+              ? proxyArray
+              : (proxyArray as any)[prop as any](...args);
           };
 
         const proxy = CreateProxyFromValue<any[]>(arrayValue);
@@ -301,7 +358,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       set: ObjectProxySetter,
       has,
       ownKeys,
-      getOwnPropertyDescriptor,
+      getOwnPropertyDescriptor: readObjectDescriptor,
     });
 
     wrapperCache.set(value, wrapper);
@@ -365,7 +422,8 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
         return proxy as T;
       }
       default:
-        return value as any;
+        // An Opaque is stored as its box and read as its raw value
+        return Opaque.Open(value) as any;
     }
   }
 

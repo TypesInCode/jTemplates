@@ -23,6 +23,7 @@ export class DiffTree {
   private projections: Projections;
   /** Each root key's snapshot as of the last commit */
   private commitedSnapshot = new Map<string, any>();
+  private opaque = new Set<string>();
   private writeContext: WriteContext;
 
   constructor(keyFunc?: IKeyFunc, routeDefinitions: IRouteDefinitions = {}) {
@@ -92,6 +93,17 @@ export class DiffTree {
     return ReadPath(this.rootState, path);
   }
 
+  /**
+   * Marks root keys, a written root or a root route projection's `$projection_<key>`, as opaque:
+   * `Commit` writes an opaque key's value whole when it changes, never a diff inside it. A Store
+   * with the same keys in its `opaque` option holds each of them whole.
+   * @param keys The root keys.
+   */
+  MarkOpaque(keys: readonly string[]) {
+    for (let x = 0; x < keys.length; x++)
+      this.opaque.add(keys[x]);
+  }
+
   /** Runs every projection of every route instance; see `Projections.Run` */
   RunProjections() {
     this.projections.Run();
@@ -108,7 +120,7 @@ export class DiffTree {
     // Diffed key by key into one result
     const diff: JsonDiffResult = [];
     const rootKeyFunc = this.routes.root.keyFunc;
-    const strategy = CommitStrategy(rootKeyFunc);
+    const strategy = OpaqueStrategy(this.opaque, CommitStrategy(rootKeyFunc));
     const identity = CommitIdentity(rootKeyFunc);
     // How many of the committed keys are still in the root, to tell whether any are gone
     let kept = 0;
@@ -149,6 +161,21 @@ export class DiffTree {
   public Snapshot(path: string) {
     return ReadSnapshot(this.snapshot, this.rootState, path)[0];
   }
+}
+
+/**
+ * A root key marked opaque is written whole; anything else is left to `strategy`.
+ */
+function OpaqueStrategy(opaque: ReadonlySet<string>, strategy: JsonDiffStrategyFunc | undefined): JsonDiffStrategyFunc | undefined {
+  if (opaque.size === 0)
+    return strategy;
+
+  return function (newValue, oldValue, path) {
+    if (path.length === 1 && opaque.has(path[0] as string))
+      return "write";
+
+    return strategy?.(newValue, oldValue, path);
+  };
 }
 
 /**

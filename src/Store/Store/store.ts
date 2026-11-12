@@ -1,5 +1,20 @@
-import { JsonDeepClone, JsonDiffResult } from "../../Utils/json";
+import { JsonDeepClone, JsonDiffResult, JsonType } from "../../Utils/json";
 import { ObservableNode } from "../Tree/observableNode";
+import { Opaque } from "../Tree/opaque";
+
+/** Options shared by `StoreSync` and `StoreAsync` */
+export interface IStoreOptions {
+  /**
+   * Root keys the store holds whole, as an `Opaque`: a written root or a projection's
+   * `$projection_<key>`. `Get` returns such a root's raw value, never proxied, the same reference
+   * until the root is written again, and only that write updates its readers. Treat the value as
+   * read-only: a change made inside it notifies no one. An opaque root can't be read through a
+   * key (`keyFunc`). The store tells its `DiffTree` (`DiffTree.MarkOpaque`), which writes each one
+   * whole instead of diffing inside it. Write the raw value: the store boxes it, and an `Opaque`
+   * written to a store isn't opened.
+   */
+  opaque?: readonly string[];
+}
 
 /**
  * Base class for reading observable data: holds root objects as ObservableNode instances
@@ -13,13 +28,17 @@ export abstract class ReadStore {
 
   private rootMap = new Map<string | number, any>();
   private createNode: <T>(data: T, unwrapValue?: boolean) => T;
+  /** Root keys held whole, see `IStoreOptions.opaque` */
+  protected readonly opaque: ReadonlySet<string | number>;
 
   /**
    * Creates an instance of ReadStore.
    * @param keyFunc Optional function to generate a key for a given data value.
    * When provided, enables alias functionality where values can reference other root objects.
+   * @param opaque Root keys held whole, see `IStoreOptions.opaque`.
    */
-  constructor(protected keyFunc?: (value: any) => string | undefined) {
+  constructor(protected keyFunc?: (value: any) => string | undefined, opaque: readonly string[] = []) {
+    this.opaque = new Set(opaque);
     const aliasFunc =
       keyFunc &&
       ((value: unknown, reactive = true) => {
@@ -27,6 +46,8 @@ export abstract class ReadStore {
         // A route key names an entity in a DiffTree route instance, which never reaches the
         // store: read the embedded copy
         if (key === undefined || key.startsWith("/")) return undefined;
+        if (this.opaque.has(key))
+          throw `Opaque root ${key} can't be read through a key`;
 
         const rootObject = this.rootMap.get(key);
         if (rootObject === undefined)
@@ -61,7 +82,7 @@ export abstract class ReadStore {
   Get<O>(id: string, defaultValue?: O): O | undefined {
     let result = this.rootMap.get(id);
     if (result === undefined) {
-      result = this.createNode({ [id]: defaultValue });
+      result = this.createNode({ [id]: this.opaque.has(id) ? Box(defaultValue) : defaultValue });
       this.rootMap.set(id, result);
     }
 
@@ -108,6 +129,9 @@ export abstract class ReadStore {
    * @private
    */
   private UpdateRootObject(rootPath: string | number, results: JsonDiffResult) {
+    if (this.opaque.has(rootPath))
+      results = OpaqueResults(rootPath, results);
+
     const rootObject = this.rootMap.get(rootPath);
 
     if (rootObject === undefined) {
@@ -141,6 +165,25 @@ export abstract class Store extends ReadStore {
   abstract Patch(key: string, patch: unknown): Promise<void> | void;
   abstract Push(key: string, ...data: unknown[]): Promise<void> | void;
   abstract Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<void> | void;
+}
+
+/** An opaque root's value as the store holds it: an object or array boxed, anything else as it is */
+function Box(value: unknown) {
+  return JsonType(value) === "value" ? value : new Opaque(value);
+}
+
+/**
+ * An opaque root's diff, each value boxed. A DiffTree that marks the root opaque writes it whole or
+ * deletes it, so any other change means it wasn't told.
+ * @throws When the diff writes inside the root
+ */
+function OpaqueResults(rootPath: string | number, results: JsonDiffResult): JsonDiffResult {
+  return results.map(result => {
+    if (result.path.length > 1 || (result.type !== "write" && result.type !== "delete"))
+      throw `Opaque root ${rootPath} was changed at ${result.path.join(".")}: mark it opaque in the DiffTree too (DiffTree.MarkOpaque)`;
+
+    return result.type === "write" ? { ...result, value: Box(result.value) } : result;
+  });
 }
 
 /** The root key a path is in: its text before the first `.` */
