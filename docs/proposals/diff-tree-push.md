@@ -1,6 +1,6 @@
 # Proposal: DiffTree pushes its commits
 
-Status: design settled, not implemented. Measurement in phase 4 decides the deferred items (§Deferred: scheduled projections) and whether whole-root updates between workers are small enough (open question 6).
+Status: phase 1 implemented (`Committed`, `CommittedKeys` and `DeleteRoot` on the tree, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it); phases 2–4 not started. Measurement in phase 4 decides the deferred items (§Deferred: scheduled projections) and whether whole-root updates between workers are small enough (open question 6).
 
 ## Summary
 
@@ -60,7 +60,7 @@ const id = subs.Subscribe(keys, sub, { group });   // exact keys and wildcards
 subs.Unsubscribe(id);
 subs.Disconnect(group);                            // every subscription in a group (to the host, a channel)
 subs.Matching(changedKeys);                        // each subscription, with the changed keys it matches
-subs.OnSubscribed(sub => { /* send its first state */ });
+subs.MatchingKeys(id, keys);                       // the keys one subscription matches (its first state)
 subs.OnReleased(pattern, key => { /* a key's last exact subscription ended */ });
 subs.SubscriberCount(key);                         // the exact subscriptions holding a key now
 ```
@@ -76,9 +76,9 @@ tree.CommittedKeys(): string[]        // new: the committed root keys, which fil
 tree.DeleteRoot(key)                  // new: removes a root; the next commit carries the delete
 ```
 
-- **The first state is the committed state.** On `OnSubscribed`, the publisher sends `Committed(key)` for each matching key in `CommittedKeys()`; later commits follow. The current state (`Snapshot`) won't do: it holds uncommitted writes, which the next commit's diff would apply a second time, and a positional splice applied twice corrupts an array.
+- **The first state is the committed state.** Inside `Subscribe`, the publisher sends `Committed(key)` for each matching key in `CommittedKeys()`; later commits follow. A first delivery that throws ends the subscription. The current state (`Snapshot`) won't do: it holds uncommitted writes, which the next commit's diff would apply a second time, and a positional splice applied twice corrupts an array.
 - **Which roots changed comes from the diff.** Every record's first path segment is its root key: the changed keys are the distinct `path[0]`, and the deleted ones are `delete` records at `[key]`. After the commit, `Committed(key)` is each changed root's whole new value, shared and never mutated, so reading it costs nothing.
-- **Each subscription names its form.** `"diff"` gets the commit's records whose root matches its filter (a store, which applies them to its nodes). `"roots"` gets `{ roots: { [key]: Committed(key) }, deleted, initial }` for the matching changed roots (another tree, which writes them: §A worker subscribing to another tree). The first state takes the same two forms: a `write` record per matching key, or the map with `initial: true`. Both come from one commit; nothing is diffed twice.
+- **Each subscription names its form.** `"diff"` gets the commit's records whose root matches its filter (a store, which applies them to its nodes). `"snapshot"` gets `{ roots: { [key]: Committed(key) }, deleted }` for the matching changed roots (another tree, which writes them: §A worker subscribing to another tree). The first state takes the same two forms: a `write` record per matching key, or the map of every matching key. Both come from one commit; nothing is diffed twice.
 - **Subscriptions have ids.** One channel can carry several (a long-lived one and a `Once`), and every delivery names the subscription it's for.
 - **The tree-specific parts are the publisher's:** the first state, `seq`, the two forms, and `Once`, which needs to know what "present" means for a key.
 
@@ -92,7 +92,7 @@ tree.WritePath(`whatif_${revision}`, index);
 tree.Commit();
 
 // trace worker
-Subscribe(port, { roots: ["revision"], form: "roots" }, update => { /* staleness: compare revisions */ });
+Subscribe(port, { roots: ["revision"], form: "snapshot" }, update => { /* staleness: compare revisions */ });
 const current = await Once(port, ["index", "revision"]);                // load the current run
 const whatIf = await Once(port, [`whatif_${revision}`], { signal });    // a what-if's result
 ```
@@ -155,6 +155,7 @@ A store sends batches as it does now, each with an id. The host applies a batch,
 
 - **A new subscriber gets the committed state first**: one `write` per committed root key, then every later post. A store created after the tree has committed no longer misses anything (today's `PushStore` caveat), and a store can subscribe again to a replaced tree (below).
 - **The first post is the committed state, not the uncommitted one.** Uncommitted writes arrive with the next commit, like everyone else's.
+- **The first post isn't marked.** It has the same shape as any other, and a subscriber applies it the same way: one handler serves every post. When no committed root matches, nothing is sent. A subscriber that holds roots from an earlier subscription clears them when it subscribes again; it's the one subscribing, so it knows when.
 - **A subscriber names the roots it receives**, as an array of root keys given when it subscribes (`roots`). An entry may be a root wildcard (`"task_*"`), as in projection reads. Omitted, it receives every root. Every diff record's first path segment is its root key, so this is a filter over the shared diff, not a second diff. The committed state sent first is filtered the same way.
 - **The filter is how a derivation worker limits what it takes from a source tree.** A trace worker subscribed to the engine's tree names the roots its projections read and receives nothing else. On the main thread it covers F5 (root projections no subscriber reads, such as builder-app's `entityBuilt`). Data that should never leave the tree already has a place: routes are never posted.
 - **To change its roots, a subscriber subscribes again** and gets the committed state of the new set.
@@ -162,7 +163,7 @@ A store sends batches as it does now, each with an id. The host applies a batch,
 
 ### Same thread: `StoreSync`
 
-`StoreSync` owns a `DiffTreePublisher` and subscribes to it in the `"diff"` form. It keeps its behaviour: `Write` is a batch of one, so it applies, runs projections, commits, and the post is applied before `Write` returns. Anything else on the thread subscribes to the same publisher.
+`StoreSync` owns a `DiffTreePublisher` and subscribes to it in the `"diff"` form. It keeps its behaviour: `Write` is a batch of one, so it applies, runs projections, commits, and the post is applied before `Write` returns. Anything else on the thread subscribes to the same publisher, `store.Publisher`, and a commit made on it directly reaches the store.
 
 A listener that writes to the tree from inside a delivery would re-enter `Commit()`. It throws, as the emitter does today on re-entry (open question 8).
 
@@ -174,8 +175,8 @@ Two trees on one thread connect through the source's publisher directly, with no
 const source = new DiffTreePublisher(keyFunc, sourceRoutes);
 const derived = new DiffTreePublisher(keyFunc, derivedRoutes);
 
-source.Subscribe({ roots: ["index", "task_*"], form: "roots" }, update => {
-  if (update.initial) derived.DeleteRoute("/source/");
+derived.DeleteRoute("/source/");   // whatever an earlier subscription left
+source.Subscribe({ roots: ["index", "task_*"], form: "snapshot" }, update => {
   for (const key in update.roots) derived.WritePath(`/source/${key}`, update.roots[key]);
   for (const key of update.deleted) derived.WritePath(`/source/${key}`, undefined);
   derived.RunProjections();
@@ -187,7 +188,7 @@ const run = await source.Once(["index", "revision"]);
 
 - **Delivery is synchronous.** A subscriber's callback runs inside the source's `Commit()`, before it returns, so a change passes through a chain of trees in one call stack. The first state is delivered inside `Subscribe`.
 - **Writing to another tree during a delivery is allowed; re-entering the delivering one isn't.** Open question 8's rule is about the tree that is delivering: if `source` delivers to `derived`, and `derived`'s commit delivers to a subscriber that writes to `source`, that write throws. A cycle on one thread fails loudly instead of looping.
-- **Values are shared, not cloned.** With no `postMessage` between them, the `"roots"` form hands over the source's committed snapshots themselves. `WritePath` copies what it's given into the subscriber's tree, so writing them in is safe; a subscriber that keeps them treats them as read-only, as it would a snapshot or an opaque value.
+- **Values are shared, not cloned.** With no `postMessage` between them, the `"snapshot"` form hands over the source's committed snapshots themselves. `WritePath` copies what it's given into the subscriber's tree, so writing them in is safe; a subscriber that keeps them treats them as read-only, as it would a snapshot or an opaque value.
 - **The same code works across a channel.** Only how the subscription is made changes: `source.Subscribe(...)` here, `Subscribe(port, ...)` in a worker. The update and what the callback does with it are the same, so a derived tree can move between the main thread and a worker without rewriting it.
 - **`Once` is a promise here too**, resolved from inside the delivery that makes its keys present.
 
@@ -237,9 +238,9 @@ hub.Connect("trace", "engine");        // trace gets a port to engine's tree, no
 hub.Replace("engine", newEngineWorker); // every connection to it is re-issued
 
 // in the trace worker
-OnConnect("engine", port => {
-  Subscribe(port, { roots: ["index", "task_*"], form: "roots" }, update => {
-    if (update.initial) tree.DeleteRoute("/engine/");
+OnConnect("engine", port => {       // once per port: now, and after each Replace
+  tree.DeleteRoute("/engine/");      // the replaced engine's roots
+  Subscribe(port, { roots: ["index", "task_*"], form: "snapshot" }, update => {
     for (const key in update.roots) tree.WritePath(`/engine/${key}`, update.roots[key]);
     for (const key of update.deleted) tree.WritePath(`/engine/${key}`, undefined);
     tree.RunProjections();
@@ -256,9 +257,9 @@ OnConnect("engine", port => {
 
 ### A worker subscribing to another tree
 
-A worker that derives state from another worker's tree subscribes in the `"roots"` form, `Subscribe(port, { roots, form: "roots" }, onUpdate)`, and decides itself where the data goes. The framework delivers the source's roots; it doesn't write them anywhere.
+A worker that derives state from another worker's tree subscribes in the `"snapshot"` form, `Subscribe(port, { roots, form: "snapshot" }, onUpdate)`, and decides itself where the data goes. The framework delivers the source's roots; it doesn't write them anywhere.
 
-- **An update is a map of the subscribed roots that changed**: `roots` (each changed root key and its whole value, from the source's committed snapshots), `deleted` (root keys removed since the last update) and `initial` (true on the first update after subscribing or reconnecting: everything the filter matches, which replaces whatever the subscriber held).
+- **An update is a map of the subscribed roots that changed**: `roots` (each changed root key and its whole value, from the source's committed snapshots), and `deleted` (root keys removed since the last update). The first update holds every root the filter matches, in the same shape; a subscriber that resubscribes (its `OnConnect` handler runs again) clears its route first.
 - **The primary path is a route.** The subscriber writes each root under a route of its own tree (`/engine/<key>`). Routes are never posted, so the source's data stays in the worker and only what the tree derives from it reaches the main thread; writing it to a root would post the same data the other worker holds. Projections read the route as builder-app's read `/ids/*` today.
 - **The local tree does the fine-grained work.** `WritePath` diffs each whole value into the route's state and applies only what changed, so the projections that read an unchanged part don't rerun. It's the same pattern as a client writing a bucket of data with `Store.Write`: send the whole value, let the tree find the changes.
 - **Size is the cost to watch.** Each changed root crosses whole. Keyed data with wildcards keeps the changed roots to single entities, and the filter keeps out roots the subscriber doesn't read, but a large root that isn't keyed crosses whole on every change. builder-app has hit this with large JSON blobs between threads: a large object graph is received about twice as slowly by structured clone as it's parsed from text (its `worker-difftree-pattern.md` §3.15). Phase 4 measures bytes per update between workers before anything changes.
@@ -276,7 +277,7 @@ store.Reconnect(newWorker, { reseed: true });
 // 3. subscribes; the first state replaces the store's, readers kept
 ```
 
-- **The first state replaces every root**: roots the new tree holds are diffed into the store's nodes in place, and roots it lacks are deleted. Readers keep their subscriptions. This is F3.
+- **The first state replaces every root**: roots the new tree holds are diffed into the store's nodes in place, and roots it lacks are deleted. Readers keep their subscriptions. This is F3. The store knows its first post because it's the one reconnecting; to delete what the new tree lacks it also needs to know the first state is complete, including when it's empty, so the host acknowledges a `jt-subscribe` after its first post, as it does a batch. That's the protocol's, not the payload's.
 - **Reseeding needs no mirror.** A store's state is a prefix of the tree's commits, so for each root it wrote it already holds the last value the tree acknowledged. Projection roots aren't reseeded; the new tree recomputes them. Roots the worker writes itself (routes, ids, data from other trees) are rebuilt by the worker from the intent it's given, and its `OnConnect` handlers subscribe again.
 - **Recovery is the app's** (open question 9). The framework makes each step one call; the app decides whether to recover at all, and when: create the worker, `hub.Replace`, `store.Reconnect`.
 
@@ -334,8 +335,8 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 
 ## Suggested order
 
-1. **The tree and the publisher:** `Committed`, `CommittedKeys` and `DeleteRoot` on the tree; `SubscriptionManager` (filters, wildcards, ids, groups, counts, `SubscriberCount`, `OnSubscribed`, `OnReleased`); `DiffTreePublisher` over it (the two forms, the committed state on subscribe, `seq`, `Once`). `StoreSync` over it, with no behaviour change. `DiffTreeWriter` removed.
-2. **The worker side:** `HostPublisher`, and `StoreAsync` over posts with acks, `Flush()` by ack and per-batch failure. `WorkerQueue`, `ConnectWorkerToDiffTree` and `PushStore` go.
+1. **Done. The tree and the publisher:** `Committed`, `CommittedKeys` and `DeleteRoot` on the tree; `SubscriptionManager` (filters, wildcards, ids, groups, counts, `SubscriberCount`, `OnReleased`); `DiffTreePublisher` over it (the two forms, the committed state on subscribe, `seq`, `Once`). `StoreSync` over it, with no behaviour change.
+2. **The worker side:** `HostPublisher`, and `StoreAsync` over posts with acks, `Flush()` by ack and per-batch failure. `WorkerQueue`, `ConnectWorkerToDiffTree`, `PushStore` and `DiffTreeWriter` go (the last two together: `PushStore`'s tests feed it from a `DiffTreeWriter`).
 3. **Between workers:** `WorkerHub` (`Register`, `Connect`, `Replace`, `Unregister`), `OnConnect`, `jt-disconnect`, `Reconnect` with `reseed`.
 4. **builder-app:** the trace store first (it has the most workarounds), then the result index, then the project store. Measure posts per action, bytes per post and the main thread's time applying them against today, including a stepped build that commits its status while the user types, and bytes per update and the time to receive it between workers.
 
@@ -350,8 +351,8 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 - A subscriber created after several commits starts from the committed state.
 - Two subscribers get the same posts; a root filter limits one of them, its first committed state included.
 - A wildcard entry receives entity roots created after the subscription.
-- A subscribing worker's first update is `initial`, with every matched root; later updates carry only changed roots and deletions.
-- A `"diff"` and a `"roots"` subscriber on one commit get the same changes, as records and as whole roots.
+- A subscribing worker's first update has every matched root, in the same shape as later ones, which carry only changed roots and deletions; nothing is sent when no root matches.
+- A `"diff"` and a `"snapshot"` subscriber on one commit get the same changes, as records and as whole roots.
 - A subscriber's first state is the committed state even while uncommitted writes are pending; the next commit applies cleanly on top of it, splices included.
 - `Once` resolves at once when its keys exist, and on the commit that adds the last one when they don't; aborting it ends the subscription.
 - `OnReleased` fires when a key's last exact subscription ends, not for a key never subscribed, and not for a wildcard subscription's keys.
@@ -366,7 +367,7 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 - `Reconnect` with `reseed` writes back the roots the store wrote and resends its unacknowledged batches; projection roots come from the new tree.
 - `Unregister` ends a worker's subscriptions at every source and releases its keys.
 - A same-thread listener that writes to the tree during a delivery throws.
-- Two publishers on one thread: a `"roots"` subscription receives the source's commits inside `Commit()`, the derived tree's commit reaches its own subscribers in the same call, and a write back to the source from that chain throws.
+- Two publishers on one thread: a `"snapshot"` subscription receives the source's commits inside `Commit()`, the derived tree's commit reaches its own subscribers in the same call, and a write back to the source from that chain throws.
 - `source.Once(keys)` on one thread resolves from the delivery that adds the last key.
 - `StoreAsync.Destroy()` leaves the worker running.
 - `IsPending(root)` from write to ack, cleared on failure.

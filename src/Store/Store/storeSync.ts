@@ -1,4 +1,4 @@
-import { DiffTree } from "../Diff/diffTree";
+import { DiffTreePublisher } from "../Diff/diffTreePublisher";
 import { IRouteDefinitions } from "../Diff/utils/diffTree.types";
 import { IStoreOptions, Store } from "./store";
 
@@ -26,16 +26,20 @@ import { IStoreOptions, Store } from "./store";
  * // Splicing an array
  * store.Splice("user.array", 0, 1, { id: 3 });
  *
+ * The store subscribes to a `DiffTreePublisher` it creates, and applies every commit the
+ * publisher delivers, so anything else on the thread can subscribe to the same tree
+ * (`Publisher`), and a commit made on the publisher directly reaches the store too.
+ *
  * @see Store
  * @see StoreAsync
- * @see DiffTree
+ * @see DiffTreePublisher
  */
 export class StoreSync extends Store {
   /**
-   * The tree each change is applied to. Its `Commit()` diff keeps the store in sync.
+   * The tree each change is applied to. The store applies every commit it delivers.
    * @private
    */
-  private diff: DiffTree;
+  private diff: DiffTreePublisher;
 
   /**
    * Creates an instance of StoreSync.
@@ -48,8 +52,18 @@ export class StoreSync extends Store {
   constructor(keyFunc?: (value: any) => string | undefined, routes?: IRouteDefinitions, options: IStoreOptions = {}) {
     super(keyFunc, options.opaque);
 
-    this.diff = new DiffTree(keyFunc, routes);
+    this.diff = new DiffTreePublisher(keyFunc, routes);
     options.opaque && this.diff.MarkOpaque(options.opaque);
+    this.diff.Subscribe({}, post => this.UpdateRootMap(post.diff));
+  }
+
+  /**
+   * The publisher that owns the store's tree. Subscribe to it to receive the same commits the
+   * store applies; a commit made on it reaches the store too. A subscriber can't write to the
+   * store during a delivery.
+   */
+  get Publisher() {
+    return this.diff;
   }
 
   /**
@@ -115,11 +129,12 @@ export class StoreSync extends Store {
   }
 
   /**
-   * Runs projections and applies everything changed since the last sync to the store.
+   * Runs projections and commits: the commit's delivery applies everything changed since the
+   * last commit to the store.
    * @private
    */
   private Sync() {
     this.diff.RunProjections();
-    this.UpdateRootMap(this.diff.Commit());
+    this.diff.Commit();
   }
 }

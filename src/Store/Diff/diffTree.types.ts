@@ -33,3 +33,42 @@ export interface IDiffMethod {
 }
 
 export type IDiffMethodBatch = IDiffMethod[];
+
+/**
+ * How a `DiffTreePublisher` delivers a commit to a subscription:
+ * - `"diff"`: the commit's diff records for the matching roots (`IDiffPost`), which a store applies.
+ * - `"snapshot"`: each matching root that changed, whole, as last committed (`ISnapshotUpdate`), which
+ *   another tree writes.
+ */
+export type DeliveryForm = "diff" | "snapshot";
+
+/** A subscription to a `DiffTreePublisher` */
+export interface ISubscribeOptions {
+  /**
+   * The root keys it receives: exact keys, and patterns ending in `*` (`task_*`). Omitted, every
+   * root. With a `keyFunc`, include the entity roots the received roots refer to.
+   */
+  roots?: readonly string[];
+  /** How it's delivered; `"diff"` when omitted */
+  form?: DeliveryForm;
+  /** A group `DiffTreePublisher.Disconnect` ends it with, e.g. the channel it came from */
+  group?: unknown;
+}
+
+/** A `"diff"` delivery */
+export interface IDiffPost {
+  /** The commit it comes from; on the delivery made on subscribing, the last commit's */
+  seq: number;
+  /** The commit's records for the matching roots; on subscribing, a `write` per matching committed root */
+  diff: JsonDiffResult;
+}
+
+/** A `"snapshot"` delivery */
+export interface ISnapshotUpdate {
+  /** The commit it comes from; on the delivery made on subscribing, the last commit's */
+  seq: number;
+  /** Each matching root that changed, as committed, or on subscribing every matching committed root: shared with the tree, so read-only */
+  roots: { [key: string]: unknown };
+  /** Matching roots deleted by the commit */
+  deleted: string[];
+}

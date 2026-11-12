@@ -5,7 +5,7 @@ import { ApplyValueToPath, SpliceValueAtPath, WriteContext } from './utils/homes
 import { JoinPaths, PROJECTION_PREFIX, ROOT_ROUTE, SplitRouteAndPath } from './utils/paths';
 import { Projections } from './utils/projections';
 import { RouteInstances } from './utils/routes';
-import { DeleteRouteState, KeyUnchanged, ReadPath, ReadSnapshot } from './utils/state';
+import { DeleteRouteState, KeyUnchanged, ReadPath, ReadSnapshot, Remove } from './utils/state';
 
 /**
  * A tree of JSON state in routes, with projections, that tracks its changes as diffs. The work is
@@ -62,7 +62,7 @@ export class DiffTree {
     this.Splice(path, start, deleteCount, items);
   }
 
-  // Shared by PushPath and SplicePath, which a DiffTreeWriter guards separately
+  // Shared by PushPath and SplicePath
   private Splice(path: string, start: number, deleteCount: number, items: readonly unknown[]) {
     AssertWritable(SplitRouteAndPath(path)[1]);
     SpliceValueAtPath(this.writeContext, path, start, deleteCount, items);
@@ -83,6 +83,36 @@ export class DiffTree {
 
     DeleteRouteState(this.snapshot, this.rootState, fullRoute);
     this.routes.Delete(fullRoute);
+  }
+
+  /**
+   * Deletes a root key, a written root that isn't a projection output. The next `Commit` carries
+   * a `delete` at `[key]`. Deleting a key that doesn't exist does nothing.
+   * @param key The root key, e.g. `whatif_14`
+   * @throws When the key is a path (it has a `.` or `/`) or a projection output
+   */
+  DeleteRoot(key: string) {
+    if (key.includes(".") || key.includes("/"))
+      throw new Error(`Unable to delete ${key}: only a root key, e.g. whatif_14, can be deleted.`);
+
+    AssertWritable(key);
+    if (Object.hasOwn(this.rootState, key))
+      Remove(this.snapshot, this.rootState, key);
+  }
+
+  /**
+   * A root key's value as of the last `Commit`: its snapshot then, shared and never changed. A
+   * key written since and not yet committed reads as it was.
+   * @param key The root key.
+   * @returns The value, or undefined when the key wasn't in the last commit
+   */
+  Committed(key: string): unknown {
+    return this.commitedSnapshot.get(key);
+  }
+
+  /** The root keys as of the last `Commit`, in the order they were first committed */
+  CommittedKeys(): string[] {
+    return Array.from(this.commitedSnapshot.keys());
   }
 
   /**

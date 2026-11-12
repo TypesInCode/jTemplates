@@ -55,11 +55,11 @@ npm install j-templates
 | --- | --- |
 | `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped`; type `vNode` |
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
-| `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`; type `IDestroyable` |
+| `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
 | `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `PushStore`, `ObservableScope`, `ObservableNode` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `DIFF_TREE_EVENT`, `DIFF_TREE_ERROR`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `IDiffPushEvent`, `DiffSpliceResult`, `IDiffTree` and the batch types. Types and constants only, so a worker bundle can import it. |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `DIFF_TREE_EVENT`, `DIFF_TREE_ERROR`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `IDiffPushEvent`, `DiffSpliceResult`, `IDiffTree`, the batch types, and the publisher's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`. Types and constants only, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreeWorker` (`ConnectWorkerToDiffTree`), `j-templates/Store/Diff/diffTreeWriter` (`DiffTreeWriter`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreePublisher` (`DiffTreePublisher`), `j-templates/Store/Diff/diffTreeWorker` (`ConnectWorkerToDiffTree`), `j-templates/Store/Diff/diffTreeWriter` (`DiffTreeWriter`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -638,6 +638,31 @@ const layout = store.Get<Layout>("$projection_layout"); // the raw value: no pro
 - Write the raw value. Don't pass an `Opaque` to `Write`, `Patch`, `Push` or `Splice`, at any depth: the store boxes the root itself, and a box written to a store isn't opened (under `StoreAsync` it arrives as a plain `{ value }`).
 - An opaque root can't be read through a key: a `keyFunc` alias that resolves to one throws.
 
+### DiffTreePublisher
+
+A `DiffTreePublisher` owns a `DiffTree` and delivers every `Commit()` to its subscribers. It has the tree's write API (`WritePath`, `PatchPath`, `PushPath`, `SplicePath`, `DeleteRoot`, `DeleteRoute`, `RunProjections`, `MarkOpaque`), its reads (`ReadPath`, `Snapshot`, `Committed`, `CommittedKeys`) and `Commit()`, but never the tree, so nothing commits past it. `StoreSync` subscribes to one it creates, exposed as `store.Publisher`.
+
+```typescript
+import { DiffTreePublisher } from "j-templates/Store/Diff/diffTreePublisher";
+const tree = new DiffTreePublisher(keyFunc, routes);
+const stop = tree.Subscribe({ roots: ["loading", "$projection_*"] }, post => { /* post.diff, post.seq */ });
+tree.Subscribe({ roots: ["index", "task_*"], form: "snapshot" }, update => { /* update.roots, update.deleted */ });
+
+tree.WritePath("loading", true);
+tree.Commit();              // delivered now, before the work below
+tree.WritePath("results", computeResults());
+tree.RunProjections();      // Commit() doesn't run them
+tree.Commit();
+
+const { index, revision } = await tree.Once(["index", "revision"]); // the first commit holding both
+```
+
+- A subscription first gets the committed state of the roots it names, inside `Subscribe` and in the same shape as every later delivery, so one handler applies them all; nothing is sent when no root matches. Then every commit that touches them follows. Uncommitted writes arrive with the next commit. To subscribe again, clear what the earlier subscription delivered first.
+- `roots` takes exact keys and patterns ending in `*`; omitted, every root. With a `keyFunc`, name the entity roots too (`task_*`): editing an entity commits only the entity's root, not the roots that refer to it.
+- `"diff"` (the default) delivers diff records, which a store applies. `"snapshot"` delivers each changed root whole, the tree's committed value itself: read-only.
+- Delivery is synchronous. A subscriber may write to another tree, but writing to or committing the tree delivering to it throws. A subscriber's error doesn't stop the others; `Commit()` throws it after.
+- `SubscriberCount(key)` counts the subscriptions naming a key exactly, and `OnReleased(pattern, callback)` reports when a key loses its last one. Deleting the key is the caller's (`DeleteRoot` and `Commit`, from a timer: the callback can run inside a delivery).
+
 ### PushStore and DiffTreeWriter
 
 `StoreAsync` only changes when the main thread writes. When a worker produces the data itself, the worker owns the tree instead: it writes into a `DiffTreeWriter` and calls `Commit()`, which runs projections and posts every change since the last commit as one message. A `PushStore` on the main thread applies each message as it arrives (8.1.0).
@@ -992,6 +1017,7 @@ Component.Attach(document.getElementById("app")!, app({}));
 25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
 26) **A `PushStore` sees only what's committed after it exists.** Create it before the writer's first `Commit()`, and call `Commit()` after every batch of writes.
 27) **An opaque value read and written elsewhere is plain data again.** A read opens the box, so writing the value into another node or returning it from `@Computed` proxies it there, and a `@Computed` result merges into it in place. Build from it, or box it again (`new Opaque(value)`). Never mutate it.
+28) **Don't write to a `DiffTreePublisher` (or its `StoreSync`) from its own delivery.** A subscriber that writes to, commits or runs projections on the tree delivering to it throws `DiffTreePublisher: a subscriber can't write to or commit the tree delivering to it.` Write to another tree, or defer the write.
 
 ## Debugging
 
