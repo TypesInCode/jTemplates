@@ -1,33 +1,9 @@
 import type { JsonDiffResult } from "../../Utils/json";
 
-/**
- * `type` of the message a `DiffTreeWriter` posts on `Commit()`: the diff since the last commit,
- * which a `PushStore` applies.
- */
-export const DIFF_TREE_EVENT = "DIFF_TREE_EVENT";
-/**
- * `type` of the message a `DiffTreeWriter` posts on `Commit()` when a change in the batch
- * failed, after the `DIFF_TREE_EVENT` carrying the changes that were applied.
- */
-export const DIFF_TREE_ERROR = "DIFF_TREE_ERROR";
-
-/**
- * A message a `DiffTreeWriter` posts to its `PushStore`. Both arrive as ordinary
- * `"message"` events, so the channel can carry other traffic too; listeners tell them apart
- * by `type`.
- */
-export type IDiffPushEvent = {
-  type: typeof DIFF_TREE_EVENT,
-  data: JsonDiffResult
-} | {
-  type: typeof DIFF_TREE_ERROR,
-  data: any
-};
-
-/** A `DiffTree` method call sent to a worker connected with `ConnectWorkerToDiffTree` */
+/** A `DiffTreePublisher` method call in a `jt-batch` */
 export interface IDiffMethod {
   /** The method to call */
-  method: "writepath" | "patchpath" | "pushpath" | "splicepath" | "markopaque";
+  method: "writepath" | "patchpath" | "pushpath" | "splicepath";
   /** Arguments for the method call */
   arguments: Array<any>;
 }
@@ -72,3 +48,39 @@ export interface ISnapshotUpdate {
   /** Matching roots deleted by the commit */
   deleted: string[];
 }
+
+/**
+ * A channel between threads: a `Worker`, a `MessagePort`, or a worker's own `self`. Messages are
+ * read with `addEventListener`, never `onmessage`, so other messages can share the channel.
+ */
+export interface IChannel {
+  postMessage(message: any): void;
+  addEventListener(type: "message", listener: (event: any) => void): void;
+  removeEventListener(type: "message", listener: (event: any) => void): void;
+  /** A `MessagePort` delivers nothing to `addEventListener` until it's started */
+  start?(): void;
+}
+
+/** A `jt-` message a client (a `StoreAsync`, `Subscribe`, `Once`) sends to a `HostPublisher` */
+export type IHostRequest =
+  /** Runs the calls, then projections, commits, and answers with a `jt-ack` */
+  | { type: "jt-batch", id: number, calls: IDiffMethodBatch }
+  /** Subscribes; the first state is posted, then `jt-subscribed` */
+  | { type: "jt-subscribe", sub: number, roots?: readonly string[], form: DeliveryForm }
+  | { type: "jt-unsubscribe", sub: number }
+  /** Ends every subscription on the channel */
+  | { type: "jt-disconnect" }
+  /** See `DiffTree.MarkOpaque` */
+  | { type: "jt-markopaque", keys: readonly string[] };
+
+/** A `jt-` message a `HostPublisher` posts to its clients */
+export type IHostMessage =
+  /** A delivery for subscription `sub` */
+  | ({ type: "jt-post", sub: number } & (IDiffPost | ISnapshotUpdate))
+  /** Batch `id` was applied and committed, after the commit's posts; `error` when it failed */
+  | { type: "jt-ack", id: number, error?: unknown }
+  /** Subscription `sub`'s first state has been posted (none when no root matched); `error` when subscribing failed */
+  | { type: "jt-subscribed", sub: number, error?: unknown };
+
+/** The prefix of every message the framework sends on a channel */
+export const MESSAGE_PREFIX = "jt-";

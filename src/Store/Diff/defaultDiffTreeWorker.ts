@@ -1,5 +1,4 @@
-import { DiffTree } from "./diffTree";
-import { ConnectWorkerToDiffTree } from "./diffTreeWorker";
+import { DiffTreePublisher } from "./diffTreePublisher";
+import { HostPublisher } from "./hostPublisher";
 
-const diffTree = new DiffTree();
-ConnectWorkerToDiffTree(diffTree, self as any as Worker);
+HostPublisher(new DiffTreePublisher(), self as any);

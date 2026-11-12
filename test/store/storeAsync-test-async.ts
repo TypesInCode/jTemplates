@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
-import { CreateShimDiffWorker } from "./worker-shim";
+import { CreateShimDiffWorker, CreateShimWorker, Settle } from "./worker-shim";
 import type { IRouteDefinitions } from "../../src/Store/Diff";
 import { KeyFunc, routes } from "./projection-cases";
 
@@ -28,7 +28,7 @@ describe("Store Async Test", () => {
     const batches: any[][] = [];
     const postMessage = worker.postMessage.bind(worker);
     worker.postMessage = (data: any) => {
-      batches.push(data);
+      data?.type === "jt-batch" && batches.push(data.calls);
       postMessage(data);
     };
 
@@ -192,6 +192,115 @@ describe("Store Async Test", () => {
     });
   });
 
+  describe("push", () => {
+    function CreatePushed(routes?: IRouteDefinitions) {
+      const shim = CreateShimWorker(KeyFunc, routes);
+      const store = new StoreAsync(shim.worker, KeyFunc);
+      stores.push(store);
+      return { ...shim, store };
+    }
+
+    it("applies a commit the worker makes on its own, with no batch", async () => {
+      const { tree, store } = CreatePushed();
+      tree.WritePath("status", "running");
+      tree.Commit();
+      await Settle();
+      expect(store.Get("status")).toBe("running");
+    });
+
+    it("starts from the committed state when created after the tree has committed", async () => {
+      const { tree, worker } = CreateShimWorker(KeyFunc);
+      tree.WritePath("items", [{ _id: "a" }, { _id: "b" }]);
+      tree.Commit();
+      tree.WritePath("pending", 1);
+
+      const store = new StoreAsync(worker, KeyFunc);
+      stores.push(store);
+      await Settle();
+      expect(store.Get<any>("items").toJSON()).toEqual([{ _id: "a" }, { _id: "b" }]);
+      expect(store.Get("pending")).toBeUndefined();
+
+      tree.Commit();
+      await Settle();
+      expect(store.Get("pending")).toBe(1);
+    });
+
+    it("a write's promise waits for its own ack, past a worker commit made while it was in flight", async () => {
+      const { tree, store, scope } = CreatePushed();
+      const write = store.Write({ value: 1 }, "a");
+      tree.WritePath("status", "busy");
+      tree.Commit();
+
+      await Within(write);
+      expect(store.Get<any>("a").value).toBe(1);
+      expect(store.Get("status")).toBe("busy");
+      const types = scope.sent.map((m: any) => m.type);
+      expect(types.lastIndexOf("jt-post")).toBeLessThan(types.indexOf("jt-ack"));
+    });
+
+    it("a commit without projections posts the roots, and the next batch brings projections up to date", async () => {
+      const { tree, store } = CreatePushed(routes);
+      await store.Write([{ _id: "a" }], "items");
+      expect(store.Get("$projection_total")).toBe(1);
+
+      tree.PushPath("items", [{ _id: "b" }]);
+      tree.Commit();
+      await Settle();
+      expect(store.Get<any>("items").toJSON().length).toBe(2);
+      expect(store.Get("$projection_total")).toBe(1);
+
+      await store.Write(1, "other");
+      expect(store.Get("$projection_total")).toBe(2);
+    });
+
+    it("an empty batch is acknowledged", async () => {
+      const { store, scope } = CreatePushed();
+      await Within(store.Write(1, "a"));
+      await Within(store.Write(1, "a"));
+      expect(scope.sent.filter((m: any) => m.type === "jt-ack").length).toBe(2);
+      expect(scope.sent.filter((m: any) => m.type === "jt-post").length).toBe(1);
+    });
+
+    it("Flush with nothing in flight resolves at once", async () => {
+      const { store } = CreatePushed();
+      let done = false;
+      store.Flush().then(() => (done = true));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(done).toBe(true);
+    });
+
+    it("a store with roots receives only those", async () => {
+      const { worker, tree } = CreateShimWorker();
+      const store = new StoreAsync(worker, undefined, { roots: ["a", "task_*"] });
+      stores.push(store);
+      tree.WritePath("a", 1);
+      tree.WritePath("b", 1);
+      tree.WritePath("task_1", 1);
+      tree.Commit();
+      await Settle();
+      expect(store.Get("a")).toBe(1);
+      expect(store.Get("task_1")).toBe(1);
+      expect(store.Has("b")).toBe(false);
+    });
+
+    it("Destroy stops applying commits and leaves the worker running", async () => {
+      const { tree, store, worker, scope } = CreatePushed();
+      tree.WritePath("a", 1);
+      tree.Commit();
+      await Settle();
+      store.Destroy();
+      await Settle();
+      expect(scope.sent.length).toBeGreaterThan(0);
+      tree.WritePath("a", 2);
+      tree.Commit();
+      await Settle();
+      expect(store.Get("a")).toBe(1);
+      expect(worker.terminated).toBe(false);
+      expect(tree.SubscriberCount("a")).toBe(0);
+    });
+  });
+
   describe("failure", () => {
     it("rejects the change that fails in the worker", async () => {
       const { store } = CreateStore();
@@ -200,16 +309,38 @@ describe("Store Async Test", () => {
       await expect(Within(store.Splice("root", 0, 1))).rejects.toThrow(/not an array/);
     });
 
-    it("rejects every later change with the original error", async () => {
+    it("rejects only the failed batch; later batches apply", async () => {
       const { store } = CreateStore();
       await store.Write({ notArray: true }, "root");
-      const error = await store.Splice("root", 0, 1).catch((err) => err);
+      await expect(Within(store.Splice("root", 0, 1))).rejects.toThrow(/not an array/);
 
-      await expect(Within(store.Write({ value: 1 }, "a"))).rejects.toBe(error);
-      await expect(Within(store.Patch("root", { n: 1 }))).rejects.toBe(error);
-      await expect(Within(store.Push("root", 1))).rejects.toBe(error);
-      await expect(Within(store.Flush())).rejects.toBe(error);
-      expect(store.Get("a")).toBeUndefined();
+      await Within(store.Write({ value: 1 }, "a"));
+      await Within(store.Patch("root", { n: 1 }));
+      await Within(store.Flush());
+      expect(store.Get<any>("a").value).toBe(1);
+      expect(store.Get<any>("root").n).toBe(1);
+    });
+
+    it("rejects every change in the failed batch, and applies the changes before the failure", async () => {
+      const { store, batches } = CreateStore();
+      await store.Write({ notArray: true }, "root");
+
+      const before = store.Write({ value: 1 }, "a");
+      const failing = store.Splice("root", 0, 1);
+      const after = store.Write({ value: 2 }, "b");
+      const results = await Within(Promise.allSettled([before, failing, after]));
+
+      expect(batches.length).toBe(2);
+      expect(results.map((r) => r.status)).toEqual(["rejected", "rejected", "rejected"]);
+      expect(store.Get<any>("a").value).toBe(1);
+      expect(store.Get("b")).toBeUndefined();
+    });
+
+    it("a Flush after a failed batch has settled resolves", async () => {
+      const { store } = CreateStore();
+      await store.Write({ notArray: true }, "root");
+      await store.Splice("root", 0, 1).catch(() => {});
+      await expect(Within(store.Flush())).resolves.toBeUndefined();
     });
 
     it("rejects a Flush made while the failing change is still pending", async () => {

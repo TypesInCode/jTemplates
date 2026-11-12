@@ -1,17 +1,31 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { JsonDiffResult } from "../../Utils/json";
-import { IDiffMethod, IDiffMethodBatch } from "../Diff/diffTree.types";
-import { WorkerQueue } from "../Diff/workerQueue";
+import { ChannelClient } from "../Diff/channelClient";
+import { IChannel, IDiffMethod, IDiffMethodBatch } from "../Diff/diffTree.types";
 import { IStoreOptions, RootOf, Store } from "./store";
+
+/** Options for a `StoreAsync` */
+export interface IStoreAsyncOptions extends IStoreOptions {
+  /**
+   * The root keys the store receives: exact keys and patterns ending in `*`. Omitted, every root.
+   * A root the store writes but doesn't receive is written but never read back. With a
+   * `keyFunc`, include the entity roots the received roots refer to.
+   */
+  roots?: readonly string[];
+}
 
 /**
  * StoreAsync class extends the base Store class to provide asynchronous data management operations.
  * This class handles writing, patching, pushing, and splicing data in an asynchronous manner.
  *
- * StoreAsync is designed to work with observable data structures, allowing for efficient updates
- * and notifications when data changes. It is particularly useful for scenarios where asynchronous
- * operations are preferred or required, such as handling large datasets or performing complex diffs
- * without blocking the main thread.
+ * The tree lives in a worker, served by a `HostPublisher`. The store subscribes on construction and
+ * applies every commit the tree posts, whatever caused it: its own batches, other writers, or the
+ * worker's own work. A store created after the tree has committed starts from its committed state.
+ * Without writes it's a read-only view of the tree.
+ *
+ * - Changes made in one tick are sent as one batch, and at most one batch waits behind the one in
+ *   flight. A change's promise resolves on its batch's `jt-ack`, which arrives after the commit's
+ *   posts, so the change has been applied when it resolves.
+ * - A failed batch rejects only its own changes; later batches carry on.
  *
  * @example
  * // Creating a StoreAsync instance from a bundler-built worker entry file
@@ -31,52 +45,54 @@ import { IStoreOptions, RootOf, Store } from "./store";
  * // Splicing an array asynchronously
  * await store.Splice("users", 0, 1, { id: 3 });
  *
- * // Cleaning up resources
+ * // Cleaning up resources: the store stops listening; the worker is its creator's to terminate
  * store.Destroy();
+ * worker.terminate();
  *
  * @see Store
  * @see StoreSync
  */
 export class StoreAsync extends Store {
   private writeKeySet = new Set<string>();
-  private workerQueue: WorkerQueue<IDiffMethodBatch, JsonDiffResult>;
-  private asyncQueue: AsyncQueue;
+  private client: ChannelClient;
+  private asyncQueue = new AsyncQueue();
   private currentBatch: IDiffMethodBatch = [];
   private currentBatchPromise: Promise<void> = Promise.resolve();
+  /** Batches not yet acknowledged, for `Flush` */
+  private inFlight = new Set<Promise<void>>();
 
   /**
-   * Creates an instance of StoreAsync.
-   * @param diffWorker A `Worker` running a `DiffTree` connected via `ConnectWorkerToDiffTree`
-   *   (e.g. a bundled `defaultDiffTreeWorker` entry). Any `keyFunc`/routes the diff needs
-   *   must be baked into that worker's own entry file.
+   * Creates an instance of StoreAsync and subscribes to the tree.
+   * @param channel A channel to a `DiffTreePublisher` served by `HostPublisher`: a `Worker`
+   *   (e.g. a bundled `defaultDiffTreeWorker` entry) or a `MessagePort`. Any `keyFunc`/routes the
+   *   tree needs are baked into the worker's own entry file. Other messages may share the channel.
    * @param keyFunc Optional function to generate a key for a given data value, used locally by
-   *   this store to resolve root objects. Pass the same key logic the worker's `DiffTree` was
+   *   this store to resolve root objects. Pass the same key logic the worker's tree was
    *   constructed with, if any.
-   * @param options Optional settings; `opaque` lists the root keys held whole (`IStoreOptions`).
-   *   They're sent to the worker's `DiffTree` ahead of the first change, so its entry file needn't
-   *   list them.
+   * @param options Optional settings: `opaque` lists the root keys held whole (`IStoreOptions`),
+   *   sent to the tree before the store subscribes, and `roots` the roots it receives.
    */
-  constructor(diffWorker: Worker, keyFunc?: (value: any) => string | undefined, options: IStoreOptions = {}) {
+  constructor(channel: IChannel, keyFunc?: (value: any) => string | undefined, options: IStoreAsyncOptions = {}) {
     super(keyFunc, options.opaque);
-    this.workerQueue = new WorkerQueue(diffWorker);
-    this.asyncQueue = new AsyncQueue(true);
-    // The first call of the first batch; a failure rejects the changes after it
-    if (options.opaque && options.opaque.length > 0)
-      this.Schedule({ method: "markopaque", arguments: [options.opaque] }).catch(() => { });
+    this.client = new ChannelClient(channel);
+    options.opaque && options.opaque.length > 0 && this.client.MarkOpaque(options.opaque);
+    this.client.Subscribe({ roots: options.roots }, post => this.UpdateRootMap(post.diff));
   }
 
   private async Schedule(method: IDiffMethod) {
     if (this.currentBatch.length === 0) {
       const batch = this.currentBatch;
-      this.currentBatchPromise = this.asyncQueue.Next(async () => {
+      const sent = this.asyncQueue.Next(async () => {
         await Promise.resolve();
         if (batch === this.currentBatch)
           this.currentBatch = [];
 
-        // The worker's Commit() diff covers every change in the batch
-        const diff = await this.workerQueue.Push(batch);
-        this.UpdateRootMap(diff);
+        // The batch's commit is applied by the subscription, before its ack arrives
+        await this.client.Batch(batch);
       });
+      this.currentBatchPromise = sent;
+      this.inFlight.add(sent);
+      sent.then(() => this.inFlight.delete(sent), () => this.inFlight.delete(sent));
     }
 
     this.currentBatch.push(method);
@@ -91,8 +107,8 @@ export class StoreAsync extends Store {
    * @param data The data to be written. Can be of any type.
    * @param key Optional key for the data. If not provided, the keyFunc will be used to generate a key.
    * @returns A promise that resolves once the write has been applied to the store.
-   * @throws Will throw an error if no key is provided for the data, or reject with the original
-   *   error if an earlier change failed.
+   * @throws Will throw an error if no key is provided for the data, or reject with the error of
+   *   the batch it was sent in.
    */
   async Write(data: unknown, key?: string): Promise<void> {
     key = key || this.keyFunc?.(data);
@@ -118,7 +134,7 @@ export class StoreAsync extends Store {
    * @param patch The patch data to be merged with the existing value.
    * @returns A promise that resolves once the patch has been applied to the store.
    * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
-   *   the original error if an earlier change failed.
+   *   the error of the batch it was sent in.
    */
   async Patch(key: string, patch: unknown): Promise<void> {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
@@ -136,7 +152,7 @@ export class StoreAsync extends Store {
    * @param data The data items to be pushed into the array.
    * @returns A promise that resolves once the items have been applied to the store.
    * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
-   *   the original error if an earlier change failed.
+   *   the error of the batch it was sent in.
    */
   async Push(key: string, ...data: unknown[]): Promise<void> {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
@@ -157,7 +173,7 @@ export class StoreAsync extends Store {
    * @param items Optional elements to insert into the array.
    * @returns A promise that resolves once the splice has been applied to the store.
    * @throws Will throw if the key isn't in the store and has no pending Write, or reject with
-   *   the original error if an earlier change failed.
+   *   the error of the batch it was sent in.
    */
   async Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]): Promise<void> {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
@@ -171,21 +187,26 @@ export class StoreAsync extends Store {
 
   /**
    * Returns a promise that resolves once every change made before this call has been applied
-   * to the store. Changes made after this call are sent in a later batch, so they aren't
-   * waited for and haven't been applied when the promise resolves.
-   * @throws Rejects with the original error if a change made before this call failed.
+   * to the store: when the last batch sent before it is acknowledged, and at once when none is in
+   * flight. Changes made after this call are sent in a later batch, so they aren't waited for and
+   * haven't been applied when the promise resolves.
+   * @throws Rejects with the first error of the batches it waited for.
    */
   async Flush() {
     this.currentBatch = [];
-    return this.asyncQueue.Flush();
+    const pending = Array.from(this.inFlight);
+    const results = await Promise.allSettled(pending);
+    const failed = results.find(result => result.status === "rejected");
+    if (failed)
+      throw (failed as PromiseRejectedResult).reason;
   }
 
   /**
-   * Destroys the StoreAsync instance, stopping the async queue and cleaning up the diff instance.
-   * This method should be called when the instance is no longer needed to free up resources.
+   * Unsubscribes and stops listening to the channel. Changes not yet acknowledged never settle.
+   * The channel stays open: whoever created the worker terminates it.
    */
   Destroy() {
     this.asyncQueue.Stop();
-    this.workerQueue.Destroy();
+    this.client.Destroy();
   }
 }

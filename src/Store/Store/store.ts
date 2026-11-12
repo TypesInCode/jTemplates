@@ -18,11 +18,10 @@ export interface IStoreOptions {
 
 /**
  * Base class for reading observable data: holds root objects as ObservableNode instances
- * and applies diff results to them. Subclasses decide where the diffs come from: `Store`
- * adds the write methods, and `PushStore` takes them from a `DiffTreeWriter`.
+ * and applies diff results to them. Subclasses decide where the diffs come from: `StoreSync`
+ * and `StoreAsync` apply what a `DiffTreePublisher` delivers to them.
  *
  * @see Store
- * @see PushStore
  */
 export abstract class ReadStore {
 

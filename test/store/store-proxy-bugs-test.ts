@@ -1,17 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { PushStore } from "../../src/Store/Store/pushStore";
-import { DIFF_TREE_EVENT } from "../../src/Store/Diff";
+import { ReadStore } from "../../src/Store/Store/store";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import { DiffTreeWriter } from "../../src/Store/Diff/diffTreeWriter";
+import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 
 // The cases in docs/bugs/observable-node-proxy-own-keys.md. Each asserts the fixed behaviour.
 
-/** A PushStore and a function that posts one change to it, synchronously. */
+const DIFF_TREE_EVENT = "diff";
+
+/** A read-only store that applies the diffs dispatched to it, as a pushed store does */
+class DiffStore extends ReadStore {
+  constructor(target: EventTarget) {
+    super();
+    target.addEventListener("message", (event) => {
+      const data = (event as MessageEvent).data;
+      data?.type === DIFF_TREE_EVENT && this.UpdateRootMap(data.data);
+    });
+  }
+}
+
+/** A pushed store and a function that posts one change to it, synchronously. */
 function Push() {
   const target = new EventTarget();
-  const store = new PushStore(target);
+  const store = new DiffStore(target);
   const post = (path: string[], value: unknown) =>
     target.dispatchEvent(
       new MessageEvent("message", {
@@ -36,7 +48,7 @@ describe("Object.hasOwn on a store proxy (issue 1)", () => {
     expect(Object.hasOwn(proxy, "5")).toBe(false);
   });
 
-  it("is false for a key a PushStore's root doesn't have", () => {
+  it("is false for a key a pushed store's root doesn't have", () => {
     const { store, post } = Push();
     post(["r"], { a: { x: 1 } });
     expect(Object.hasOwn(store.Get<any>("r"), "a")).toBe(true);
@@ -120,7 +132,7 @@ describe("keys named like Object.prototype members (issue 2)", () => {
     expect(proxy[name].v).toBe(1);
   });
 
-  it("reads them through a PushStore, as JSON shows them", () => {
+  it("reads them through a pushed store, as JSON shows them", () => {
     const { store, post } = Push();
     post(["r"], { toString: { v: 1 }, constructor: { v: 2 }, hasOwnProperty: { v: 3 } });
     const r = store.Get<any>("r");
@@ -169,7 +181,7 @@ describe("keys named like Object.prototype members (issue 2)", () => {
 
 // Mutating a posted value afterwards is only a probe for whether the store copied it; a real
 // channel delivers copies.
-describe("PushStore on updates to an existing root (issue 3)", () => {
+describe("pushed store on updates to an existing root (issue 3)", () => {
   it("clones an update", () => {
     const { store, post } = Push();
     post(["r"], { a: { x: 1 } });
@@ -206,15 +218,18 @@ describe("large diffs and item lists", () => {
     expect(ProjectionEntries(tree.Commit())).toHaveLength(N);
   });
 
-  it("the same, committed by a DiffTreeWriter", () => {
+  it("the same, delivered by a DiffTreePublisher", () => {
     const posted: any[] = [];
-    const writer = new DiffTreeWriter({ postMessage: (m) => posted.push(m) }, undefined, routes);
-    writer.WritePath("n", 1);
-    writer.Commit();
-    writer.WritePath("n", 2);
-    writer.Commit();
+    const publisher = new DiffTreePublisher(undefined, routes);
+    publisher.Subscribe({}, (post) => posted.push(post));
+    publisher.WritePath("n", 1);
+    publisher.RunProjections();
+    publisher.Commit();
+    publisher.WritePath("n", 2);
+    publisher.RunProjections();
+    publisher.Commit();
     expect(posted).toHaveLength(2);
-    expect(ProjectionEntries(posted[1].data)).toHaveLength(N);
+    expect(ProjectionEntries(posted[1].diff)).toHaveLength(N);
   });
 
   it("a projection that a splice changes in many places (DiffTree.SplicePath)", () => {
@@ -383,9 +398,9 @@ describe("diff entries don't own their values", () => {
     expect(diff[0].value).not.toBe(tree.rootState.doc);
   });
 
-  it("a PushStore applying one object from two entries keeps separate copies", () => {
+  it("a pushed store applying one object from two entries keeps separate copies", () => {
     const target = new EventTarget();
-    const store = new PushStore(target);
+    const store = new DiffStore(target);
     const shared = { x: 1 };
     target.dispatchEvent(
       new MessageEvent("message", {

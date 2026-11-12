@@ -26,32 +26,25 @@ describe("StoreAsync opaque roots", () => {
   /** A store over a shim worker, recording the batches sent and the diffs posted back */
   function CreateStore(opaque: string[]) {
     const worker = CreateShimDiffWorker();
-    const batches: any[][] = [];
-    const postMessage = worker.postMessage.bind(worker);
-    worker.postMessage = (data: any) => {
-      batches.push(data);
-      postMessage(data);
-    };
-
     const store = new StoreAsync(worker, undefined, { opaque });
     stores.push(store);
 
+    // What the store sent, and the diffs the worker posted back
+    const sent = worker.sent;
     const diffs: any[][] = [];
-    const onmessage = worker.onmessage!;
-    worker.onmessage = (event: MessageEvent) => {
-      diffs.push(event.data);
-      onmessage.call(worker, event);
-    };
+    worker.addEventListener("message", (event) => {
+      const data = (event as MessageEvent).data;
+      data?.type === "jt-post" && data.diff.length > 0 && diffs.push(data.diff);
+    });
 
-    return { store, batches, diffs };
+    return { store, sent, diffs };
   }
 
-  it("sends its opaque keys first, in the batch with the first change", async () => {
-    const { store, batches } = CreateStore(["view"]);
+  it("sends its opaque keys first, before it subscribes", async () => {
+    const { store, sent } = CreateStore(["view"]);
     await store.Write(drawing(), "view");
-    expect(batches.length).to.eq(1);
-    expect(batches[0][0]).to.deep.eq({ method: "markopaque", arguments: [["view"]] });
-    expect(batches[0][1].method).to.eq("writepath");
+    expect(sent.map((m: any) => m.type)).to.deep.eq(["jt-markopaque", "jt-subscribe", "jt-batch"]);
+    expect(sent[0].keys).to.deep.eq(["view"]);
   });
 
   it("reads an opaque root as a raw value, never proxied", async () => {
@@ -69,6 +62,7 @@ describe("StoreAsync opaque roots", () => {
     const first = store.Get<any>("view");
 
     await store.Write(20, "view.nodes.1.rect.x");
+    expect(diffs.length).to.eq(2);
     expect(diffs[1].length).to.eq(1);
     expect(diffs[1][0].path).to.deep.eq(["view"]);
     expect(store.Get<any>("view")).not.to.eq(first);

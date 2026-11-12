@@ -153,6 +153,7 @@ function CreateStoreScope(
   getter: () => any,
   store: Store,
   defaultValue?: any,
+  onDestroyed?: () => void,
 ) {
   const getterScope = ObservableScope.Gated(function () {
     const value = getter();
@@ -172,7 +173,7 @@ function CreateStoreScope(
   });
   ObservableScope.OnDestroyed(propertyScope, function () {
     ObservableScope.Destroy(getterScope);
-    if (store instanceof StoreAsync) store.Destroy();
+    onDestroyed?.();
   });
 
   return propertyScope;
@@ -519,6 +520,10 @@ function ComputedAsyncDecorator<
           getter.bind(this),
           storeAsync,
           defaultValue,
+          () => {
+            storeAsync.Destroy();
+            worker.terminate();
+          },
         );
         scopeMap[propertyKey] = [propertyScope, undefined];
       }
