@@ -1,6 +1,6 @@
 # Proposal: DiffTree pushes its commits
 
-Status: phases 1–3 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`); phase 4, builder-app, not started. Measurement in phase 4 decides the deferred items (§Deferred: scheduled projections) and whether whole-root updates between workers are small enough (open question 6).
+Status: phases 1–4 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`; builder-app's three worker stores on them, measured: §Phase 4: builder-app). Open after the measurements: how the run's index crosses to the trace worker (§Phase 4 findings, 1), and `IsPending(root)`.
 
 ## Summary
 
@@ -362,7 +362,59 @@ Not part of this change; revisit if phase 4's measurement shows projections reru
 1. **Done. The tree and the publisher:** `Committed`, `CommittedKeys` and `DeleteRoot` on the tree; `SubscriptionManager` (filters, wildcards, ids, groups, counts, `SubscriberCount`, `OnReleased`); `DiffTreePublisher` over it (the two forms, the committed state on subscribe, `seq`, `Once`). `StoreSync` over it, with no behaviour change.
 2. **Done. The worker side:** `HostPublisher` (with `Serve` for ports, `jt-subscribed`, and `jt-disconnect` handling), and `StoreAsync` over posts with acks, `Flush()` by ack, per-batch failure and a `roots` option. `Subscribe` and `Once` over a channel. `WorkerQueue`, `ConnectWorkerToDiffTree`, `PushStore` and `DiffTreeWriter` are gone. `StoreAsync.Destroy()` no longer terminates the worker; `@ComputedAsync` terminates the one it creates.
 3. **Done. The hub:** `WorkerHub` (`Register` with a factory, `sources` and `releaseDebounce`, `Open` and leases, `Restart`, `Unregister`, `Destroy`), `jt-serve` and `jt-connect` handling in the host and `OnConnect`, `StoreAsync` over a lease, `Reconnect` with `reseed` (using `jt-subscribed`). Not yet in a phase: `IsPending(root)` (§Pending state).
-4. **builder-app:** the trace store first (it has the most workarounds), then the result index, then the project store. Measure posts per action, bytes per post and the main thread's time applying them against today, including a stepped build that commits its status while the user types, and bytes per update and the time to receive it between workers.
+4. **Done. builder-app:** the trace store first (it has the most workarounds), then the result index, then the project store. Measure posts per action, bytes per post and the main thread's time applying them against today, including a stepped build that commits its status while the user types, and bytes per update and the time to receive it between workers. See §Phase 4: builder-app.
+
+## Phase 4: builder-app
+
+builder-app's branch `feature/diff-tree-push` moves its three worker stores onto the push, on this branch's build of j-templates. The table in §What changes for builder-app holds, with these differences.
+
+- **The engine's replies share its channel with the result store.** `EngineClient`'s init and run requests are its own messages, and a run's reply says its index is in the store. A lease port is a second channel, and messages on two channels have no order between them, so a store over a lease could get the reply before the post it depends on. The read-only `StoreAsync` subscribes over the engine `Worker` itself, which `HostPublisher` serves too: the commit's post precedes the reply. `EngineService` still holds a lease, which keeps the worker running for the app's life; the hub's factory hands each new worker to the client (`start`) and to the store (`Reconnect`). Generally: **a protocol beside the tree goes on the channel its subscriber uses**, or it needs an ack of its own.
+- **The trace worker's intent is roots, not control messages.** `load` (the run to draw, as its document's text) and `whatIfRun` (the what-if's revision) are written by `TraceService`'s store like the Tab's other state. The worker reacts to them through a same-thread `"snapshot"` subscription on its own publisher, deferred a microtask since a delivery can't write to its tree. A restarted trace worker gets them back by `reseed`. The notes port, the `tick` root and every control message are gone.
+- **The trace worker commits its own work at the end of the turn**, with the projections only when a route they read changed: `status` is a root the worker writes and commits on its own, without rerunning the views.
+- **Detached runs are `detached_<revision>` roots**, opaque, so the engine never walks them; the trace worker takes one with `Once`, and the engine deletes it on `OnReleased`, keeping the last two for a consumer that hasn't asked yet. A what-if the trace worker hadn't taken when the engine restarted fails with a message rather than waiting.
+- **The run's index is taken, not fed.** The trace worker `Once`s `revision`; when it's the run asked for, it `Once`s `revision` and every part, and checks `revision` again, since a newer run may have committed between. Another revision is `gone`.
+- **The trace worker's lease is held for the service's life**, not per view: the run drawn is kept until the user reloads (FR-15.3), so releasing the worker when the tab closes would rebuild the flow on return. A per-view lease with a `releaseDebounce` is a product decision, not done here.
+- `IsPending(root)` isn't done; no view needed it in the migration.
+
+### Measurements
+
+On the same machine, today (`baa5946`, j-templates 9.0.1) against the push. `tests/perf/result-push-perf.test.ts` and `tests/perf/trace-store-perf.test.ts` in builder-app; the trace store's baseline ran an equivalent spec on `baa5946`. Node, every worker on one thread; a structured clone is timed both ways (serialize and deserialize).
+
+**The result index, engine worker → main thread** (one post per run; today one push message):
+
+| Workload | First run post | Copied as text, today | Structured clone | Main thread apply | One-value edit |
+| --- | --- | --- | --- | --- | --- |
+| projection | 3633 kB | 30–40 ms | 42–57 ms | 23–35 ms | 2 kB, 0 ms |
+| router | 1217 kB | 10–16 ms | 8–13 ms | 7–13 ms | 2 kB, 0 ms |
+| trace | 4098 kB | 24–45 ms | 21–38 ms | 17–32 ms | 7 kB, 0 ms |
+
+**The trace store, trace worker → main thread**:
+
+| Action | Today | With the push |
+| --- | --- | --- |
+| A key typed, a pick | 1 batch up, 1 reply down | 1 batch up, 1 post and 1 ack down |
+| Load (the worker's own work: index taken, flow built) | 3 notes, 3 tick batches and 3 replies: 3 round trips | 4 posts, no round trip |
+| Load, kB to the main thread | 1–2 kB | 26 kB (trace), 44 kB (visibility): the `load` root's document text comes back, as every root the store writes does |
+| A key typed during the flow's build (visibility, 497k nodes) | committed in 14–16 ms median, 19–49 ms longest | 15–16 ms median, 18–38 ms longest |
+| Main thread copy and apply per post | 0–1 ms | 0–1 ms |
+
+The build's slices are 13 ms median, 38–181 ms longest; a batch waits at most one slice, as before. Projections ran on every tick batch before; a status-only commit now runs none.
+
+**The run's index, engine worker → trace worker** (once per Trace load; today a feed answered with JSON text):
+
+| Workload | Size | JSON text, today | Structured clone |
+| --- | --- | --- | --- |
+| trace | 4 MB | 26–38 ms | 123–227 ms |
+| visibility | 90 MB | 609–951 ms | 496–2741 ms |
+
+The e2e suite (chromium) runs as before: run alone, every spec passes and takes the same time on both; under full-suite load, the imported-rule-set router spec times out on both.
+
+### Phase 4 findings
+
+1. **Structured clone is slower than JSON text for the index between workers**, 4–7× on the trace workload and up to 3× (noisily) on the visibility pattern, on every Trace load. It's off the main thread, but it delays the drawing. Open question 6 asked about large roots crossing on every change; this is large roots crossing once per load. Options: carry the parts as text (the app's "large views as text"), either written by the engine for every run (a stringify per run, wanted or not) or on request through a root the trace worker writes to the engine's tree, answered under a versioned key; or leave it, since a load is rare. Not decided.
+2. **No flow control is needed** (open question 2 stays settled): a batch during a stepped build is answered after the current slice, as before, and the worker's own commits are few (4 per load).
+3. **Scheduled projections stay deferred**: projections reran per batch before and still do; no burst showed in the measurements.
+4. **The first-run post to the main thread is about the same as before** for two workloads and 40% slower for the projection workload's 3.6 MB; edits are a few kB either way.
 
 ## Tests
 
