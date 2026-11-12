@@ -7,11 +7,11 @@ import { HostPublisher, IHost } from "../../src/Store/Diff/hostPublisher";
 // deliver each message asynchronously, as a structured-cloned copy in a "message" event, as a
 // real worker boundary would, with a HostPublisher serving a same-thread tree on one side.
 
-const clone = (v: unknown) => (v === undefined ? v : structuredClone(v));
+const clone = (v: unknown, transfer?: Transferable[]) => (v === undefined ? v : structuredClone(v, { transfer: transfer as any }));
 
 /** One end of a shim channel: an `EventTarget` whose `postMessage` reaches the other end */
 export type ShimPort = EventTarget & {
-  postMessage(data: unknown): void;
+  postMessage(data: unknown, transfer?: Transferable[]): void;
   start(): void;
   terminate(): void;
   /** Every message sent from this end, before delivery */
@@ -40,9 +40,9 @@ function CreatePort(): ShimPort {
 }
 
 function Sender(from: ShimPort, to: ShimPort) {
-  return (data: unknown) => {
+  return (data: unknown, transfer?: Transferable[]) => {
     from.sent.push(data);
-    const copy = clone(data);
+    const copy = clone(data, transfer);
     setTimeout(() => !from.terminated && !to.terminated && to.dispatchEvent(new MessageEvent("message", { data: copy })));
   };
 }
@@ -56,6 +56,11 @@ export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRoute
   const [main, worker] = CreateShimChannel();
   const tree = new DiffTreePublisher(keyFunc, routes);
   const host: IHost = HostPublisher(tree, worker);
+  // Terminating the worker ends what it serves, as a real worker's ports close with it
+  main.terminate = () => {
+    main.terminated = true;
+    host.Stop();
+  };
   return { worker: main, scope: worker, tree, host };
 }
 

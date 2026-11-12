@@ -3,6 +3,13 @@ import { IChannel, IDiffMethodBatch, IDiffPost, IHostMessage, ISnapshotUpdate, I
 /** Ids are unique across clients, so several can share one channel */
 let nextId = 1;
 
+/** A batch sent and not yet acknowledged */
+export interface IPendingBatch {
+  calls: IDiffMethodBatch;
+  resolve(): void;
+  reject(error: unknown): void;
+}
+
 interface IClientSubscription {
   callback: (delivery: any) => void;
   onSubscribed?: (error?: unknown) => void;
@@ -15,7 +22,7 @@ interface IClientSubscription {
  */
 export class ChannelClient {
   private subscriptions = new Map<number, IClientSubscription>();
-  private batches = new Map<number, { resolve(): void, reject(error: unknown): void }>();
+  private batches = new Map<number, IPendingBatch>();
   private listener = (event: MessageEvent) => this.Receive(event.data as IHostMessage);
 
   constructor(private channel: IChannel) {
@@ -29,11 +36,21 @@ export class ChannelClient {
    *   delivered, or rejects with the batch's error.
    */
   Batch(calls: IDiffMethodBatch): Promise<void> {
+    return new Promise((resolve, reject) => this.Send({ calls, resolve, reject }));
+  }
+
+  /** Sends a batch taken from another client; its promise settles on this channel's ack */
+  Send(batch: IPendingBatch) {
     const id = nextId++;
-    return new Promise((resolve, reject) => {
-      this.batches.set(id, { resolve, reject });
-      this.channel.postMessage({ type: "jt-batch", id, calls });
-    });
+    this.batches.set(id, batch);
+    this.channel.postMessage({ type: "jt-batch", id, calls: batch.calls });
+  }
+
+  /** The batches waiting for an ack, in the order sent; this client stops waiting for them */
+  TakeBatches(): IPendingBatch[] {
+    const batches = Array.from(this.batches.values());
+    this.batches.clear();
+    return batches;
   }
 
   /** See `DiffTree.MarkOpaque` */

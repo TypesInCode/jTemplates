@@ -54,11 +54,13 @@ export interface ISnapshotUpdate {
  * read with `addEventListener`, never `onmessage`, so other messages can share the channel.
  */
 export interface IChannel {
-  postMessage(message: any): void;
+  postMessage(message: any, transfer?: Transferable[]): void;
   addEventListener(type: "message", listener: (event: any) => void): void;
   removeEventListener(type: "message", listener: (event: any) => void): void;
   /** A `MessagePort` delivers nothing to `addEventListener` until it's started */
   start?(): void;
+  /** A `MessagePort` is closed when it's no longer served */
+  close?(): void;
 }
 
 /** A `jt-` message a client (a `StoreAsync`, `Subscribe`, `Once`) sends to a `HostPublisher` */
@@ -71,7 +73,40 @@ export type IHostRequest =
   /** Ends every subscription on the channel */
   | { type: "jt-disconnect" }
   /** See `DiffTree.MarkOpaque` */
-  | { type: "jt-markopaque", keys: readonly string[] };
+  | { type: "jt-markopaque", keys: readonly string[] }
+  /** From a `WorkerHub`, on the worker's own channel: serve `port`, a lease's channel, as `id` */
+  | { type: "jt-serve", id: number, port: MessagePort }
+  /** From a `WorkerHub`: stop serving lease `id`, ending its subscriptions */
+  | { type: "jt-unserve", id: number };
+
+/**
+ * From a `WorkerHub` to a consumer worker, on its own channel: a port to `source`'s tree, for its
+ * `OnConnect` handler. Sent when the consumer starts, and again when either worker restarts.
+ */
+export interface IConnectMessage {
+  type: "jt-connect";
+  source: string;
+  port: MessagePort;
+}
+
+/**
+ * A lease on a worker a `WorkerHub` owns: a port to it, served by its `HostPublisher`. The worker
+ * runs while it has leases. A `StoreAsync` given a lease follows its port across restarts.
+ */
+export interface IWorkerLease {
+  /** The worker's registered name */
+  readonly name: string;
+  /** The current port to the worker; replaced when the worker restarts */
+  readonly port: MessagePort;
+  readonly released: boolean;
+  /**
+   * Calls back with the new port each time the worker restarts.
+   * @returns A function that removes the callback.
+   */
+  OnPort(callback: (port: MessagePort) => void): () => void;
+  /** Ends the lease: its subscriptions end and its port closes. The last one releases the worker. */
+  Release(): void;
+}
 
 /** A `jt-` message a `HostPublisher` posts to its clients */
 export type IHostMessage =

@@ -1,4 +1,4 @@
-import { JsonDeepClone, JsonDiffResult, JsonType } from "../../Utils/json";
+import { JsonDeepClone, JsonDiff, JsonDiffResult, JsonType } from "../../Utils/json";
 import { ObservableNode } from "../Tree/observableNode";
 import { Opaque } from "../Tree/opaque";
 
@@ -117,6 +117,27 @@ export abstract class ReadStore {
 
       this.UpdateRootObject(rootGroup[0].path[0], rootGroup);
     }
+  }
+
+  /**
+   * Applies whole-root writes by diffing each one into the root the store already holds, so
+   * readers of an unchanged part aren't notified and keep its objects. Anything else, an opaque
+   * root, or a root the store doesn't hold, is applied as it is.
+   * @param results - Diff results, e.g. a tree's first state after reconnecting
+   * @protected
+   */
+  protected UpdateRootMapInPlace(results: JsonDiffResult) {
+    const applied: JsonDiffResult = [];
+    for (const result of results) {
+      const key = result.path[0];
+      const rootObject = this.rootMap.get(key);
+      if (result.type !== "write" || result.path.length > 1 || rootObject === undefined || this.opaque.has(key))
+        applied.push(result);
+      else
+        JsonDiff({ [key]: result.value }, ObservableNode.Unwrap(rootObject)).forEach(record => applied.push(record));
+    }
+
+    applied.length > 0 && this.UpdateRootMap(applied);
   }
 
   /**

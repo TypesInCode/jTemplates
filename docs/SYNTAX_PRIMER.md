@@ -57,9 +57,9 @@ npm install j-templates
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
 | `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
 | `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the publisher's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`. Types and constants only, so a worker bundle can import it. |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the publisher's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`. Types and constants only, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreePublisher` (`DiffTreePublisher`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreePublisher` (`DiffTreePublisher`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/workerHub` (`WorkerHub`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -694,6 +694,49 @@ store.Get("results");   // reactive; undefined until a commit holds it
 - Nothing reaches subscribers until `Commit()`, and a commit with no changes posts nothing. Errors in the worker's own writes throw to the worker's code; nothing is posted for them.
 - `HostPublisher(tree, self)` serves the worker's own channel; `host.Serve(port)` serves a `MessagePort` it's given, so another worker can subscribe.
 - Another worker subscribes over a port with `Subscribe(port, { roots, form: "snapshot" }, update => …)` and writes the roots it receives under a route of its own tree, which is never posted on. `Once(port, keys, { signal })` waits for the first commit that holds every key. Values arrive as structured-cloned copies.
+
+### WorkerHub: workers by name
+
+On the main thread, a `WorkerHub` owns the app's workers. It creates each one from a factory when it's first needed, hands out channels to it as leases, connects workers to each other, re-creates one on request, and terminates each one when its last lease ends. It never carries data.
+
+```typescript
+import { WorkerHub } from "j-templates/Store/Diff/workerHub";
+const hub = new WorkerHub();
+hub.Register("engine", () => {
+  const worker = new Worker(new URL("./engine-worker.ts", import.meta.url), { type: "module" });
+  worker.postMessage({ type: "load", project });   // starting intent: runs on every start
+  return worker;
+});
+hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), { releaseDebounce: 5000 });
+hub.Connect("trace", "engine");
+
+const app = hub.Open("engine");           // held for the app's lifetime
+const lease = hub.Open("trace");          // starts trace; trace's connection keeps engine open
+const store = new StoreAsync(lease, keyFunc);
+// teardown
+store.Destroy();
+lease.Release();                          // trace ends 5 s later unless reopened
+hub.Restart("engine");                    // a new engine; every port re-issued, stores reconnect
+hub.Destroy();                            // every worker terminated
+
+// trace-worker.ts
+import { OnConnect } from "j-templates/Store/Diff/onConnect";
+HostPublisher(tree, self as any);
+OnConnect("engine", port => {
+  tree.DeleteRoute("/engine/");           // what the last engine sent
+  return Subscribe(port, { roots: ["index", "task_*"], form: "snapshot" }, update => {
+    for (const key in update.roots) tree.WritePath(`/engine/${key}`, update.roots[key]);
+    for (const key of update.deleted) tree.WritePath(`/engine/${key}`, undefined);
+    tree.RunProjections();
+    tree.Commit();
+  });                                     // returned: ends the subscription when a new port arrives
+});
+```
+
+- `Register` creates nothing; the first `Open` does. The factory runs again on `Restart` and on the next `Open` after a release, so it should send whatever the worker needs to start.
+- A worker is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing terminates it and ends its leases on its sources. Keep a lease for a worker that must outlive every view.
+- Give leases, not the `Worker`, to stores: a store over a lease follows a restart with `Reconnect(port, { reseed: true })`, keeping its readers. `store.Destroy()` never terminates a worker.
+- `Restart` is the app's call when it decides a worker is unhealthy; the hub doesn't restart on `error`. `Connect` throws on a cycle. `Unregister(name)` ends one worker; `Destroy()` all of them.
 
 ## ObservableScope and ObservableNode
 

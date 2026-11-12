@@ -1,11 +1,12 @@
 import { DiffTreePublisher } from "./diffTreePublisher";
 import { IChannel, IDiffMethod, IHostMessage, IHostRequest, MESSAGE_PREFIX } from "./diffTree.types";
+import { ListenForConnections } from "./onConnect";
 
 /** A `HostPublisher`: the channels it serves */
 export interface IHost {
   /**
    * Serves another channel, such as a `MessagePort` the worker was given.
-   * @returns A function that stops serving it and ends its subscriptions.
+   * @returns A function that stops serving it, ends its subscriptions, and closes it.
    */
   Serve(channel: IChannel): () => void;
   /** Stops serving every channel and ends their subscriptions */
@@ -25,6 +26,7 @@ export interface IHost {
  *   commit are posted as `jt-post`, then `jt-subscribed` once the first state is out.
  * - `jt-disconnect`: ends every subscription on the channel.
  * - `jt-markopaque`: see `DiffTree.MarkOpaque`.
+ * - `jt-serve` / `jt-unserve`: from a `WorkerHub`, a lease's port to serve, or to stop serving.
  *
  * The worker's own work commits on the same publisher, and its commits reach every subscriber
  * without a round trip.
@@ -39,6 +41,8 @@ export interface IHost {
  */
 export function HostPublisher(publisher: DiffTreePublisher, scope: IChannel): IHost {
   const served = new Map<IChannel, () => void>();
+  /** Lease ports a `WorkerHub` asked this host to serve, by id */
+  const leases = new Map<number, () => void>();
 
   function Serve(channel: IChannel) {
     const existing = served.get(channel);
@@ -84,6 +88,13 @@ export function HostPublisher(publisher: DiffTreePublisher, scope: IChannel): IH
         case "jt-markopaque":
           publisher.MarkOpaque(message.keys);
           break;
+        case "jt-serve":
+          leases.set(message.id, Serve(message.port));
+          break;
+        case "jt-unserve":
+          leases.get(message.id)?.();
+          leases.delete(message.id);
+          break;
       }
     };
 
@@ -97,12 +108,15 @@ export function HostPublisher(publisher: DiffTreePublisher, scope: IChannel): IH
       channel.removeEventListener("message", listener);
       publisher.Disconnect(channel);
       subscriptions.clear();
+      channel !== scope && channel.close?.();
     };
     served.set(channel, stop);
     return stop;
   }
 
   Serve(scope);
+  // A hub's jt-connect ports can arrive before the worker's OnConnect handlers are registered
+  ListenForConnections(scope);
   return {
     Serve,
     Stop() {
