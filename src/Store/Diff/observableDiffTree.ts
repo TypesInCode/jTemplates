@@ -2,7 +2,6 @@ import { JsonDiffResult } from "../../Utils/json";
 import { SubscriptionManager } from "../../Utils/subscriptionManager";
 import { DiffTree } from "./diffTree";
 import { DeliveryForm, IDiffPost, ISnapshotUpdate, ISubscribeOptions } from "./diffTree.types";
-import { IKeyFunc, IRouteDefinitions } from "./utils/diffTree.types";
 
 interface ISubscription {
   form: DeliveryForm;
@@ -10,8 +9,7 @@ interface ISubscription {
 }
 
 /**
- * A `DiffTree` that delivers every `Commit()` to its subscribers. It creates and owns its tree,
- * exposes the tree's write API, and never the tree itself, so nothing commits the tree past it.
+ * A `DiffTree` that delivers every `Commit()` to its subscribers: the tree, observable.
  *
  * - **`Commit()` diffs and delivers; it doesn't run projections.** Call `RunProjections()` first
  *   when the change needs them. A commit without it delivers the changed roots with the projection
@@ -22,131 +20,36 @@ interface ISubscription {
  * - **A new subscription gets the committed state first**, inside `Subscribe`, then every commit.
  *   Uncommitted writes arrive with the next commit, like everyone else's.
  * - **Delivery is synchronous**, inside `Commit()`. A subscriber may write to another tree, but
- *   a write to this one, or a commit, during its delivery throws. Values are shared with the
+ *   a change to this one, or a commit, during its delivery throws. Values are shared with the
  *   tree, never cloned: treat them as read-only.
  * - When a subscriber throws, the others still get the commit, and `Commit()` throws the first error.
  *
  * @example
- * const tree = new DiffTreePublisher(keyFunc, routes);
+ * const tree = new ObservableDiffTree(keyFunc, routes);
  * const stop = tree.Subscribe({ roots: ["loading", "$projection_*"] }, post => store.Apply(post.diff));
  * tree.WritePath("loading", true);
  * tree.Commit();
  */
-export class DiffTreePublisher {
-  private tree: DiffTree;
+export class ObservableDiffTree extends DiffTree {
   private subscriptions = new SubscriptionManager<ISubscription>();
   private seq = 0;
-  /** How many deliveries are running: writes and commits throw while it isn't 0 */
+  /** How many deliveries are running: changes and commits throw while it isn't 0 */
   private delivering = 0;
-
-  /**
-   * @param keyFunc Optional function to extract a key from objects. A subscribing store or tree
-   *   uses the same one.
-   * @param routes Optional route definitions.
-   * @throws When projections depend on each other in a cycle.
-   */
-  constructor(keyFunc?: IKeyFunc, routes?: IRouteDefinitions) {
-    this.tree = new DiffTree(keyFunc, routes);
-  }
 
   /** The number of the last commit that changed something; 0 before the first */
   get Seq() {
     return this.seq;
   }
 
-  /** See `DiffTree.WritePath` */
-  WritePath(path: string, value: any) {
-    this.AssertNotDelivering();
-    this.tree.WritePath(path, value);
-  }
-
-  /** See `DiffTree.PatchPath` */
-  PatchPath(path: string, patch: any) {
-    this.AssertNotDelivering();
-    this.tree.PatchPath(path, patch);
-  }
-
-  /** See `DiffTree.PushPath` */
-  PushPath(path: string, items: unknown[]) {
-    this.AssertNotDelivering();
-    this.tree.PushPath(path, items);
-  }
-
-  /** See `DiffTree.SplicePath` */
-  SplicePath(path: string, start: number, deleteCount: number, items: any[]) {
-    this.AssertNotDelivering();
-    this.tree.SplicePath(path, start, deleteCount, items);
-  }
-
-  /**
-   * See `DiffTree.ApplyDiff`. How one tree follows another: a follow route for the source
-   * (`FollowRoutes`), a `ChannelSubscription` to it in the `"diff"` form over each port, and each
-   * post applied here, then committed.
-   * @example
-   * const project = new ChannelSubscription({ roots: ["rows", "o_*"] }, post => {
-   *   tree.ApplyDiff(post.diff, "/project/");
-   *   tree.RunProjections();
-   *   tree.Commit();
-   * });
-   * OnConnect("project", port => project.Connect(port));
-   */
-  ApplyDiff(records: JsonDiffResult, route?: string) {
-    this.AssertNotDelivering();
-    this.tree.ApplyDiff(records, route);
-  }
-
-  /** See `DiffTree.DeleteRoot` */
-  DeleteRoot(key: string) {
-    this.AssertNotDelivering();
-    this.tree.DeleteRoot(key);
-  }
-
-  /** See `DiffTree.DeleteRoute` */
-  DeleteRoute(routePath: string) {
-    this.AssertNotDelivering();
-    this.tree.DeleteRoute(routePath);
-  }
-
-  /** See `DiffTree.RunProjections` */
-  RunProjections() {
-    this.AssertNotDelivering();
-    this.tree.RunProjections();
-  }
-
-  /** See `DiffTree.MarkOpaque` */
-  MarkOpaque(keys: readonly string[]) {
-    this.tree.MarkOpaque(keys);
-  }
-
-  /** See `DiffTree.ReadPath` */
-  ReadPath(path: string) {
-    return this.tree.ReadPath(path);
-  }
-
-  /** See `DiffTree.Snapshot` */
-  Snapshot(path: string) {
-    return this.tree.Snapshot(path);
-  }
-
-  /** See `DiffTree.Committed` */
-  Committed(key: string) {
-    return this.tree.Committed(key);
-  }
-
-  /** See `DiffTree.CommittedKeys` */
-  CommittedKeys() {
-    return this.tree.CommittedKeys();
-  }
-
   /**
    * Diffs the tree since the last commit and delivers the changes to every subscription whose
    * roots they touch.
    * @returns The diff.
-   * @throws During a delivery from this publisher, or the first error a subscriber threw.
+   * @throws During a delivery from this tree, or the first error a subscriber threw.
    */
   Commit(): JsonDiffResult {
-    this.AssertNotDelivering();
-    const diff = this.tree.Commit();
+    this.BeforeChange();
+    const diff = super.Commit();
     if (diff.length === 0)
       return diff;
 
@@ -175,7 +78,7 @@ export class DiffTreePublisher {
         const roots: { [key: string]: unknown } = {};
         const gone: string[] = [];
         for (const key of keys)
-          deleted.has(key) ? gone.push(key) : roots[key] = this.tree.Committed(key);
+          deleted.has(key) ? gone.push(key) : roots[key] = this.Committed(key);
 
         delivery = { seq, roots, deleted: gone };
       }
@@ -207,10 +110,10 @@ export class DiffTreePublisher {
   Subscribe(options: ISubscribeOptions, callback: (delivery: any) => void): () => void {
     const subscription: ISubscription = { form: options.form ?? "diff", callback };
     const id = this.subscriptions.Subscribe(options.roots, subscription, { group: options.group });
-    const keys = this.subscriptions.MatchingKeys(id, this.tree.CommittedKeys());
+    const keys = this.subscriptions.MatchingKeys(id, this.CommittedKeys());
     const delivery: IDiffPost | ISnapshotUpdate = subscription.form === "diff"
-      ? { seq: this.seq, diff: keys.map(key => ({ type: "write" as const, path: [key], value: this.tree.Committed(key) })) }
-      : { seq: this.seq, roots: Object.fromEntries(keys.map(key => [key, this.tree.Committed(key)])), deleted: [] };
+      ? { seq: this.seq, diff: keys.map(key => ({ type: "write" as const, path: [key], value: this.Committed(key) })) }
+      : { seq: this.seq, roots: Object.fromEntries(keys.map(key => [key, this.Committed(key)])), deleted: [] };
 
     try {
       keys.length > 0 && this.Deliver(subscription, delivery);
@@ -257,7 +160,7 @@ export class DiffTreePublisher {
 
         const values: { [key: string]: unknown } = {};
         for (const key of keys) {
-          const value = this.tree.Committed(key);
+          const value = this.Committed(key);
           if (value === undefined)
             return;
 
@@ -307,9 +210,10 @@ export class DiffTreePublisher {
     }
   }
 
-  private AssertNotDelivering() {
+  /** A subscriber can't change or commit the tree delivering to it */
+  protected BeforeChange() {
     if (this.delivering > 0)
-      throw new Error("DiffTreePublisher: a subscriber can't write to or commit the tree delivering to it.");
+      throw new Error("ObservableDiffTree: a subscriber can't write to or commit the tree delivering to it.");
   }
 }
 

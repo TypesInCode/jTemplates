@@ -2,7 +2,7 @@
 
 ## Overview
 
-j-templates uses a fine-grained reactive system built on `ObservableScope` and `ObservableNode`. Property-level change detection replaces component-level re-rendering — only the DOM nodes that depend on changed state are updated. The decorator layer (`@Value`, `@State`, `@Scope`, `@Computed`, `@ComputedAsync`, `@Watch`) provides ergonomic access to these primitives inside components.
+j-templates uses a fine-grained reactive system built on `ObservableScope` and `ObservableNode`. Property-level change detection replaces component-level re-rendering — only the DOM nodes that depend on changed state are updated. The decorator layer (`@Value`, `@State`, `@Scope`, `@Computed`, `@Watch`) provides ergonomic access to these primitives inside components.
 
 ## Primitives
 
@@ -169,7 +169,6 @@ Decorators provide ergonomic access to the reactive primitives inside `Component
 | `@State()` | Property | `ObservableNode` | Deep reactive object/array via proxy. Nested mutations tracked. |
 | `@Scope()` | Getter | `ObservableScope` | Cached computed value. Returns **new** reference on update. |
 | `@Computed()` | Getter | `ObservableNode` + `Apply` | Cached computed with **identity preservation**. Returns **same** reference on update. |
-| `@ComputedAsync(default)` | Getter | `StoreAsync` + `ApplyDiff` | Like `@Computed`, but diff computation runs asynchronously. |
 | `@Watch(fn)` | Method | `ObservableScope.Watch` | Subscribe a method to reactive value changes. |
 
 ### @Value — Primitive reactive property
@@ -255,25 +254,6 @@ How it works:
 4. Downstream consumers receive the **same object reference** when the structure is unchanged.
 
 **Note:** Unlike the old docs suggested, `@Computed()` does **not** take a `defaultValue` parameter. The type is inferred from the getter's return type.
-
-### @ComputedAsync — Asynchronous computed
-
-Like `@Computed`, but uses `StoreAsync` so diff computation runs off the main thread. **Requires** a default value parameter. The getter itself is synchronous — the "Async" refers only to the internal store backend.
-
-```typescript
-class Dashboard extends Component {
-  @ComputedAsync([])
-  get activityData(): ActivityRow[] {
-    return this.dataService.GetActivityData();
-  }
-}
-```
-
-How it works:
-1. Creates a getter scope and a `StoreAsync` instance.
-2. On dependency change, `store.Write(data, "root")` is queued asynchronously.
-3. A property scope reads from the store with `store.Get("root", defaultValue)`.
-4. Object identity is preserved via the store's `ApplyDiff`, like `@Computed`.
 
 ### @Watch — React to value changes
 

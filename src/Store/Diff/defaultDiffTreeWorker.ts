@@ -1,4 +1,4 @@
-import { DiffTreePublisher } from "./diffTreePublisher";
+import { ObservableDiffTree } from "./observableDiffTree";
 import { HostPublisher } from "./hostPublisher";
 
-HostPublisher(new DiffTreePublisher(), self as any);
+HostPublisher(new ObservableDiffTree(), self as any);

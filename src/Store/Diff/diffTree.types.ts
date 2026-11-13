@@ -1,6 +1,8 @@
 import type { JsonDiffResult } from "../../Utils/json";
+import type { ObservableDiffTree } from "./observableDiffTree";
+import type { IHubEndpoint } from "./hubEndpoint.types";
 
-/** A `DiffTreePublisher` method call in a `jt-batch` */
+/** An `ObservableDiffTree` method call in a `jt-batch` */
 export interface IDiffMethod {
   /** The method to call */
   method: "writepath" | "patchpath" | "pushpath" | "splicepath";
@@ -11,14 +13,14 @@ export interface IDiffMethod {
 export type IDiffMethodBatch = IDiffMethod[];
 
 /**
- * How a `DiffTreePublisher` delivers a commit to a subscription:
+ * How an `ObservableDiffTree` delivers a commit to a subscription:
  * - `"diff"`: the commit's diff records for the matching roots (`IDiffPost`), which a store applies.
  * - `"snapshot"`: each matching root that changed, whole, as last committed (`ISnapshotUpdate`), which
  *   another tree writes.
  */
 export type DeliveryForm = "diff" | "snapshot";
 
-/** A subscription to a `DiffTreePublisher` */
+/** A subscription to an `ObservableDiffTree` */
 export interface ISubscribeOptions {
   /**
    * The root keys it receives: exact keys, and patterns ending in `*` (`task_*`). Omitted, every
@@ -27,7 +29,7 @@ export interface ISubscribeOptions {
   roots?: readonly string[];
   /** How it's delivered; `"diff"` when omitted */
   form?: DeliveryForm;
-  /** A group `DiffTreePublisher.Disconnect` ends it with, e.g. the channel it came from */
+  /** A group `ObservableDiffTree.Disconnect` ends it with, e.g. the channel it came from */
   group?: unknown;
 }
 
@@ -74,14 +76,14 @@ export type IHostRequest =
   | { type: "jt-disconnect" }
   /** See `DiffTree.MarkOpaque` */
   | { type: "jt-markopaque", keys: readonly string[] }
-  /** From a `WorkerHub`, on the worker's own channel: serve `port`, a lease's channel, as `id` */
+  /** From a `DiffTreeHub`, on the worker's own channel: serve `port`, a lease's channel, as `id` */
   | { type: "jt-serve", id: number, port: MessagePort }
-  /** From a `WorkerHub`: stop serving lease `id`, ending its subscriptions */
+  /** From a `DiffTreeHub`: stop serving lease `id`, ending its subscriptions */
   | { type: "jt-unserve", id: number };
 
 /**
- * From a `WorkerHub` to a consumer worker, on its own channel: a port to `source`'s tree, for its
- * `OnConnect` handler. Sent when the consumer starts, and again when either worker restarts.
+ * From a `DiffTreeHub` to a tree that follows `source`, on its own channel: a port to `source`'s tree,
+ * for its `OnConnect` handler. Sent when the follower starts, and again when either restarts.
  */
 export interface IConnectMessage {
   type: "jt-connect";
@@ -90,9 +92,8 @@ export interface IConnectMessage {
 }
 
 /**
- * From a `WorkerHub` to a worker it created, on the worker's own channel, first on every start:
- * the sources it reads from (`Register(name, factory, { sources })`). `OnConnect` throws for a
- * source that isn't listed.
+ * From a `DiffTreeHub` to a tree it started, on the tree's own channel, first on every start: the
+ * sources it follows (its endpoint's `sources`). `OnConnect` throws for a source that isn't listed.
  */
 export interface ISourcesMessage {
   type: "jt-sources";
@@ -100,12 +101,15 @@ export interface ISourcesMessage {
 }
 
 /**
- * A lease on a worker a `WorkerHub` owns: a port to it, served by its `HostPublisher`. The worker
- * runs while it has leases. A `StoreAsync` given a lease follows its port across restarts.
+ * A lease on a worker's tree, from `DiffTreeHub.Open`: a port to it, served by the worker's
+ * `HostPublisher`. The worker runs while it has leases. Give it to a `StoreAsync`, which owns it from
+ * then on and releases it when it's destroyed.
  */
 export interface IWorkerLease {
-  /** The worker's registered name */
+  /** The endpoint's name */
   readonly name: string;
+  /** The endpoint the tree is registered as */
+  readonly endpoint: IHubEndpoint;
   /** The current port to the worker; replaced when the worker restarts */
   readonly port: MessagePort;
   readonly released: boolean;
@@ -115,6 +119,28 @@ export interface IWorkerLease {
    */
   OnPort(callback: (port: MessagePort) => void): () => void;
   /** Ends the lease: its subscriptions end and its port closes. The last one releases the worker. */
+  Release(): void;
+}
+
+/**
+ * A lease on a tree on this thread, from `DiffTreeHub.OpenLocal`: the tree itself. The tree runs while
+ * it has leases. Give it to a `StoreSync`, which owns it from then on and releases it when it's
+ * destroyed.
+ */
+export interface ILocalLease {
+  /** The endpoint's name */
+  readonly name: string;
+  /** The endpoint the tree is registered as */
+  readonly endpoint: IHubEndpoint;
+  /** The current tree; replaced when it restarts */
+  readonly tree: ObservableDiffTree;
+  readonly released: boolean;
+  /**
+   * Calls back with the new tree each time it restarts.
+   * @returns A function that removes the callback.
+   */
+  OnTree(callback: (tree: ObservableDiffTree) => void): () => void;
+  /** Ends the lease. The last one ends the tree, and the leases it holds on its sources. */
   Release(): void;
 }
 

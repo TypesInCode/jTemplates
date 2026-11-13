@@ -1,6 +1,17 @@
-import { DiffTreePublisher } from "../Diff/diffTreePublisher";
-import { IRouteDefinitions } from "../Diff/utils/diffTree.types";
+import type { JsonDiffResult } from "../../Utils/json";
+import type { ILocalLease } from "../Diff/diffTree.types";
+import { ObservableDiffTree } from "../Diff/observableDiffTree";
+import { IKeyFunc, IRouteDefinitions } from "../Diff/utils/diffTree.types";
 import { IStoreOptions, Store } from "./store";
+
+/** Options for a `StoreSync` over a lease */
+export interface IStoreSyncOptions extends IStoreOptions {
+  /**
+   * The tree's root keys the store holds: exact keys and patterns ending in `*`. Omitted, every
+   * root. With a `keyFunc`, include the entity roots the held roots refer to.
+   */
+  roots?: readonly string[];
+}
 
 /**
  * StoreSync class extends the base Store class to provide synchronous data management operations.
@@ -26,43 +37,85 @@ import { IStoreOptions, Store } from "./store";
  * // Splicing an array
  * store.Splice("user.array", 0, 1, { id: 3 });
  *
- * The store subscribes to a `DiffTreePublisher` it creates, and applies every commit the
- * publisher delivers, so anything else on the thread can subscribe to the same tree
- * (`Publisher`), and a commit made on the publisher directly reaches the store too.
+ * The store subscribes to an `ObservableDiffTree` and applies every commit the tree delivers, so
+ * anything else on the thread can subscribe to the same tree (`Tree`), and a commit made on the
+ * tree directly reaches the store too. A change runs the tree's projections and commits
+ * before it returns.
+ *
+ * - **Its own tree** (`new StoreSync(keyFunc, routes)`): the store creates the tree, and it lives as
+ *   long as the store.
+ * - **A hub's tree** (`new StoreSync(hub.OpenLocal(name))`): a tree on this thread a `DiffTreeHub` runs
+ *   for an endpoint, shared by every store opened on it and followed into by the hub. A change from
+ *   any of them reaches all of them, and the trees that follow it, before it returns. The store
+ *   owns the lease and releases it when it's destroyed. When the hub restarts the tree, the store
+ *   moves to the new one, as when it first subscribed.
+ *
+ * @example
+ * // A store on a hub's tree: it lives as long as the component that holds it
+ * @Inject(DiffTreeHub) hub!: DiffTreeHub;
+ * @Destroy() budget = new StoreSync(this.hub.OpenLocal("budget"));
  *
  * @see Store
  * @see StoreAsync
- * @see DiffTreePublisher
+ * @see ObservableDiffTree
  */
 export class StoreSync extends Store {
   /**
    * The tree each change is applied to. The store applies every commit it delivers.
    * @private
    */
-  private diff: DiffTreePublisher;
+  private diff!: ObservableDiffTree;
+  private unsubscribe?: () => void;
+  /** The lease the store owns, when it was given one */
+  private lease?: ILocalLease;
+  private stopLease?: () => void;
+  private roots?: readonly string[];
+  /** Over a lease: the roots delivered and not deleted, to delete the ones a restarted tree doesn't hold */
+  private delivered = new Set<string>();
 
   /**
-   * Creates an instance of StoreSync.
+   * Creates a store on a hub's tree on this thread, and subscribes to it: the tree's state is the
+   * store's when this returns. The store owns the lease from then on, and releases it when it's
+   * destroyed.
+   * @param lease From `DiffTreeHub.OpenLocal`. A lease on a worker's tree (`DiffTreeHub.Open`) is for a
+   *   `StoreAsync`, and doesn't compile here.
+   * @param options `roots` the store holds, and `opaque` in place of the endpoint's, for this store
+   *   alone: the shared tree isn't told. The keyFunc is the endpoint's.
+   */
+  constructor(lease: ILocalLease, options?: IStoreSyncOptions);
+  /**
+   * Creates a store with a tree of its own.
    * @param keyFunc Optional function to generate a key for a given data value.
    * @param routes Optional route definitions. A projection in the root route (`"/"`) is
    * readable through `Get` at `$projection_<key>`.
    * @param options Optional settings; `opaque` lists the root keys held whole (`IStoreOptions`).
    * @throws When projections depend on each other in a cycle.
    */
-  constructor(keyFunc?: (value: any) => string | undefined, routes?: IRouteDefinitions, options: IStoreOptions = {}) {
-    super(keyFunc, options.opaque);
+  constructor(keyFunc?: IKeyFunc, routes?: IRouteDefinitions, options?: IStoreOptions);
+  constructor(source?: ILocalLease | IKeyFunc, routesOrOptions?: IRouteDefinitions | IStoreSyncOptions, ownOptions: IStoreOptions = {}) {
+    const lease = IsLease(source) ? source : undefined;
+    const options: IStoreSyncOptions = lease ? { opaque: lease.endpoint.opaque, ...routesOrOptions as IStoreSyncOptions } : ownOptions;
+    super(lease ? lease.endpoint.keyFunc : source as IKeyFunc | undefined, options.opaque);
 
-    this.diff = new DiffTreePublisher(keyFunc, routes);
+    if (lease) {
+      this.lease = lease;
+      this.roots = options.roots;
+      this.Attach(lease.tree, false);
+      this.stopLease = lease.OnTree(tree => this.Attach(tree, true));
+      return;
+    }
+
+    this.diff = new ObservableDiffTree(source as IKeyFunc | undefined, routesOrOptions as IRouteDefinitions | undefined);
     options.opaque && this.diff.MarkOpaque(options.opaque);
-    this.diff.Subscribe({}, post => this.UpdateRootMap(post.diff));
+    this.unsubscribe = this.diff.Subscribe({}, post => this.UpdateRootMap(post.diff));
   }
 
   /**
-   * The publisher that owns the store's tree. Subscribe to it to receive the same commits the
-   * store applies; a commit made on it reaches the store too. A subscriber can't write to the
-   * store during a delivery.
+   * The store's tree: its own, or the hub's. Subscribe to it to receive the
+   * same commits the store applies; a commit made on it reaches the store too. A subscriber can't
+   * write to the store during a delivery.
    */
-  get Publisher() {
+  get Tree() {
     return this.diff;
   }
 
@@ -129,6 +182,50 @@ export class StoreSync extends Store {
   }
 
   /**
+   * Stops applying the tree's commits. Over a lease, the store then releases it: the last lease on
+   * a hub's tree ends it. The store's values stay readable, and stop changing.
+   */
+  Destroy() {
+    this.stopLease?.();
+    this.stopLease = undefined;
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+    this.lease?.Release();
+  }
+
+  /**
+   * Subscribes to a hub's tree in place of the last. A restarted tree's state is applied in place, so
+   * readers keep their objects, with a delete for each root the last tree had and this one hasn't, in
+   * one update. The first delivery arrives during `Subscribe`.
+   */
+  private Attach(tree: ObservableDiffTree, again: boolean) {
+    this.unsubscribe?.();
+    this.diff = tree;
+    const previous = this.delivered;
+    this.delivered = new Set();
+    let subscribing = true;
+    let first: JsonDiffResult = [];
+    this.unsubscribe = tree.Subscribe({ roots: this.roots }, post => {
+      this.Track(post.diff);
+      subscribing ? (first = post.diff) : this.UpdateRootMap(post.diff);
+    });
+    subscribing = false;
+
+    const diff: JsonDiffResult = [...first];
+    for (const key of previous)
+      this.delivered.has(key) || diff.push({ type: "delete", path: [key] });
+
+    diff.length > 0 && (again ? this.UpdateRootMapInPlace(diff) : this.UpdateRootMap(diff));
+  }
+
+  private Track(diff: JsonDiffResult) {
+    for (const record of diff) {
+      const key = String(record.path[0]);
+      record.type === "delete" && record.path.length === 1 ? this.delivered.delete(key) : this.delivered.add(key);
+    }
+  }
+
+  /**
    * Runs projections and commits: the commit's delivery applies everything changed since the
    * last commit to the store.
    * @private
@@ -137,4 +234,8 @@ export class StoreSync extends Store {
     this.diff.RunProjections();
     this.diff.Commit();
   }
+}
+
+function IsLease(source: ILocalLease | IKeyFunc | undefined): source is ILocalLease {
+  return typeof (source as ILocalLease)?.OnTree === "function";
 }

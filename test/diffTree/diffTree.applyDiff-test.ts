@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { FollowRoutes } from "../../src/Store/Diff/utils/routes";
 import type { IDiffPost, IRouteDefinitions } from "../../src/Store/Diff";
 
@@ -14,8 +14,8 @@ function Plain(value: unknown) {
  * posts, copied as across a port. The follower's `count` projection reads the followed rows.
  */
 function Follow(options: { roots?: string[]; sourceRoutes?: IRouteDefinitions; followKeyFunc?: typeof keyFunc | null } = {}) {
-  const source = new DiffTreePublisher(keyFunc, options.sourceRoutes);
-  const follower = new DiffTreePublisher(undefined, {
+  const source = new ObservableDiffTree(keyFunc, options.sourceRoutes);
+  const follower = new ObservableDiffTree(undefined, {
     "/": { projections: { count: { reads: ["/src/rows"], projection: (rows: any) => rows?.t1?.length ?? 0 } } },
     ...FollowRoutes({ src: options.followKeyFunc === null ? undefined : (options.followKeyFunc ?? keyFunc) }),
   });
@@ -102,7 +102,7 @@ describe("DiffTree.ApplyDiff: one tree following another in a follow route", () 
     expect(() => follower.PushPath("/src/list", [1])).toThrow(/follow route/);
     expect(() => follower.ApplyDiff([{ type: "write", path: ["x"], value: 1 }], "/other/")).toThrow(/follow route/);
     expect(() => follower.ApplyDiff([{ type: "write", path: ["$projection_x"], value: 1 }])).toThrow(/read-only/);
-    expect(() => new DiffTreePublisher(undefined, { "/src": { projections: { p: { reads: ["a"], projection: () => 1 } }, follow: true } }).WritePath("/src/a", 1))
+    expect(() => new ObservableDiffTree(undefined, { "/src": { projections: { p: { reads: ["a"], projection: () => 1 } }, follow: true } }).WritePath("/src/a", 1))
       .toThrow(/no projections/);
   });
 
@@ -117,8 +117,8 @@ describe("DiffTree.ApplyDiff: one tree following another in a follow route", () 
   });
 
   it("applies to the root route, where the records' keys are the tree's own", () => {
-    const source = new DiffTreePublisher();
-    const follower = new DiffTreePublisher(undefined, {
+    const source = new ObservableDiffTree();
+    const follower = new ObservableDiffTree(undefined, {
       "/": { projections: { double: { reads: ["count"], projection: (n: any) => (n ?? 0) * 2 } } },
     });
     source.Subscribe({ roots: ["count"] }, (post: IDiffPost) => {

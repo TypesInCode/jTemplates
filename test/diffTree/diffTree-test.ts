@@ -498,7 +498,7 @@ describe("DiffTree", () => {
   });
 
   describe("route instances", () => {
-    const projection = () => undefined;
+    const projection = (): undefined => undefined;
 
     it("Default root route is created when none is defined", () => {
       const definitions = { "/channel/{id}": { projections: {} } };

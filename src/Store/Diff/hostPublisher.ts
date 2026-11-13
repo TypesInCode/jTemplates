@@ -1,4 +1,4 @@
-import { DiffTreePublisher } from "./diffTreePublisher";
+import { ObservableDiffTree } from "./observableDiffTree";
 import { IChannel, IDiffMethod, IHostMessage, IHostRequest, MESSAGE_PREFIX } from "./diffTree.types";
 import { ListenForConnections } from "./onConnect";
 
@@ -14,7 +14,7 @@ export interface IHost {
 }
 
 /**
- * Serves a `DiffTreePublisher` over channels: the worker's own (`self`) and any `MessagePort` given
+ * Serves an `ObservableDiffTree` over channels: the worker's own (`self`) and any `MessagePort` given
  * to `Serve`. On each channel it answers the framework's `jt-` messages and leaves every other
  * message to the app's own listeners; it never takes `onmessage`.
  *
@@ -26,22 +26,22 @@ export interface IHost {
  *   commit are posted as `jt-post`, then `jt-subscribed` once the first state is out.
  * - `jt-disconnect`: ends every subscription on the channel.
  * - `jt-markopaque`: see `DiffTree.MarkOpaque`.
- * - `jt-serve` / `jt-unserve`: from a `WorkerHub`, a lease's port to serve, or to stop serving.
+ * - `jt-serve` / `jt-unserve`: from a `DiffTreeHub`, a lease's port to serve, or to stop serving.
  *
  * The worker's own work commits on the same publisher, and its commits reach every subscriber
  * without a round trip.
  *
  * @example
  * // worker entry
- * const tree = new DiffTreePublisher(keyFunc, routes);
+ * const tree = new ObservableDiffTree(keyFunc, routes);
  * HostPublisher(tree, self);
  * tree.WritePath("results", compute());
  * tree.RunProjections();
  * tree.Commit();
  */
-export function HostPublisher(publisher: DiffTreePublisher, scope: IChannel): IHost {
+export function HostPublisher(publisher: ObservableDiffTree, scope: IChannel): IHost {
   const served = new Map<IChannel, () => void>();
-  /** Lease ports a `WorkerHub` asked this host to serve, by id */
+  /** Lease ports a `DiffTreeHub` asked this host to serve, by id */
   const leases = new Map<number, () => void>();
 
   function Serve(channel: IChannel) {
@@ -131,7 +131,7 @@ export function HostPublisher(publisher: DiffTreePublisher, scope: IChannel): IH
  * projections; what was applied is committed either way.
  * @returns The batch's error, or undefined
  */
-function RunBatch(publisher: DiffTreePublisher, calls: readonly IDiffMethod[]) {
+function RunBatch(publisher: ObservableDiffTree, calls: readonly IDiffMethod[]) {
   let error: unknown;
   try {
     for (let x = 0; x < calls.length; x++)
@@ -153,14 +153,14 @@ function RunBatch(publisher: DiffTreePublisher, calls: readonly IDiffMethod[]) {
   return error;
 }
 
-function RunMethod(publisher: DiffTreePublisher, call: IDiffMethod) {
+function RunMethod(publisher: ObservableDiffTree, call: IDiffMethod) {
   const args = call.arguments;
   switch (call.method) {
     case "writepath": return publisher.WritePath(args[0], args[1]);
     case "splicepath": return publisher.SplicePath(args[0], args[1], args[2], args[3]);
     case "pushpath": return publisher.PushPath(args[0], args[1]);
     case "patchpath": return publisher.PatchPath(args[0], args[1]);
-    default: throw new Error(`Unknown DiffTreePublisher method: ${(call as IDiffMethod).method}`);
+    default: throw new Error(`Unknown ObservableDiffTree method: ${(call as IDiffMethod).method}`);
   }
 }
 

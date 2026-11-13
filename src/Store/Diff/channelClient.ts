@@ -146,7 +146,7 @@ export class ChannelSubscription {
   private sub?: number;
 
   /**
-   * @param options The roots, and the form, as `DiffTreePublisher.Subscribe` takes them.
+   * @param options The roots, and the form, as `ObservableDiffTree.Subscribe` takes them.
    * @param callback Each delivery, and whether it's the first state of a `Connect`.
    */
   constructor(private options: ISubscribeOptions, private callback: (delivery: any, first: boolean) => void) { }
@@ -222,7 +222,7 @@ export class ChannelSubscription {
 
 /**
  * Subscribes to the tree a `HostPublisher` serves on a channel, such as a port to another worker.
- * The deliveries are the same as `DiffTreePublisher.Subscribe`'s, but they arrive asynchronously:
+ * The deliveries are the same as `ObservableDiffTree.Subscribe`'s, but they arrive asynchronously:
  * the first state as the host's first post, then each commit. Values are structured-cloned copies.
  * @returns A function that ends the subscription.
  */
@@ -236,7 +236,7 @@ export function Subscribe(channel: IChannel, options: ISubscribeOptions, callbac
 
 /**
  * Waits on a channel for the first delivery in which every key has a value: at once when they
- * all have one, otherwise the commit that adds the last. See `DiffTreePublisher.Once`.
+ * all have one, otherwise the commit that adds the last. See `ObservableDiffTree.Once`.
  * @param keys Exact root keys; no patterns.
  * @param options `signal` cancels the wait, rejecting with its reason.
  * @returns Each key's value.

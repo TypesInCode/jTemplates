@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { IRouteDefinitions, ISnapshotUpdate } from "../../src/Store/Diff";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher } from "../../src/Store/Diff/hostPublisher";
 import { ChannelClient, Once, Subscribe } from "../../src/Store/Diff/channelClient";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
@@ -228,10 +228,10 @@ describe("one worker's tree subscribing to another's", () => {
   });
 });
 
-describe("DiffTreePublisher hosted on a plain channel", () => {
+describe("ObservableDiffTree hosted on a plain channel", () => {
   it("HostPublisher accepts any IChannel", () => {
     const [a] = CreateShimChannel();
-    const host = HostPublisher(new DiffTreePublisher(), a);
+    const host = HostPublisher(new ObservableDiffTree(), a);
     host.Stop();
   });
 });

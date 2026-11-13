@@ -5,7 +5,6 @@
  * @module Utils/Decorators
  * @see ObservableScope
  * @see ObservableNode
- * @see StoreAsync
  * @see StoreSync
  * @see Component
  *
@@ -20,7 +19,6 @@
  * | arrays (User[], Todo[])   | @State  | Array mutations tracked       |
  * | getters only (expensive)  | @Computed | Cached + object reuse via Store |
  * | getters only (simple)     | @Scope  | Cached, but new reference on update |
- * | getters only (sync, StoreAsync) | @ComputedAsync | Sync getter, StoreAsync caching + object reuse |
  * | async functions (direct scope) | ObservableScope.Create(async) | Direct async, new reference, initial null |
  * | subscribe to changes      | @Watch  | Calls method when scope value changes |
  * | dependency injection      | @Inject | Gets value from component injector |
@@ -65,7 +63,6 @@ import {
 } from "../Store/Tree/observableScope";
 import { IDestroyable } from "./utils.types";
 import { ObservableNode } from "../Store/Tree/observableNode";
-import { Store, StoreAsync, StoreSync } from "../Store";
 import { Injector } from "./injector";
 
 /**
@@ -147,36 +144,6 @@ function GetDestroyArrayForPrototype(prototype: WeakKey, create = true) {
   }
 
   return array;
-}
-
-function CreateStoreScope(
-  getter: () => any,
-  store: Store,
-  defaultValue?: any,
-  onDestroyed?: () => void,
-) {
-  const getterScope = ObservableScope.Gated(function () {
-    const value = getter();
-    return ObservableNode.Clone(value);
-  });
-
-  ObservableScope.Watch(getterScope, (scope) => {
-    const data = ObservableScope.Peek(scope);
-    store.Write(data, "root");
-  });
-
-  const data = ObservableScope.Peek(getterScope);
-  store.Write(data, "root");
-
-  const propertyScope = ObservableScope.Create(() => {
-    return store.Get("root", defaultValue);
-  });
-  ObservableScope.OnDestroyed(propertyScope, function () {
-    ObservableScope.Destroy(getterScope);
-    onDestroyed?.();
-  });
-
-  return propertyScope;
 }
 
 /**
@@ -325,10 +292,8 @@ function CreateNodeScope(
  * - Use @Scope() for simple computations where object identity doesn't matter
  * - The diff computation overhead is justified when you need object reuse
  * @see {@link Scope} for simple getter-based reactive properties (caches but new reference)
- * @see {@link ComputedAsync} for async computed properties
  * @see {@link ObservableNode.Apply} for how diffs are applied in-place to maintain object identity
  * @see {@link ObservableScope} for the Gated scope mechanism (batched updates)
- * @see {@link StoreSync} for the store-backed variant used by @ComputedAsync
  */
 export function Computed<
   T extends WeakKey,
@@ -370,161 +335,6 @@ function ComputedDecorator<
       const scopeMap = GetScopeMapForInstance(this);
       if (scopeMap[propertyKey] === undefined) {
         const propertyScope = CreateNodeScope(getter.bind(this));
-        scopeMap[propertyKey] = [propertyScope, undefined];
-      }
-
-      return ObservableScope.Value(scopeMap[propertyKey][0]);
-    },
-  } as PropertyDescriptor;
-}
-
-/**
- * ComputedAsync decorator factory for creating synchronous computed properties with StoreAsync caching.
- * A computed property is derived from other properties and automatically updates when its dependencies change.
- *
- * IMPORTANT: Despite the name, @ComputedAsync expects a SYNC getter, NOT an async function.
- * The "Async" refers to the internal StoreAsync caching mechanism, not the getter signature.
- *
- * Use @ComputedAsync when you need synchronous caching with StoreAsync backend.
- * For direct async operations (no object reuse), use ObservableScope.Create(async () => ...) instead.
- *
- * @example
- * ```typescript
- * // ✅ Good: Synchronous getter with StoreAsync caching
- * @Value()
- * userId: string = "123";
- *
- * @ComputedAsync(null)
- * get userData(): User | null {
- *   // Sync getter - returns value directly
- *   return getUserSync(this.userId);
- * }
- * ```
- *
- * @example
- * ```typescript
- * // ❌ WRONG - Do NOT use async keyword or return Promise
- * @Value()
- * userId: string = "123";
- *
- * @ComputedAsync(null)
- * async getUser(): Promise<User> {  // ERROR: getter must be synchronous!
- *   return await fetch(`/api/users/${this.userId}`);
- * }
- *
- * // ✅ CORRECT - Use ObservableScope.Create for direct async operations
- * import { ObservableScope } from "j-templates/Store";
- *
- * @Value()
- * userId: string = "123";
- *
- * private userDataScope = ObservableScope.Create(async () => {
- *   return await fetch(`/api/users/${this.userId}`);  // Async supported here!
- * });
- *
- * get userData(): User | null {
- *   return ObservableScope.Value(this.userDataScope);  // null while loading
- * }
- * ```
- *
- * @param defaultValue The default value to be used if the computed property is not defined.
- * @returns A property decorator that can be applied to a getter method.
- * @throws Will throw an error if the property is not a getter or if it has a setter.
- * @remarks
- * The @ComputedAsync decorator uses StoreAsync for caching. The getter must be a synchronous function.
- * Unlike @Computed which uses StoreSync, @ComputedAsync uses StoreAsync internally for caching.
- *
- * **Initialization**: @ComputedAsync uses lazy initialization - the scopes are created on first access:
- * ```typescript
- * @ComputedAsync(null)
- * get userData(): User | null {
- *   return getUserSync(this.userId);
- * }
- *
- * // Scope created here, on first access:
- * const user = this.userData;
- * ```
- *
- * **Caching**: Like @Computed, @ComputedAsync caches the result and maintains object identity
- * through diff-based updates. The getter only runs when dependencies change.
- *
- * **Object Reuse**: Like @Computed, the result maintains its identity across updates.
- * Only changed properties are modified in-place, preserving object references.
- *
- * **Key difference from @Computed**: Uses StoreAsync instead of StoreSync for caching.
- * Both use synchronous getters and provide object identity preservation.
- *
- * **Comparison**:
- * | Aspect | @Scope | @Computed | @ComputedAsync | scope(async) + @Scope |
- * |--------|--------|-----------|----------------|----------------------|
- * | Caches value | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (memoized) |
- * | Getter type | Sync | Sync | Sync | Async supported |
- * | Object identity | ❌ New | ✅ Same | ✅ Same | ❌ New |
- * | Store backend | Single scope | StoreSync | StoreAsync | Direct scope |
- * | Initial value | First access | First access | defaultValue | Promise |
- * | Best for | Simple sync, async | Complex sync | StoreAsync sync | Component async ops |
- *
- * @see {@link Computed} for synchronous computed properties with StoreSync caching
- * @see {@link Scope} for simple getter-based reactive properties (caches, new reference)
- * @see {@link StoreAsync} for async store implementation
- * @see {@link ObservableScope.Create} for async function support
- */
-export function ComputedAsync<
-  T extends WeakKey,
-  K extends keyof T,
-  V extends T[K],
->(defaultValue: V) {
-  return function (target: T, propertyKey: K, descriptor: PropertyDescriptor) {
-    return ComputedAsyncDecorator(
-      target,
-      propertyKey,
-      descriptor,
-      defaultValue,
-    );
-  };
-}
-
-/**
- * ComputedAsync decorator implementation for creating asynchronous computed properties.
- * @private
- * @param target The target object.
- * @param prop The property key.
- * @param descriptor The property descriptor.
- * @param defaultValue The default value to be used if the computed property is not defined.
- * @returns A property descriptor that replaces the original descriptor with a computed implementation.
- * @throws Will throw an error if the property is not a getter or if it has a setter.
- */
-function ComputedAsyncDecorator<
-  T extends WeakKey,
-  K extends keyof T,
-  D extends T[K],
->(target: T, prop: K, descriptor: PropertyDescriptor, defaultValue: D) {
-  const propertyKey = prop as string;
-  if (!(descriptor && descriptor.get))
-    throw "Computed decorator requires a getter";
-
-  if (descriptor && descriptor.set)
-    throw "Computed decorator does not support setters";
-
-  const getter = descriptor.get;
-
-  return {
-    configurable: false,
-    enumerable: true,
-    get: function (this: T) {
-      const scopeMap = GetScopeMapForInstance(this);
-      if (scopeMap[propertyKey] === undefined) {
-        const worker = new Worker(new URL("../Store/Diff/defaultDiffTreeWorker.js", import.meta.url), { type: "module" });
-        const storeAsync = new StoreAsync(worker);
-        const propertyScope = CreateStoreScope(
-          getter.bind(this),
-          storeAsync,
-          defaultValue,
-          () => {
-            storeAsync.Destroy();
-            worker.terminate();
-          },
-        );
         scopeMap[propertyKey] = [propertyScope, undefined];
       }
 
@@ -849,7 +659,6 @@ function ValueDecorator<T extends WeakKey, K extends string>(
  * | Best for | Primitives, cheap ops, async ops | Complex objects, expensive ops |
  *
  * @see {@link Computed} for cached computed properties with object reuse
- * @see {@link ComputedAsync} for sync getters with StoreAsync backend
  * @see {@link ObservableNode.Apply} for how @Computed maintains object identity
  * @see {@link ObservableScope} for the scope-based reactivity system
  * @see {@link scope} for inline computed scopes within @Scope
@@ -1259,7 +1068,6 @@ export namespace Destroy {
    * - All @Value-decorated property scopes
    * - All @Scope-decorated property scopes
    * - All @Computed-decorated property scopes (both getter and property scopes)
-   * - All @ComputedAsync-decorated property scopes (including StoreAsync)
    * - All @Destroy-marked properties (calls .Destroy() method)
    * - All @Watch subscriptions (via scope destruction)
    *

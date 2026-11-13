@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { ChannelSubscription } from "../../src/Store/Diff/channelClient";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher } from "../../src/Store/Diff/hostPublisher";
 import { FollowRoutes } from "../../src/Store/Diff/utils/routes";
 import type { IChannel, IDiffPost, ISnapshotUpdate } from "../../src/Store/Diff";
 
 /** A tree served on a port, as a worker's HostPublisher serves it; returns the subscriber's end. */
-function Serve(tree: DiffTreePublisher): MessagePort {
+function Serve(tree: ObservableDiffTree): MessagePort {
   const { port1, port2 } = new MessageChannel();
   HostPublisher(tree, port2 as unknown as IChannel);
   port2.start();
@@ -14,7 +14,7 @@ function Serve(tree: DiffTreePublisher): MessagePort {
 }
 
 function Tasks(...ids: number[]) {
-  const tree = new DiffTreePublisher();
+  const tree = new ObservableDiffTree();
   for (const id of ids) tree.WritePath(`task_${id}`, { id, done: false });
   tree.WritePath("other", 1);
   tree.Commit();
@@ -68,7 +68,7 @@ describe("ChannelSubscription", () => {
   });
 
   it("keeps a following tree to the new tree's state: a read of the route holds nothing the old one left", async () => {
-    const follower = new DiffTreePublisher(undefined, {
+    const follower = new ObservableDiffTree(undefined, {
       "/": { projections: { tasks: { reads: ["/src/"], projection: (src: any) => Object.keys(src ?? {}).sort() } } },
       ...FollowRoutes({ src: undefined }),
     });

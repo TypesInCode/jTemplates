@@ -1,8 +1,7 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
-import { JsonType } from "../../Utils/json";
 import { ChannelClient, ChannelSubscription } from "../Diff/channelClient";
 import { IChannel, IDiffMethod, IDiffMethodBatch, IDiffPost, IWorkerLease } from "../Diff/diffTree.types";
-import { ObservableNode } from "../Tree/observableNode";
+import type { IKeyFunc } from "../Diff/utils/diffTree.types";
 import { IStoreOptions, RootOf, Store } from "./store";
 
 /** Options for a `StoreAsync` */
@@ -28,6 +27,17 @@ export interface IStoreAsyncOptions extends IStoreOptions {
  *   flight. A change's promise resolves on its batch's `jt-ack`, which arrives after the commit's
  *   posts, so the change has been applied when it resolves.
  * - A failed batch rejects only its own changes; later batches carry on.
+ *
+ * **Over a lease** (`DiffTreeHub.Open`), the store takes its keyFunc and `opaque` keys from the lease's
+ * endpoint, owns the lease, and releases it when it's destroyed. When the hub restarts the worker,
+ * the store starts over with the new tree, as when it first subscribed: the tree is the source of
+ * truth, nothing the store wrote is written back, and changes the old tree hadn't acknowledged are
+ * rejected.
+ *
+ * @example
+ * // A store over a hub's lease: it lives as long as the component that holds it
+ * @Inject(DiffTreeHub) hub!: DiffTreeHub;
+ * @Destroy() totals = new StoreAsync(this.hub.Open("totals"));
  *
  * @example
  * // Creating a StoreAsync instance from a bundler-built worker entry file
@@ -58,13 +68,13 @@ export class StoreAsync extends Store {
   private writeKeySet = new Set<string>();
   private client!: ChannelClient;
   private options: IStoreAsyncOptions;
-  /** Roots this store has written, for `Reconnect`'s reseed */
-  private written = new Set<string>();
   /**
    * The store's subscription, kept across `Reconnect`: a new tree's first state deletes the roots
    * the old one posted that it doesn't hold
    */
   private subscription: ChannelSubscription;
+  /** The lease the store owns, when it was given one */
+  private lease?: IWorkerLease;
   private stopLease?: () => void;
   private asyncQueue = new AsyncQueue();
   private currentBatch: IDiffMethodBatch = [];
@@ -74,54 +84,52 @@ export class StoreAsync extends Store {
 
   /**
    * Creates an instance of StoreAsync and subscribes to the tree.
-   * @param channel A channel to a `DiffTreePublisher` served by `HostPublisher`: a `Worker`
-   *   (e.g. a bundled `defaultDiffTreeWorker` entry), a `MessagePort`, or a `WorkerHub` lease. Any
-   *   `keyFunc`/routes the tree needs are baked into the worker's own entry file. Other messages
-   *   may share the channel. Given a lease, the store follows its port: when the hub restarts the
-   *   worker, the store reconnects with `reseed`.
-   * @param keyFunc Optional function to generate a key for a given data value, used locally by
-   *   this store to resolve root objects. Pass the same key logic the worker's tree was
-   *   constructed with, if any.
-   * @param options Optional settings: `opaque` lists the root keys held whole (`IStoreOptions`),
-   *   sent to the tree before the store subscribes, and `roots` the roots it receives.
+   * @param channel A channel to an `ObservableDiffTree` served by `HostPublisher`: a `Worker` (e.g. a
+   *   bundled `defaultDiffTreeWorker` entry), a `MessagePort`, or a lease from `DiffTreeHub.Open`. Other
+   *   messages may share the channel. Given a lease, the store owns it from then on and releases it
+   *   when it's destroyed, and follows the worker across restarts. A lease on a tree on this thread
+   *   (`DiffTreeHub.OpenLocal`) is for a `StoreSync`, and doesn't compile here.
+   * @param keyFunc Optional function to generate a key for a given data value, used locally by this
+   *   store to resolve root objects. Pass the same key logic the worker's tree was constructed with,
+   *   if any. Over a lease, `undefined` takes the endpoint's.
+   * @param options Optional settings: `opaque` lists the root keys held whole (`IStoreOptions`), sent
+   *   to the tree before the store subscribes, and `roots` the roots it receives. Over a lease, an
+   *   `opaque` left out takes the endpoint's.
    */
-  constructor(channel: IChannel | IWorkerLease, keyFunc?: (value: any) => string | undefined, options: IStoreAsyncOptions = {}) {
-    super(keyFunc, options.opaque);
-    this.options = options;
-    if (IsLease(channel)) {
-      this.stopLease = channel.OnPort(port => this.Reconnect(port, { reseed: true }));
-      channel = channel.port;
+  constructor(channel: IChannel | IWorkerLease, keyFunc?: IKeyFunc, options: IStoreAsyncOptions = {}) {
+    const lease = IsLease(channel) ? channel : undefined;
+    if (lease) {
+      keyFunc ??= lease.endpoint.keyFunc;
+      options = { opaque: lease.endpoint.opaque, ...options };
     }
 
+    super(keyFunc, options.opaque);
+    this.options = options;
+    this.lease = lease;
+    if (lease)
+      this.stopLease = lease.OnPort(port => this.Restarted(port));
+
     this.subscription = new ChannelSubscription({ roots: options.roots }, (post: IDiffPost, first: boolean) => this.Apply(post, first));
-    this.client = this.Connect(channel);
+    this.client = this.Connect(lease ? lease.port : channel as IChannel);
     this.subscription.Connect(this.client);
   }
 
   /**
-   * Moves the store to another channel, such as a restarted worker's, keeping its readers.
-   * 1. With `reseed`, writes back every root this store has written, read from its own state, in
-   *    one batch. Projection outputs aren't written; the new tree computes them.
-   * 2. Sends again the batches still waiting for an ack; their promises settle on the new channel.
-   * 3. Subscribes. The first state is diffed into the store's roots in place, with the roots the
+   * Moves the store to another channel, keeping its readers.
+   * 1. Sends again the batches still waiting for an ack; their promises settle on the new channel.
+   * 2. Subscribes. The first state is diffed into the store's roots in place, with the roots the
    *    store received from the old tree that the new one lacks deleted (`ChannelSubscription`).
    *
-   * A batch the old worker applied, posted and never acknowledged is sent again, so a `Push` in it
-   * can be applied twice.
+   * Nothing else is written back: the new tree's state is the store's. A batch the old worker applied,
+   * posted and never acknowledged is sent again, so a `Push` in it can be applied twice.
+   *
+   * A store over a lease reconnects by itself when the hub restarts the worker, and rejects the
+   * waiting batches instead of sending them again.
    */
-  Reconnect(channel: IChannel, options: { reseed?: boolean } = {}) {
+  Reconnect(channel: IChannel) {
     const pending = this.client.TakeBatches();
     this.client.Destroy();
     const client = this.client = this.Connect(channel);
-    if (options.reseed) {
-      const calls: IDiffMethodBatch = [];
-      for (const key of this.written) {
-        const value = this.ReadRoot(key);
-        value !== undefined && calls.push({ method: "writepath", arguments: [key, value] });
-      }
-
-      calls.length > 0 && client.Batch(calls).catch(() => { });
-    }
 
     // The store subscribes after these batches, so their changes arrive with the first state:
     // each one resolves once that's complete
@@ -130,6 +138,17 @@ export class StoreAsync extends Store {
     pending.forEach(batch => client.Send({ ...batch, resolve: () => firstState.then(batch.resolve) }));
 
     this.subscription.Connect(client, () => subscribed());
+  }
+
+  /**
+   * The hub restarted the lease's worker: the store starts over with the new tree, as when it first
+   * subscribed. The changes the old tree hadn't acknowledged are rejected, not sent again.
+   */
+  private Restarted(port: MessagePort) {
+    for (const batch of this.client.TakeBatches())
+      batch.reject(new Error(`${this.lease!.name} restarted before this change was acknowledged.`));
+
+    this.Reconnect(port);
   }
 
   private Connect(channel: IChannel) {
@@ -141,18 +160,6 @@ export class StoreAsync extends Store {
   /** Applies a post. A tree's first state is diffed into the roots in place, its deletes with it. */
   private Apply(post: IDiffPost, firstState: boolean) {
     firstState ? this.UpdateRootMapInPlace(post.diff) : this.UpdateRootMap(post.diff);
-  }
-
-  /** A root as plain data, read through the store so keyed entities come from their own roots */
-  private ReadRoot(key: string) {
-    if (!this.Has(key))
-      return undefined;
-
-    const value = this.Get<unknown>(key);
-    if (this.opaque.has(key) || JsonType(value) === "value")
-      return value;
-
-    return ObservableNode.Clone(value);
   }
 
   private async Schedule(method: IDiffMethod) {
@@ -193,7 +200,6 @@ export class StoreAsync extends Store {
 
     // Pending writes by root, so a change to a path in a root being written isn't refused
     this.writeKeySet.add(RootOf(key));
-    this.written.add(RootOf(key));
 
     await this.Schedule({
       method: "writepath",
@@ -217,7 +223,6 @@ export class StoreAsync extends Store {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
-    this.written.add(RootOf(key));
     await this.Schedule({
       method: "patchpath",
       arguments: [key, patch]
@@ -236,7 +241,6 @@ export class StoreAsync extends Store {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
-    this.written.add(RootOf(key));
     await this.Schedule({
       method: "pushpath",
       arguments: [key, data]
@@ -258,7 +262,6 @@ export class StoreAsync extends Store {
     if (!this.HasRootOf(key) && !this.writeKeySet.has(RootOf(key)))
       throw "Key not found in store";
 
-    this.written.add(RootOf(key));
     await this.Schedule({
       method: "splicepath",
       arguments: [key, start, deleteCount ?? Infinity, items]
@@ -283,13 +286,15 @@ export class StoreAsync extends Store {
 
   /**
    * Unsubscribes and stops listening to the channel. Changes not yet acknowledged never settle.
-   * The channel stays open: whoever created the worker terminates it.
+   * Over a lease, the store then releases it: the last lease on a worker ends it. Over a channel, the
+   * channel stays open: whoever created the worker terminates it.
    */
   Destroy() {
     this.stopLease?.();
     this.asyncQueue.Stop();
     this.subscription.Stop();
     this.client.Destroy();
+    this.lease?.Release();
   }
 }
 

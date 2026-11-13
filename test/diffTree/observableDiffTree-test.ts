@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import type { IDiffPost, ISnapshotUpdate, IRouteDefinitions } from "../../src/Store/Diff";
 import { ReadStore } from "../../src/Store/Store/store";
 import { StoreSync } from "../../src/Store/Store/storeSync";
@@ -83,10 +83,10 @@ describe("DiffTree commit state", () => {
   });
 });
 
-describe("DiffTreePublisher", () => {
+describe("ObservableDiffTree", () => {
   describe("commits", () => {
     it("delivers each commit's diff to a subscriber, numbered", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const posts: IDiffPost[] = [];
       tree.Subscribe({}, (post) => posts.push(post));
 
@@ -101,7 +101,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("delivers nothing, and keeps its number, for a commit with no changes", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("a", 1);
       tree.Commit();
       const posts: IDiffPost[] = [];
@@ -114,7 +114,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("a commit without RunProjections delivers the roots and leaves projection outputs as they were", () => {
-      const tree = new DiffTreePublisher(undefined, routes);
+      const tree = new ObservableDiffTree(undefined, routes);
       const store = new MirrorStore();
       tree.Subscribe({}, (post) => store.Apply(post));
       tree.WritePath("count", 1);
@@ -132,7 +132,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("two subscribers get the same commits; a filter limits one, its first state included", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("a", 1);
       tree.WritePath("b", 1);
       tree.Commit();
@@ -156,7 +156,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("a pattern receives entity roots created after the subscription", () => {
-      const tree = new DiffTreePublisher(keyFunc);
+      const tree = new ObservableDiffTree(keyFunc);
       const store = new MirrorStore(keyFunc);
       tree.Subscribe({ roots: ["list", "task_*"] }, (post) => store.Apply(post));
 
@@ -171,7 +171,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("a subscriber's error doesn't keep the commit from the others, and Commit throws it", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const seen: number[] = [];
       tree.Subscribe({}, () => {
         throw new Error("first");
@@ -184,7 +184,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("skips a subscriber ended by an earlier one's delivery", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const seen: number[] = [];
       let stopSecond = () => {};
       tree.Subscribe({}, () => stopSecond());
@@ -197,7 +197,7 @@ describe("DiffTreePublisher", () => {
 
   describe("the first state", () => {
     it("a subscriber created after several commits starts from the committed state", () => {
-      const tree = new DiffTreePublisher(keyFunc);
+      const tree = new ObservableDiffTree(keyFunc);
       tree.WritePath("list", [{ id: "task_1", v: 1 }]);
       tree.Commit();
       tree.WritePath("list", [{ id: "task_1", v: 2 }, { id: "task_2", v: 1 }]);
@@ -219,7 +219,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("is the committed state while writes are pending, and the next commit applies on top, splices included", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("list", [1, 2, 3]);
       tree.Commit();
       tree.SplicePath("list", 0, 1, []);
@@ -235,7 +235,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("is a delivery like any other: one handler serves subscribers made before and after commits", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const handle = (store: MirrorStore) => (post: IDiffPost) => store.Apply(post);
       const before = new MirrorStore();
       tree.Subscribe({}, handle(before));
@@ -252,7 +252,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("delivers nothing when no root matches", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("other", 1);
       tree.Commit();
       const posts: IDiffPost[] = [];
@@ -261,7 +261,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("a first delivery that throws ends the subscription", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("k", 1);
       tree.Commit();
       const calls: IDiffPost[] = [];
@@ -280,7 +280,7 @@ describe("DiffTreePublisher", () => {
 
   describe("the snapshot form", () => {
     it("first delivers every matching root, then only changed roots and deletions", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("index", { a: 1 });
       tree.WritePath("task_1", { v: 1 });
       tree.WritePath("other", 1);
@@ -304,7 +304,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("delivers a root whole, the tree's committed value itself", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("index", { a: { b: 1 }, c: 1 });
       tree.Commit();
       const updates: ISnapshotUpdate[] = [];
@@ -317,7 +317,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("a diff and a snapshot subscriber on one commit get the same changes", () => {
-      const tree = new DiffTreePublisher(keyFunc);
+      const tree = new ObservableDiffTree(keyFunc);
       const store = new MirrorStore(keyFunc);
       const updates: ISnapshotUpdate[] = [];
       const posts: IDiffPost[] = [];
@@ -346,7 +346,7 @@ describe("DiffTreePublisher", () => {
 
   describe("Once", () => {
     it("resolves at once when its keys are committed", async () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("index", { a: 1 });
       tree.WritePath("revision", 4);
       tree.Commit();
@@ -355,7 +355,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("resolves from the delivery that adds the last key, with every key's value from that commit", async () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       tree.WritePath("revision", 4);
       tree.Commit();
       let resolved = false;
@@ -376,7 +376,7 @@ describe("DiffTreePublisher", () => {
     });
 
     it("aborting it rejects with the signal's reason and ends its subscription", async () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const controller = new AbortController();
       const once = tree.Once(["whatif_1"], { signal: controller.signal });
       expect(tree.SubscriberCount("whatif_1")).to.eq(1);
@@ -386,14 +386,14 @@ describe("DiffTreePublisher", () => {
     });
 
     it("rejects an aborted signal and patterns", async () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       await expect(tree.Once(["k"], { signal: AbortSignal.abort("no") })).rejects.toBe("no");
       await expect(tree.Once(["task_*"])).rejects.toThrow(/exact keys/);
       expect(tree.SubscriberCount("k")).to.eq(0);
     });
 
     it("releases its keys when it resolves", async () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const released: string[] = [];
       tree.OnReleased("whatif_*", (key) => released.push(key));
       const once = tree.Once(["whatif_1"]);
@@ -406,7 +406,7 @@ describe("DiffTreePublisher", () => {
 
   describe("groups and release", () => {
     it("Disconnect ends a group's subscriptions and releases their keys", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const released: string[] = [];
       tree.OnReleased("k", (key) => released.push(key));
       const port = {};
@@ -422,10 +422,22 @@ describe("DiffTreePublisher", () => {
 
   describe("re-entry", () => {
     it("a subscriber that writes to or commits the delivering tree throws", () => {
-      const tree = new DiffTreePublisher(undefined, routes);
+      const tree = new ObservableDiffTree(undefined, routes);
       const errors: string[] = [];
       tree.Subscribe({}, () => {
-        for (const write of [() => tree.WritePath("b", 1), () => tree.Commit(), () => tree.RunProjections(), () => tree.DeleteRoot("a")])
+        // Every change DiffTree makes goes through its BeforeChange hook
+        const changes = [
+          () => tree.WritePath("b", 1),
+          () => tree.PatchPath("a", 2),
+          () => tree.PushPath("list", [1]),
+          () => tree.SplicePath("list", 0, 1, []),
+          () => tree.ApplyDiff([{ type: "write", path: ["b"], value: 1 }]),
+          () => tree.DeleteRoot("a"),
+          () => tree.DeleteRoute("/x/"),
+          () => tree.RunProjections(),
+          () => tree.Commit(),
+        ];
+        for (const write of changes)
           try {
             write();
           } catch (err: any) {
@@ -434,13 +446,18 @@ describe("DiffTreePublisher", () => {
       });
       tree.WritePath("a", 1);
       tree.Commit();
-      expect(errors.length).to.eq(4);
-      expect(errors[0]).to.match(/can't write to or commit the tree delivering to it/);
+      expect(errors.length).to.eq(9);
+      for (const error of errors)
+        expect(error).to.match(/can't write to or commit the tree delivering to it/);
       expect(tree.ReadPath("b")).to.eq(undefined);
     });
 
+    it("is a DiffTree", () => {
+      expect(new ObservableDiffTree()).to.be.instanceOf(DiffTree);
+    });
+
     it("a subscriber may read the delivering tree and subscribe to it", () => {
-      const tree = new DiffTreePublisher();
+      const tree = new ObservableDiffTree();
       const late: IDiffPost[] = [];
       let subscribed = false;
       tree.Subscribe({}, () => {
@@ -457,8 +474,8 @@ describe("DiffTreePublisher", () => {
 
   describe("two trees on one thread", () => {
     function Chain() {
-      const source = new DiffTreePublisher(keyFunc);
-      const derived = new DiffTreePublisher(undefined, {
+      const source = new ObservableDiffTree(keyFunc);
+      const derived = new ObservableDiffTree(undefined, {
         "/": { projections: { count: { reads: ["/source/list"], projection: (list: any) => list?.length ?? 0 } } },
       });
       const store = new MirrorStore();
@@ -508,22 +525,22 @@ describe("DiffTreePublisher", () => {
 describe("StoreSync over its publisher", () => {
   it("applies a commit made on its publisher directly", () => {
     const store = new StoreSync();
-    store.Publisher.WritePath("flag", true);
-    store.Publisher.Commit();
+    store.Tree.WritePath("flag", true);
+    store.Tree.Commit();
     expect(store.Get("flag")).to.eq(true);
   });
 
   it("another subscriber to its publisher gets the store's writes", () => {
     const store = new StoreSync(undefined, routes);
     const roots: ISnapshotUpdate[] = [];
-    store.Publisher.Subscribe({ roots: ["$projection_double"], form: "snapshot" }, (update) => roots.push(update));
+    store.Tree.Subscribe({ roots: ["$projection_double"], form: "snapshot" }, (update) => roots.push(update));
     store.Write(4, "count");
     expect(roots[0].roots).to.deep.eq({ $projection_double: 8 });
   });
 
   it("a subscriber that writes to the store during a delivery throws", () => {
     const store = new StoreSync();
-    store.Publisher.Subscribe({}, () => store.Write(1, "other"));
+    store.Tree.Subscribe({}, () => store.Write(1, "other"));
     expect(() => store.Write(1, "a")).to.throw(/can't write to or commit/);
     expect(store.Get("a")).to.eq(1);
   });

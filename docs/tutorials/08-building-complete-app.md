@@ -541,18 +541,11 @@ get Report() {
 
 **See:** `docs/SYNTAX_PRIMER.md` - "@Computed vs @Scope" table
 
-### @ComputedAsync Alternative
+### Async Data
 
-`@ComputedAsync` requires a **synchronous** getter — the "Async" refers to the internal `StoreAsync` backend, not the getter signature. For real async fetching, use `@Scope() + scope(async)` instead:
+For async fetching that depends on other state, use `@Scope() + scope(async)`:
 
 ```typescript
-// ✅ @ComputedAsync — sync getter, StoreAsync backend, same reference via ApplyDiff
-@ComputedAsync(null)
-get userData(): User | null {
-  return getUserSync(this.userId);
-}
-
-// ✅ Real async — use @Scope() + scope(async)
 @Scope()
 get userData(): User | null {
   return scope(async () => {
@@ -563,7 +556,7 @@ get userData(): User | null {
 ```
 
 **When to Use:**
-- `@ComputedAsync` — sync derived value that benefits from `StoreAsync` diffing and object reuse
+- `@Computed()` — a sync derived object, kept the same reference across updates
 - `@Scope() + scope(async)` — actual async fetching that depends on other state
 
 ### Auto-Refresh Timer

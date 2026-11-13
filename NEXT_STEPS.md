@@ -1,3 +1,36 @@
+# Next steps: hub endpoints (2026-11-13)
+
+Branch `feature/diff-tree-push`. The model is in [docs/patterns/05-hub-endpoints.md](docs/patterns/05-hub-endpoints.md);
+it was prototyped in procedures-engine's `sample-worker-stores/src-framework`, and the plan for moving
+the sample and builder-app onto it is that repo's `sample-worker-stores/INTEGRATION.md`.
+
+**Done:** `HubEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow`, `Connect`);
+`DiffTreeHub.Register(endpoint, factory)`, a factory returning a worker or a tree, `Open` / `OpenLocal`,
+`KindOf`; `StoreAsync` and `StoreSync` over leases, owning them; restart without reseed, unacknowledged
+changes rejected; `StoreSync.Destroy`; `@ComputedAsync` removed; `npm test` type-checks the tests
+(`tsconfig.test.json`).
+
+**Breaking:** `Register(name, factory, { sources })` is `Register(endpoint, factory)`;
+`new StoreAsync(lease, keyFunc?, options?)` takes the endpoint's keyFunc and `opaque` when they're left
+out, and the store releases the lease; `Reconnect(channel, { reseed })` has no options; `IWorkerOptions` is `IRegisterOptions`,
+`WorkerFactory` is `TreeFactory`; `@ComputedAsync` is gone; `DiffTreePublisher`
+(`Store/Diff/diffTreePublisher`) is `ObservableDiffTree` (`Store/Diff/observableDiffTree`), and extends
+`DiffTree` instead of wrapping it (every `DiffTree` change calls its protected `BeforeChange()`). `StoreSync.Publisher` is `StoreSync.Tree`. `WorkerHub` (`Store/Diff/workerHub`) is `DiffTreeHub`
+(`Store/Diff/diffTreeHub`).
+
+**Open:**
+- Opaque, the rest of it: `StoreAsync` stops sending `jt-markopaque` (the tree is marked from the
+  definition by `Host`), and `Store` applies records inside an opaque root by copying along each
+  record's path and boxing the new root, instead of throwing. Until then a store can hold fewer keys
+  whole than its tree, not more (a `StoreAsync` holding more tells its tree, for every subscriber).
+- An explicit `StoreAsync.Reconnect(channel)` still sends the waiting batches again. Make it private
+  once builder-app's derived tabs move to leases, or keep it for stores over channels.
+- A reactive hub: [docs/proposals/reactive-hub.md](docs/proposals/reactive-hub.md). Deferred, not part of
+  this round.
+- `@ComputedAsync`, rewritten over the hub once this settles, if wanted.
+
+---
+
 # Next steps: DiffTree / JSON diff rework
 
 Branch `diff-tree-route-enhancements`, on top of `2985d8f`. Everything below is **uncommitted**

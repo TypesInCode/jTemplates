@@ -37,6 +37,7 @@ export class DiffTree {
   }
 
   WritePath(path: string, value: any) {
+    this.BeforeChange();
     AssertWritable(SplitRouteAndPath(path)[1]);
     this.AssertLocal(path);
     // Keyed entities are local to the route written to; a key starting with "/" is a route path from the root
@@ -65,6 +66,7 @@ export class DiffTree {
 
   // Shared by PushPath and SplicePath
   private Splice(path: string, start: number, deleteCount: number, items: readonly unknown[]) {
+    this.BeforeChange();
     AssertWritable(SplitRouteAndPath(path)[1]);
     this.AssertLocal(path);
     SpliceValueAtPath(this.writeContext, path, start, deleteCount, items);
@@ -94,6 +96,7 @@ export class DiffTree {
    *   or a follow route, or a record's parent doesn't exist
    */
   ApplyDiff(records: JsonDiffResult, route: string = ROOT_ROUTE) {
+    this.BeforeChange();
     const fullRoute = JoinPaths("", route);
     if (fullRoute === ROOT_ROUTE) {
       for (let x = 0; x < records.length; x++) {
@@ -124,6 +127,7 @@ export class DiffTree {
    * @throws When the path is the root route or has a property path, e.g. `/channel/1/name`
    */
   DeleteRoute(routePath: string) {
+    this.BeforeChange();
     const [route, propertyPath] = SplitRouteAndPath(routePath);
     const fullRoute = JoinPaths("", route);
     if (propertyPath || fullRoute === ROOT_ROUTE)
@@ -140,6 +144,7 @@ export class DiffTree {
    * @throws When the key is a path (it has a `.` or `/`) or a projection output
    */
   DeleteRoot(key: string) {
+    this.BeforeChange();
     if (key.includes(".") || key.includes("/"))
       throw new Error(`Unable to delete ${key}: only a root key, e.g. whatif_14, can be deleted.`);
 
@@ -184,8 +189,16 @@ export class DiffTree {
 
   /** Runs every projection of every route instance; see `Projections.Run` */
   RunProjections() {
+    this.BeforeChange();
     this.projections.Run();
   }
+
+  /**
+   * Runs before every change to the tree's state: each write, splice, applied diff, deleted route
+   * or root, and projection run. A subclass that refuses changes at times (`ObservableDiffTree`,
+   * during a delivery) throws here.
+   */
+  protected BeforeChange() { }
 
   /**
    * The changes since the last commit. The root is a flat record of keys, so each key's snapshot

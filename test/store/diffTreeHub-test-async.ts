@@ -1,37 +1,29 @@
 import { describe, it, expect, afterEach } from "vitest";
 import type { IRouteDefinitions } from "../../src/Store/Diff";
-import { WorkerHub } from "../../src/Store/Diff/workerHub";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { DiffTreeHub } from "../../src/Store/Diff/diffTreeHub";
+import { HubEndpoint } from "../../src/Store/Diff/hubEndpoint";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher } from "../../src/Store/Diff/hostPublisher";
 import { OnConnect } from "../../src/Store/Diff/onConnect";
 import { Subscribe } from "../../src/Store/Diff/channelClient";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
-import { CreateShimChannel, CreateShimWorker, Settle } from "./worker-shim";
+import { CreateShimChannel, CreateShimWorker, Settle, WaitFor } from "./worker-shim";
 
-// WorkerHub over shim workers: leases, release, connections, restarts, and stores that follow a
-// lease across a restart.
+// DiffTreeHub over shim workers: leases, release, connections, restarts, and stores that follow a
+// lease across a restart. The trace worker wires its connection by hand (OnConnect), to test what
+// HubEndpoint.Connect is built on; hubEndpoint-test-async.ts tests the endpoint's own wiring.
 
 type Shim = ReturnType<typeof CreateShimWorker>;
 
-/** Waits until `check` passes, or fails after `ms` */
-async function WaitFor(check: () => void, ms = 1000) {
-  const end = Date.now() + ms;
-  for (;;) {
-    try {
-      return check();
-    } catch (err) {
-      if (Date.now() > end) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    }
-  }
-}
+const engineEndpoint = HubEndpoint.Define("engine");
+const traceEndpoint = HubEndpoint.Define("trace", (remote) => ({ engine: remote(engineEndpoint, ["list"]) }));
 
 const deriveRoutes: IRouteDefinitions = {
   "/": { projections: { count: { reads: ["/engine/list"], projection: (list: any) => list?.length ?? 0 } } },
 };
 
-describe("WorkerHub", () => {
-  let hub: WorkerHub;
+describe("DiffTreeHub", () => {
+  let hub: DiffTreeHub;
   const stores: StoreAsync[] = [];
   afterEach(() => {
     stores.splice(0).forEach((store) => store.Destroy());
@@ -40,13 +32,13 @@ describe("WorkerHub", () => {
 
   /** Registers shim workers, recording each one a factory creates */
   function Setup() {
-    hub = new WorkerHub();
+    hub = new DiffTreeHub();
     const created: Record<string, Shim[]> = {};
     const latest = (name: string) => created[name][created[name].length - 1];
 
     /** The engine: a source whose starting intent writes `list` */
     const engine = (list: unknown[] = [1, 2], options = {}) =>
-      hub.Register("engine", () => {
+      hub.Register(engineEndpoint, () => {
         const shim = CreateShimWorker();
         (created.engine ??= []).push(shim);
         shim.tree.WritePath("list", list);
@@ -56,7 +48,7 @@ describe("WorkerHub", () => {
 
     /** The trace: reads from the engine, and derives `$projection_count` from its list in a route */
     const trace = (options = {}) =>
-      hub.Register("trace", () => {
+      hub.Register(traceEndpoint, () => {
         const shim = CreateShimWorker(undefined, deriveRoutes);
         (created.trace ??= []).push(shim);
         OnConnect("engine", (port) => {
@@ -69,7 +61,7 @@ describe("WorkerHub", () => {
           });
         }, shim.scope);
         return shim.worker as any;
-      }, { sources: ["engine"], ...options });
+      }, options);
 
     const Store = (lease: any) => {
       const store = new StoreAsync(lease);
@@ -101,8 +93,8 @@ describe("WorkerHub", () => {
       await WaitFor(() => expect(store.Get<any>("list").toJSON()).toEqual([1, 2]));
       expect(latest("engine").tree.SubscriberCount("list")).toBe(0);
 
+      // The store owns its lease
       store.Destroy();
-      lease.Release();
       expect(lease.released).toBe(true);
       expect(hub.IsRunning("engine")).toBe(true);
       keep.Release();
@@ -175,13 +167,12 @@ describe("WorkerHub", () => {
       expect(hub.IsRunning("engine")).toBe(false);
     });
 
-    it("a worker's sources are registered before it; a name isn't registered twice", () => {
+    it("an endpoint's sources, from its definition, are registered before it; a name isn't registered twice", () => {
       const { engine, trace } = Setup();
-      expect(() => trace()).toThrow(/register a worker's sources before it/);
+      expect(() => trace()).toThrow(/trace follows engine, which isn't registered; register an endpoint's sources before it/);
       engine();
       trace();
       expect(() => engine()).toThrow(/already registered/);
-      expect(() => hub.Register("self", () => ({}) as any, { sources: ["self"] })).toThrow(/isn't registered/);
       expect(() => hub.Open("missing")).toThrow(/isn't registered/);
     });
   });
@@ -190,7 +181,7 @@ describe("WorkerHub", () => {
     it("restarting a source gives its consumers a new port, and they derive from the new source", async () => {
       const { created, engine, trace, Store } = Setup();
       let list = [1, 2];
-      hub.Register("engine", () => {
+      hub.Register(engineEndpoint, () => {
         const shim = CreateShimWorker();
         (created.engine ??= []).push(shim);
         shim.tree.WritePath("list", list);
@@ -224,25 +215,42 @@ describe("WorkerHub", () => {
       await WaitFor(() => expect(created.engine[0].tree.SubscriberCount("list")).toBe(1));
     });
 
-    it("a store over a lease follows a restart: readers kept, written roots reseeded, missing roots deleted", async () => {
+    it("a store over a lease starts over with a restarted tree: readers kept, nothing written back, missing roots deleted", async () => {
       const { latest, engine, Store } = Setup();
       engine([1, 2]);
       const store = Store(hub.Open("engine"));
-      await store.Write({ text: "draft" }, "query");
       await WaitFor(() => expect(store.Get<any>("list").toJSON()).toEqual([1, 2]));
-      latest("engine").tree.WritePath("old", 1);
-      latest("engine").tree.Commit();
-      await WaitFor(() => expect(store.Get("old")).toBe(1));
-      const query = store.Get<any>("query");
+      await store.Write([3], "list");
+      await store.Write({ text: "draft" }, "query");
+      const list = store.Get<any>("list");
 
       hub.Restart("engine");
-      await WaitFor(() => expect(latest("engine").tree.Committed("query")).toEqual({ text: "draft" }));
-      await WaitFor(() => expect(store.Has("old") && store.Get("old") === undefined).toBe(true));
-      expect(store.Get<any>("query")).toBe(query);
+      // The new tree's state, as when the store first subscribed: its seed, and nothing the store wrote
+      await WaitFor(() => expect(store.Has("query") && store.Get("query") === undefined).toBe(true));
+      expect(latest("engine").tree.Committed("query")).toBeUndefined();
+      expect(store.Get<any>("list")).toBe(list);
       expect(store.Get<any>("list").toJSON()).toEqual([1, 2]);
 
       await store.Write({ text: "next" }, "query");
       expect(latest("engine").tree.Committed("query")).toEqual({ text: "next" });
+    });
+
+    it("a store over a lease rejects the changes the old tree hadn't acknowledged, and sends them nowhere", async () => {
+      const { latest, engine, Store } = Setup();
+      engine([1, 2]);
+      const store = Store(hub.Open("engine"));
+      await WaitFor(() => expect(store.Get<any>("list").toJSON()).toEqual([1, 2]));
+
+      const write = store.Write(7, "count");
+      // The batch goes out a microtask after the change; its ack is a round trip later
+      for (let x = 0; x < 5; x++) await Promise.resolve();
+      hub.Restart("engine");
+      await expect(write).rejects.toThrow("engine restarted before this change was acknowledged");
+      await Settle();
+      expect(latest("engine").tree.Committed("count")).toBeUndefined();
+
+      await store.Write(3, "count");
+      expect(store.Get("count")).toBe(3);
     });
 
     it("Restart does nothing for a worker that isn't running", () => {
@@ -264,12 +272,12 @@ describe("WorkerHub", () => {
       expect(() => hub.Open("engine")).toThrow(/isn't registered/);
     });
 
-    it("Unregister of a worker another reads from throws; unregistering the reader first releases it", () => {
+    it("Unregister of a tree another follows throws; unregistering the follower first releases it", () => {
       const { engine, trace } = Setup();
       engine();
       trace();
       hub.Open("trace");
-      expect(() => hub.Unregister("engine")).toThrow(/trace reads from engine; unregister it first/);
+      expect(() => hub.Unregister("engine")).toThrow(/trace follows engine; unregister it first/);
       expect(hub.IsRunning("engine")).toBe(true);
       hub.Unregister("trace");
       expect(hub.IsRunning("engine")).toBe(false);
@@ -299,27 +307,26 @@ describe("StoreAsync.Reconnect", () => {
 
     const write = store.Write(2, "b");
     await Settle();
-    store.Reconnect(second.worker, { reseed: true });
+    store.Reconnect(second.worker);
     await write;
-    expect(second.tree.Committed("a")).toBe(1);
     expect(second.tree.Committed("b")).toBe(2);
     expect(store.Get("b")).toBe(2);
     store.Destroy();
   });
 
-  it("reseeds keyed entities as the store reads them", async () => {
+  it("writes nothing else back: the new tree's state is the store's", async () => {
     const keyFunc = (value: any) => value?._id;
     const first = CreateShimWorker(keyFunc);
     const store = new StoreAsync(first.worker, keyFunc);
     await store.Write([{ _id: "t1", v: 1 }], "list");
-    await store.Patch("t1", { v: 2 });
-
     const second = CreateShimWorker(keyFunc);
-    store.Reconnect(second.worker, { reseed: true });
-    await store.Flush();
-    await Settle();
-    expect(second.tree.Committed("t1")).toEqual({ _id: "t1", v: 2 });
-    expect(store.Get<any>("list").toJSON()).toEqual([{ _id: "t1", v: 2 }]);
+    second.tree.WritePath("other", true);
+    second.tree.Commit();
+
+    store.Reconnect(second.worker);
+    await WaitFor(() => expect(store.Get("other")).toBe(true));
+    expect(second.tree.Committed("list")).toBeUndefined();
+    expect(store.Has("list") && store.Get("list") === undefined).toBe(true);
     store.Destroy();
   });
 });
@@ -327,7 +334,7 @@ describe("StoreAsync.Reconnect", () => {
 describe("OnConnect", () => {
   it("throws for a source the hub didn't list, once the list has arrived", async () => {
     const [hubSide, scope] = CreateShimChannel();
-    HostPublisher(new DiffTreePublisher(), scope);
+    HostPublisher(new ObservableDiffTree(), scope);
     hubSide.postMessage({ type: "jt-sources", sources: ["engine"] });
     await Settle();
     expect(() => OnConnect("results", () => {}, scope)).toThrow(/results isn't a source this worker was registered with \(sources: engine\)/);
@@ -347,7 +354,7 @@ describe("OnConnect", () => {
           errors.push(err);
         }
       })) as any;
-    HostPublisher(new DiffTreePublisher(), scope);
+    HostPublisher(new ObservableDiffTree(), scope);
     OnConnect("results", () => {}, scope);
     hubSide.postMessage({ type: "jt-sources", sources: [] });
     await Settle();
@@ -355,14 +362,14 @@ describe("OnConnect", () => {
   });
 
   it("the hub tells each worker its sources first, on every start", async () => {
-    const hub = new WorkerHub();
+    const hub = new DiffTreeHub();
     const workers: ReturnType<typeof CreateShimWorker>[] = [];
-    hub.Register("engine", () => CreateShimWorker().worker as any);
-    hub.Register("trace", () => {
+    hub.Register(engineEndpoint, () => CreateShimWorker().worker as any);
+    hub.Register(traceEndpoint, () => {
       const shim = CreateShimWorker();
       workers.push(shim);
       return shim.worker as any;
-    }, { sources: ["engine"] });
+    });
     hub.Open("trace");
     hub.Restart("trace");
     for (const shim of workers) {
@@ -374,7 +381,7 @@ describe("OnConnect", () => {
 
   it("keeps a port that arrives before the handler, and cleans up when a new one arrives", async () => {
     const [hubSide, scope] = CreateShimChannel();
-    HostPublisher(new DiffTreePublisher(), scope);
+    HostPublisher(new ObservableDiffTree(), scope);
     const first = new MessageChannel();
     hubSide.postMessage({ type: "jt-connect", source: "engine", port: first.port2 }, [first.port2]);
     await Settle();

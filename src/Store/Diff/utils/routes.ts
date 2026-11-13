@@ -200,7 +200,7 @@ const NoKey: IKeyFunc = () => undefined;
  * pass data identify it the same way, or a slot holding an entity elsewhere in the source keeps its
  * first value here. Merge them into the tree's route definitions.
  * @example
- * const tree = new DiffTreePublisher(undefined, {
+ * const tree = new ObservableDiffTree(undefined, {
  *   "/": { projections: { ... } },
  *   ...FollowRoutes({ project: entityKey, engine: undefined }),
  * });

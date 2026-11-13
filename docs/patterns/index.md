@@ -8,6 +8,7 @@
 | [Reactivity](./02-reactivity.md) | ObservableScope, ObservableNode, stores, decorators (@Value, @State, @Scope, @Computed, @Watch), scope, gate, peek |
 | [Templates & Data](./03-templates-and-data.md) | DOM element functions, reactive bindings, data modeling, stores, animation |
 | [Dependency Injection](./04-dependency-injection.md) | Injector hierarchy, @Inject, @Destroy, IDestroyable, provider/consumer pattern |
+| [Hub Endpoints](./05-hub-endpoints.md) | DiffTreeHub and HubEndpoint: one key, one tree, in a worker or on the main thread; stores by lease; restart semantics |
 
 ## Further Reading
 

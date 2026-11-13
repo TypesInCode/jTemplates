@@ -1,5 +1,6 @@
-import type { IRouteDefinitions } from "../../src/Store/Diff";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import type { IChannel, IRouteDefinitions } from "../../src/Store/Diff";
+import type { IHubWorker } from "../../src/Store/Diff/diffTreeHub";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher, IHost } from "../../src/Store/Diff/hostPublisher";
 
 // jsdom has no Worker, and a real worker entry module (like defaultDiffTreeWorker.ts) can
@@ -48,13 +49,13 @@ function Sender(from: ShimPort, to: ShimPort) {
 }
 
 /**
- * A `Worker` handle backed by a same-thread `DiffTreePublisher` served by a `HostPublisher`, for
+ * A `Worker` handle backed by a same-thread `ObservableDiffTree` served by a `HostPublisher`, for
  * use with `StoreAsync` in tests. Mirrors what a bundler-built worker entry file does, minus the
  * actual thread. `tree` is the worker's side, for tests of the worker's own commits.
  */
 export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions) {
   const [main, worker] = CreateShimChannel();
-  const tree = new DiffTreePublisher(keyFunc, routes);
+  const tree = new ObservableDiffTree(keyFunc, routes);
   const host: IHost = HostPublisher(tree, worker);
   // Terminating the worker ends what it serves, as a real worker's ports close with it
   main.terminate = () => {
@@ -73,4 +74,38 @@ export function CreateShimDiffWorker(keyFunc?: (val: any) => string, routes?: IR
 export async function Settle(rounds = 4) {
   for (let x = 0; x < rounds; x++)
     await new Promise((resolve) => setTimeout(resolve));
+}
+
+/**
+ * A worker on the calling thread, for a `DiffTreeHub`: `host` serves one end of a `MessageChannel` as
+ * the worker's own channel, as a worker entry does (`HubEndpoint.Host(endpoint, tree, scope)`), and
+ * the other end stands in for the `Worker` the hub posts to and terminates. Messages cross by
+ * structured clone and ports transfer, as to a worker.
+ * @param host Hosts the worker's tree on its channel; may return what stops it, run on terminate.
+ */
+export function CreateShimHost(host: (scope: IChannel) => (() => void) | void): IHubWorker {
+  const { port1, port2 } = new MessageChannel();
+  const stop = host(port2 as unknown as IChannel);
+  port2.start();
+  return {
+    postMessage: (message: any, transfer: Transferable[]) => port1.postMessage(message, transfer),
+    terminate: () => {
+      stop && stop();
+      port1.close();
+      port2.close();
+    }
+  };
+}
+
+/** Waits until `check` passes, or fails with its error after `ms` */
+export async function WaitFor(check: () => void, ms = 2000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    try {
+      return check();
+    } catch (err) {
+      if (Date.now() > end) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+  }
 }

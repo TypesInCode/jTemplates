@@ -15,7 +15,7 @@ interface IConnections {
 const registries = new WeakMap<IChannel, IConnections>();
 
 /**
- * Handles a worker's ports to a source it reads from, given by a `WorkerHub` (`Register(name,
+ * Handles a worker's ports to a source it reads from, given by a `DiffTreeHub` (`Register(name,
  * factory, { sources })`). The handler runs for each port: when the worker starts, and again when the source
  * restarts. Before it runs for a new port, the cleanup it returned for the last one runs and that
  * port is closed. A port that arrives before the handler is registered is kept for it, once the
@@ -100,7 +100,7 @@ function Connections(scope: IChannel) {
 
 function UndeclaredError(sources: string[], declared: ReadonlySet<string>) {
   const list = declared.size > 0 ? Array.from(declared).join(", ") : "none";
-  return new Error(`OnConnect: ${sources.join(", ")} isn't a source this worker was registered with (sources: ${list}); add it to the worker's sources in WorkerHub.Register.`);
+  return new Error(`OnConnect: ${sources.join(", ")} isn't a source this worker was registered with (sources: ${list}); add it to the worker's sources in DiffTreeHub.Register.`);
 }
 
 function Run(connections: IConnections, source: string, port: MessagePort) {

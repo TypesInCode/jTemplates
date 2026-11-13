@@ -111,7 +111,7 @@ class ShoppingCart extends Component {
 
 ### No Default Value Parameter
 
-`@Computed` takes **no** arguments — the type is inferred from the getter's return type. (Only `@ComputedAsync` requires a default value parameter.)
+`@Computed` takes **no** arguments — the type is inferred from the getter's return type.
 
 ```typescript
 // For numbers
@@ -198,7 +198,7 @@ Template() {
 | Simple array operations (map, filter, sort) | `@Scope` | Fine for maintaining identity |
 | Creating new objects in getter | `@Computed` | Object reuse via `StoreSync` |
 | Expensive computations | `@Computed` | Caching + object reuse |
-| Async operations | `@ComputedAsync` | Async with caching |
+| Async operations | `@Scope` + `scope(async)` | Resolves the Promise; `null` while loading |
 
 ### @Scope Example
 
@@ -998,7 +998,7 @@ private timer = new RefreshTimer(() => this.refresh(), 5000);
 | Array map/filter/sort | `@Scope` (or `@Computed`) |
 | Creating new object in getter | `@Computed` |
 | Expensive computation | `@Computed` |
-| Async operation | `@ComputedAsync` |
+| Async operation | `@Scope` + `scope(async)` |
 
 ---
 

@@ -131,7 +131,7 @@ describe("Observable Node", () => {
     it('Apply - Add New Property', () => {
         const proxy = ObservableNode.Create({ test: "value" });
         ObservableNode.Apply(proxy, { test: "value", newProp: "new" });
-        expect(proxy.newProp).to.eq("new");
+        expect((proxy as { newProp?: string }).newProp).to.eq("new");
     });
 
     it('Apply - Array Element Update', () => {

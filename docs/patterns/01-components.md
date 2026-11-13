@@ -41,7 +41,7 @@ Components are the building blocks of j-templates applications. Every component 
 1. **Construction** — Avoid overriding the constructor. Use `Bound()` for initialization.
 2. **`Bound()`** — Called after the component is attached to the DOM. This is where you start timers, subscribe to events, and trigger initial data fetches. `Bound.All()` is called internally to activate `@Watch` decorators.
 3. **`Template()`** — Returns the virtual DOM. Called by the framework to render the component.
-4. **`Destroy()`** — Called when the component is removed. `Destroy.All()` is called internally to destroy all `@Value`/`@State`/`@Scope`/`@Computed`/`@ComputedAsync` scopes and call `.Destroy()` on every `@Destroy`-marked property.
+4. **`Destroy()`** — Called when the component is removed. `Destroy.All()` is called internally to destroy all `@Value`/`@State`/`@Scope`/`@Computed` scopes and call `.Destroy()` on every `@Destroy`-marked property.
 
 ## Static Methods
 

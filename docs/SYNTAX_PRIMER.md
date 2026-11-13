@@ -8,7 +8,7 @@ Reference for building apps with j-templates 8.1.0. Every behavioral claim was c
 
 Read Mental model, then Templates and State decorators before writing a component. Check the Traps checklist before shipping.
 
-- **Version:** j-templates 8.1.0. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry. 8.0.23 moved `Bound()` after the first render and added `Connected()`. 8.0.24 fixed dotted projection reads through keyed entities. 8.0.27 batches `StoreAsync` changes. 8.1.0 added `PushStore` and `DiffTreeWriter`, and moved the diff types and `PROJECTION_PREFIX` to `j-templates/Store/Diff`. Unreleased (this branch): `DiffTreePublisher`, `HostPublisher` and a `StoreAsync` that applies the tree's commits replace `PushStore`, `DiffTreeWriter`, `WorkerQueue` and `ConnectWorkerToDiffTree`; those sections were verified against the test suite. Each of those sections was re-verified in jsdom against the version that changed it.
+- **Version:** j-templates 8.1.0. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry. 8.0.23 moved `Bound()` after the first render and added `Connected()`. 8.0.24 fixed dotted projection reads through keyed entities. 8.0.27 batches `StoreAsync` changes. 8.1.0 added `PushStore` and `DiffTreeWriter`, and moved the diff types and `PROJECTION_PREFIX` to `j-templates/Store/Diff`. Unreleased (this branch): `ObservableDiffTree`, `HostPublisher` and a `StoreAsync` that applies the tree's commits replace `PushStore`, `DiffTreeWriter`, `WorkerQueue` and `ConnectWorkerToDiffTree`; those sections were verified against the test suite. Each of those sections was re-verified in jsdom against the version that changed it.
 - **Not verified:** a real browser `Worker` (a structured-clone shim stood in), real focus behavior, and the `docs/`, `examples/` and `src/` folders the package does not ship.
 - **Convention:** `this.x` in examples is a component field decorated with `@Value` or `@State` unless shown otherwise. Imports are omitted after the first example.
 
@@ -55,11 +55,11 @@ npm install j-templates
 | --- | --- |
 | `j-templates` | `Component`, `scope`, `gate`, `peek`, `mapped`; type `vNode` |
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
-| `j-templates/Utils` | `Value`, `State`, `Computed`, `ComputedAsync`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
-| `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the publisher's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`. Types and constants only, so a worker bundle can import it. |
+| `j-templates/Utils` | `Value`, `State`, `Computed`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
+| `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions`, `IStoreSyncOptions` |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the hub endpoint's `IHubEndpoint` and its option types; `FollowRoutes`, and `HubEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/diffTreePublisher` (`DiffTreePublisher`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/workerHub` (`WorkerHub`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/hubEndpoint` (`HubEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -283,7 +283,6 @@ Decorators work on component classes only. Services use `ObservableScope`, `Obse
 | `@State()` | plain objects and arrays mutated in place | a deep reactive proxy | on any tracked write |
 | `@Scope()` getter | cheap derivations; filters/sorts of existing objects | whatever the getter returns (new object each run if it builds one) | lazily, on the next read after a change |
 | `@Computed()` getter | building new objects consumed in several places | the **same** object every time, updated in place | eagerly, when a dependency changes |
-| `@ComputedAsync(default)` getter | as `@Computed`, diffed off-thread | same object every time; `default` until first result | eagerly |
 | `@Watch(sel)` method | side effects on change | — | — |
 | `@Inject(Type)` field | dependency injection | — | — |
 | `@Destroy()` field | calling `.Destroy()` at teardown | — | — |
@@ -339,19 +338,6 @@ Tracked array methods: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `rev
 - The result is a **copy**. `@Computed() get x() { return this.tasks; }` returns an object that is not `this.tasks`. Use `@Scope` when you need the original reference.
 - The copy step reads every property of the result, so all of them become dependencies. Returning a `@State` array therefore re-runs the getter when any item property changes (verified).
 - No arguments. Prefer `@Scope` or a plain getter for cheap values.
-
-### @ComputedAsync
-
-```typescript
-@ComputedAsync(null) get user(): User | null {
-  return { id: this.userId, name: lookupName(this.userId) }; // must be synchronous
-}
-```
-
-- The getter must be synchronous. "Async" refers to the backend: results are diffed in a `StoreAsync` worker.
-- Returns `default` first, then the computed object, with the same reference across updates (verified).
-- Each instance creates `new Worker(new URL("../Store/Diff/defaultDiffTreeWorker.js", import.meta.url), { type: "module" })` (from source). It needs a real `Worker` and a bundler that handles `new URL(…, import.meta.url)`. In jsdom tests, stub `globalThis.Worker` (see Scheduling, errors and testing).
-- For genuinely async data, use `@Scope()` + `scope(async () => …)` or `ObservableScope.Create(async () => …)`.
 
 ### @Watch
 
@@ -537,12 +523,11 @@ A store holds reactive data under string keys and diffs every write into existin
 
 |  | `StoreSync` | `StoreAsync` |
 | --- | --- | --- |
-| Constructor | `new StoreSync(keyFunc?, projections?, options?)` | `new StoreAsync(channel, keyFunc?, options?)` |
-| Diffing | main thread, synchronous | in the worker's `DiffTreePublisher`, served by `HostPublisher` |
+| Constructor | `new StoreSync(keyFunc?, projections?, options?)`, or `new StoreSync(hub.OpenLocal(name), options?)` | `new StoreAsync(channel, keyFunc?, options?)`; the channel may be `hub.Open(name)`, whose endpoint gives the keyFunc and `opaque` left out |
+| Diffing | main thread, synchronous | in the worker's `ObservableDiffTree`, served by `HostPublisher` |
 | Writes | `void`; readable immediately | `Promise`; batched per tick, readable once it resolves. Optional: without writes it's a read-only view of the tree |
-| Changes from elsewhere | commits made on `store.Publisher` | every commit the worker's tree makes, whatever caused it |
-| `Destroy()` | none | required; unsubscribes and stops listening, leaves the worker running |
-| Backs | nothing (`@Computed` uses `ObservableNode` directly) | `@ComputedAsync` |
+| Changes from elsewhere | commits made on `store.Tree` | every commit the worker's tree makes, whatever caused it |
+| `Destroy()` | stops applying commits; over a lease, releases it | required; unsubscribes and stops listening. Over a lease, releases it; over a channel, leaves the worker running |
 
 ### API
 
@@ -576,13 +561,13 @@ store.Get<Todo[]>("todos", [])[0].done;        // true
 
 ### StoreAsync and its worker
 
-Supply a channel to a worker whose entry file hosts a `DiffTreePublisher`: a `Worker`, or a `MessagePort` to one. Any `keyFunc` or projections used for diffing must live in that file; the constructor's `keyFunc` only resolves ids on the main thread.
+Supply a channel to a worker whose entry file hosts an `ObservableDiffTree`: a `Worker`, or a `MessagePort` to one. Any `keyFunc` or projections used for diffing must live in that file; the constructor's `keyFunc` only resolves ids on the main thread.
 
 ```typescript
 // diff-worker.ts (bundled as its own worker entry)
-import { DiffTreePublisher } from "j-templates/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
 import { HostPublisher } from "j-templates/Store/Diff/hostPublisher";
-HostPublisher(new DiffTreePublisher((v: any) => v?.id), self as any);
+HostPublisher(new ObservableDiffTree((v: any) => v?.id), self as any);
 
 // main thread
 const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
@@ -626,7 +611,7 @@ store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 - A projection has no value until every read resolves. It re-runs when a read's value changes.
 - A cycle or a read of an undefined projection throws at construction.
 - A dotted read can pass through a keyed entity (`"doc.owner.name"`, where `owner` has an id). It reads the entity's own root, so a `Patch` to the entity reruns the projection with the new value (verified; before 8.0.24 such a read returned the stale embedded copy).
-- `StoreSync` and the `StoreAsync` worker run projections for each batch. A `DiffTreePublisher`'s `Commit()` doesn't run them. `DiffTree.DiffPath`, `PatchPath`, `PushPath` and `SplicePath` don't (8.0.27): code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
+- `StoreSync` and the `StoreAsync` worker run projections for each batch. An `ObservableDiffTree`'s `Commit()` doesn't run them. `DiffTree.DiffPath`, `PatchPath`, `PushPath` and `SplicePath` don't (8.0.27): code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
 
 ### Opaque roots
 
@@ -643,13 +628,13 @@ const layout = store.Get<Layout>("$projection_layout"); // the raw value: no pro
 - Write the raw value. Don't pass an `Opaque` to `Write`, `Patch`, `Push` or `Splice`, at any depth: the store boxes the root itself, and a box written to a store isn't opened (under `StoreAsync` it arrives as a plain `{ value }`).
 - An opaque root can't be read through a key: a `keyFunc` alias that resolves to one throws.
 
-### DiffTreePublisher
+### ObservableDiffTree
 
-A `DiffTreePublisher` owns a `DiffTree` and delivers every `Commit()` to its subscribers. It has the tree's write API (`WritePath`, `PatchPath`, `PushPath`, `SplicePath`, `DeleteRoot`, `DeleteRoute`, `RunProjections`, `MarkOpaque`), its reads (`ReadPath`, `Snapshot`, `Committed`, `CommittedKeys`) and `Commit()`, but never the tree, so nothing commits past it. `StoreSync` subscribes to one it creates, exposed as `store.Publisher`.
+An `ObservableDiffTree` is a `DiffTree` that delivers every `Commit()` to its subscribers: the tree's whole API (`WritePath`, `PatchPath`, `PushPath`, `SplicePath`, `ApplyDiff`, `DeleteRoot`, `DeleteRoute`, `RunProjections`, `MarkOpaque`, `ReadPath`, `Snapshot`, `Committed`, `CommittedKeys`), with `Commit()` delivering what it diffs. `StoreSync` subscribes to one it creates, exposed as `store.Tree`.
 
 ```typescript
-import { DiffTreePublisher } from "j-templates/Store/Diff/diffTreePublisher";
-const tree = new DiffTreePublisher(keyFunc, routes);
+import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
+const tree = new ObservableDiffTree(keyFunc, routes);
 const stop = tree.Subscribe({ roots: ["loading", "$projection_*"] }, post => { /* post.diff, post.seq */ });
 tree.Subscribe({ roots: ["index", "task_*"], form: "snapshot" }, update => { /* update.roots, update.deleted */ });
 
@@ -670,11 +655,11 @@ const { index, revision } = await tree.Once(["index", "revision"]); // the first
 
 ### A worker's own commits
 
-A worker that produces data itself (a computation's result, data it fetched) writes to its hosted publisher and commits. The commit reaches every subscriber, the main thread's `StoreAsync` included, with no round trip. A store that never writes is a read-only view of the tree.
+A worker that produces data itself (a computation's result, data it fetched) writes to its hosted tree and commits. The commit reaches every subscriber, the main thread's `StoreAsync` included, with no round trip. A store that never writes is a read-only view of the tree.
 
 ```typescript
 // engine-worker.ts (bundled as its own worker entry)
-const tree = new DiffTreePublisher((v: any) => v?.id, routes);
+const tree = new ObservableDiffTree((v: any) => v?.id, routes);
 HostPublisher(tree, self as any);
 self.addEventListener("message", async (e) => {
   if (e.data?.type !== "run") return;      // the app's own message, beside the jt- ones
@@ -695,51 +680,65 @@ store.Get("results");   // reactive; undefined until a commit holds it
 - `HostPublisher(tree, self)` serves the worker's own channel; `host.Serve(port)` serves a `MessagePort` it's given, so another worker can subscribe.
 - Another worker subscribes over a port with `Subscribe(port, { roots, form: "snapshot" }, update => …)` and writes the roots it receives under a route of its own tree, which is never posted on. `Once(port, keys, { signal })` waits for the first commit that holds every key. Values arrive as structured-cloned copies.
 
-### WorkerHub: workers by name
+### DiffTreeHub: trees by endpoint
 
-On the main thread, a `WorkerHub` owns the app's workers. It creates each one from a factory when it's first needed, hands out channels to it as leases, connects workers to each other, re-creates one on request, and terminates each one when its last lease ends. It never carries data.
+On the main thread, a `DiffTreeHub` owns the app's trees. One key is one tree in the app's dependency graph, running in a worker or on the main thread. The hub creates each tree from a factory when it's first needed, hands out leases on it, connects each tree to the ones it follows, re-creates one on request, and ends each one when its last lease ends. It never carries data.
+
+An **endpoint** describes a key once, as plain data: its name, what it follows, its keyFunc and its opaque keys. The main thread registers it, the tree's file builds from it, and the trees that follow it read their paths from it. It imports nothing that reads `window`, so workers import the same definitions.
 
 ```typescript
-import { WorkerHub } from "j-templates/Store/Diff/workerHub";
-const hub = new WorkerHub();
-hub.Register("engine", () => {
+// endpoints.ts: imported by the main thread and the workers
+import { HubEndpoint } from "j-templates/Store/Diff/hubEndpoint";
+export const engineEndpoint = HubEndpoint.Define("engine", undefined, { keyFunc, opaque: ["view"] });
+export const traceEndpoint = HubEndpoint.Define("trace", remote => ({
+  engine: remote(engineEndpoint, ["index", "task_*"]),   // { index: "/engine/index", "task_*": "/engine/task_*" }
+}));
+export const filterEndpoint = HubEndpoint.Define("filter", remote => ({
+  trace: remote(traceEndpoint, ["$projection_count"]),
+}));
+
+// trace-tree.ts: builds the tree, with a follow route per source
+export const newTraceTree = () => new ObservableDiffTree(traceEndpoint.keyFunc, {
+  "/": { projections: { count: { reads: [traceEndpoint.config.engine.index], projection: countOf } } },
+  ...HubEndpoint.FollowRoutes(traceEndpoint),
+});
+
+// trace-worker.ts: serves the tree, follows its sources into it, marks its opaque keys
+HubEndpoint.Host(traceEndpoint, newTraceTree(), self as any);
+
+// main thread
+import { DiffTreeHub } from "j-templates/Store/Diff/diffTreeHub";
+const hub = new DiffTreeHub();
+hub.Register(engineEndpoint, () => {
   const worker = new Worker(new URL("./engine-worker.ts", import.meta.url), { type: "module" });
   worker.postMessage({ type: "load", project });   // starting intent: runs on every start
   return worker;
 });
-hub.Register("trace", () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), {
-  sources: ["engine"],                    // trace reads engine's tree: one way, registered after it
+hub.Register(traceEndpoint, () => new Worker(new URL("./trace-worker.ts", import.meta.url), { type: "module" }), {
   releaseDebounce: 5000,
 });
+hub.Register(filterEndpoint, newFilterTree);       // returns the tree: it runs on this thread
 
-const app = hub.Open("engine");           // held for the app's lifetime
-const lease = hub.Open("trace");          // starts trace; its lease on its source keeps engine open
-const store = new StoreAsync(lease, keyFunc);
-// teardown
-store.Destroy();
-lease.Release();                          // trace ends 5 s later unless reopened
-hub.Restart("engine");                    // a new engine; every port re-issued, stores reconnect
-hub.Destroy();                            // every worker terminated
-
-// trace-worker.ts
-import { OnConnect } from "j-templates/Store/Diff/onConnect";
-HostPublisher(tree, self as any);
-OnConnect("engine", port => {
-  tree.DeleteRoute("/engine/");           // what the last engine sent
-  return Subscribe(port, { roots: ["index", "task_*"], form: "snapshot" }, update => {
-    for (const key in update.roots) tree.WritePath(`/engine/${key}`, update.roots[key]);
-    for (const key of update.deleted) tree.WritePath(`/engine/${key}`, undefined);
-    tree.RunProjections();
-    tree.Commit();
-  });                                     // returned: ends the subscription when a new port arrives
-});
+const engine = new StoreAsync(hub.Open("engine"));  // a worker's tree, over a port; held for the app's lifetime
+const trace = new StoreAsync(hub.Open("trace"));    // starts trace; its lease on its source keeps engine open
+const filter = new StoreSync(hub.OpenLocal("filter"));  // a tree on this thread, directly
+// teardown: each store releases its lease
+trace.Destroy();                                    // trace ends 5 s later unless reopened
+hub.Restart("engine");                              // a new engine; every store on it starts over with it
+hub.Destroy();                                      // every tree ended
 ```
 
-- `Register` creates nothing; the first `Open` does. A worker's `sources` must be registered before it, and the worker's `OnConnect(source, …)` handler gets a port to each while it runs.
-- The hub tells each worker its sources first, on every start. `OnConnect` for a source the worker wasn't registered with throws: at once if the list has arrived, otherwise when it does, as the worker's uncaught error (the `Worker`'s `error` event on the main thread). The factory runs again on `Restart` and on the next `Open` after a release, so it should send whatever the worker needs to start.
-- A worker is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing terminates it and ends its leases on its sources. Keep a lease for a worker that must outlive every view.
-- Give leases, not the `Worker`, to stores: a store over a lease follows a restart with `Reconnect(port, { reseed: true })`, keeping its readers. `store.Destroy()` never terminates a worker.
-- `Restart` is the app's call when it decides a worker is unhealthy; the hub doesn't restart on `error`. `Unregister(name)` ends one worker, and throws while another registered worker reads from it; `Destroy()` ends all of them, the last registered first.
+- `Register(endpoint, factory)` creates nothing; the first lease does. The endpoint's sources come from its definition, and each must be registered before it. While a tree runs, the hub holds a lease on each source and gives the tree a port to it, again whenever either restarts.
+- The factory returns a worker, or an `ObservableDiffTree` to run on this thread, which the hub hosts with the same `HubEndpoint.Host` on a channel of its own. The first start fixes the key's kind. A factory that returns neither, or the other kind on a restart, throws.
+- `Open` returns an `IWorkerLease`, for `StoreAsync`; `OpenLocal` returns an `ILocalLease`, for `StoreSync`. A store given the other kind's lease doesn't compile, and opening a key as the other kind throws. Any number of stores may be opened on one tree. A store owns its lease, takes its keyFunc and `opaque` from the endpoint, and releases the lease on `Destroy()`.
+- A `StoreSync` on a hub's tree shares it: a change from any store on it, and from the trees it follows, reaches every one of them before it returns.
+- `HubEndpoint.Host(endpoint, tree, scope, { onFollow })` applies each source's post at `/<source>/` and then, by default, runs the projections and commits. An `onFollow(tree, source)` replaces that, for a tree that acts at the end of the turn.
+- **The tree is the source of truth.** `Restart` is the app choosing to start a tree over; the hub doesn't restart on `error`. Every store on the tree starts over with the new one, as when it first subscribed: its state is applied in place, so readers keep their objects, and the roots it lacks are deleted. Nothing a store wrote is written back, and changes the old tree hadn't acknowledged reject. State that must outlive a restart goes in a tree of its own, which the restarted tree follows.
+- A tree is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing ends it and its leases on its sources. Keep a store open on a tree that must outlive every view.
+- The hub tells each tree its sources first, on every start. `OnConnect` for a source the endpoint doesn't follow throws: at once if the list has arrived, otherwise when it does, as the worker's uncaught error (the `Worker`'s `error` event on the main thread). The factory runs again on `Restart` and on the next lease after a release, so it should send whatever the worker needs to start.
+- `Unregister(name)` ends one tree, and throws while another registered endpoint follows it; `Destroy()` ends all of them, the last registered first. `KindOf(name)` says where a key's tree runs, once it has started.
+- Keep a worker's factory a literal `new Worker(new URL(...), { type: "module" })` at registration: bundlers compile only that form into a worker bundle.
+- A tree that wires its connections by hand serves itself with `HostPublisher` and follows with `OnConnect(source, port => …)` and a `ChannelSubscription`; `HubEndpoint.Host` does this for every source.
 
 ## ObservableScope and ObservableNode
 
@@ -839,13 +838,13 @@ Verification used tsx with jsdom; Vitest with jsdom should behave the same. Requ
 
 1. Create `window`, `document` and the DOM classes as globals **before** importing j-templates.
 2. Set `SYNC_SCHEDULING=true` for synchronous assertions, or await a timeout (100–150 ms was reliable in testing) after each action.
-3. For `@ComputedAsync` or `StoreAsync`, stub `Worker` with an in-process shim: two `EventTarget`s that deliver structured-cloned copies a tick later, with a `HostPublisher` on one side. Await a timeout before reading a commit the worker made on its own:
+3. For `StoreAsync`, stub `Worker` with an in-process shim: two `EventTarget`s that deliver structured-cloned copies a tick later, with a `HostPublisher` on one side. Await a timeout before reading a commit the worker made on its own:
 
 ```typescript
-import { DiffTreePublisher } from "j-templates/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
 import { HostPublisher } from "j-templates/Store/Diff/hostPublisher";
 
-function fakeWorker(tree = new DiffTreePublisher()) {
+function fakeWorker(tree = new ObservableDiffTree()) {
   const main: any = new EventTarget(), inner: any = new EventTarget();
   const send = (to: EventTarget) => (d: unknown) =>
     setTimeout(() => to.dispatchEvent(new MessageEvent("message", { data: structuredClone(d) })));
@@ -853,8 +852,7 @@ function fakeWorker(tree = new DiffTreePublisher()) {
   HostPublisher(tree, inner);
   return main;
 }
-(globalThis as any).Worker = class { constructor() { return fakeWorker(); } }; // for @ComputedAsync
-const tree = new DiffTreePublisher((v: any) => v?.id);
+const tree = new ObservableDiffTree((v: any) => v?.id);
 const store = new StoreAsync(fakeWorker(tree), (v: any) => v?.id);
 
 tree.WritePath("a", { value: 1 });
@@ -1053,7 +1051,7 @@ Component.Attach(document.getElementById("app")!, app({}));
 25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
 26) **A worker's own writes reach no one until `Commit()`, and `Commit()` doesn't run projections.** Call `RunProjections()` before it when the change should update them.
 27) **An opaque value read and written elsewhere is plain data again.** A read opens the box, so writing the value into another node or returning it from `@Computed` proxies it there, and a `@Computed` result merges into it in place. Build from it, or box it again (`new Opaque(value)`). Never mutate it.
-28) **Don't write to a `DiffTreePublisher` (or its `StoreSync`) from its own delivery.** A subscriber that writes to, commits or runs projections on the tree delivering to it throws `DiffTreePublisher: a subscriber can't write to or commit the tree delivering to it.` Write to another tree, or defer the write.
+28) **Don't write to an `ObservableDiffTree` (or its `StoreSync`) from its own delivery.** A subscriber that writes to, commits or runs projections on the tree delivering to it throws `ObservableDiffTree: a subscriber can't write to or commit the tree delivering to it.` Write to another tree, or defer the write.
 
 ## Debugging
 

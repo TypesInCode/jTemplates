@@ -167,7 +167,7 @@ describe("StoreSync opaque roots", () => {
 
   it("reads a default given before the first write raw, and updates its reader on the write", () => {
     const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
-    const empty = { label: "empty", nodes: [] };
+    const empty = { label: "empty", nodes: [] as unknown[] };
     const { scope } = counted(() => store.Get<any>("view", empty));
     expect(ObservableScope.Value(scope)).to.eq(empty);
 

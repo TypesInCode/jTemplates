@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ReadStore } from "../../src/Store/Store/store";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
-import { DiffTreePublisher } from "../../src/Store/Diff/diffTreePublisher";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 
@@ -218,9 +218,9 @@ describe("large diffs and item lists", () => {
     expect(ProjectionEntries(tree.Commit())).toHaveLength(N);
   });
 
-  it("the same, delivered by a DiffTreePublisher", () => {
+  it("the same, delivered by an ObservableDiffTree", () => {
     const posted: any[] = [];
-    const publisher = new DiffTreePublisher(undefined, routes);
+    const publisher = new ObservableDiffTree(undefined, routes);
     publisher.Subscribe({}, (post) => posted.push(post));
     publisher.WritePath("n", 1);
     publisher.RunProjections();

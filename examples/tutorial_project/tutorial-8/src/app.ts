@@ -1,6 +1,6 @@
 import { Component, scope } from "j-templates";
 import { div } from "j-templates/DOM";
-import { Value, Scope, Inject, Destroy, ComputedAsync, State } from "j-templates/Utils";
+import { Value, Scope, Inject, Destroy, Computed, State } from "j-templates/Utils";
 import { TaskFilter, Task } from "./data/types";
 import { ProjectService, RealProjectService } from "./services/project-service";
 import { CollaborationService, RealCollaborationService } from "./services/collaboration-service";
@@ -38,10 +38,9 @@ class App extends Component {
   @State()
   filter = { status: null as string | null, priority: null as string | null, assigneeId: null as string | null, search: "" as string };
 
-  // @ComputedAsync demonstrates async diff computation with a default value.
-  // The getter is synchronous, but the StoreAsync backend computes diffs off
-  // the main thread. This is useful for expensive aggregations.
-  @ComputedAsync({ summary: "", avgPriority: 0 })
+  // @Computed builds a new object in the getter, and keeps the same reference
+  // across updates: only the properties that changed notify their readers.
+  @Computed()
   get projectSummary(): { summary: string; avgPriority: number } {
     const tasks = this.projectService.GetTasks();
     const stats = this.projectService.GetStats();

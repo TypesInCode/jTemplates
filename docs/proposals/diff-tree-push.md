@@ -2,6 +2,16 @@
 
 Status: phases 1–4 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`; builder-app's three worker stores on them, measured: §Phase 4: builder-app). Open after the measurements: how the run's index crosses to the trace worker (§Phase 4 findings, 1), and `IsPending(root)`.
 
+> **Superseded in part (2026-11-13):** the hub is now registered by endpoint (`HubEndpoint.Define`), a
+> key's factory may return a tree to run on the main thread, stores own their leases, and a restart no
+> longer reseeds: the tree is the source of truth. The sections on the hub, reseeding and restarts below
+> describe the earlier design. See [Hub Endpoints](../patterns/05-hub-endpoints.md).
+>
+> `DiffTreePublisher` is now `ObservableDiffTree` (`Store/Diff/observableDiffTree`), and it extends `DiffTree`
+> instead of wrapping one.
+>
+> `WorkerHub` is now `DiffTreeHub` (`Store/Diff/diffTreeHub`): it runs trees on the main thread too.
+
 ## Summary
 
 A `DiffTree` posts every `Commit()` to whoever subscribes to it. A store is one subscriber: it sends batches of writes to the tree and applies the tree's posts, whatever caused them. The tree no longer answers a batch with its reply; it runs its projections, commits, and the post that follows says which batch it covers. `Flush()` and each write's promise wait for that post.

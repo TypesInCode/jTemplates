@@ -18,7 +18,8 @@
     "build": "npm run buildquick && node ./tools/copy-package-json.js",
     "buildquick": "npm run clean && echo Using TypeScript && tsc --version && tsc --pretty",
     "builddocs": "typedoc --out docs src/index.ts src/DOM/index.ts src/Utils/index.ts src/Store/index.ts && touch docs/.nojekyll",
-    "test": "vitest run",
+    "test": "npm run typecheck && vitest run",
+    "typecheck": "tsc -p tsconfig.test.json",
     "test_watch": "vitest --ui"
   },
   "devDependencies": {
