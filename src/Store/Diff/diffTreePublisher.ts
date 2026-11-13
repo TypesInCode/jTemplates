@@ -78,6 +78,23 @@ export class DiffTreePublisher {
     this.tree.SplicePath(path, start, deleteCount, items);
   }
 
+  /**
+   * See `DiffTree.ApplyDiff`. How one tree follows another: a follow route for the source
+   * (`FollowRoutes`), a `ChannelSubscription` to it in the `"diff"` form over each port, and each
+   * post applied here, then committed.
+   * @example
+   * const project = new ChannelSubscription({ roots: ["rows", "o_*"] }, post => {
+   *   tree.ApplyDiff(post.diff, "/project/");
+   *   tree.RunProjections();
+   *   tree.Commit();
+   * });
+   * OnConnect("project", port => project.Connect(port));
+   */
+  ApplyDiff(records: JsonDiffResult, route?: string) {
+    this.AssertNotDelivering();
+    this.tree.ApplyDiff(records, route);
+  }
+
   /** See `DiffTree.DeleteRoot` */
   DeleteRoot(key: string) {
     this.AssertNotDelivering();

@@ -1,6 +1,6 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { JsonType } from "../../Utils/json";
-import { ChannelClient } from "../Diff/channelClient";
+import { ChannelClient, ChannelSubscription } from "../Diff/channelClient";
 import { IChannel, IDiffMethod, IDiffMethodBatch, IDiffPost, IWorkerLease } from "../Diff/diffTree.types";
 import { ObservableNode } from "../Tree/observableNode";
 import { IStoreOptions, RootOf, Store } from "./store";
@@ -60,8 +60,11 @@ export class StoreAsync extends Store {
   private options: IStoreAsyncOptions;
   /** Roots this store has written, for `Reconnect`'s reseed */
   private written = new Set<string>();
-  /** Roots the tree has posted and not deleted, for `Reconnect` to delete what a new tree lacks */
-  private received = new Set<string>();
+  /**
+   * The store's subscription, kept across `Reconnect`: a new tree's first state deletes the roots
+   * the old one posted that it doesn't hold
+   */
+  private subscription: ChannelSubscription;
   private stopLease?: () => void;
   private asyncQueue = new AsyncQueue();
   private currentBatch: IDiffMethodBatch = [];
@@ -90,8 +93,9 @@ export class StoreAsync extends Store {
       channel = channel.port;
     }
 
+    this.subscription = new ChannelSubscription({ roots: options.roots }, (post: IDiffPost, first: boolean) => this.Apply(post, first));
     this.client = this.Connect(channel);
-    this.client.Subscribe({ roots: options.roots }, post => this.Apply(post));
+    this.subscription.Connect(this.client);
   }
 
   /**
@@ -99,8 +103,8 @@ export class StoreAsync extends Store {
    * 1. With `reseed`, writes back every root this store has written, read from its own state, in
    *    one batch. Projection outputs aren't written; the new tree computes them.
    * 2. Sends again the batches still waiting for an ack; their promises settle on the new channel.
-   * 3. Subscribes. The first state is diffed into the store's roots in place, and once it's
-   *    complete, roots the store received from the old tree that the new one lacks are deleted.
+   * 3. Subscribes. The first state is diffed into the store's roots in place, with the roots the
+   *    store received from the old tree that the new one lacks deleted (`ChannelSubscription`).
    *
    * A batch the old worker applied, posted and never acknowledged is sent again, so a `Push` in it
    * can be applied twice.
@@ -125,21 +129,7 @@ export class StoreAsync extends Store {
     const firstState = new Promise<void>(resolve => subscribed = resolve);
     pending.forEach(batch => client.Send({ ...batch, resolve: () => firstState.then(batch.resolve) }));
 
-    const previous = this.received;
-    this.received = new Set();
-    let first = true;
-    client.Subscribe({ roots: this.options.roots }, post => this.Apply(post, first), error => {
-      if (!first)
-        return;
-
-      first = false;
-      if (error === undefined) {
-        const gone = Array.from(previous).filter(key => !this.received.has(key));
-        gone.length > 0 && this.UpdateRootMap(gone.map(key => ({ type: "delete" as const, path: [key] })));
-      }
-
-      subscribed();
-    });
+    this.subscription.Connect(client, () => subscribed());
   }
 
   private Connect(channel: IChannel) {
@@ -148,16 +138,8 @@ export class StoreAsync extends Store {
     return client;
   }
 
-  /**
-   * Applies a post, keeping track of the roots the tree holds. A reconnected tree's first state
-   * is diffed into the roots in place.
-   */
-  private Apply(post: IDiffPost, firstState = false) {
-    for (const record of post.diff) {
-      const key = record.path[0] as string;
-      record.type === "delete" && record.path.length === 1 ? this.received.delete(key) : this.received.add(key);
-    }
-
+  /** Applies a post. A tree's first state is diffed into the roots in place, its deletes with it. */
+  private Apply(post: IDiffPost, firstState: boolean) {
     firstState ? this.UpdateRootMapInPlace(post.diff) : this.UpdateRootMap(post.diff);
   }
 
@@ -306,6 +288,7 @@ export class StoreAsync extends Store {
   Destroy() {
     this.stopLease?.();
     this.asyncQueue.Stop();
+    this.subscription.Stop();
     this.client.Destroy();
   }
 }

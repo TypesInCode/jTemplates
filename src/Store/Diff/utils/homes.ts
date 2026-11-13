@@ -1,4 +1,4 @@
-import { JsonApplyDiff, JsonApplySplices, JsonDiff, JsonDiffStrategyFunc, JsonType, SPLICE_ACTION } from "../../../Utils/json";
+import { JsonApplyDiff, JsonApplySplices, JsonDiff, JsonDiffResult, JsonDiffStrategyFunc, JsonType, SPLICE_ACTION } from "../../../Utils/json";
 import { ArraysEqual } from "../../../Utils/array";
 import { ISnapshotState, Snapshot } from "../../Tree/snapshot";
 import { IsPathWithin, JoinPaths, PROP_DELIMETER, ROUTE_DELIMETER, SplitRouteAndPath } from "./paths";
@@ -91,6 +91,51 @@ export function SpliceValueAtPath(context: WriteContext, path: string, start: nu
 
   JsonApplySplices(array, [{ index, delete: actualDelete, insert }], KeepValue);
   Snapshot.Invalidate(context.snapshot, array);
+}
+
+/**
+ * Applies another tree's diff records to a route, in order, as writes: a `write` as
+ * ApplyValueToPath writes it, a `splice` as SpliceValueAtPath splices, its inserted values
+ * flattened, and a `delete` by removing the property its path ends with, a root key's from the
+ * route's state. The records' paths are parts, relative to the route, so a key holding `.` or `/`
+ * is applied as it is. Records from a tree with the same keyFunc never write inside a slot: the
+ * change to an entity comes as its own root's records.
+ * @param route A full route path, e.g. `/` or `/engine/`
+ * @throws When a record's parent doesn't exist, or a splice's path holds no array
+ */
+export function ApplyRecords(context: WriteContext, records: JsonDiffResult, route: string) {
+  const routeRoot = RouteState(context.root, route, true);
+  const keyFunc = context.routeKeyFunc(route);
+  for (let x = 0; x < records.length; x++) {
+    const record = records[x];
+    const parts = record.path.map(String);
+    if (record.type === "write") {
+      WriteValue(context, route, parts, record.value);
+      continue;
+    }
+
+    if (record.type === "delete") {
+      const parent = ReadPathParts(routeRoot, parts, parts.length - 1);
+      if (JsonType(parent) !== "value" && Object.hasOwn(parent, parts[parts.length - 1]))
+        Remove(context.snapshot, parent, parts[parts.length - 1]);
+
+      continue;
+    }
+
+    const array = ReadPathParts(routeRoot, parts, parts.length);
+    if (!Array.isArray(array))
+      throw new Error(`Unable to apply a splice at ${parts.join(PROP_DELIMETER)}: no array there`);
+
+    const targetPath = JoinPaths(route, parts.join(PROP_DELIMETER));
+    const splices = record.splices.map(splice => ({
+      ...splice,
+      insert: splice.insert.map(item => item.type === SPLICE_ACTION.INSERT
+        ? { type: SPLICE_ACTION.INSERT as const, value: Flatten(context, keyFunc, route, targetPath, item.value) }
+        : item)
+    }));
+    JsonApplySplices(array, splices, KeepValue);
+    Snapshot.Invalidate(context.snapshot, array);
+  }
 }
 
 /** A written path's route from the root (`/` for the root route) and its property path */

@@ -81,7 +81,14 @@ export type IKeyFunc = { (val: any): string | undefined };
 export type IRouteDefinition = {
   projections: IProjectionDefinitions,
   keyFunc?: IKeyFunc,
-  routes?: IRouteDefinitions
+  routes?: IRouteDefinitions,
+  /**
+   * A follow route: it holds another tree's roots, written only by `ApplyDiff` from a subscription
+   * to that tree, under the source's own keys. It has no projections of its own, so a source's
+   * projection output (`$projection_<key>`) is held as it is, and any other write to it throws.
+   * Projections elsewhere read it as any route. See `FollowRoutes`.
+   */
+  follow?: boolean
 };
 
 export type IRouteDefinitions = {
@@ -99,4 +106,6 @@ export type IRoute = {
   childPartCounts: number[];
   keyFunc?: IKeyFunc;
   routeDefinitions?: IRouteDefinitions;
+  /** A follow route, written only by `ApplyDiff`; see `IRouteDefinition.follow` */
+  follow: boolean;
 };

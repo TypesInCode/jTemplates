@@ -118,6 +118,109 @@ export class ChannelClient {
 }
 
 /**
+ * A subscription to a tree served on a channel that outlives the channel: when the tree is
+ * replaced (a restarted worker, given on a new port), `Connect` subscribes to the new one, and its
+ * first state also deletes the roots this subscription delivered that the new tree doesn't hold. A
+ * subscriber that applies every delivery, a store or a tree, then holds the new tree's state, and
+ * a wildcard read of it reads nothing the old tree left behind.
+ *
+ * - The first state after a reconnect is one delivery: the new tree's roots, then a `delete` record
+ *   (in the `"diff"` form) or a `deleted` key (in the `"snapshot"` form) for each root gone, so
+ *   nothing applied in between holds both. With no roots in the new tree, it's the deletes alone.
+ * - A root is delivered while it was written by the last delivery that touched it, and gone once a
+ *   delivery deletes it, as a `HostPublisher`'s deliveries say.
+ *
+ * @example
+ * const engine = new ChannelSubscription({ roots: ["run", "$projection_*"] }, (post, first) => {
+ *   tree.ApplyDiff(post.diff, "/engine/");
+ *   tree.RunProjections();
+ *   tree.Commit();
+ * });
+ * OnConnect("engine", port => engine.Connect(port));
+ */
+export class ChannelSubscription {
+  /** The source's root keys delivered and not deleted */
+  private delivered = new Set<string>();
+  private client?: ChannelClient;
+  private ownClient = false;
+  private sub?: number;
+
+  /**
+   * @param options The roots, and the form, as `DiffTreePublisher.Subscribe` takes them.
+   * @param callback Each delivery, and whether it's the first state of a `Connect`.
+   */
+  constructor(private options: ISubscribeOptions, private callback: (delivery: any, first: boolean) => void) { }
+
+  /**
+   * Subscribes over a channel, or a client of one, in place of the last: the first state arrives
+   * as one delivery, with the deletes for the roots the last tree had and this one hasn't.
+   * @param onSubscribed Called once the first state is out, with the error when subscribing failed.
+   * @returns What ends this connection's subscription.
+   */
+  Connect(channel: IChannel | ChannelClient, onSubscribed?: (error?: unknown) => void): () => void {
+    this.Stop();
+    const client = this.client = channel instanceof ChannelClient ? channel : new ChannelClient(channel);
+    this.ownClient = !(channel instanceof ChannelClient);
+    const previous = this.delivered;
+    this.delivered = new Set();
+    const snapshot = this.options.form === "snapshot";
+    // After a tree that delivered something, the first state waits for jt-subscribed to take the deletes
+    const hold = previous.size > 0;
+    let first: any;
+    let subscribed = false;
+    const sub = this.sub = client.Subscribe(this.options, delivery => {
+      if (subscribed || !hold) {
+        this.Track(delivery, snapshot);
+        this.callback(delivery, !subscribed);
+        return;
+      }
+
+      first = delivery;
+    }, error => {
+      subscribed = true;
+      if (error === undefined && hold) {
+        const delivery = first ?? (snapshot ? { seq: 0, roots: {}, deleted: [] } : { seq: 0, diff: [] });
+        this.Track(delivery, snapshot);
+        for (const key of previous)
+          if (!this.delivered.has(key))
+            snapshot ? delivery.deleted.push(key) : delivery.diff.push({ type: "delete", path: [key] });
+
+        (first !== undefined || (snapshot ? delivery.deleted.length > 0 : delivery.diff.length > 0)) && this.callback(delivery, true);
+      }
+
+      onSubscribed?.(error);
+    });
+    return () => this.sub === sub && this.Stop();
+  }
+
+  /** Ends the subscription on the current channel; what it delivered is kept for the next `Connect` */
+  Stop() {
+    if (this.client && this.sub !== undefined)
+      this.ownClient ? this.client.Destroy() : this.client.Unsubscribe(this.sub);
+
+    this.client = undefined;
+    this.sub = undefined;
+  }
+
+  private Track(delivery: any, snapshot: boolean) {
+    if (snapshot) {
+      for (const key of Object.keys(delivery.roots))
+        this.delivered.add(key);
+
+      for (const key of delivery.deleted)
+        this.delivered.delete(key);
+
+      return;
+    }
+
+    for (const record of (delivery as IDiffPost).diff) {
+      const key = String(record.path[0]);
+      record.type === "delete" && record.path.length === 1 ? this.delivered.delete(key) : this.delivered.add(key);
+    }
+  }
+}
+
+/**
  * Subscribes to the tree a `HostPublisher` serves on a channel, such as a port to another worker.
  * The deliveries are the same as `DiffTreePublisher.Subscribe`'s, but they arrive asynchronously:
  * the first state as the host's first post, then each commit. Values are structured-cloned copies.

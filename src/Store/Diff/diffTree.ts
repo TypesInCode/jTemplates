@@ -1,7 +1,7 @@
 import { JsonDiffIdentityFunc, JsonDiffInto, JsonDiffResult, JsonDiffStrategyFunc, JsonMerge, JsonType } from '../../Utils/json';
 import { Snapshot } from '../Tree/snapshot';
 import { IKeyFunc, IRouteDefinitions } from './utils/diffTree.types';
-import { ApplyValueToPath, SpliceValueAtPath, WriteContext } from './utils/homes';
+import { ApplyRecords, ApplyValueToPath, SpliceValueAtPath, WriteContext } from './utils/homes';
 import { JoinPaths, PROJECTION_PREFIX, ROOT_ROUTE, SplitRouteAndPath } from './utils/paths';
 import { Projections } from './utils/projections';
 import { RouteInstances } from './utils/routes';
@@ -38,6 +38,7 @@ export class DiffTree {
 
   WritePath(path: string, value: any) {
     AssertWritable(SplitRouteAndPath(path)[1]);
+    this.AssertLocal(path);
     // Keyed entities are local to the route written to; a key starting with "/" is a route path from the root
     ApplyValueToPath(this.writeContext, path, value);
   }
@@ -65,7 +66,54 @@ export class DiffTree {
   // Shared by PushPath and SplicePath
   private Splice(path: string, start: number, deleteCount: number, items: readonly unknown[]) {
     AssertWritable(SplitRouteAndPath(path)[1]);
+    this.AssertLocal(path);
     SpliceValueAtPath(this.writeContext, path, start, deleteCount, items);
+  }
+
+  /**
+   * Applies another tree's diff records, a delivery of its commit, as writes to this tree, in
+   * order: each `write` as `WritePath`, each `splice` as `SplicePath` (moves included), each
+   * `delete` as removing the property, or the root key. The next `Commit` diffs them as it does any
+   * write, and the projections that read them rerun on `RunProjections`.
+   *
+   * Into the root route, the records' root keys are this tree's root keys, and a projection output
+   * (`$projection_<key>`) can't be written. Into a follow route (`FollowRoutes`), which only this
+   * writes, they're held under the source's own keys, projection outputs included, and a route is
+   * never posted: the source's data stays in this tree, and only what its projections derive from it
+   * reaches this tree's subscribers.
+   *
+   * Give the route the source's keyFunc, or one that gives its entities the same keys: the source's
+   * commit carries a change to an entity once, as its own root's records, and skips it wherever
+   * else it appears. Here, as there, each of those places is a slot holding the entity's home, so
+   * it reads the change too. Without the keyFunc, the copy of an entity inside another root would
+   * keep its first value.
+   * @param records A diff, e.g. an `IDiffPost`'s, from a subscription in the `"diff"` form
+   * @param route The route to apply them to: the root route (`/`, the default) or a follow route,
+   *   e.g. `/engine/`
+   * @throws When a record writes a projection output in the root route, the route isn't the root
+   *   or a follow route, or a record's parent doesn't exist
+   */
+  ApplyDiff(records: JsonDiffResult, route: string = ROOT_ROUTE) {
+    const fullRoute = JoinPaths("", route);
+    if (fullRoute === ROOT_ROUTE) {
+      for (let x = 0; x < records.length; x++) {
+        const key = String(records[x].path[0]);
+        AssertWritable(key);
+        if (key.startsWith(ROOT_ROUTE))
+          throw new Error(`Unable to apply a record at ${key}: a diff's records are in the root route`);
+      }
+    }
+    else if (!this.routes.Get(fullRoute).follow || this.routes.Get(fullRoute).path !== fullRoute)
+      throw new Error(`Unable to apply a diff at ${fullRoute}: only the root route or a follow route (FollowRoutes) takes one.`);
+
+    ApplyRecords(this.writeContext, records, fullRoute);
+  }
+
+  /** A write's route isn't a follow route, which only `ApplyDiff` writes */
+  private AssertLocal(path: string) {
+    const route = SplitRouteAndPath(path)[0];
+    if (route !== "" && this.routes.Get(JoinPaths("", route)).follow)
+      throw new Error(`Unable to write ${path}: a follow route is written only by ApplyDiff, from its subscription.`);
   }
 
   /**

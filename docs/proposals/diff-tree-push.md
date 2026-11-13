@@ -288,6 +288,18 @@ A worker that derives state from another worker's tree subscribes in the `"snaps
 - **Committing stays explicit.** An update is one message the worker handles between batches; it runs projections and commits when the change should reach its own subscribers.
 - **Keyed data needs the source's `keyFunc` in the subscriber's tree.** Editing an entity commits only the entity's own root (`task_1`); a root that refers to it (`list`) isn't in the diff, since the commit skips an entity whose key didn't change. The subscriber receives `task_1` alone, which is right only when its tree routes it to the entity's home by the same `keyFunc`, so that `/engine/list`'s slots hold the same object. With another `keyFunc`, or none, its `list` keeps stale copies.
 
+**As built (builder-app's derived tabs):** the route, as above, but kept in the diff form. Each source has a follow
+route in the subscriber's tree (`FollowRoutes({ project: entityKey, engine: undefined })` gives `/project/` and
+`/engine/`), keyed with the source's keyFunc (a route without one keys nothing, rather than taking the tree's), with
+no projections of its own, so the source's roots are held under their own keys, `$projection_*` included. Only
+`DiffTreePublisher.ApplyDiff(records, route)` writes it; any other write to it throws. A `ChannelSubscription` in the
+`"diff"` form delivers the posts, and the subscriber applies each one, runs its projections and commits. Only what
+changed crosses, so a large keyed root (a project's rows) costs what an edit changed, not its size, and the
+keyed-data rule above holds as stated: the route identifies data as the source does, so a slot inside it reads the
+entity's change. A `ChannelSubscription` outlives each port: on `Connect` to a restarted source, its first state
+deletes, in the same delivery, the roots the old source had and the new one hasn't, so a wildcard read of the route
+reads nothing left behind. `StoreAsync.Reconnect` uses the same mechanism for a store.
+
 ### A store that outlives its tree
 
 Subscribing yields the committed state first, so a store can move to a new tree:

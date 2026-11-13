@@ -1,5 +1,5 @@
 import { IKeyFunc, IKeyedProjectionDefinition, IProjection, IProjectionDefinition, IRoute, IRouteDefinition, IRouteDefinitions } from "./diffTree.types";
-import { IsWildcardPath, JoinPaths, PathsOverlap, PROJECTION_PREFIX, ROOT_ROUTE, RouteSegments, ValidateWildcardPath } from "./paths";
+import { IsWildcardPath, JoinPaths, PathsOverlap, PROJECTION_PREFIX, ROOT_ROUTE, ROUTE_DELIMETER, RouteSegments, ValidateWildcardPath } from "./paths";
 
 /**
  * A DiffTree's route instances: one per route path a definition matches, created from the
@@ -146,6 +146,10 @@ function MatchRouteDefinition(definitions: IRouteDefinitions | undefined, segmen
  * @param defaultKeyFunc The tree's keyFunc, used when the definition doesn't define one
  */
 function CreateRoute(parts: string[], routePath: string, definition: IRouteDefinition, defaultKeyFunc: IKeyFunc | undefined): IRoute {
+  const follow = definition.follow === true;
+  if (follow && Object.keys(definition.projections).length > 0)
+    throw new Error(`Invalid follow route ${routePath}: a follow route holds another tree's roots and has no projections of its own.`);
+
   const projections: IProjection[] = [];
   for (const key in definition.projections) {
     const projectionDefinition = definition.projections[key];
@@ -181,8 +185,39 @@ function CreateRoute(parts: string[], routePath: string, definition: IRouteDefin
     childRoutes: new Map(),
     childPartCounts: PartCounts(definition.routes),
     keyFunc: definition.keyFunc ?? defaultKeyFunc,
-    routeDefinitions: definition.routes
+    routeDefinitions: definition.routes,
+    follow
   };
+}
+
+/** A source's keyFunc when it has none: a follow route doesn't take the tree's. */
+const NoKey: IKeyFunc = () => undefined;
+
+/**
+ * The follow routes for the trees a tree follows, one per source by name: `/<name>/`, holding the
+ * source's roots under their own keys, each keyed entity at its home in the route (its key is
+ * joined to the route, so it can't meet the tree's own). Give each source's keyFunc: the trees that
+ * pass data identify it the same way, or a slot holding an entity elsewhere in the source keeps its
+ * first value here. Merge them into the tree's route definitions.
+ * @example
+ * const tree = new DiffTreePublisher(undefined, {
+ *   "/": { projections: { ... } },
+ *   ...FollowRoutes({ project: entityKey, engine: undefined }),
+ * });
+ * // a subscription to the project's tree applies its posts at /project/
+ * subscription.Connect(port); // callback: post => tree.ApplyDiff(post.diff, "/project/")
+ */
+export function FollowRoutes(sources: { [name: string]: IKeyFunc | undefined }): IRouteDefinitions {
+  const definitions: IRouteDefinitions = {};
+  for (const name of Object.keys(sources)) {
+    if (name === "" || name.includes(ROUTE_DELIMETER) || IsParam(name))
+      throw new Error(`Invalid follow route name ${name}: one route segment, not a parameter.`);
+
+    // A route without a keyFunc takes the tree's: a source without one is given one that keys nothing
+    definitions[`${ROUTE_DELIMETER}${name}`] = { projections: {}, keyFunc: sources[name] ?? NoKey, follow: true };
+  }
+
+  return definitions;
 }
 
 /** Whether a projection definition is a keyed projection: it has no `reads` */
