@@ -1,20 +1,20 @@
 import { IChannel, IConnectMessage, IHostRequest, ILocalLease, ISourcesMessage, IWorkerLease } from "./diffTree.types";
 import { ObservableDiffTree } from "./observableDiffTree";
-import { HubEndpoint } from "./hubEndpoint";
-import type { IHubEndpoint } from "./hubEndpoint.types";
+import { DiffTreeEndpoint } from "./diffTreeEndpoint";
+import type { IDiffTreeEndpoint } from "./diffTreeEndpoint.types";
 
 /** What a `DiffTreeHub` needs of a worker: a `Worker`, or anything shaped like one */
-export interface IHubWorker {
+export interface IDiffTreeWorker {
   postMessage(message: any, transfer: Transferable[]): void;
   terminate(): void;
 }
 
 /**
  * Creates an endpoint's tree, on its first start and each restart: a worker hosting the tree
- * (`HubEndpoint.Host` in its entry), or the `ObservableDiffTree` itself, to run on this thread. What it
+ * (`DiffTreeEndpoint.Host` in its entry), or the `ObservableDiffTree` itself, to run on this thread. What it
  * returns decides the key's kind, and a key's factory always returns the same kind.
  */
-export type TreeFactory = () => IHubWorker | ObservableDiffTree;
+export type TreeFactory = () => IDiffTreeWorker | ObservableDiffTree;
 
 /** Where a key's tree runs: in a worker (`"worker"`), or on this thread (`"local"`) */
 export type TreeKind = "worker" | "local";
@@ -29,13 +29,13 @@ export interface IRegisterOptions {
 }
 
 interface IEntry {
-  endpoint: IHubEndpoint;
+  endpoint: IDiffTreeEndpoint;
   factory: TreeFactory;
   options: IRegisterOptions;
   /** What the factory returns, known from the first start */
   kind?: TreeKind;
   /** While it runs: the worker, or for a tree on this thread the channel the hub hosts it on */
-  worker?: IHubWorker;
+  worker?: IDiffTreeWorker;
   /** While a tree on this thread runs: the tree */
   tree?: ObservableDiffTree;
   /** Leases on this tree */
@@ -102,9 +102,9 @@ class TreeLease extends Lease implements ILocalLease {
  * two ends.
  *
  * - **`Register(endpoint, factory)`** records how to create a tree, and takes the trees it follows
- *   from the endpoint's definition (`HubEndpoint.Define`), each registered before it. It creates
+ *   from the endpoint's definition (`DiffTreeEndpoint.Define`), each registered before it. It creates
  *   nothing.
- * - **The factory returns a worker or a tree.** A worker hosts its own tree (`HubEndpoint.Host` in its
+ * - **The factory returns a worker or a tree.** A worker hosts its own tree (`DiffTreeEndpoint.Host` in its
  *   entry). A returned `ObservableDiffTree` runs on this thread: the hub hosts it with the same call,
  *   on a channel of its own. Either way, the hub manages it the same way. What the first start
  *   returns fixes the key's kind.
@@ -116,7 +116,7 @@ class TreeLease extends Lease implements ILocalLease {
  * - **A tree is released when its last lease ends**, at once or after its `releaseDebounce`. A tree
  *   that must outlive every view is held by a store the app keeps.
  * - **A tree that follows others** holds a lease on each while it runs, and its `OnConnect` handlers
- *   (`HubEndpoint.Connect`) get a port to each source's tree, again whenever either restarts.
+ *   (`DiffTreeEndpoint.Connect`) get a port to each source's tree, again whenever either restarts.
  * - **`Restart`** creates the tree again from its factory. The tree is the source of truth: every
  *   store on it starts over with the new tree, as when it first subscribed, and nothing a store
  *   wrote is written back. State that must outlive a restart belongs in a tree of its own that the
@@ -146,7 +146,7 @@ export class DiffTreeHub {
    * @param options `releaseDebounce`: see `IRegisterOptions`.
    * @throws When the name is already registered, or a source isn't registered yet.
    */
-  Register(endpoint: IHubEndpoint, factory: TreeFactory, options: IRegisterOptions = {}) {
+  Register(endpoint: IDiffTreeEndpoint, factory: TreeFactory, options: IRegisterOptions = {}) {
     const name = endpoint.name;
     if (this.entries.has(name))
       throw new Error(`DiffTreeHub: ${name} is already registered.`);
@@ -316,13 +316,13 @@ export class DiffTreeHub {
       throw new Error(`DiffTreeHub: ${name}'s factory returned neither a worker nor an ObservableDiffTree (an ObservableDiffTree from another copy of j-templates isn't one).`);
 
     if (entry.kind && entry.kind !== kind) {
-      kind === "worker" && (result as IHubWorker).terminate();
+      kind === "worker" && (result as IDiffTreeWorker).terminate();
       throw new Error(`DiffTreeHub: ${name}'s factory returned ${Describe(kind)} after ${Describe(entry.kind)}; a key's factory always returns one kind.`);
     }
 
     entry.kind = kind;
     if (kind === "worker")
-      entry.worker = result as IHubWorker;
+      entry.worker = result as IDiffTreeWorker;
     else {
       entry.tree = result as ObservableDiffTree;
       entry.worker = HostLocal(entry.endpoint, entry.tree);
@@ -399,13 +399,13 @@ export class DiffTreeHub {
 }
 
 /**
- * Hosts a tree on this thread as a worker hosts its own: `HubEndpoint.Host` on one end of a
+ * Hosts a tree on this thread as a worker hosts its own: `DiffTreeEndpoint.Host` on one end of a
  * `MessageChannel`, with the other end as the hub's "worker". Terminating it stops the host and
  * closes both ends.
  */
-function HostLocal(endpoint: IHubEndpoint, tree: ObservableDiffTree): IHubWorker {
+function HostLocal(endpoint: IDiffTreeEndpoint, tree: ObservableDiffTree): IDiffTreeWorker {
   const { port1, port2 } = new MessageChannel();
-  const stop = HubEndpoint.Host(endpoint, tree, port2 as unknown as IChannel);
+  const stop = DiffTreeEndpoint.Host(endpoint, tree, port2 as unknown as IChannel);
   port2.start();
   return {
     postMessage: (message, transfer) => port1.postMessage(message, transfer),
@@ -417,8 +417,8 @@ function HostLocal(endpoint: IHubEndpoint, tree: ObservableDiffTree): IHubWorker
   };
 }
 
-function IsWorker(value: unknown): value is IHubWorker {
-  return typeof (value as IHubWorker)?.postMessage === "function" && typeof (value as IHubWorker)?.terminate === "function";
+function IsWorker(value: unknown): value is IDiffTreeWorker {
+  return typeof (value as IDiffTreeWorker)?.postMessage === "function" && typeof (value as IDiffTreeWorker)?.terminate === "function";
 }
 
 function Describe(kind: TreeKind) {

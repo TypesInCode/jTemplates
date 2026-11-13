@@ -1,6 +1,6 @@
 # Proposal: A Reactive Hub
 
-Status: draft, for discussion. Not part of the hub-endpoint changes (`DiffTreeHub`, `HubEndpoint`, stores over leases); it builds on them. Written 2026-11-13.
+Status: draft, for discussion. Not part of the hub-endpoint changes (`DiffTreeHub`, `DiffTreeEndpoint`, stores over leases); it builds on them. Written 2026-11-13.
 
 ## Summary
 
@@ -57,7 +57,7 @@ What the hub knows already. No protocol change. Per tree, in `tree_<name>`:
 | `error` | The last error: a worker's `error` or `messageerror` event, or a factory that threw |
 
 - `"failed"` means the worker reported an error. The hub doesn't restart it: restarting stays the app's decision.
-- Listening for a worker's errors needs `addEventListener` on the worker. `IHubWorker` gains it as optional; a real `Worker` has it.
+- Listening for a worker's errors needs `addEventListener` on the worker. `IDiffTreeWorker` gains it as optional; a real `Worker` has it.
 
 *Use cases:*
 - **`state` / `kind`:** a debug panel lists every tree, where it runs and whether it's running (what the sample's Worker hub panel shows today through `InstrumentedHub`).

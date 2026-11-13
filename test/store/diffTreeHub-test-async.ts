@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import type { IRouteDefinitions } from "../../src/Store/Diff";
 import { DiffTreeHub } from "../../src/Store/Diff/diffTreeHub";
-import { HubEndpoint } from "../../src/Store/Diff/hubEndpoint";
+import { DiffTreeEndpoint } from "../../src/Store/Diff/diffTreeEndpoint";
 import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher } from "../../src/Store/Diff/hostPublisher";
 import { OnConnect } from "../../src/Store/Diff/onConnect";
@@ -11,12 +11,12 @@ import { CreateShimChannel, CreateShimWorker, Settle, WaitFor } from "./worker-s
 
 // DiffTreeHub over shim workers: leases, release, connections, restarts, and stores that follow a
 // lease across a restart. The trace worker wires its connection by hand (OnConnect), to test what
-// HubEndpoint.Connect is built on; hubEndpoint-test-async.ts tests the endpoint's own wiring.
+// DiffTreeEndpoint.Connect is built on; diffTreeEndpoint-test-async.ts tests the endpoint's own wiring.
 
 type Shim = ReturnType<typeof CreateShimWorker>;
 
-const engineEndpoint = HubEndpoint.Define("engine");
-const traceEndpoint = HubEndpoint.Define("trace", (remote) => ({ engine: remote(engineEndpoint, ["list"]) }));
+const engineEndpoint = DiffTreeEndpoint.Define("engine");
+const traceEndpoint = DiffTreeEndpoint.Define("trace", (remote) => ({ engine: remote(engineEndpoint, ["list"]) }));
 
 const deriveRoutes: IRouteDefinitions = {
   "/": { projections: { count: { reads: ["/engine/list"], projection: (list: any) => list?.length ?? 0 } } },

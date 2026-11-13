@@ -3,13 +3,13 @@ import type { IChannel, IDiffPost } from "./diffTree.types";
 import type { ObservableDiffTree } from "./observableDiffTree";
 import { HostPublisher } from "./hostPublisher";
 import type {
-  HubEndpointFollowFunc,
-  HubEndpointRemoteFunc,
-  IHubEndpoint,
-  IHubEndpointHostOptions,
-  IHubEndpointOptions,
-  IHubEndpointRemote
-} from "./hubEndpoint.types";
+  DiffTreeEndpointFollowFunc,
+  DiffTreeEndpointRemoteFunc,
+  IDiffTreeEndpoint,
+  IDiffTreeEndpointHostOptions,
+  IDiffTreeEndpointOptions,
+  IDiffTreeEndpointRemote
+} from "./diffTreeEndpoint.types";
 import { OnConnect } from "./onConnect";
 import type { IRouteDefinitions } from "./utils/diffTree.types";
 import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
@@ -22,15 +22,15 @@ import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
 // the endpoints that follow it.
 
 /**
- * Hub endpoints: an endpoint is a key in a `DiffTreeHub`, and one tree in the app's dependency graph.
+ * DiffTree endpoints: an endpoint is a key in a `DiffTreeHub`, and one tree in the app's dependency graph.
  * `Define` describes it once, as plain data, and everything attached to it is derived from that: the
  * hub's registration (`DiffTreeHub.Register`), the tree's follow routes (`FollowRoutes`), its hosting
  * (`Host`), and the stores opened on it (`StoreAsync`, `StoreSync`).
  *
  * @example
  * // ledger-endpoint.ts and totals-endpoint.ts: imported by the main thread and the workers
- * export const ledgerEndpoint = HubEndpoint.Define("ledger");
- * export const totalsEndpoint = HubEndpoint.Define("totals", remote => ({
+ * export const ledgerEndpoint = DiffTreeEndpoint.Define("ledger");
+ * export const totalsEndpoint = DiffTreeEndpoint.Define("totals", remote => ({
  *   ledger: remote(ledgerEndpoint, ["entries"])      // { entries: "/ledger/entries" }
  * }));
  *
@@ -38,14 +38,14 @@ import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
  * export function newTotalsTree() {
  *   return new ObservableDiffTree(totalsEndpoint.keyFunc, {
  *     "/": { projections: { totals: { reads: [totalsEndpoint.config.ledger.entries], projection: categoryTotals } } },
- *     ...HubEndpoint.FollowRoutes(totalsEndpoint)
+ *     ...DiffTreeEndpoint.FollowRoutes(totalsEndpoint)
  *   });
  * }
  *
  * // totals-worker.ts
- * HubEndpoint.Host(totalsEndpoint, newTotalsTree(), self);
+ * DiffTreeEndpoint.Host(totalsEndpoint, newTotalsTree(), self);
  */
-export namespace HubEndpoint {
+export namespace DiffTreeEndpoint {
   /**
    * Defines an endpoint. `remote(source, roots)`, given to `build`, records a connection when it's
    * called and returns each root's path in the following tree. It takes the source's definition,
@@ -54,7 +54,7 @@ export namespace HubEndpoint {
    * output, and `"o_*"` follows keyed entities.
    *
    * @example
-   * const totalsEndpoint = HubEndpoint.Define("totals", remote => ({
+   * const totalsEndpoint = DiffTreeEndpoint.Define("totals", remote => ({
    *   ledger: remote(ledgerEndpoint, ["entries"])     // { entries: "/ledger/entries" }
    * }));
    * hub.Register(totalsEndpoint, () => new Worker(new URL("./totals-worker.ts", import.meta.url), { type: "module" }));
@@ -67,16 +67,16 @@ export namespace HubEndpoint {
    */
   export function Define<C extends object = {}>(
     name: string,
-    build: (remote: HubEndpointRemoteFunc) => C = () => ({}) as C,
-    options: IHubEndpointOptions = {}
-  ): IHubEndpoint<C> {
+    build: (remote: DiffTreeEndpointRemoteFunc) => C = () => ({}) as C,
+    options: IDiffTreeEndpointOptions = {}
+  ): IDiffTreeEndpoint<C> {
     if (name === "" || name.includes("/") || (name.startsWith("{") && name.endsWith("}")))
-      throw new Error(`HubEndpoint: invalid name ${name}, one route segment, not a parameter.`);
+      throw new Error(`DiffTreeEndpoint: invalid name ${name}, one route segment, not a parameter.`);
 
-    const remotes = new Map<string, IHubEndpointRemote>();
-    const remote: HubEndpointRemoteFunc = (source, roots) => {
+    const remotes = new Map<string, IDiffTreeEndpointRemote>();
+    const remote: DiffTreeEndpointRemoteFunc = (source, roots) => {
       if (source.name === name)
-        throw new Error(`HubEndpoint: ${name} can't follow itself.`);
+        throw new Error(`DiffTreeEndpoint: ${name} can't follow itself.`);
 
       let spec = remotes.get(source.name);
       if (!spec) {
@@ -115,11 +115,11 @@ export namespace HubEndpoint {
    * The follow routes for an endpoint's sources, each with the source's keyFunc, to merge into the
    * route definitions of the tree that hosts it.
    * @example
-   * new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...HubEndpoint.FollowRoutes(endpoint) });
+   * new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...DiffTreeEndpoint.FollowRoutes(endpoint) });
    * @param endpoint The endpoint the tree is registered as.
    * @returns Route definitions, one per source.
    */
-  export function FollowRoutes(endpoint: IHubEndpoint): IRouteDefinitions {
+  export function FollowRoutes(endpoint: IDiffTreeEndpoint): IRouteDefinitions {
     return CreateFollowRoutes(Object.fromEntries(endpoint.remotes.map(remote => [remote.source, remote.keyFunc])));
   }
 
@@ -132,10 +132,10 @@ export namespace HubEndpoint {
    *
    * @example
    * // totals-worker.ts
-   * HubEndpoint.Host(totalsEndpoint, newTotalsTree(), self);
+   * DiffTreeEndpoint.Host(totalsEndpoint, newTotalsTree(), self);
    *
    * // a tree that acts on what it follows at the end of the turn, and commits then
-   * HubEndpoint.Host(traceEndpoint, tree.publisher, self, { onFollow: () => tree.received() });
+   * DiffTreeEndpoint.Host(traceEndpoint, tree.publisher, self, { onFollow: () => tree.received() });
    * @param endpoint The endpoint the tree is registered as.
    * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
@@ -143,10 +143,10 @@ export namespace HubEndpoint {
    * @returns A function that stops following the sources and serving the tree.
    */
   export function Host(
-    endpoint: IHubEndpoint,
+    endpoint: IDiffTreeEndpoint,
     tree: ObservableDiffTree,
     scope: IChannel = globalThis as any,
-    options: IHubEndpointHostOptions = {}
+    options: IDiffTreeEndpointHostOptions = {}
   ): () => void {
     tree.MarkOpaque(endpoint.opaque);
     const host = HostPublisher(tree, scope);
@@ -165,9 +165,9 @@ export namespace HubEndpoint {
    * Call it alone only for a tree served some other way.
    *
    * @example
-   * const tree = new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...HubEndpoint.FollowRoutes(endpoint) });
+   * const tree = new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...DiffTreeEndpoint.FollowRoutes(endpoint) });
    * HostPublisher(tree, self);
-   * HubEndpoint.Connect(endpoint, tree, self);
+   * DiffTreeEndpoint.Connect(endpoint, tree, self);
    * @param endpoint The endpoint whose sources are followed.
    * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
@@ -176,10 +176,10 @@ export namespace HubEndpoint {
    * @returns A function that stops following every source.
    */
   export function Connect(
-    endpoint: IHubEndpoint,
+    endpoint: IDiffTreeEndpoint,
     tree: ObservableDiffTree,
     scope: IChannel = globalThis as any,
-    options: IHubEndpointHostOptions = {}
+    options: IDiffTreeEndpointHostOptions = {}
   ): () => void {
     const onFollow = options.onFollow ?? Commit;
     const stops = endpoint.remotes.map(remote => {
@@ -191,7 +191,7 @@ export namespace HubEndpoint {
   }
 
   /** Applies a source's posts at its follow route, over the ports `Connect` gives it */
-  function Follower(remote: IHubEndpointRemote, tree: ObservableDiffTree, onFollow: HubEndpointFollowFunc) {
+  function Follower(remote: IDiffTreeEndpointRemote, tree: ObservableDiffTree, onFollow: DiffTreeEndpointFollowFunc) {
     const route = FollowRoute(remote.source);
     return new ChannelSubscription({ roots: remote.roots }, (post: IDiffPost) => {
       tree.ApplyDiff(post.diff, route);

@@ -1,6 +1,6 @@
 import type { JsonDiffResult } from "../../Utils/json";
 import type { ObservableDiffTree } from "./observableDiffTree";
-import type { IHubEndpoint } from "./hubEndpoint.types";
+import type { IDiffTreeEndpoint } from "./diffTreeEndpoint.types";
 
 /** An `ObservableDiffTree` method call in a `jt-batch` */
 export interface IDiffMethod {
@@ -109,7 +109,7 @@ export interface IWorkerLease {
   /** The endpoint's name */
   readonly name: string;
   /** The endpoint the tree is registered as */
-  readonly endpoint: IHubEndpoint;
+  readonly endpoint: IDiffTreeEndpoint;
   /** The current port to the worker; replaced when the worker restarts */
   readonly port: MessagePort;
   readonly released: boolean;
@@ -131,7 +131,7 @@ export interface ILocalLease {
   /** The endpoint's name */
   readonly name: string;
   /** The endpoint the tree is registered as */
-  readonly endpoint: IHubEndpoint;
+  readonly endpoint: IDiffTreeEndpoint;
   /** The current tree; replaced when it restarts */
   readonly tree: ObservableDiffTree;
   readonly released: boolean;

@@ -1,10 +1,10 @@
-# Next steps: hub endpoints (2026-11-13)
+# Next steps: DiffTree endpoints (2026-11-13)
 
-Branch `feature/diff-tree-push`. The model is in [docs/patterns/05-hub-endpoints.md](docs/patterns/05-hub-endpoints.md);
+Branch `feature/diff-tree-push`. The model is in [docs/patterns/05-difftree-endpoints.md](docs/patterns/05-difftree-endpoints.md);
 it was prototyped in procedures-engine's `sample-worker-stores/src-framework`, and the plan for moving
 the sample and builder-app onto it is that repo's `sample-worker-stores/INTEGRATION.md`.
 
-**Done:** `HubEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow`, `Connect`);
+**Done:** `DiffTreeEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow`, `Connect`);
 `DiffTreeHub.Register(endpoint, factory)`, a factory returning a worker or a tree, `Open` / `OpenLocal`,
 `KindOf`; `StoreAsync` and `StoreSync` over leases, owning them; restart without reseed, unacknowledged
 changes rejected; `StoreSync.Destroy`; `@ComputedAsync` removed; `npm test` type-checks the tests

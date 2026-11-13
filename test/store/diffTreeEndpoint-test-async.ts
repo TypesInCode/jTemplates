@@ -2,16 +2,16 @@ import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { afterEach, describe, expect, it } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
-import { HubEndpoint } from "../../src/Store/Diff/hubEndpoint";
+import { DiffTreeEndpoint } from "../../src/Store/Diff/diffTreeEndpoint";
 import { DiffTreeHub } from "../../src/Store/Diff/diffTreeHub";
 import { CreateShimHost, WaitFor } from "./worker-shim";
 
 // Endpoints on a DiffTreeHub of same-thread workers: a counter source, and a doubling endpoint
 // that follows it.
 
-const counterEndpoint = HubEndpoint.Define("counter");
+const counterEndpoint = DiffTreeEndpoint.Define("counter");
 
-const doubledEndpoint = HubEndpoint.Define("doubled", remote => ({
+const doubledEndpoint = DiffTreeEndpoint.Define("doubled", remote => ({
   counter: remote(counterEndpoint, ["count", "$projection_described"])
 }));
 
@@ -35,7 +35,7 @@ function NewDoubledTree() {
         echo: { reads: [counter.$projection_described], projection: (d: string) => `echo ${d}` }
       }
     },
-    ...HubEndpoint.FollowRoutes(doubledEndpoint)
+    ...DiffTreeEndpoint.FollowRoutes(doubledEndpoint)
   });
 }
 
@@ -43,14 +43,14 @@ let hub: DiffTreeHub;
 
 function CreateHub() {
   hub = new DiffTreeHub();
-  hub.Register(counterEndpoint, () => CreateShimHost(scope => HubEndpoint.Host(counterEndpoint, NewCounterTree(), scope)));
-  hub.Register(doubledEndpoint, () => CreateShimHost(scope => HubEndpoint.Host(doubledEndpoint, NewDoubledTree(), scope)));
+  hub.Register(counterEndpoint, () => CreateShimHost(scope => DiffTreeEndpoint.Host(counterEndpoint, NewCounterTree(), scope)));
+  hub.Register(doubledEndpoint, () => CreateShimHost(scope => DiffTreeEndpoint.Host(doubledEndpoint, NewDoubledTree(), scope)));
   return hub;
 }
 
 afterEach(() => hub?.Destroy());
 
-describe("HubEndpoint.Define", () => {
+describe("DiffTreeEndpoint.Define", () => {
   it("records each remote as it's called, with its paths", () => {
     expect(doubledEndpoint.sources).toEqual(["counter"]);
     expect(doubledEndpoint.remotes).toEqual([
@@ -63,7 +63,7 @@ describe("HubEndpoint.Define", () => {
   });
 
   it("merges a second remote to the same source", () => {
-    const store = HubEndpoint.Define("twice", remote => ({
+    const store = DiffTreeEndpoint.Define("twice", remote => ({
       a: remote(counterEndpoint, ["count"]),
       b: remote(counterEndpoint, ["count", "label"])
     }));
@@ -72,19 +72,19 @@ describe("HubEndpoint.Define", () => {
 
   it("carries the source's keyFunc to the stores that follow it", () => {
     const keyFunc = (v: { id?: string }) => v?.id;
-    const keyed = HubEndpoint.Define("keyed", undefined, { keyFunc });
-    const follower = HubEndpoint.Define("follower", remote => ({ k: remote(keyed, ["rows", "o_*"]) }));
+    const keyed = DiffTreeEndpoint.Define("keyed", undefined, { keyFunc });
+    const follower = DiffTreeEndpoint.Define("follower", remote => ({ k: remote(keyed, ["rows", "o_*"]) }));
     expect(follower.remotes[0].keyFunc).toBe(keyFunc);
   });
 
   it("refuses a name that isn't one route segment, and a store that follows itself", () => {
-    expect(() => HubEndpoint.Define("a/b")).toThrow("one route segment");
-    const self = HubEndpoint.Define("self");
-    expect(() => HubEndpoint.Define("self", remote => ({ s: remote(self, ["x"]) }))).toThrow("can't follow itself");
+    expect(() => DiffTreeEndpoint.Define("a/b")).toThrow("one route segment");
+    const self = DiffTreeEndpoint.Define("self");
+    expect(() => DiffTreeEndpoint.Define("self", remote => ({ s: remote(self, ["x"]) }))).toThrow("can't follow itself");
   });
 });
 
-describe("HubEndpoint.Connect", () => {
+describe("DiffTreeEndpoint.Connect", () => {
   it("follows the source's roots and projections across workers", async () => {
     CreateHub();
     const counter = new StoreAsync(hub.Open(counterEndpoint.name));
@@ -136,7 +136,7 @@ describe("StoreAsync", () => {
 
 describe("opaque", () => {
   // An endpoint whose projection output is held whole, read from one definition by both sides
-  const viewEndpoint = HubEndpoint.Define("view", undefined, { opaque: ["$projection_view"] });
+  const viewEndpoint = DiffTreeEndpoint.Define("view", undefined, { opaque: ["$projection_view"] });
   type View = { n: number; items: number[] };
 
   function NewViewTree() {
@@ -152,7 +152,7 @@ describe("opaque", () => {
 
   function CreateViewHub() {
     hub = new DiffTreeHub();
-    hub.Register(viewEndpoint, () => CreateShimHost(scope => HubEndpoint.Host(viewEndpoint, NewViewTree(), scope)));
+    hub.Register(viewEndpoint, () => CreateShimHost(scope => DiffTreeEndpoint.Host(viewEndpoint, NewViewTree(), scope)));
     return hub;
   }
 

@@ -1,7 +1,7 @@
 import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { afterEach, describe, expect, it } from "vitest";
-import { HubEndpoint } from "../../src/Store/Diff/hubEndpoint";
-import type { IHubEndpoint } from "../../src/Store/Diff/hubEndpoint.types";
+import { DiffTreeEndpoint } from "../../src/Store/Diff/diffTreeEndpoint";
+import type { IDiffTreeEndpoint } from "../../src/Store/Diff/diffTreeEndpoint.types";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { StoreSync } from "../../src/Store/Store/storeSync";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
@@ -10,15 +10,15 @@ import { CreateShimHost, WaitFor } from "./worker-shim";
 
 // A DiffTreeHub with trees of both kinds: a counter in a (same-thread) worker, a tally on the main thread
 // that follows it, and an echo worker that follows the tally. Every tree file only builds its tree:
-// the workers and the hub host them with the same HubEndpoint.Host.
+// the workers and the hub host them with the same DiffTreeEndpoint.Host.
 
-const counterEndpoint = HubEndpoint.Define("counter");
+const counterEndpoint = DiffTreeEndpoint.Define("counter");
 
-const tallyEndpoint = HubEndpoint.Define("tally", remote => ({
+const tallyEndpoint = DiffTreeEndpoint.Define("tally", remote => ({
   counter: remote(counterEndpoint, ["count"])
 }));
 
-const echoEndpoint = HubEndpoint.Define("echo", remote => ({
+const echoEndpoint = DiffTreeEndpoint.Define("echo", remote => ({
   tally: remote(tallyEndpoint, ["$projection_tripled", "note"])
 }));
 
@@ -37,7 +37,7 @@ function NewTallyTree() {
   const { counter } = tallyEndpoint.config;
   const tree = new ObservableDiffTree(tallyEndpoint.keyFunc, {
     "/": { projections: { tripled: { reads: [counter.count], projection: (n?: number) => n === undefined ? undefined : n * 3 } } },
-    ...HubEndpoint.FollowRoutes(tallyEndpoint)
+    ...DiffTreeEndpoint.FollowRoutes(tallyEndpoint)
   });
   tree.WritePath("note", "");
   tree.WritePath(`started${tallies}`, true);
@@ -49,13 +49,13 @@ function NewEchoTree() {
   const { tally } = echoEndpoint.config;
   return new ObservableDiffTree(echoEndpoint.keyFunc, {
     "/": { projections: { echo: { reads: [tally.$projection_tripled, tally.note], projection: (t?: number, note?: string) => `${t}:${note}` } } },
-    ...HubEndpoint.FollowRoutes(echoEndpoint)
+    ...DiffTreeEndpoint.FollowRoutes(echoEndpoint)
   });
 }
 
 /** A worker hosting a tree, as a worker entry does: the same `Host` the hub calls for a local tree */
-function InWorker(endpoint: IHubEndpoint, newTree: () => ObservableDiffTree) {
-  return () => CreateShimHost(scope => HubEndpoint.Host(endpoint, newTree(), scope));
+function InWorker(endpoint: IDiffTreeEndpoint, newTree: () => ObservableDiffTree) {
+  return () => CreateShimHost(scope => DiffTreeEndpoint.Host(endpoint, newTree(), scope));
 }
 
 let hub: DiffTreeHub;
@@ -111,7 +111,7 @@ describe("the kind of a key", () => {
 
   it("isn't a tree when the factory's ObservableDiffTree comes from another copy of j-templates", () => {
     hub = new DiffTreeHub();
-    const copy = HubEndpoint.Define("copy");
+    const copy = DiffTreeEndpoint.Define("copy");
     // What a second copy's publisher looks like here: the same shape, another class
     hub.Register(copy, () => Object.create(Object.getPrototypeOf({ Subscribe() { }, Commit() { } })) as never);
     expect(() => hub.OpenLocal("copy")).toThrow("from another copy of j-templates");
@@ -119,11 +119,11 @@ describe("the kind of a key", () => {
 
   it("throws when a factory returns neither, or changes kind on a restart", () => {
     hub = new DiffTreeHub();
-    const odd = HubEndpoint.Define("odd");
+    const odd = DiffTreeEndpoint.Define("odd");
     hub.Register(odd, () => ({}) as never);
     expect(() => hub.Open("odd")).toThrow("neither a worker nor an ObservableDiffTree");
 
-    const fickle = HubEndpoint.Define("fickle");
+    const fickle = DiffTreeEndpoint.Define("fickle");
     let starts = 0;
     hub.Register(fickle, () => (starts++ === 0 ? new ObservableDiffTree() : CreateShimHost(() => { })));
     const lease = hub.OpenLocal("fickle");
@@ -239,7 +239,7 @@ describe("a tree on this thread", () => {
 describe("a StoreSync on a tree on this thread", () => {
   it("holds the endpoint's opaque keys whole, and one store can diff them instead", () => {
     hub = new DiffTreeHub();
-    const boxEndpoint = HubEndpoint.Define("box", undefined, { opaque: ["box"] });
+    const boxEndpoint = DiffTreeEndpoint.Define("box", undefined, { opaque: ["box"] });
     hub.Register(boxEndpoint, () => new ObservableDiffTree());
     const whole = new StoreSync(hub.OpenLocal("box"));
     // Holding fewer keys whole than the tree is local to the store; holding more needs the tree told
@@ -289,7 +289,7 @@ describe("a StoreSync on a tree on this thread", () => {
   });
 });
 
-describe("HubEndpoint.Host's onFollow", () => {
+describe("DiffTreeEndpoint.Host's onFollow", () => {
   it("runs after each source's post in place of the commit, with the source's name", async () => {
     hub = new DiffTreeHub();
     hub.Register(counterEndpoint, InWorker(counterEndpoint, NewCounterTree));
@@ -297,7 +297,7 @@ describe("HubEndpoint.Host's onFollow", () => {
     let tree!: ObservableDiffTree;
     hub.Register(tallyEndpoint, () => CreateShimHost(scope => {
       tree = NewTallyTree();
-      return HubEndpoint.Host(tallyEndpoint, tree, scope, { onFollow: (t, source) => {
+      return DiffTreeEndpoint.Host(tallyEndpoint, tree, scope, { onFollow: (t, source) => {
         followed.push(source);
         // Acts at the end of the turn, as a tree that batches its work does
         queueMicrotask(() => {

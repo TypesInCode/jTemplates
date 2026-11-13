@@ -1,5 +1,5 @@
 import type { IChannel, IRouteDefinitions } from "../../src/Store/Diff";
-import type { IHubWorker } from "../../src/Store/Diff/diffTreeHub";
+import type { IDiffTreeWorker } from "../../src/Store/Diff/diffTreeHub";
 import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { HostPublisher, IHost } from "../../src/Store/Diff/hostPublisher";
 
@@ -78,12 +78,12 @@ export async function Settle(rounds = 4) {
 
 /**
  * A worker on the calling thread, for a `DiffTreeHub`: `host` serves one end of a `MessageChannel` as
- * the worker's own channel, as a worker entry does (`HubEndpoint.Host(endpoint, tree, scope)`), and
+ * the worker's own channel, as a worker entry does (`DiffTreeEndpoint.Host(endpoint, tree, scope)`), and
  * the other end stands in for the `Worker` the hub posts to and terminates. Messages cross by
  * structured clone and ports transfer, as to a worker.
  * @param host Hosts the worker's tree on its channel; may return what stops it, run on terminate.
  */
-export function CreateShimHost(host: (scope: IChannel) => (() => void) | void): IHubWorker {
+export function CreateShimHost(host: (scope: IChannel) => (() => void) | void): IDiffTreeWorker {
   const { port1, port2 } = new MessageChannel();
   const stop = host(port2 as unknown as IChannel);
   port2.start();

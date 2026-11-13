@@ -2,10 +2,10 @@
 
 Status: phases 1–4 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`; builder-app's three worker stores on them, measured: §Phase 4: builder-app). Open after the measurements: how the run's index crosses to the trace worker (§Phase 4 findings, 1), and `IsPending(root)`.
 
-> **Superseded in part (2026-11-13):** the hub is now registered by endpoint (`HubEndpoint.Define`), a
+> **Superseded in part (2026-11-13):** the hub is now registered by endpoint (`DiffTreeEndpoint.Define`), a
 > key's factory may return a tree to run on the main thread, stores own their leases, and a restart no
 > longer reseeds: the tree is the source of truth. The sections on the hub, reseeding and restarts below
-> describe the earlier design. See [Hub Endpoints](../patterns/05-hub-endpoints.md).
+> describe the earlier design. See [DiffTree Endpoints](../patterns/05-difftree-endpoints.md).
 >
 > `DiffTreePublisher` is now `ObservableDiffTree` (`Store/Diff/observableDiffTree`), and it extends `DiffTree`
 > instead of wrapping one.

@@ -57,9 +57,9 @@ npm install j-templates
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
 | `j-templates/Utils` | `Value`, `State`, `Computed`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
 | `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions`, `IStoreSyncOptions` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the hub endpoint's `IHubEndpoint` and its option types; `FollowRoutes`, and `HubEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the endpoint's `IDiffTreeEndpoint` and its option types; `FollowRoutes`, and `DiffTreeEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/hubEndpoint` (`HubEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/diffTreeEndpoint` (`DiffTreeEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -688,23 +688,23 @@ An **endpoint** describes a key once, as plain data: its name, what it follows, 
 
 ```typescript
 // endpoints.ts: imported by the main thread and the workers
-import { HubEndpoint } from "j-templates/Store/Diff/hubEndpoint";
-export const engineEndpoint = HubEndpoint.Define("engine", undefined, { keyFunc, opaque: ["view"] });
-export const traceEndpoint = HubEndpoint.Define("trace", remote => ({
+import { DiffTreeEndpoint } from "j-templates/Store/Diff/diffTreeEndpoint";
+export const engineEndpoint = DiffTreeEndpoint.Define("engine", undefined, { keyFunc, opaque: ["view"] });
+export const traceEndpoint = DiffTreeEndpoint.Define("trace", remote => ({
   engine: remote(engineEndpoint, ["index", "task_*"]),   // { index: "/engine/index", "task_*": "/engine/task_*" }
 }));
-export const filterEndpoint = HubEndpoint.Define("filter", remote => ({
+export const filterEndpoint = DiffTreeEndpoint.Define("filter", remote => ({
   trace: remote(traceEndpoint, ["$projection_count"]),
 }));
 
 // trace-tree.ts: builds the tree, with a follow route per source
 export const newTraceTree = () => new ObservableDiffTree(traceEndpoint.keyFunc, {
   "/": { projections: { count: { reads: [traceEndpoint.config.engine.index], projection: countOf } } },
-  ...HubEndpoint.FollowRoutes(traceEndpoint),
+  ...DiffTreeEndpoint.FollowRoutes(traceEndpoint),
 });
 
 // trace-worker.ts: serves the tree, follows its sources into it, marks its opaque keys
-HubEndpoint.Host(traceEndpoint, newTraceTree(), self as any);
+DiffTreeEndpoint.Host(traceEndpoint, newTraceTree(), self as any);
 
 // main thread
 import { DiffTreeHub } from "j-templates/Store/Diff/diffTreeHub";
@@ -729,16 +729,16 @@ hub.Destroy();                                      // every tree ended
 ```
 
 - `Register(endpoint, factory)` creates nothing; the first lease does. The endpoint's sources come from its definition, and each must be registered before it. While a tree runs, the hub holds a lease on each source and gives the tree a port to it, again whenever either restarts.
-- The factory returns a worker, or an `ObservableDiffTree` to run on this thread, which the hub hosts with the same `HubEndpoint.Host` on a channel of its own. The first start fixes the key's kind. A factory that returns neither, or the other kind on a restart, throws.
+- The factory returns a worker, or an `ObservableDiffTree` to run on this thread, which the hub hosts with the same `DiffTreeEndpoint.Host` on a channel of its own. The first start fixes the key's kind. A factory that returns neither, or the other kind on a restart, throws.
 - `Open` returns an `IWorkerLease`, for `StoreAsync`; `OpenLocal` returns an `ILocalLease`, for `StoreSync`. A store given the other kind's lease doesn't compile, and opening a key as the other kind throws. Any number of stores may be opened on one tree. A store owns its lease, takes its keyFunc and `opaque` from the endpoint, and releases the lease on `Destroy()`.
 - A `StoreSync` on a hub's tree shares it: a change from any store on it, and from the trees it follows, reaches every one of them before it returns.
-- `HubEndpoint.Host(endpoint, tree, scope, { onFollow })` applies each source's post at `/<source>/` and then, by default, runs the projections and commits. An `onFollow(tree, source)` replaces that, for a tree that acts at the end of the turn.
+- `DiffTreeEndpoint.Host(endpoint, tree, scope, { onFollow })` applies each source's post at `/<source>/` and then, by default, runs the projections and commits. An `onFollow(tree, source)` replaces that, for a tree that acts at the end of the turn.
 - **The tree is the source of truth.** `Restart` is the app choosing to start a tree over; the hub doesn't restart on `error`. Every store on the tree starts over with the new one, as when it first subscribed: its state is applied in place, so readers keep their objects, and the roots it lacks are deleted. Nothing a store wrote is written back, and changes the old tree hadn't acknowledged reject. State that must outlive a restart goes in a tree of its own, which the restarted tree follows.
 - A tree is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing ends it and its leases on its sources. Keep a store open on a tree that must outlive every view.
 - The hub tells each tree its sources first, on every start. `OnConnect` for a source the endpoint doesn't follow throws: at once if the list has arrived, otherwise when it does, as the worker's uncaught error (the `Worker`'s `error` event on the main thread). The factory runs again on `Restart` and on the next lease after a release, so it should send whatever the worker needs to start.
 - `Unregister(name)` ends one tree, and throws while another registered endpoint follows it; `Destroy()` ends all of them, the last registered first. `KindOf(name)` says where a key's tree runs, once it has started.
 - Keep a worker's factory a literal `new Worker(new URL(...), { type: "module" })` at registration: bundlers compile only that form into a worker bundle.
-- A tree that wires its connections by hand serves itself with `HostPublisher` and follows with `OnConnect(source, port => …)` and a `ChannelSubscription`; `HubEndpoint.Host` does this for every source.
+- A tree that wires its connections by hand serves itself with `HostPublisher` and follows with `OnConnect(source, port => …)` and a `ChannelSubscription`; `DiffTreeEndpoint.Host` does this for every source.
 
 ## ObservableScope and ObservableNode
 
