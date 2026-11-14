@@ -69,8 +69,8 @@ export class StoreAsync extends Store {
   private client!: ChannelClient;
   private options: IStoreAsyncOptions;
   /**
-   * The store's subscription, kept across `Reconnect`: a new tree's first state deletes the roots
-   * the old one posted that it doesn't hold
+   * The store's subscription, kept across a restart of the lease's worker: a new tree's first state
+   * deletes the roots the old one posted that it doesn't hold
    */
   private subscription: ChannelSubscription;
   /** The lease the store owns, when it was given one */
@@ -115,40 +115,17 @@ export class StoreAsync extends Store {
   }
 
   /**
-   * Moves the store to another channel, keeping its readers.
-   * 1. Sends again the batches still waiting for an ack; their promises settle on the new channel.
-   * 2. Subscribes. The first state is diffed into the store's roots in place, with the roots the
-   *    store received from the old tree that the new one lacks deleted (`ChannelSubscription`).
-   *
-   * Nothing else is written back: the new tree's state is the store's. A batch the old worker applied,
-   * posted and never acknowledged is sent again, so a `Push` in it can be applied twice.
-   *
-   * A store over a lease reconnects by itself when the hub restarts the worker, and rejects the
-   * waiting batches instead of sending them again.
-   */
-  Reconnect(channel: IChannel) {
-    const pending = this.client.TakeBatches();
-    this.client.Destroy();
-    const client = this.client = this.Connect(channel);
-
-    // The store subscribes after these batches, so their changes arrive with the first state:
-    // each one resolves once that's complete
-    let subscribed!: () => void;
-    const firstState = new Promise<void>(resolve => subscribed = resolve);
-    pending.forEach(batch => client.Send({ ...batch, resolve: () => firstState.then(batch.resolve) }));
-
-    this.subscription.Connect(client, () => subscribed());
-  }
-
-  /**
-   * The hub restarted the lease's worker: the store starts over with the new tree, as when it first
-   * subscribed. The changes the old tree hadn't acknowledged are rejected, not sent again.
+   * The hub restarted the lease's worker: the store moves to the new tree's port, keeping its
+   * readers, and starts over as when it first subscribed. The changes the old tree hadn't
+   * acknowledged are rejected, not sent again, and nothing is written back: the new tree's first
+   * state is diffed into the store's roots in place, with the roots the old tree posted that the
+   * new one lacks deleted (`ChannelSubscription`).
    */
   private Restarted(port: MessagePort) {
-    for (const batch of this.client.TakeBatches())
-      batch.reject(new Error(`${this.lease!.name} restarted before this change was acknowledged.`));
-
-    this.Reconnect(port);
+    this.client.RejectBatches(new Error(`${this.lease!.name} restarted before this change was acknowledged.`));
+    this.client.Destroy();
+    this.client = this.Connect(port);
+    this.subscription.Connect(this.client);
   }
 
   private Connect(channel: IChannel) {

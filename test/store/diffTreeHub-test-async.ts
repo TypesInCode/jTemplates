@@ -297,40 +297,6 @@ describe("DiffTreeHub", () => {
   });
 });
 
-describe("StoreAsync.Reconnect", () => {
-  it("sends unacknowledged batches again, and they settle on the new channel", async () => {
-    const first = CreateShimWorker();
-    const second = CreateShimWorker();
-    const store = new StoreAsync(first.worker);
-    await store.Write(1, "a");
-    first.worker.terminate();
-
-    const write = store.Write(2, "b");
-    await Settle();
-    store.Reconnect(second.worker);
-    await write;
-    expect(second.tree.Committed("b")).toBe(2);
-    expect(store.Get("b")).toBe(2);
-    store.Destroy();
-  });
-
-  it("writes nothing else back: the new tree's state is the store's", async () => {
-    const keyFunc = (value: any) => value?._id;
-    const first = CreateShimWorker(keyFunc);
-    const store = new StoreAsync(first.worker, keyFunc);
-    await store.Write([{ _id: "t1", v: 1 }], "list");
-    const second = CreateShimWorker(keyFunc);
-    second.tree.WritePath("other", true);
-    second.tree.Commit();
-
-    store.Reconnect(second.worker);
-    await WaitFor(() => expect(store.Get("other")).toBe(true));
-    expect(second.tree.Committed("list")).toBeUndefined();
-    expect(store.Has("list") && store.Get("list") === undefined).toBe(true);
-    store.Destroy();
-  });
-});
-
 describe("OnConnect", () => {
   it("throws for a source the hub didn't list, once the list has arrived", async () => {
     const [hubSide, scope] = CreateShimChannel();

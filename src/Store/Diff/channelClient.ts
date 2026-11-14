@@ -4,7 +4,7 @@ import { IChannel, IDiffMethodBatch, IDiffPost, IHostMessage, ISnapshotUpdate, I
 let nextId = 1;
 
 /** A batch sent and not yet acknowledged */
-export interface IPendingBatch {
+interface IPendingBatch {
   calls: IDiffMethodBatch;
   resolve(): void;
   reject(error: unknown): void;
@@ -36,21 +36,18 @@ export class ChannelClient {
    *   delivered, or rejects with the batch's error.
    */
   Batch(calls: IDiffMethodBatch): Promise<void> {
-    return new Promise((resolve, reject) => this.Send({ calls, resolve, reject }));
+    return new Promise((resolve, reject) => {
+      const id = nextId++;
+      this.batches.set(id, { calls, resolve, reject });
+      this.channel.postMessage({ type: "jt-batch", id, calls });
+    });
   }
 
-  /** Sends a batch taken from another client; its promise settles on this channel's ack */
-  Send(batch: IPendingBatch) {
-    const id = nextId++;
-    this.batches.set(id, batch);
-    this.channel.postMessage({ type: "jt-batch", id, calls: batch.calls });
-  }
-
-  /** The batches waiting for an ack, in the order sent; this client stops waiting for them */
-  TakeBatches(): IPendingBatch[] {
+  /** Rejects the batches waiting for an ack with `error`; this client stops waiting for them */
+  RejectBatches(error: unknown) {
     const batches = Array.from(this.batches.values());
     this.batches.clear();
-    return batches;
+    batches.forEach(batch => batch.reject(error));
   }
 
   /** See `DiffTree.MarkOpaque` */

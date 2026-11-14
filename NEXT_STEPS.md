@@ -12,7 +12,7 @@ changes rejected; `StoreSync.Destroy`; `@ComputedAsync` removed; `npm test` type
 
 **Breaking:** `Register(name, factory, { sources })` is `Register(endpoint, factory)`;
 `new StoreAsync(lease, keyFunc?, options?)` takes the endpoint's keyFunc and `opaque` when they're left
-out, and the store releases the lease; `Reconnect(channel, { reseed })` has no options; `IWorkerOptions` is `IRegisterOptions`,
+out, and the store releases the lease; `StoreAsync.Reconnect` is private (a store over a lease follows a restart by itself; over a plain channel, make a new store); `IWorkerOptions` is `IRegisterOptions`,
 `WorkerFactory` is `TreeFactory`; `@ComputedAsync` is gone; `DiffTreePublisher`
 (`Store/Diff/diffTreePublisher`) is `ObservableDiffTree` (`Store/Diff/observableDiffTree`), and extends
 `DiffTree` instead of wrapping it (every `DiffTree` change calls its protected `BeforeChange()`). `StoreSync.Publisher` is `StoreSync.Tree`. `WorkerHub` (`Store/Diff/workerHub`) is `DiffTreeHub`
@@ -23,9 +23,6 @@ out, and the store releases the lease; `Reconnect(channel, { reseed })` has no o
   definition by `Host`), and `Store` applies records inside an opaque root by copying along each
   record's path and boxing the new root, instead of throwing. Until then a store can hold fewer keys
   whole than its tree, not more (a `StoreAsync` holding more tells its tree, for every subscriber).
-- An explicit `StoreAsync.Reconnect(channel)` still sends the waiting batches again. builder-app's
-  derived tabs are on leases now (phase 3), and neither app calls it: make it private, or keep it for
-  stores over channels.
 - A reactive hub: [docs/proposals/reactive-hub.md](docs/proposals/reactive-hub.md). Deferred, not part of
   this round.
 - `@ComputedAsync`, rewritten over the hub once this settles, if wanted.
