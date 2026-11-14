@@ -56,5 +56,6 @@ injector.Set(DiffTreeHub, hub);
 - Keep each worker's factory a literal `new Worker(new URL(...), { type: "module" })` at registration, not in the definition: the worker imports the definition, and bundlers compile only that form into a worker bundle.
 - Import the definitions and `DiffTreeEndpoint` with deep imports (`j-templates/Store/Diff/diffTreeEndpoint`), or from `j-templates/Store/Diff`, never from `j-templates/Store`, which reads `window`.
 - A tree that acts on what it follows later than each post (at the end of the turn, say) passes `onFollow` to `Host`, and commits there itself.
+- A tree that also reads from a source outside the follow (a one-off `Once` for a key it doesn't follow) passes `onConnect` to `Host`, which gives it each new port to the source.
 - A store's writes go to its tree. A `StoreSync`'s change commits the shared tree, which reaches every store on it and the trees that follow it before it returns.
 - `instanceof ObservableDiffTree` decides a tree. An app that loads two copies of j-templates' modules (a bundler pre-bundling the deep imports apart from the barrel, say) gets "neither a worker nor an ObservableDiffTree": load one copy.

@@ -139,7 +139,8 @@ export namespace DiffTreeEndpoint {
    * @param endpoint The endpoint the tree is registered as.
    * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
-   * @param options `onFollow`: what runs after each source's post is applied.
+   * @param options `onFollow`: what runs after each source's post is applied. `onConnect`: what
+   *   runs with each new port to a source.
    * @returns A function that stops following the sources and serving the tree.
    */
   export function Host(
@@ -172,7 +173,8 @@ export namespace DiffTreeEndpoint {
    * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
    * @param options `onFollow`: what runs after each post is applied; by default the projections run
-   *   and the tree commits.
+   *   and the tree commits. `onConnect`: what runs with each new port to a source, after the
+   *   follow has moved to it.
    * @returns A function that stops following every source.
    */
   export function Connect(
@@ -184,7 +186,14 @@ export namespace DiffTreeEndpoint {
     const onFollow = options.onFollow ?? Commit;
     const stops = endpoint.remotes.map(remote => {
       const follow = Follower(remote, tree, onFollow);
-      return OnConnect(remote.source, port => follow.Connect(port), scope);
+      return OnConnect(remote.source, port => {
+        const stopFollow = follow.Connect(port);
+        const stopMore = options.onConnect?.(tree, remote.source, port);
+        return () => {
+          typeof stopMore === "function" && stopMore();
+          stopFollow();
+        };
+      }, scope);
     });
 
     return () => stops.forEach(stop => stop());

@@ -57,6 +57,16 @@ export interface IDiffTreeEndpoint<C extends object = object> {
  */
 export type DiffTreeEndpointFollowFunc = (tree: ObservableDiffTree, source: string) => void;
 
+/**
+ * Runs with each new port to a source, after the follow has moved to it: when the tree starts,
+ * and again when the source restarts.
+ * @param tree The following tree.
+ * @param source The source's name.
+ * @param port The port to the source, for reads besides the follow (a one-off `Once`, say).
+ * @returns Optionally, what ends what it started; it runs before the next port's call.
+ */
+export type DiffTreeEndpointConnectFunc = (tree: ObservableDiffTree, source: string, port: MessagePort) => (() => void) | void;
+
 /** `DiffTreeEndpoint.Host` and `DiffTreeEndpoint.Connect` options */
 export interface IDiffTreeEndpointHostOptions {
   /**
@@ -65,4 +75,9 @@ export interface IDiffTreeEndpointHostOptions {
    * say) does its own committing here instead.
    */
   onFollow?: DiffTreeEndpointFollowFunc;
+  /**
+   * Runs with each new port to a source, after the follow has moved to it. For a tree that reads
+   * from a source besides what it follows; the port stays the follow's, so don't close it.
+   */
+  onConnect?: DiffTreeEndpointConnectFunc;
 }

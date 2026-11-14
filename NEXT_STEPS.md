@@ -4,9 +4,9 @@ Branch `feature/diff-tree-push`. The model is in [docs/patterns/05-difftree-endp
 it was prototyped in procedures-engine's `sample-worker-stores/src-framework`, and the plan for moving
 the sample and builder-app onto it is that repo's `sample-worker-stores/INTEGRATION.md`.
 
-**Done:** `DiffTreeEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow`, `Connect`);
+**Done:** `DiffTreeEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow` and `onConnect`, `Connect`);
 `DiffTreeHub.Register(endpoint, factory)`, a factory returning a worker or a tree, `Open` / `OpenLocal`,
-`KindOf`; `StoreAsync` and `StoreSync` over leases, owning them; restart without reseed, unacknowledged
+`KindOf`; both apps (the sample, builder-app) moved onto it; `StoreAsync` and `StoreSync` over leases, owning them; restart without reseed, unacknowledged
 changes rejected; `StoreSync.Destroy`; `@ComputedAsync` removed; `npm test` type-checks the tests
 (`tsconfig.test.json`).
 
@@ -23,8 +23,9 @@ out, and the store releases the lease; `Reconnect(channel, { reseed })` has no o
   definition by `Host`), and `Store` applies records inside an opaque root by copying along each
   record's path and boxing the new root, instead of throwing. Until then a store can hold fewer keys
   whole than its tree, not more (a `StoreAsync` holding more tells its tree, for every subscriber).
-- An explicit `StoreAsync.Reconnect(channel)` still sends the waiting batches again. Make it private
-  once builder-app's derived tabs move to leases, or keep it for stores over channels.
+- An explicit `StoreAsync.Reconnect(channel)` still sends the waiting batches again. builder-app's
+  derived tabs are on leases now (phase 3), and neither app calls it: make it private, or keep it for
+  stores over channels.
 - A reactive hub: [docs/proposals/reactive-hub.md](docs/proposals/reactive-hub.md). Deferred, not part of
   this round.
 - `@ComputedAsync`, rewritten over the hub once this settles, if wanted.

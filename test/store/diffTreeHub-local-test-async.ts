@@ -314,6 +314,36 @@ describe("DiffTreeEndpoint.Host's onFollow", () => {
   });
 });
 
+describe("DiffTreeEndpoint.Host's onConnect", () => {
+  it("runs with each port to a source, beside the follow, and ends what it started before the next", async () => {
+    hub = new DiffTreeHub();
+    hub.Register(counterEndpoint, InWorker(counterEndpoint, NewCounterTree));
+    const events: string[] = [];
+    let port: MessagePort | null = null;
+    hub.Register(tallyEndpoint, () => CreateShimHost(scope =>
+      DiffTreeEndpoint.Host(tallyEndpoint, NewTallyTree(), scope, { onConnect: (_tree, source, given) => {
+        events.push(`connect ${source}`);
+        port = given;
+        return () => events.push(`end ${source}`);
+      } })
+    ));
+    const tally = new StoreAsync(hub.Open("tally"));
+    // The follow still runs: the default onFollow commits
+    await WaitFor(() => expect(tally.Get("$projection_tripled")).toBe(0));
+    expect(events).toEqual(["connect counter"]);
+    const first = port;
+
+    hub.Restart("counter");
+    await WaitFor(() => expect(events).toEqual(["connect counter", "end counter", "connect counter"]));
+    expect(port).not.toBe(first);
+    const counter = new StoreAsync(hub.Open("counter"));
+    await counter.Write(2, "count");
+    await WaitFor(() => expect(tally.Get("$projection_tripled")).toBe(6));
+    counter.Destroy();
+    tally.Destroy();
+  });
+});
+
 describe("a restarted worker tree", () => {
   it("is the source of truth: its stores start over with it, and nothing they wrote is written back", async () => {
     CreateHub();
