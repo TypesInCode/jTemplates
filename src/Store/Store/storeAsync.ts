@@ -1,7 +1,6 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { ChannelClient, ChannelSubscription } from "../Diff/channelClient";
 import { IChannel, IDiffMethod, IDiffMethodBatch, IDiffPost, IWorkerLease } from "../Diff/diffTree.types";
-import type { IKeyFunc } from "../Diff/utils/diffTree.types";
 import { IStoreOptions, RootOf, Store } from "./store";
 
 /** Options for a `StoreAsync` */
@@ -28,8 +27,8 @@ export interface IStoreAsyncOptions extends IStoreOptions {
  *   posts, so the change has been applied when it resolves.
  * - A failed batch rejects only its own changes; later batches carry on.
  *
- * **Over a lease** (`DiffTreeHub.Open`), the store takes its keyFunc and `opaque` keys from the lease's
- * endpoint, owns the lease, and releases it when it's destroyed. When the hub restarts the worker,
+ * **Over a lease** (`DiffTreeHub.Open`), the store takes its keyFunc from the lease's endpoint, owns
+ * the lease, and releases it when it's destroyed. When the hub restarts the worker,
  * the store starts over with the new tree, as when it first subscribed: the tree is the source of
  * truth, nothing the store wrote is written back, and changes the old tree hadn't acknowledged are
  * rejected.
@@ -89,20 +88,18 @@ export class StoreAsync extends Store {
    *   messages may share the channel. Given a lease, the store owns it from then on and releases it
    *   when it's destroyed, and follows the worker across restarts. A lease on a tree on this thread
    *   (`DiffTreeHub.OpenLocal`) is for a `StoreSync`, and doesn't compile here.
-   * @param keyFunc Optional function to generate a key for a given data value, used locally by this
-   *   store to resolve root objects. Pass the same key logic the worker's tree was constructed with,
-   *   if any. Over a lease, `undefined` takes the endpoint's.
-   * @param options Optional settings: `opaque` lists the root keys held whole (`IStoreOptions`), sent
-   *   to the tree before the store subscribes, and `roots` the roots it receives. Over a lease, an
-   *   `opaque` left out takes the endpoint's.
+   * @param options `keyFunc`, `roots` and `opaque` (`IStoreAsyncOptions`). `keyFunc` is for a plain
+   *   channel: pass the key logic the worker's tree was built with. A lease's is the endpoint's.
+   *   `opaque` is sent to the tree before the store subscribes; over a lease, share it with the tree
+   *   (`IObservableDiffTreeConfig.opaque`) from a file both import.
+   * @throws When `keyFunc` is given with a lease, whose endpoint has its own.
    */
-  constructor(channel: IChannel | IWorkerLease, keyFunc?: IKeyFunc, options: IStoreAsyncOptions = {}) {
+  constructor(channel: IChannel | IWorkerLease, options: IStoreAsyncOptions = {}) {
     const lease = IsLease(channel) ? channel : undefined;
-    if (lease) {
-      keyFunc ??= lease.endpoint.keyFunc;
-      options = { opaque: lease.endpoint.opaque, ...options };
-    }
+    if (lease && options.keyFunc)
+      throw new Error(`StoreAsync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`);
 
+    const keyFunc = lease ? lease.endpoint.keyFunc : options.keyFunc;
     super(keyFunc, options.opaque);
     this.options = options;
     this.lease = lease;

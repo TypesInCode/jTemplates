@@ -1,6 +1,29 @@
 import type { JsonDiffResult } from "../../Utils/json";
 import type { ObservableDiffTree } from "./observableDiffTree";
 import type { IDiffTreeEndpoint } from "./diffTreeEndpoint.types";
+import type { IKeyFunc, IRouteDefinitions } from "./utils/diffTree.types";
+
+/**
+ * An `ObservableDiffTree`'s configuration, in one place.
+ *
+ * Config shared with the stores opened on the tree, `opaque` say, belongs in a file both sides
+ * import, spread into this and into each store's options: the tree lives in its worker, and a
+ * store on the main thread sees only what it imports.
+ */
+export interface IObservableDiffTreeConfig {
+  /**
+   * The endpoint the tree is hosted as (`DiffTreeEndpoint.Host`). It gives the tree its keyFunc
+   * and a follow route per source (`FollowRoutes`). `Host` refuses a tree built from another
+   * endpoint, or from none when the endpoint follows sources.
+   */
+  endpoint?: IDiffTreeEndpoint;
+  /** How the tree's data is keyed, for a tree without an endpoint; with one, the endpoint's (giving both throws). */
+  keyFunc?: IKeyFunc;
+  /** The tree's own routes and projections. The endpoint's follow routes are added to them. */
+  routes?: IRouteDefinitions;
+  /** Root keys written whole (`DiffTree.MarkOpaque`). A store holding a key whole needs it here. */
+  opaque?: readonly string[];
+}
 
 /** An `ObservableDiffTree` method call in a `jt-batch` */
 export interface IDiffMethod {

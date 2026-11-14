@@ -11,12 +11,9 @@ import type {
   IDiffTreeEndpointRemote
 } from "./diffTreeEndpoint.types";
 import { OnConnect } from "./onConnect";
-import type { IRouteDefinitions } from "./utils/diffTree.types";
-import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
 
-// An endpoint on a hub, defined once, and the functions that build its tree and host it: `FollowRoutes`
-// for its routes, and `Host` to serve it and connect it to the endpoint's sources, the same for a
-// worker's tree (the worker calls it) and one on the main thread (`DiffTreeHub` calls it). Imports only
+// An endpoint on a hub, defined once, and the function that hosts its tree: `Host` serves it and
+// connects it to the endpoint's sources, the same for a worker's tree (the worker calls it) and one on the main thread (`DiffTreeHub` calls it). Imports only
 // the Diff modules, never the Store barrel (which reads `window`), so every side imports the same
 // definition: the main thread to register it and open stores on it, the tree that publishes it, and
 // the endpoints that follow it.
@@ -24,8 +21,9 @@ import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
 /**
  * DiffTree endpoints: an endpoint is a key in a `DiffTreeHub`, and one tree in the app's dependency graph.
  * `Define` describes it once, as plain data, and everything attached to it is derived from that: the
- * hub's registration (`DiffTreeHub.Register`), the tree's follow routes (`FollowRoutes`), its hosting
- * (`Host`), and the stores opened on it (`StoreAsync`, `StoreSync`).
+ * hub's registration (`DiffTreeHub.Register`), the tree built from it (its keyFunc and follow routes,
+ * `IObservableDiffTreeConfig.endpoint`), its hosting (`Host`), and the stores opened on it
+ * (`StoreAsync`, `StoreSync`).
  *
  * @example
  * // ledger-endpoint.ts and totals-endpoint.ts: imported by the main thread and the workers
@@ -36,9 +34,9 @@ import { FollowRoutes as CreateFollowRoutes } from "./utils/routes";
  *
  * // totals-tree.ts
  * export function newTotalsTree() {
- *   return new ObservableDiffTree(totalsEndpoint.keyFunc, {
- *     "/": { projections: { totals: { reads: [totalsEndpoint.config.ledger.entries], projection: categoryTotals } } },
- *     ...DiffTreeEndpoint.FollowRoutes(totalsEndpoint)
+ *   return new ObservableDiffTree({
+ *     endpoint: totalsEndpoint,
+ *     routes: { "/": { projections: { totals: { reads: [totalsEndpoint.config.ledger.entries], projection: categoryTotals } } } }
  *   });
  * }
  *
@@ -61,7 +59,7 @@ export namespace DiffTreeEndpoint {
    * @param name The endpoint's name: its key in the `DiffTreeHub`, and the segment of its follow route
    *   in a tree that follows it.
    * @param build Returns the endpoint's config, the paths `remote` gave included.
-   * @param options `keyFunc`, and the `opaque` root keys held whole.
+   * @param options `keyFunc`: how the data published here is keyed.
    * @returns The endpoint's definition: plain data.
    * @throws When `name` isn't one route segment (or is a parameter, `{id}`), or the endpoint follows itself.
    */
@@ -97,14 +95,13 @@ export namespace DiffTreeEndpoint {
       keyFunc: options.keyFunc,
       config,
       remotes: Array.from(remotes.values()),
-      sources: Array.from(remotes.keys()),
-      opaque: [...(options.opaque ?? [])]
+      sources: Array.from(remotes.keys())
     };
   }
 
   /**
-   * Where a source's roots are held in a tree that follows it: `/<source>/`. Fixed by
-   * `FollowRoutes`, which defines a follow route at `/<source>` for each source.
+   * Where a source's roots are held in a tree that follows it: `/<source>/`. A tree built from the
+   * endpoint (`IObservableDiffTreeConfig.endpoint`) has a follow route at `/<source>` for each source.
    * @param source The source endpoint's name.
    */
   export function FollowRoute(source: string) {
@@ -112,20 +109,9 @@ export namespace DiffTreeEndpoint {
   }
 
   /**
-   * The follow routes for an endpoint's sources, each with the source's keyFunc, to merge into the
-   * route definitions of the tree that hosts it.
-   * @example
-   * new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...DiffTreeEndpoint.FollowRoutes(endpoint) });
-   * @param endpoint The endpoint the tree is registered as.
-   * @returns Route definitions, one per source.
-   */
-  export function FollowRoutes(endpoint: IDiffTreeEndpoint): IRouteDefinitions {
-    return CreateFollowRoutes(Object.fromEntries(endpoint.remotes.map(remote => [remote.source, remote.keyFunc])));
-  }
-
-  /**
-   * Hosts an endpoint's tree on a channel: marks the endpoint's `opaque` keys on it, serves it to
-   * stores and followers (`HostPublisher`), and follows the endpoint's sources into it (`Connect`). A
+   * Hosts an endpoint's tree on a channel: serves it to stores and followers (`HostPublisher`), and
+   * follows the endpoint's sources into it (`Connect`). Build the tree from the endpoint
+   * (`IObservableDiffTreeConfig.endpoint`), which gives it its keyFunc and follow routes. A
    * worker entry calls it on its own channel; a `DiffTreeHub` calls it for a tree on the main thread,
    * on a channel it creates. So every tree is hosted the same way, and a tree file only builds the
    * tree.
@@ -135,13 +121,16 @@ export namespace DiffTreeEndpoint {
    * DiffTreeEndpoint.Host(totalsEndpoint, newTotalsTree(), self);
    *
    * // a tree that acts on what it follows at the end of the turn, and commits then
-   * DiffTreeEndpoint.Host(traceEndpoint, tree.publisher, self, { onFollow: () => tree.received() });
+   * DiffTreeEndpoint.Host(traceEndpoint, tree.tree, self, { onFollow: () => tree.received() });
    * @param endpoint The endpoint the tree is registered as.
-   * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
+   * @param tree The tree, built from `endpoint`. One built from none (a `StoreSync`'s own, say) is
+   *   taken for an endpoint with no sources.
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
    * @param options `onFollow`: what runs after each source's post is applied. `onConnect`: what
    *   runs with each new port to a source.
    * @returns A function that stops following the sources and serving the tree.
+   * @throws When the tree was built from another endpoint, or from none while `endpoint` follows
+   *   sources (it has no follow routes).
    */
   export function Host(
     endpoint: IDiffTreeEndpoint,
@@ -149,7 +138,9 @@ export namespace DiffTreeEndpoint {
     scope: IChannel = globalThis as any,
     options: IDiffTreeEndpointHostOptions = {}
   ): () => void {
-    tree.MarkOpaque(endpoint.opaque);
+    if (tree.Endpoint ? tree.Endpoint !== endpoint : endpoint.sources.length > 0)
+      throw new Error(`DiffTreeEndpoint: the tree hosted as ${endpoint.name} was built from ${tree.Endpoint ? tree.Endpoint.name : "no endpoint, so it has no follow routes"}; build it with that endpoint (IObservableDiffTreeConfig.endpoint).`);
+
     const host = HostPublisher(tree, scope);
     const stop = Connect(endpoint, tree, scope, options);
     return () => {
@@ -166,11 +157,11 @@ export namespace DiffTreeEndpoint {
    * Call it alone only for a tree served some other way.
    *
    * @example
-   * const tree = new ObservableDiffTree(endpoint.keyFunc, { "/": { projections }, ...DiffTreeEndpoint.FollowRoutes(endpoint) });
+   * const tree = new ObservableDiffTree({ endpoint, routes: { "/": { projections } } });
    * HostPublisher(tree, self);
    * DiffTreeEndpoint.Connect(endpoint, tree, self);
    * @param endpoint The endpoint whose sources are followed.
-   * @param tree The tree, with the endpoint's follow routes (`FollowRoutes`).
+   * @param tree The tree, with the endpoint's follow routes (built from it).
    * @param scope The channel the hub posts to: the worker's own; `globalThis` when omitted.
    * @param options `onFollow`: what runs after each post is applied; by default the projections run
    *   and the tree commits. `onConnect`: what runs with each new port to a source, after the

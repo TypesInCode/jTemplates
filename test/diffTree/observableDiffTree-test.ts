@@ -114,7 +114,7 @@ describe("ObservableDiffTree", () => {
     });
 
     it("a commit without RunProjections delivers the roots and leaves projection outputs as they were", () => {
-      const tree = new ObservableDiffTree(undefined, routes);
+      const tree = new ObservableDiffTree({ routes });
       const store = new MirrorStore();
       tree.Subscribe({}, (post) => store.Apply(post));
       tree.WritePath("count", 1);
@@ -156,7 +156,7 @@ describe("ObservableDiffTree", () => {
     });
 
     it("a pattern receives entity roots created after the subscription", () => {
-      const tree = new ObservableDiffTree(keyFunc);
+      const tree = new ObservableDiffTree({ keyFunc });
       const store = new MirrorStore(keyFunc);
       tree.Subscribe({ roots: ["list", "task_*"] }, (post) => store.Apply(post));
 
@@ -197,7 +197,7 @@ describe("ObservableDiffTree", () => {
 
   describe("the first state", () => {
     it("a subscriber created after several commits starts from the committed state", () => {
-      const tree = new ObservableDiffTree(keyFunc);
+      const tree = new ObservableDiffTree({ keyFunc });
       tree.WritePath("list", [{ id: "task_1", v: 1 }]);
       tree.Commit();
       tree.WritePath("list", [{ id: "task_1", v: 2 }, { id: "task_2", v: 1 }]);
@@ -317,7 +317,7 @@ describe("ObservableDiffTree", () => {
     });
 
     it("a diff and a snapshot subscriber on one commit get the same changes", () => {
-      const tree = new ObservableDiffTree(keyFunc);
+      const tree = new ObservableDiffTree({ keyFunc });
       const store = new MirrorStore(keyFunc);
       const updates: ISnapshotUpdate[] = [];
       const posts: IDiffPost[] = [];
@@ -422,7 +422,7 @@ describe("ObservableDiffTree", () => {
 
   describe("re-entry", () => {
     it("a subscriber that writes to or commits the delivering tree throws", () => {
-      const tree = new ObservableDiffTree(undefined, routes);
+      const tree = new ObservableDiffTree({ routes });
       const errors: string[] = [];
       tree.Subscribe({}, () => {
         // Every change DiffTree makes goes through its BeforeChange hook
@@ -474,10 +474,10 @@ describe("ObservableDiffTree", () => {
 
   describe("two trees on one thread", () => {
     function Chain() {
-      const source = new ObservableDiffTree(keyFunc);
-      const derived = new ObservableDiffTree(undefined, {
+      const source = new ObservableDiffTree({ keyFunc });
+      const derived = new ObservableDiffTree({ routes: {
         "/": { projections: { count: { reads: ["/source/list"], projection: (list: any) => list?.length ?? 0 } } },
-      });
+      } });
       const store = new MirrorStore();
       derived.Subscribe({}, (post) => store.Apply(post));
       source.Subscribe({ roots: ["list"], form: "snapshot" }, (update) => {
@@ -531,7 +531,7 @@ describe("StoreSync over its publisher", () => {
   });
 
   it("another subscriber to its publisher gets the store's writes", () => {
-    const store = new StoreSync(undefined, routes);
+    const store = new StoreSync(new ObservableDiffTree({ routes }));
     const roots: ISnapshotUpdate[] = [];
     store.Tree.Subscribe({ roots: ["$projection_double"], form: "snapshot" }, (update) => roots.push(update));
     store.Write(4, "count");

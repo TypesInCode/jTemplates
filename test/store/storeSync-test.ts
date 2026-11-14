@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { StoreSync } from "../../src/Store/Store/storeSync";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 
 function KeyFunc(val: any) {
   return val._id;
@@ -8,7 +9,7 @@ function KeyFunc(val: any) {
 
 describe("Store Sync Test", () => {
   it("Default Test", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const init = sync.Get('root');
     expect(init).to.eq(undefined);
     const data = [
@@ -21,7 +22,7 @@ describe("Store Sync Test", () => {
     expect(root?.[0].value).to.eq("first");
   });
   it("Write Test", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
 
     const data = [
       { _id: "first", value: "first" },
@@ -36,7 +37,7 @@ describe("Store Sync Test", () => {
     expect(root?.[0].value).to.eq("first changed");
   });
   it("Shared Object Test", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const data = {
       value1: { _id: "first", value: "first" },
       value2: { _id: "second", value: "second" },
@@ -55,7 +56,7 @@ describe("Store Sync Test", () => {
     expect(root.value2.value).to.eq("second");
   });
   it("Array Push", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const data = [{ _id: "first", value: "first" }];
     sync.Write(data, "root");
 
@@ -69,7 +70,7 @@ describe("Store Sync Test", () => {
     expect(root[2].value).to.eq("third");
   });
   it("Array Observable Scope", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
 
     const arrayLength = ObservableScope.Create(() => sync.Get<typeof data>("root")?.length || 0);
     expect(ObservableScope.Value(arrayLength)).to.eq(0);
@@ -82,7 +83,7 @@ describe("Store Sync Test", () => {
     expect(ObservableScope.Value(arrayLength)).to.eq(2);
   });
   it("Separate Arrays", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const data1 = [{ _id: "first", value: "first" }];
     const data2 = [{ _id: "first", value: "first" }, { _id: "second", value: "second" }];
     sync.Write(data1, "root1");
@@ -111,7 +112,7 @@ describe("Store Sync Test", () => {
     expect(root1?.[0].value).to.eq("second changed");
   });
   it("Patch value", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const data1 = [{ _id: "first", value: "first" }];
     const data2 = [{ _id: "first", value: "first" }, { _id: "second", value: "second" }];
     sync.Write(data1, "root1");
@@ -128,7 +129,7 @@ describe("Store Sync Test", () => {
 
 describe("Store Sync keyed arrays", () => {
   it("Reordering a keyed array moves the Store's nodes and keeps them live", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }, { _id: "c", value: "c" }], "list");
     const list = sync.Get<{ _id: string; value: string }[]>("list")!;
     const scope = ObservableScope.Create(() => list.map((item) => item.value));
@@ -143,7 +144,7 @@ describe("Store Sync keyed arrays", () => {
   });
 
   it("Editing a keyed entity's field updates its readers without firing the array's scope", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }, { _id: "c", value: "c" }], "list");
     const list = sync.Get<{ _id: string; value: string }[]>("list")!;
     let listReads = 0;
@@ -163,7 +164,7 @@ describe("Store Sync keyed arrays", () => {
   });
 
   it("Removing and adding keyed entities updates the Store's array", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write([{ _id: "a", value: "a" }, { _id: "b", value: "b" }], "list");
     sync.Write([{ _id: "b", value: "b" }, { _id: "d", value: "d" }], "list");
 
@@ -173,7 +174,7 @@ describe("Store Sync keyed arrays", () => {
 
 describe("Store Sync deletes", () => {
   it("Writing a record without an entry removes it from the store and updates its readers", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: { x: 1 }, b: { x: 2 } }, "positions");
     const positions = sync.Get<Record<string, { x: number }>>("positions")!;
     const keys = ObservableScope.Create(() => Object.keys(positions));
@@ -186,5 +187,34 @@ describe("Store Sync deletes", () => {
     expect(ObservableScope.Value(keys)).to.deep.eq(["a"]);
     expect("b" in positions).to.eq(false);
     expect(ObservableScope.Value(a)).to.eq(1);
+  });
+});
+
+describe("StoreSync's tree and keyFunc", () => {
+  it("takes the keyFunc of a tree it's given, and leaves the tree when destroyed", () => {
+    const tree = new ObservableDiffTree({ keyFunc: KeyFunc });
+    const sync = new StoreSync(tree);
+    expect(sync.Tree).to.eq(tree);
+    sync.Write([{ _id: "first", value: 1 }], "root");
+    sync.Write({ _id: "first", value: 2 });
+    expect(sync.Get<{ value: number }[]>("root")?.[0].value).to.eq(2);
+
+    sync.Destroy();
+    tree.WritePath("other", true);
+    tree.Commit();
+    expect(sync.Get("other")).to.eq(undefined);
+  });
+
+  it("throws for a keyFunc in the options when the tree it's given has its own", () => {
+    expect(() => new StoreSync(new ObservableDiffTree({ keyFunc: KeyFunc }), { keyFunc: KeyFunc })).toThrow("leave it out of the options");
+    expect(() => new StoreSync(new ObservableDiffTree(), { keyFunc: KeyFunc })).toThrow("leave it out of the options");
+  });
+
+  it("marks the empty tree it creates with its opaque keys", () => {
+    const sync = new StoreSync(undefined, { opaque: ["view"] });
+    sync.Write({ items: [1] }, "view");
+    sync.Write({ items: [1, 2] }, "view");
+    expect(sync.Tree.Committed("view")).to.deep.eq({ items: [1, 2] });
+    expect(sync.Get<{ items: number[] }>("view")?.items).to.deep.eq([1, 2]);
   });
 });

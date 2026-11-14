@@ -1,19 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { StoreSync } from "../../src/Store/Store/storeSync";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { KeyFunc, routes, projectionCases } from "./projection-cases";
 
-projectionCases("StoreSync", () => new StoreSync(KeyFunc, routes));
+projectionCases("StoreSync", () => new StoreSync(new ObservableDiffTree({ keyFunc: KeyFunc, routes })));
 
 describe("StoreSync projection cycles", () => {
   it("throws a projection cycle on the first change", () => {
-    const store = new StoreSync(KeyFunc, {
+    const store = new StoreSync(new ObservableDiffTree({ keyFunc: KeyFunc, routes: {
       "/": {
         projections: {
           a: { reads: [`$projection_b`], projection: (b: any) => b },
           b: { reads: [`$projection_a`], projection: (a: any) => a },
         }
       }
-    });
+    } }));
 
     expect(() => store.Write({ value: 1 }, "x")).toThrow(/cycle/i);
   });

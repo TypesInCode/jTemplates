@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { DiffTreeEndpoint } from "../../src/Store/Diff/diffTreeEndpoint";
 import { DiffTreeHub } from "../../src/Store/Diff/diffTreeHub";
-import { CreateShimHost, WaitFor } from "./worker-shim";
+import { CreateShimChannel, CreateShimHost, WaitFor } from "./worker-shim";
 
 // Endpoints on a DiffTreeHub of same-thread workers: a counter source, and a doubling endpoint
 // that follows it.
@@ -16,8 +16,9 @@ const doubledEndpoint = DiffTreeEndpoint.Define("doubled", remote => ({
 }));
 
 function NewCounterTree() {
-  const tree = new ObservableDiffTree(counterEndpoint.keyFunc, {
-    "/": { projections: { described: { reads: ["count"], projection: (n: number) => `n=${n}` } } }
+  const tree = new ObservableDiffTree({
+    endpoint: counterEndpoint,
+    routes: { "/": { projections: { described: { reads: ["count"], projection: (n: number) => `n=${n}` } } } }
   });
   tree.WritePath("count", 0);
   tree.RunProjections();
@@ -27,15 +28,17 @@ function NewCounterTree() {
 
 function NewDoubledTree() {
   const { counter } = doubledEndpoint.config;
-  return new ObservableDiffTree(doubledEndpoint.keyFunc, {
-    "/": {
-      projections: {
-        doubled: { reads: [counter.count], projection: (n: number) => n * 2 },
-        // A source's projection output is followed like any root
-        echo: { reads: [counter.$projection_described], projection: (d: string) => `echo ${d}` }
+  return new ObservableDiffTree({
+    endpoint: doubledEndpoint,
+    routes: {
+      "/": {
+        projections: {
+          doubled: { reads: [counter.count], projection: (n: number) => n * 2 },
+          // A source's projection output is followed like any root
+          echo: { reads: [counter.$projection_described], projection: (d: string) => `echo ${d}` }
+        }
       }
-    },
-    ...DiffTreeEndpoint.FollowRoutes(doubledEndpoint)
+    }
   });
 }
 
@@ -84,6 +87,40 @@ describe("DiffTreeEndpoint.Define", () => {
   });
 });
 
+describe("an ObservableDiffTree built from an endpoint", () => {
+  it("takes the endpoint's keyFunc, and a follow route per source", () => {
+    const keyFunc = (v: { id?: string }) => v?.id;
+    const keyed = DiffTreeEndpoint.Define("keyed", remote => ({ counter: remote(counterEndpoint, ["count"]) }), { keyFunc });
+    const tree = new ObservableDiffTree({ endpoint: keyed });
+    expect(tree.Endpoint).toBe(keyed);
+    tree.WritePath("rows", [{ id: "a", n: 1 }]);
+    tree.Commit();
+    expect(tree.Committed("a")).toEqual({ id: "a", n: 1 });
+    tree.ApplyDiff([{ type: "write", path: ["count"], value: 3 }], DiffTreeEndpoint.FollowRoute("counter"));
+    expect(tree.Snapshot("/counter/count")).toBe(3);
+  });
+
+  it("refuses a keyFunc of its own: the endpoint's is the tree's", () => {
+    const keyFunc = (v: { id?: string }) => v?.id;
+    expect(() => new ObservableDiffTree({ endpoint: counterEndpoint, keyFunc })).toThrow("counter gives the tree its keyFunc");
+  });
+
+  it("refuses a route of its own at a source's follow route", () => {
+    expect(() => new ObservableDiffTree({
+      endpoint: doubledEndpoint,
+      routes: { "/counter": { projections: {} } }
+    })).toThrow("/counter is doubled's follow route");
+  });
+
+  it("is the tree Host takes for the endpoint: not one built from another, nor from none when it follows sources", () => {
+    const [, scope] = CreateShimChannel();
+    expect(() => DiffTreeEndpoint.Host(counterEndpoint, NewDoubledTree(), scope)).toThrow("was built from doubled");
+    expect(() => DiffTreeEndpoint.Host(doubledEndpoint, new ObservableDiffTree(), scope)).toThrow("no follow routes");
+    // A tree with no sources to follow needs nothing from the endpoint but its keyFunc
+    DiffTreeEndpoint.Host(counterEndpoint, new ObservableDiffTree(), scope)();
+  });
+});
+
 describe("DiffTreeEndpoint.Connect", () => {
   it("follows the source's roots and projections across workers", async () => {
     CreateHub();
@@ -110,6 +147,13 @@ describe("DiffTreeEndpoint.Connect", () => {
 });
 
 describe("StoreAsync", () => {
+  it("throws for a keyFunc in the options over a lease: the endpoint's is the store's", () => {
+    CreateHub();
+    const lease = hub.Open(counterEndpoint.name);
+    expect(() => new StoreAsync(lease, { keyFunc: (v: any) => v?.id })).toThrow("counter gives the store its keyFunc");
+    lease.Release();
+  });
+
   it("shares one worker between stores, and releases its lease when destroyed", async () => {
     CreateHub();
     const a = new StoreAsync(hub.Open(doubledEndpoint.name));
@@ -135,15 +179,17 @@ describe("StoreAsync", () => {
 });
 
 describe("opaque", () => {
-  // An endpoint whose projection output is held whole, read from one definition by both sides
-  const viewEndpoint = DiffTreeEndpoint.Define("view", undefined, { opaque: ["$projection_view"] });
+  // A projection output held whole: the config the tree and its stores share, as a file both import
+  const viewEndpoint = DiffTreeEndpoint.Define("view");
+  const viewConfig = { opaque: ["$projection_view"] };
   type View = { n: number; items: number[] };
 
   function NewViewTree() {
-    const tree = new ObservableDiffTree(viewEndpoint.keyFunc, {
-      "/": { projections: { view: { reads: ["n"], projection: (n: number) => ({ n, items: [n, n + 1] }) } } }
+    const tree = new ObservableDiffTree({
+      endpoint: viewEndpoint,
+      routes: { "/": { projections: { view: { reads: ["n"], projection: (n: number) => ({ n, items: [n, n + 1] }) } } } },
+      ...viewConfig
     });
-    // Not marked here: hosting it marks the endpoint's opaque keys
     tree.WritePath("n", 1);
     tree.RunProjections();
     tree.Commit();
@@ -156,14 +202,9 @@ describe("opaque", () => {
     return hub;
   }
 
-  it("is recorded on the definition", () => {
-    expect(viewEndpoint.opaque).toEqual(["$projection_view"]);
-    expect(counterEndpoint.opaque).toEqual([]);
-  });
-
-  it("is marked on the tree by Host, and held whole by every StoreAsync, replaced on each change", async () => {
+  it("is marked on the tree by its config, and held whole by a StoreAsync given it, replaced on each change", async () => {
     CreateViewHub();
-    const store = new StoreAsync(hub.Open(viewEndpoint.name));
+    const store = new StoreAsync(hub.Open(viewEndpoint.name), viewConfig);
     await WaitFor(() => expect(store.Get<View>("$projection_view")).toBeDefined());
     const first = store.Get<View>("$projection_view")!;
     // The raw value, not a proxy
@@ -179,10 +220,10 @@ describe("opaque", () => {
     store.Destroy();
   });
 
-  it("can be replaced for one store, which then holds the key as any other", async () => {
+  it("is left out by a store not given it, which then holds the key as any other", async () => {
     CreateViewHub();
-    const whole = new StoreAsync(hub.Open(viewEndpoint.name));
-    const diffed = new StoreAsync(hub.Open(viewEndpoint.name), undefined, { opaque: [] });
+    const whole = new StoreAsync(hub.Open(viewEndpoint.name), viewConfig);
+    const diffed = new StoreAsync(hub.Open(viewEndpoint.name));
     await WaitFor(() => expect(diffed.Get<View>("$projection_view")).toBeDefined());
     const view = diffed.Get<View>("$projection_view")!;
     expect(ObservableNode.Unwrap(view)).not.toBe(view);

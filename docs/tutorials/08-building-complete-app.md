@@ -142,10 +142,7 @@ File: `src/services/dataService.ts`
 
 ```typescript
 export class DataService implements ActivityDataService, IDestroyable {
-  private store = new StoreAsync(
-    new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
-    (value) => value.id,
-  );
+  private store = new StoreAsync(new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }), { keyFunc: (value) => value.id });
 
   constructor() {
     this.store.Write(generateActivities(2), "activities");
@@ -167,10 +164,7 @@ ConnectWorkerToDiffTree(diffTree, self as any as Worker);
 ### StoreAsync with Key Function
 
 ```typescript
-private store = new StoreAsync(
-  new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }),
-  (value) => value.id,
-);
+private store = new StoreAsync(new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" }), { keyFunc: (value) => value.id });
 ```
 
 **What This Does:**

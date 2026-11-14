@@ -55,7 +55,7 @@ function Sender(from: ShimPort, to: ShimPort) {
  */
 export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions) {
   const [main, worker] = CreateShimChannel();
-  const tree = new ObservableDiffTree(keyFunc, routes);
+  const tree = new ObservableDiffTree({ keyFunc, routes });
   const host: IHost = HostPublisher(tree, worker);
   // Terminating the worker ends what it serves, as a real worker's ports close with it
   main.terminate = () => {

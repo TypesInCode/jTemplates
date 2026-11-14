@@ -14,11 +14,11 @@ function Plain(value: unknown) {
  * posts, copied as across a port. The follower's `count` projection reads the followed rows.
  */
 function Follow(options: { roots?: string[]; sourceRoutes?: IRouteDefinitions; followKeyFunc?: typeof keyFunc | null } = {}) {
-  const source = new ObservableDiffTree(keyFunc, options.sourceRoutes);
-  const follower = new ObservableDiffTree(undefined, {
+  const source = new ObservableDiffTree({ keyFunc, routes: options.sourceRoutes });
+  const follower = new ObservableDiffTree({ routes: {
     "/": { projections: { count: { reads: ["/src/rows"], projection: (rows: any) => rows?.t1?.length ?? 0 } } },
     ...FollowRoutes({ src: options.followKeyFunc === null ? undefined : (options.followKeyFunc ?? keyFunc) }),
-  });
+  } });
   const posts: IDiffPost[] = [];
   const followerPosts: IDiffPost[] = [];
   follower.Subscribe({}, (post: IDiffPost) => followerPosts.push(post));
@@ -102,7 +102,7 @@ describe("DiffTree.ApplyDiff: one tree following another in a follow route", () 
     expect(() => follower.PushPath("/src/list", [1])).toThrow(/follow route/);
     expect(() => follower.ApplyDiff([{ type: "write", path: ["x"], value: 1 }], "/other/")).toThrow(/follow route/);
     expect(() => follower.ApplyDiff([{ type: "write", path: ["$projection_x"], value: 1 }])).toThrow(/read-only/);
-    expect(() => new ObservableDiffTree(undefined, { "/src": { projections: { p: { reads: ["a"], projection: () => 1 } }, follow: true } }).WritePath("/src/a", 1))
+    expect(() => new ObservableDiffTree({ routes: { "/src": { projections: { p: { reads: ["a"], projection: () => 1 } }, follow: true } } }).WritePath("/src/a", 1))
       .toThrow(/no projections/);
   });
 
@@ -118,9 +118,9 @@ describe("DiffTree.ApplyDiff: one tree following another in a follow route", () 
 
   it("applies to the root route, where the records' keys are the tree's own", () => {
     const source = new ObservableDiffTree();
-    const follower = new ObservableDiffTree(undefined, {
+    const follower = new ObservableDiffTree({ routes: {
       "/": { projections: { double: { reads: ["count"], projection: (n: any) => (n ?? 0) * 2 } } },
-    });
+    } });
     source.Subscribe({ roots: ["count"] }, (post: IDiffPost) => {
       follower.ApplyDiff(post.diff);
       follower.RunProjections();

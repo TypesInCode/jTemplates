@@ -22,20 +22,18 @@ export type DiffTreeEndpointRemoteFunc = <const K extends string>(
 
 /** `DiffTreeEndpoint.Define` options */
 export interface IDiffTreeEndpointOptions {
-  /** How the data published here is keyed. Endpoints that follow this one use it for their follow route. */
-  keyFunc?: IKeyFunc;
   /**
-   * Root keys held whole: "never diff this path". Local to each thing attached to the endpoint: the
-   * tree hosting it marks itself with them (`DiffTreeEndpoint.Host`), and each store opened on
-   * it holds them whole.
+   * How the data published here is keyed: the tree built from the endpoint takes it, the stores
+   * opened on it, and the follow routes of the endpoints that follow this one.
    */
-  opaque?: readonly string[];
+  keyFunc?: IKeyFunc;
 }
 
 /**
- * An endpoint on a `DiffTreeHub`, defined: its name, how its data is keyed, the endpoints it follows and
- * the keys held whole. Plain data that drives the creation of what's attached to it: the hub's
- * registration, the tree that publishes it, the stores opened on it.
+ * An endpoint on a `DiffTreeHub`, defined: its name, how its data is keyed and the endpoints it
+ * follows. Plain data that drives the creation of what's attached to it: the hub's registration, the
+ * tree that publishes it (`IObservableDiffTreeConfig.endpoint`), the stores opened on it. What the
+ * tree and its stores otherwise share, `opaque` say, is theirs: a shared file each imports.
  */
 export interface IDiffTreeEndpoint<C extends object = object> {
   readonly name: string;
@@ -46,8 +44,6 @@ export interface IDiffTreeEndpoint<C extends object = object> {
   readonly remotes: readonly IDiffTreeEndpointRemote[];
   /** The sources' names, in the same order */
   readonly sources: readonly string[];
-  /** Root keys held whole, by the tree and by every store opened on the endpoint */
-  readonly opaque: readonly string[];
 }
 
 /**

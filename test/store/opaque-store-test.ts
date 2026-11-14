@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { StoreSync } from "../../src/Store/Store/storeSync";
+import { ObservableDiffTree } from "../../src/Store/Diff/observableDiffTree";
 import { DiffTree } from "../../src/Store/Diff/diffTree";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
@@ -85,7 +86,7 @@ describe("DiffTree opaque keys", () => {
 
 describe("StoreSync opaque roots", () => {
   it("reads an opaque root as a raw value, never proxied", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
 
     const view = store.Get<any>("view");
@@ -96,13 +97,13 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("still proxies a root that isn't listed", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "other");
     expect(isNode(store.Get("other"))).to.eq(true);
   });
 
   it("replaces the value whole on a change inside it, and re-runs its readers", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
     const first = store.Get<any>("view");
     const { scope, state } = counted(() => store.Get<any>("view"));
@@ -118,7 +119,7 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("doesn't re-run its readers on a write that changes nothing", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
     const { scope, state } = counted(() => store.Get<any>("view"));
     ObservableScope.Value(scope);
@@ -131,7 +132,7 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("doesn't re-run its readers when another root changes", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
     const { scope, state } = counted(() => store.Get<any>("view"));
     ObservableScope.Value(scope);
@@ -143,7 +144,7 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("Patch and Push on an opaque root replace it whole", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view", "list"] });
+    const store = new StoreSync(undefined, { opaque: ["view", "list"] });
     store.Write(drawing(), "view");
     store.Write([1, 2], "list");
     const view = store.Get<any>("view");
@@ -160,13 +161,13 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("holds a primitive opaque root as it is", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["text"] });
+    const store = new StoreSync(undefined, { opaque: ["text"] });
     store.Write("json", "text");
     expect(store.Get("text")).to.eq("json");
   });
 
   it("reads a default given before the first write raw, and updates its reader on the write", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     const empty = { label: "empty", nodes: [] as unknown[] };
     const { scope } = counted(() => store.Get<any>("view", empty));
     expect(ObservableScope.Value(scope)).to.eq(empty);
@@ -181,7 +182,7 @@ describe("StoreSync opaque roots", () => {
     const routes: IRouteDefinitions = {
       "/": { projections: { view: { reads: ["source"], projection: (source: any) => ({ ...drawing(), source }) } } },
     };
-    const store = new StoreSync(undefined, routes, { opaque: ["$projection_view"] });
+    const store = new StoreSync(new ObservableDiffTree({ routes, opaque: ["$projection_view"] }), { opaque: ["$projection_view"] });
     store.Write(1, "source");
     const first = store.Get<any>("$projection_view");
     expect(isNode(first)).to.eq(false);
@@ -194,19 +195,19 @@ describe("StoreSync opaque roots", () => {
   });
 
   it("snapshots and serializes an opaque root as its raw value", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
     expect(JSON.parse(JSON.stringify(store.Get("view")))).to.deep.eq(drawing());
   });
 
   it("refuses to read an opaque root through a key", () => {
-    const store = new StoreSync((v: any) => v?._id, undefined, { opaque: ["a"] });
+    const store = new StoreSync(undefined, { keyFunc: (v: any) => v?._id, opaque: ["a"] });
     store.Write([{ _id: "a", v: 1 }], "list");
     expect(() => store.Get<any>("list")[0].v).to.throw(/can't be read through a key/);
   });
 
   it("throws on a diff inside an opaque root, from a DiffTree that wasn't told", () => {
-    const store = new StoreSync(undefined, undefined, { opaque: ["view"] });
+    const store = new StoreSync(undefined, { opaque: ["view"] });
     store.Write(drawing(), "view");
     expect(() => (store as any).UpdateRootMap([{ type: "write", path: ["view", "label"], value: "b" }]))
       .to.throw(/DiffTree.MarkOpaque/);

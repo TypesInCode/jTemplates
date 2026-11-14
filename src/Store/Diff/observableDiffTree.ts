@@ -1,7 +1,10 @@
 import { JsonDiffResult } from "../../Utils/json";
 import { SubscriptionManager } from "../../Utils/subscriptionManager";
 import { DiffTree } from "./diffTree";
-import { DeliveryForm, IDiffPost, ISnapshotUpdate, ISubscribeOptions } from "./diffTree.types";
+import { DeliveryForm, IDiffPost, IObservableDiffTreeConfig, ISnapshotUpdate, ISubscribeOptions } from "./diffTree.types";
+import type { IDiffTreeEndpoint } from "./diffTreeEndpoint.types";
+import type { IKeyFunc } from "./utils/diffTree.types";
+import { FollowRoutes } from "./utils/routes";
 
 interface ISubscription {
   form: DeliveryForm;
@@ -25,7 +28,7 @@ interface ISubscription {
  * - When a subscriber throws, the others still get the commit, and `Commit()` throws the first error.
  *
  * @example
- * const tree = new ObservableDiffTree(keyFunc, routes);
+ * const tree = new ObservableDiffTree({ keyFunc, routes });
  * const stop = tree.Subscribe({ roots: ["loading", "$projection_*"] }, post => store.Apply(post.diff));
  * tree.WritePath("loading", true);
  * tree.Commit();
@@ -35,6 +38,33 @@ export class ObservableDiffTree extends DiffTree {
   private seq = 0;
   /** How many deliveries are running: changes and commits throw while it isn't 0 */
   private delivering = 0;
+
+  /** The endpoint the tree was built for, which `DiffTreeEndpoint.Host` checks */
+  readonly Endpoint?: IDiffTreeEndpoint;
+  /** How the tree keys its data: its config's, or its endpoint's. A `StoreSync` given the tree takes it. */
+  readonly KeyFunc?: IKeyFunc;
+
+  /**
+   * @param config The tree's endpoint, keyFunc, routes and opaque keys (`IObservableDiffTreeConfig`).
+   * @throws When a keyFunc is given with an endpoint (the endpoint's is the tree's), or a route of
+   *   the tree's own is one of the endpoint's follow routes.
+   */
+  constructor(config: IObservableDiffTreeConfig = {}) {
+    const { endpoint, routes = {} } = config;
+    if (endpoint && config.keyFunc)
+      throw new Error(`ObservableDiffTree: the endpoint ${endpoint.name} gives the tree its keyFunc; leave it out of the config.`);
+
+    const follow = endpoint ? FollowRoutes(Object.fromEntries(endpoint.remotes.map(remote => [remote.source, remote.keyFunc]))) : {};
+    for (const route of Object.keys(follow))
+      if (route in routes)
+        throw new Error(`ObservableDiffTree: the route ${route} is ${endpoint!.name}'s follow route for a source; rename it.`);
+
+    const keyFunc = endpoint ? endpoint.keyFunc : config.keyFunc;
+    super(keyFunc, { ...routes, ...follow });
+    this.Endpoint = endpoint;
+    this.KeyFunc = keyFunc;
+    config.opaque && this.MarkOpaque(config.opaque);
+  }
 
   /** The number of the last commit that changed something; 0 before the first */
   get Seq() {

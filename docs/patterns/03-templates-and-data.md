@@ -240,7 +240,7 @@ class UserProfile extends Component<{ user: User }> {
 ### Store operations
 
 ```typescript
-const store = new StoreSync((value) => value.id);
+const store = new StoreSync(undefined, { keyFunc: (value) => value.id });
 
 store.Write({ id: "1", name: "Alice" });            // Write & diff
 store.Patch("1", { email: "alice@example.com" });   // Deep merge
@@ -259,7 +259,7 @@ const tags = store.Get<string[]>("tags", []);
 When two objects share the same key, the store reconciles them to a single instance:
 
 ```typescript
-const store = new StoreSync((value) => value.id);
+const store = new StoreSync(undefined, { keyFunc: (value) => value.id });
 
 store.Write({ id: "act-1", user: { id: "usr-1", name: "John" } });
 store.Write({ id: "act-2", user: { id: "usr-1", name: "John" } });
@@ -364,7 +364,7 @@ this.animator.Enable();
 - **Use `peek` to read without subscribing.** When you need a value during template evaluation but don't want the parent to depend on it. It also works outside a scope, e.g. in event handlers.
 - **Use `@Computed` for expensive derived data.** It preserves object identity and prevents unnecessary downstream re-renders.
 - **Define domain interfaces.** TypeScript interfaces ensure type safety through `this.Data` and store operations.
-- **Use key functions with stores.** `new StoreSync((value) => value.id)` enables object identity sharing.
+- **Use key functions with stores.** `new StoreSync(undefined, { keyFunc: (value) => value.id })` enables object identity sharing.
 - **Mark animations with `@Destroy`.** Prevents memory leaks from animation timers.
 - **Use `@Watch` to connect animations to state.** The handler is called immediately with the current value and on every change.
 

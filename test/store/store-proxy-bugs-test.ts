@@ -220,7 +220,7 @@ describe("large diffs and item lists", () => {
 
   it("the same, delivered by an ObservableDiffTree", () => {
     const posted: any[] = [];
-    const publisher = new ObservableDiffTree(undefined, routes);
+    const publisher = new ObservableDiffTree({ routes });
     publisher.Subscribe({}, (post) => posted.push(post));
     publisher.WritePath("n", 1);
     publisher.RunProjections();

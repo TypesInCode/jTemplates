@@ -198,12 +198,13 @@ const NoKey: IKeyFunc = () => undefined;
  * source's roots under their own keys, each keyed entity at its home in the route (its key is
  * joined to the route, so it can't meet the tree's own). Give each source's keyFunc: the trees that
  * pass data identify it the same way, or a slot holding an entity elsewhere in the source keeps its
- * first value here. Merge them into the tree's route definitions.
+ * first value here. Merge them into the tree's route definitions; a tree built from an endpoint
+ * (`IObservableDiffTreeConfig.endpoint`) has its sources' added for it.
  * @example
- * const tree = new ObservableDiffTree(undefined, {
+ * const tree = new ObservableDiffTree({ routes: {
  *   "/": { projections: { ... } },
  *   ...FollowRoutes({ project: entityKey, engine: undefined }),
- * });
+ * } });
  * // a subscription to the project's tree applies its posts at /project/
  * subscription.Connect(port); // callback: post => tree.ApplyDiff(post.diff, "/project/")
  */

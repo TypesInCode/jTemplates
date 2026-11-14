@@ -40,7 +40,7 @@ function track<T>(fn: () => T) {
 // readers of the new key by name.
 describe("Store reactivity: keys added to an object", () => {
   it("wakes an Object.keys reader when Patch adds a key", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ records: { a: 1 } }, "root");
     const keys = track(() => Object.keys(sync.Get<any>("root").records).join(","));
     expect(keys.value()).to.eq("a");
@@ -52,7 +52,7 @@ describe("Store reactivity: keys added to an object", () => {
   });
 
   it("wakes an Object.keys reader when a dotted-path Write adds a key", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ records: {} }, "root");
     const keys = track(() => Object.keys(sync.Get<any>("root").records).join(","));
     expect(keys.value()).to.eq("");
@@ -64,7 +64,7 @@ describe("Store reactivity: keys added to an object", () => {
   });
 
   it("wakes an `in` reader when a key is added", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ records: {} }, "root");
     const has = track(() => "a" in sync.Get<any>("root").records);
     expect(has.value()).to.eq(false);
@@ -76,7 +76,7 @@ describe("Store reactivity: keys added to an object", () => {
   });
 
   it("wakes a deep Clone reader when a nested key is added", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ sheets: { t1: { widths: { name: 100 } } } }, "view");
     const plain = track(() => ObservableNode.Clone(sync.Get<any>("view")));
     expect(plain.value()).to.deep.eq({ sheets: { t1: { widths: { name: 100 } } } });
@@ -88,7 +88,7 @@ describe("Store reactivity: keys added to an object", () => {
   });
 
   it("wakes an Object.keys reader of a root when Write adds a key", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: 1 }, "root");
     const keys = track(() => Object.keys(sync.Get<any>("root")).join(","));
     expect(keys.value()).to.eq("a");
@@ -101,7 +101,7 @@ describe("Store reactivity: keys added to an object", () => {
 
   // Passes today (the root-replacement branch of ApplyDiff); a guard for the fix.
   it("wakes an Object.keys reader of a root when Write removes a key", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: 1, b: 2 }, "root");
     const keys = track(() => Object.keys(sync.Get<any>("root")).join(","));
     expect(keys.value()).to.eq("a,b");
@@ -130,7 +130,7 @@ describe("Store reactivity: keys added to an object", () => {
 // call Get(key) directly are.
 describe("Store reactivity: keyed entity replaced whole", () => {
   it("wakes a reader through the parent when the entity loses a field", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ child: { _id: "c1", name: "A", extra: 1 } }, "root");
     const name = track(() => sync.Get<any>("root").child.name);
     expect(name.value()).to.eq("A");
@@ -143,7 +143,7 @@ describe("Store reactivity: keyed entity replaced whole", () => {
   });
 
   it("wakes a reader through the parent when a union-shaped entity changes kind", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ selection: { _id: "selection", kind: "node", nodeKey: "n1" } }, "view");
     const kind = track(() => sync.Get<any>("view").selection.kind);
     expect(kind.value()).to.eq("node");
@@ -155,7 +155,7 @@ describe("Store reactivity: keyed entity replaced whole", () => {
   });
 
   it("wakes a reader through a parent array when an element entity loses a field", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ items: [{ _id: "i1", name: "A", note: "x" }] }, "root");
     const name = track(() => sync.Get<any>("root").items[0].name);
     expect(name.value()).to.eq("A");
@@ -168,7 +168,7 @@ describe("Store reactivity: keyed entity replaced whole", () => {
 
   // Passes today: the parent's own property is rewritten too. A guard for the fix.
   it("wakes a reader through the parent when a parent Write replaces a nested entity", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ child: { _id: "c1", name: "A", extra: 1 } }, "root");
     const name = track(() => sync.Get<any>("root").child.name);
 
@@ -179,7 +179,7 @@ describe("Store reactivity: keyed entity replaced whole", () => {
   });
 
   it("Scope - keeps a proxy returned by Get(id, default) live after the first Write", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     const scope = ObservableScope.Create(() => sync.Get<any>("late", { a: 1 }));
 
     sync.Write({ a: 2 }, "late");
@@ -195,7 +195,7 @@ describe("Store reactivity: keyed entity replaced whole", () => {
 // StoreAsync.Patch merges into value.toJSON(), which resolves aliases, and is correct.
 describe("StoreSync.Patch with nested keyed entities", () => {
   it("keeps a nested entity's current value when patching another field of the parent", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ mode: "a", child: { _id: "c1", name: "A" } }, "root");
     sync.Write({ _id: "c1", name: "B" });
     expect(sync.Get<any>("c1").name).to.eq("B");
@@ -208,7 +208,7 @@ describe("StoreSync.Patch with nested keyed entities", () => {
   });
 
   it("does not bring back a field the entity has lost", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ mode: "a", selection: { _id: "selection", kind: "node", nodeKey: "n1" } }, "view");
     sync.Write({ _id: "selection", kind: "none" });
 
@@ -222,7 +222,7 @@ describe("StoreSync.Patch with nested keyed entities", () => {
 // must not cost per-field granularity or nested-entity patching.
 describe("Store reactivity: granularity and nested entities", () => {
   it("does not wake a field reader when another, never-read field is patched", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: 1, b: 1 }, "root");
     const a = track(() => sync.Get<any>("root").a);
 
@@ -234,7 +234,7 @@ describe("Store reactivity: granularity and nested entities", () => {
   });
 
   it("does not wake a field reader when another, never-read field is written by path", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: 1, sel: { kind: "none" } }, "root");
     const a = track(() => sync.Get<any>("root").a);
 
@@ -246,7 +246,7 @@ describe("Store reactivity: granularity and nested entities", () => {
   });
 
   it("does not wake a field reader when a key is added to the object", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ a: 1 }, "root");
     const a = track(() => sync.Get<any>("root").a);
 
@@ -258,7 +258,7 @@ describe("Store reactivity: granularity and nested entities", () => {
   });
 
   it("does not wake a reader through the parent when an unrelated field of the parent is patched", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ child: { _id: "c1", name: "A" }, other: 1 }, "root");
     const name = track(() => sync.Get<any>("root").child.name);
 
@@ -270,7 +270,7 @@ describe("Store reactivity: granularity and nested entities", () => {
   });
 
   it("does not wake a direct Get reader when another scope resolves the alias", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ child: { _id: "c1", name: "A" } }, "root");
     const direct = track(() => sync.Get<any>("c1").name);
     const viaParent = track(() => sync.Get<any>("root").child.name);
@@ -283,7 +283,7 @@ describe("Store reactivity: granularity and nested entities", () => {
   });
 
   it("wakes an Object.keys reader when a key that was already read by name is added", () => {
-    const sync = new StoreSync(KeyFunc);
+    const sync = new StoreSync(undefined, { keyFunc: KeyFunc });
     sync.Write({ records: {} }, "root");
     // Reading the missing key first creates its property scope.
     const one = track(() => {

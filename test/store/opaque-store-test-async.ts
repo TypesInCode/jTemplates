@@ -26,7 +26,7 @@ describe("StoreAsync opaque roots", () => {
   /** A store over a shim worker, recording the batches sent and the diffs posted back */
   function CreateStore(opaque: string[]) {
     const worker = CreateShimDiffWorker();
-    const store = new StoreAsync(worker, undefined, { opaque });
+    const store = new StoreAsync(worker, { opaque });
     stores.push(store);
 
     // What the store sent, and the diffs the worker posted back

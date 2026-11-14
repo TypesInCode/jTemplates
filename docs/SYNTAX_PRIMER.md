@@ -57,7 +57,7 @@ npm install j-templates
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
 | `j-templates/Utils` | `Value`, `State`, `Computed`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
 | `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions`, `IStoreSyncOptions` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the endpoint's `IDiffTreeEndpoint` and its option types; `FollowRoutes`, and `DiffTreeEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `IObservableDiffTreeConfig`, `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the endpoint's `IDiffTreeEndpoint` and its option types; `FollowRoutes`, and `DiffTreeEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
 
 **Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/diffTreeEndpoint` (`DiffTreeEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
@@ -523,7 +523,8 @@ A store holds reactive data under string keys and diffs every write into existin
 
 |  | `StoreSync` | `StoreAsync` |
 | --- | --- | --- |
-| Constructor | `new StoreSync(keyFunc?, projections?, options?)`, or `new StoreSync(hub.OpenLocal(name), options?)` | `new StoreAsync(channel, keyFunc?, options?)`; the channel may be `hub.Open(name)`, whose endpoint gives the keyFunc and `opaque` left out |
+| Constructor | `new StoreSync(tree?, options?)`: `tree` is `hub.OpenLocal(name)`, an `ObservableDiffTree` (for routes), or left out for an empty tree of its own | `new StoreAsync(channel, options?)`; the channel may be `hub.Open(name)` |
+| Options | `{ keyFunc?, roots?, opaque? }`. `keyFunc` only for a tree with none to give: a lease's is the endpoint's and a given tree's its own, and giving one there too throws | `{ keyFunc?, roots?, opaque? }`. `keyFunc` only over a plain channel; a lease's is the endpoint's, and giving one too throws |
 | Diffing | main thread, synchronous | in the worker's `ObservableDiffTree`, served by `HostPublisher` |
 | Writes | `void`; readable immediately | `Promise`; batched per tick, readable once it resolves. Optional: without writes it's a read-only view of the tree |
 | Changes from elsewhere | commits made on `store.Tree` | every commit the worker's tree makes, whatever caused it |
@@ -548,7 +549,7 @@ Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]); /
 `keyFunc(value)` returns an id for any object (or `undefined`). On `Write`/`Push`, every nested object with an id is also stored under that id, so it can be patched directly while `Get` still returns the original shape.
 
 ```typescript
-const store = new StoreSync((v: any) => v?.id);
+const store = new StoreSync(undefined, { keyFunc: (v: any) => v?.id });
 store.Write([{ id: "a", done: false }, { id: "b", done: false }], "todos");
 store.Patch("a", { done: true });              // targets the nested item by id
 store.Get<Todo[]>("todos", [])[0].done;        // true
@@ -567,11 +568,11 @@ Supply a channel to a worker whose entry file hosts an `ObservableDiffTree`: a `
 // diff-worker.ts (bundled as its own worker entry)
 import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
 import { HostPublisher } from "j-templates/Store/Diff/hostPublisher";
-HostPublisher(new ObservableDiffTree((v: any) => v?.id), self as any);
+HostPublisher(new ObservableDiffTree({ keyFunc: (v: any) => v?.id }), self as any);
 
 // main thread
 const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
-const store = new StoreAsync(worker, (v: any) => v?.id);
+const store = new StoreAsync(worker, { keyFunc: (v: any) => v?.id });
 await store.Write(todos, "todos");
 store.Get("todos");   // defined once the write resolves
 store.Destroy();      // when done
@@ -592,15 +593,17 @@ Data crosses the worker boundary by structured clone. Class instances arrive as 
 
 ### Projections
 
-A projection is a derived value the store computes and stores under `$projection_<name>`. Pass them as `StoreSync`'s second argument (for `StoreAsync`, to the worker's `DiffTree`).
+A projection is a derived value the store computes and stores under `$projection_<name>`. Give them to the tree's root route, and the tree to `StoreSync` (for `StoreAsync`, to the worker's tree). The store takes the tree's keyFunc.
 
 ```typescript
 import { PROJECTION_PREFIX } from "j-templates/Store/Diff"; // "$projection_"
 
-const store = new StoreSync((v: any) => v?.id, {
+import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
+
+const store = new StoreSync(new ObservableDiffTree({ keyFunc: (v: any) => v?.id, routes: { "/": { projections: {
   activeCount: { reads: ["todos"], projection: (keys, todos) => todos.filter((t) => !t.done).length },
   doubled: { reads: [`${PROJECTION_PREFIX}activeCount`], projection: (keys, n) => n * 2 },
-});
+} } } }));
 store.Write(todos, "todos");
 store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 ```
@@ -618,11 +621,12 @@ store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 A root that only grows with the data, such as a drawing of every row, is expensive to diff field by field and to read through proxies. List its key in the store's `opaque` option to hold it whole:
 
 ```typescript
-const store = new StoreSync(keyFunc, routes, { opaque: ["$projection_layout"] });
+const layoutConfig = { opaque: ["$projection_layout"] };   // the tree writes it whole, the store holds it whole
+const store = new StoreSync(new ObservableDiffTree({ keyFunc, routes, ...layoutConfig }), layoutConfig);
 const layout = store.Get<Layout>("$projection_layout"); // the raw value: no proxies inside it
 ```
 
-- The key can be a written root or a projection's `$projection_<key>`. The store tells its `DiffTree` (`DiffTree.MarkOpaque`), which writes the root whole whenever it changes. `StoreAsync` sends the keys to its worker ahead of the first change.
+- The key can be a written root or a projection's `$projection_<key>`. The tree writes it whole whenever it changes (`DiffTree.MarkOpaque`): a `StoreSync` marks the empty tree it creates (`new StoreSync(undefined, { opaque })`), and a tree it's given has the keys in its config. `StoreAsync` sends the keys to its worker ahead of the first change. A store on a hub's tree needs the tree to write the key whole too: give both the same keys from a file both import (`new ObservableDiffTree({ endpoint, routes, ...searchConfig })`, `new StoreAsync(hub.Open("search"), searchConfig)`).
 - `Get` returns the same reference until the root changes, and only that change updates its readers. A write that changes nothing updates no one.
 - The value is the store's own: treat it as read-only. A change made inside it notifies no one, and under `StoreSync` it is also the `DiffTree`'s committed snapshot.
 - Write the raw value. Don't pass an `Opaque` to `Write`, `Patch`, `Push` or `Splice`, at any depth: the store boxes the root itself, and a box written to a store isn't opened (under `StoreAsync` it arrives as a plain `{ value }`).
@@ -634,7 +638,7 @@ An `ObservableDiffTree` is a `DiffTree` that delivers every `Commit()` to its su
 
 ```typescript
 import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
-const tree = new ObservableDiffTree(keyFunc, routes);
+const tree = new ObservableDiffTree({ keyFunc, routes });   // and `endpoint`, `opaque`: IObservableDiffTreeConfig
 const stop = tree.Subscribe({ roots: ["loading", "$projection_*"] }, post => { /* post.diff, post.seq */ });
 tree.Subscribe({ roots: ["index", "task_*"], form: "snapshot" }, update => { /* update.roots, update.deleted */ });
 
@@ -659,7 +663,7 @@ A worker that produces data itself (a computation's result, data it fetched) wri
 
 ```typescript
 // engine-worker.ts (bundled as its own worker entry)
-const tree = new ObservableDiffTree((v: any) => v?.id, routes);
+const tree = new ObservableDiffTree({ keyFunc: (v: any) => v?.id, routes });
 HostPublisher(tree, self as any);
 self.addEventListener("message", async (e) => {
   if (e.data?.type !== "run") return;      // the app's own message, beside the jt- ones
@@ -672,7 +676,7 @@ self.addEventListener("message", async (e) => {
 });
 
 // main thread
-const store = new StoreAsync(worker, (v: any) => v?.id);   // created whenever: it starts from the committed state
+const store = new StoreAsync(worker, { keyFunc: (v: any) => v?.id });   // created whenever: it starts from the committed state
 store.Get("results");   // reactive; undefined until a commit holds it
 ```
 
@@ -684,12 +688,13 @@ store.Get("results");   // reactive; undefined until a commit holds it
 
 On the main thread, a `DiffTreeHub` owns the app's trees. One key is one tree in the app's dependency graph, running in a worker or on the main thread. The hub creates each tree from a factory when it's first needed, hands out leases on it, connects each tree to the ones it follows, re-creates one on request, and ends each one when its last lease ends. It never carries data.
 
-An **endpoint** describes a key once, as plain data: its name, what it follows, its keyFunc and its opaque keys. The main thread registers it, the tree's file builds from it, and the trees that follow it read their paths from it. It imports nothing that reads `window`, so workers import the same definitions.
+An **endpoint** describes a key once, as plain data: its name, what it follows and its keyFunc. The main thread registers it, the tree is built from it, and the trees that follow it read their paths from it. It imports nothing that reads `window`, so workers import the same definitions. The tree's own configuration (routes, projections, `opaque`) is one object given to its constructor, in a file only its worker imports; config its stores share with it, `opaque` say, goes in a file both import.
 
 ```typescript
 // endpoints.ts: imported by the main thread and the workers
 import { DiffTreeEndpoint } from "j-templates/Store/Diff/diffTreeEndpoint";
-export const engineEndpoint = DiffTreeEndpoint.Define("engine", undefined, { keyFunc, opaque: ["view"] });
+export const engineEndpoint = DiffTreeEndpoint.Define("engine", undefined, { keyFunc });
+export const engineConfig = { opaque: ["view"] };   // shared by the engine's tree and its stores
 export const traceEndpoint = DiffTreeEndpoint.Define("trace", remote => ({
   engine: remote(engineEndpoint, ["index", "task_*"]),   // { index: "/engine/index", "task_*": "/engine/task_*" }
 }));
@@ -697,13 +702,13 @@ export const filterEndpoint = DiffTreeEndpoint.Define("filter", remote => ({
   trace: remote(traceEndpoint, ["$projection_count"]),
 }));
 
-// trace-tree.ts: builds the tree, with a follow route per source
-export const newTraceTree = () => new ObservableDiffTree(traceEndpoint.keyFunc, {
-  "/": { projections: { count: { reads: [traceEndpoint.config.engine.index], projection: countOf } } },
-  ...DiffTreeEndpoint.FollowRoutes(traceEndpoint),
+// trace-tree.ts: builds the tree; the endpoint gives its keyFunc and a follow route per source
+export const newTraceTree = () => new ObservableDiffTree({
+  endpoint: traceEndpoint,
+  routes: { "/": { projections: { count: { reads: [traceEndpoint.config.engine.index], projection: countOf } } } },
 });
 
-// trace-worker.ts: serves the tree, follows its sources into it, marks its opaque keys
+// trace-worker.ts: serves the tree and follows its sources into it
 DiffTreeEndpoint.Host(traceEndpoint, newTraceTree(), self as any);
 
 // main thread
@@ -719,7 +724,7 @@ hub.Register(traceEndpoint, () => new Worker(new URL("./trace-worker.ts", import
 });
 hub.Register(filterEndpoint, newFilterTree);       // returns the tree: it runs on this thread
 
-const engine = new StoreAsync(hub.Open("engine"));  // a worker's tree, over a port; held for the app's lifetime
+const engine = new StoreAsync(hub.Open("engine"), engineConfig);  // a worker's tree, over a port; held for the app's lifetime
 const trace = new StoreAsync(hub.Open("trace"));    // starts trace; its lease on its source keeps engine open
 const filter = new StoreSync(hub.OpenLocal("filter"));  // a tree on this thread, directly
 // teardown: each store releases its lease
@@ -730,9 +735,9 @@ hub.Destroy();                                      // every tree ended
 
 - `Register(endpoint, factory)` creates nothing; the first lease does. The endpoint's sources come from its definition, and each must be registered before it. While a tree runs, the hub holds a lease on each source and gives the tree a port to it, again whenever either restarts.
 - The factory returns a worker, or an `ObservableDiffTree` to run on this thread, which the hub hosts with the same `DiffTreeEndpoint.Host` on a channel of its own. The first start fixes the key's kind. A factory that returns neither, or the other kind on a restart, throws.
-- `Open` returns an `IWorkerLease`, for `StoreAsync`; `OpenLocal` returns an `ILocalLease`, for `StoreSync`. A store given the other kind's lease doesn't compile, and opening a key as the other kind throws. Any number of stores may be opened on one tree. A store owns its lease, takes its keyFunc and `opaque` from the endpoint, and releases the lease on `Destroy()`.
+- `Open` returns an `IWorkerLease`, for `StoreAsync`; `OpenLocal` returns an `ILocalLease`, for `StoreSync`. A store given the other kind's lease doesn't compile, and opening a key as the other kind throws. Any number of stores may be opened on one tree. A store owns its lease, takes its keyFunc from the endpoint, and releases the lease on `Destroy()`.
 - A `StoreSync` on a hub's tree shares it: a change from any store on it, and from the trees it follows, reaches every one of them before it returns.
-- `DiffTreeEndpoint.Host(endpoint, tree, scope, { onFollow })` applies each source's post at `/<source>/` and then, by default, runs the projections and commits. An `onFollow(tree, source)` replaces that, for a tree that acts at the end of the turn. An `onConnect(tree, source, port)` runs with each new port to a source, for a tree that also reads from the source outside the follow (a one-off `Once`); it may return a cleanup, which runs before the next port's call.
+- `DiffTreeEndpoint.Host(endpoint, tree, scope, { onFollow })` throws for a tree built from another endpoint, or from none when `endpoint` follows sources: build it with `new ObservableDiffTree({ endpoint })`. It applies each source's post at `/<source>/` and then, by default, runs the projections and commits. An `onFollow(tree, source)` replaces that, for a tree that acts at the end of the turn. An `onConnect(tree, source, port)` runs with each new port to a source, for a tree that also reads from the source outside the follow (a one-off `Once`); it may return a cleanup, which runs before the next port's call.
 - **The tree is the source of truth.** `Restart` is the app choosing to start a tree over; the hub doesn't restart on `error`. Every store on the tree starts over with the new one, as when it first subscribed: its state is applied in place, so readers keep their objects, and the roots it lacks are deleted. Nothing a store wrote is written back, and changes the old tree hadn't acknowledged reject. State that must outlive a restart goes in a tree of its own, which the restarted tree follows.
 - A tree is released when its last lease ends: at once, or after `releaseDebounce` ms, unless a lease is opened meanwhile. Releasing ends it and its leases on its sources. Keep a store open on a tree that must outlive every view.
 - The hub tells each tree its sources first, on every start. `OnConnect` for a source the endpoint doesn't follow throws: at once if the list has arrived, otherwise when it does, as the worker's uncaught error (the `Worker`'s `error` event on the main thread). The factory runs again on `Restart` and on the next lease after a release, so it should send whatever the worker needs to start.
@@ -777,7 +782,7 @@ A service deriving from a store:
 
 ```typescript
 class TodoService implements IDestroyable {
-  private store = new StoreSync((v: any) => v?.id);
+  private store = new StoreSync(undefined, { keyFunc: (v: any) => v?.id });
   private active = ObservableScope.Create(() =>
     this.store.Get<Todo[]>("todos", []).filter((t) => !t.done));
   get Active() { return ObservableScope.Value(this.active); }
@@ -852,8 +857,8 @@ function fakeWorker(tree = new ObservableDiffTree()) {
   HostPublisher(tree, inner);
   return main;
 }
-const tree = new ObservableDiffTree((v: any) => v?.id);
-const store = new StoreAsync(fakeWorker(tree), (v: any) => v?.id);
+const tree = new ObservableDiffTree({ keyFunc: (v: any) => v?.id });
+const store = new StoreAsync(fakeWorker(tree), { keyFunc: (v: any) => v?.id });
 
 tree.WritePath("a", { value: 1 });
 tree.Commit();

@@ -32,7 +32,7 @@ describe("Store Async Test", () => {
       postMessage(data);
     };
 
-    const store = new StoreAsync(worker, KeyFunc);
+    const store = new StoreAsync(worker, { keyFunc: KeyFunc });
     stores.push(store);
     return { store, batches };
   }
@@ -195,7 +195,7 @@ describe("Store Async Test", () => {
   describe("push", () => {
     function CreatePushed(routes?: IRouteDefinitions) {
       const shim = CreateShimWorker(KeyFunc, routes);
-      const store = new StoreAsync(shim.worker, KeyFunc);
+      const store = new StoreAsync(shim.worker, { keyFunc: KeyFunc });
       stores.push(store);
       return { ...shim, store };
     }
@@ -214,7 +214,7 @@ describe("Store Async Test", () => {
       tree.Commit();
       tree.WritePath("pending", 1);
 
-      const store = new StoreAsync(worker, KeyFunc);
+      const store = new StoreAsync(worker, { keyFunc: KeyFunc });
       stores.push(store);
       await Settle();
       expect(store.Get<any>("items").toJSON()).toEqual([{ _id: "a" }, { _id: "b" }]);
@@ -272,7 +272,7 @@ describe("Store Async Test", () => {
 
     it("a store with roots receives only those", async () => {
       const { worker, tree } = CreateShimWorker();
-      const store = new StoreAsync(worker, undefined, { roots: ["a", "task_*"] });
+      const store = new StoreAsync(worker, { roots: ["a", "task_*"] });
       stores.push(store);
       tree.WritePath("a", 1);
       tree.WritePath("b", 1);

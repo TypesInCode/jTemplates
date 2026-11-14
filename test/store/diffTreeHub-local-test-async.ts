@@ -23,7 +23,7 @@ const echoEndpoint = DiffTreeEndpoint.Define("echo", remote => ({
 }));
 
 function NewCounterTree() {
-  const tree = new ObservableDiffTree();
+  const tree = new ObservableDiffTree({ endpoint: counterEndpoint });
   tree.WritePath("count", 0);
   tree.Commit();
   return tree;
@@ -35,9 +35,9 @@ let tallies = 0;
 function NewTallyTree() {
   tallies++;
   const { counter } = tallyEndpoint.config;
-  const tree = new ObservableDiffTree(tallyEndpoint.keyFunc, {
-    "/": { projections: { tripled: { reads: [counter.count], projection: (n?: number) => n === undefined ? undefined : n * 3 } } },
-    ...DiffTreeEndpoint.FollowRoutes(tallyEndpoint)
+  const tree = new ObservableDiffTree({
+    endpoint: tallyEndpoint,
+    routes: { "/": { projections: { tripled: { reads: [counter.count], projection: (n?: number) => n === undefined ? undefined : n * 3 } } } }
   });
   tree.WritePath("note", "");
   tree.WritePath(`started${tallies}`, true);
@@ -47,9 +47,9 @@ function NewTallyTree() {
 
 function NewEchoTree() {
   const { tally } = echoEndpoint.config;
-  return new ObservableDiffTree(echoEndpoint.keyFunc, {
-    "/": { projections: { echo: { reads: [tally.$projection_tripled, tally.note], projection: (t?: number, note?: string) => `${t}:${note}` } } },
-    ...DiffTreeEndpoint.FollowRoutes(echoEndpoint)
+  return new ObservableDiffTree({
+    endpoint: echoEndpoint,
+    routes: { "/": { projections: { echo: { reads: [tally.$projection_tripled, tally.note], projection: (t?: number, note?: string) => `${t}:${note}` } } } }
   });
 }
 
@@ -125,7 +125,7 @@ describe("the kind of a key", () => {
 
     const fickle = DiffTreeEndpoint.Define("fickle");
     let starts = 0;
-    hub.Register(fickle, () => (starts++ === 0 ? new ObservableDiffTree() : CreateShimHost(() => { })));
+    hub.Register(fickle, () => (starts++ === 0 ? new ObservableDiffTree({ endpoint: fickle }) : CreateShimHost(() => { })));
     const lease = hub.OpenLocal("fickle");
     expect(() => hub.Restart("fickle")).toThrow("returned a worker after a tree on this thread");
     void lease;
@@ -237,13 +237,15 @@ describe("a tree on this thread", () => {
 });
 
 describe("a StoreSync on a tree on this thread", () => {
-  it("holds the endpoint's opaque keys whole, and one store can diff them instead", () => {
+  it("holds the opaque keys it's given whole, and a store not given them diffs them", () => {
     hub = new DiffTreeHub();
-    const boxEndpoint = DiffTreeEndpoint.Define("box", undefined, { opaque: ["box"] });
-    hub.Register(boxEndpoint, () => new ObservableDiffTree());
-    const whole = new StoreSync(hub.OpenLocal("box"));
+    const boxEndpoint = DiffTreeEndpoint.Define("box");
+    // The config the tree and its stores share
+    const boxConfig = { opaque: ["box"] };
+    hub.Register(boxEndpoint, () => new ObservableDiffTree({ endpoint: boxEndpoint, ...boxConfig }));
+    const whole = new StoreSync(hub.OpenLocal("box"), boxConfig);
     // Holding fewer keys whole than the tree is local to the store; holding more needs the tree told
-    const diffed = new StoreSync(hub.OpenLocal("box"), { opaque: [] });
+    const diffed = new StoreSync(hub.OpenLocal("box"));
     whole.Write({ n: 1, items: [1] }, "box");
     const first = whole.Get<{ n: number }>("box")!;
     expect(ObservableNode.Unwrap(first)).toBe(first);
@@ -259,6 +261,13 @@ describe("a StoreSync on a tree on this thread", () => {
     expect(next.n).toBe(2);
     whole.Destroy();
     diffed.Destroy();
+  });
+
+  it("throws for a keyFunc in the options: the endpoint's is the store's", () => {
+    CreateHub();
+    const lease = hub.OpenLocal("tally");
+    expect(() => new StoreSync(lease, { keyFunc: (v: any) => v?.id })).toThrow("tally gives the store its keyFunc");
+    lease.Release();
   });
 
   it("holds only its roots, and stops changing once destroyed", () => {

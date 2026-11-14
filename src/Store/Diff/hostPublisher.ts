@@ -33,7 +33,7 @@ export interface IHost {
  *
  * @example
  * // worker entry
- * const tree = new ObservableDiffTree(keyFunc, routes);
+ * const tree = new ObservableDiffTree({ keyFunc, routes });
  * HostPublisher(tree, self);
  * tree.WritePath("results", compute());
  * tree.RunProjections();

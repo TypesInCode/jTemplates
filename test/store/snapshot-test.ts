@@ -3,7 +3,7 @@ import { StoreSync } from "../../src/Store/Store/storeSync";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { KeyFunc, snapshotCases } from "./snapshot-cases";
 
-snapshotCases("StoreSync", () => new StoreSync(KeyFunc));
+snapshotCases("StoreSync", () => new StoreSync(undefined, { keyFunc: KeyFunc }));
 
 // Nodes made with ObservableNode.Create: no store, no keyed entities, writable proxies.
 describe("ObservableNode snapshots without a store", () => {

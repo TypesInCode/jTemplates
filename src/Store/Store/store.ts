@@ -1,17 +1,26 @@
 import { JsonDeepClone, JsonDiff, JsonDiffResult, JsonType } from "../../Utils/json";
 import { ObservableNode } from "../Tree/observableNode";
 import { Opaque } from "../Tree/opaque";
+import type { IKeyFunc } from "../Diff/utils/diffTree.types";
 
 /** Options shared by `StoreSync` and `StoreAsync` */
 export interface IStoreOptions {
+  /**
+   * Gives a value its key, so the store resolves an object written with an id to its own root. For a
+   * store whose tree has none to give: a `StoreAsync` over a plain channel (pass the worker tree's
+   * key logic), or a `StoreSync` with a tree of its own. A lease's keyFunc is the endpoint's, and a
+   * tree's its own; giving one there too throws.
+   */
+  keyFunc?: IKeyFunc;
   /**
    * Root keys the store holds whole, as an `Opaque`: a written root or a projection's
    * `$projection_<key>`. `Get` returns such a root's raw value, never proxied, the same reference
    * until the root is written again, and only that write updates its readers. Treat the value as
    * read-only: a change made inside it notifies no one. An opaque root can't be read through a
-   * key (`keyFunc`). The store tells its `DiffTree` (`DiffTree.MarkOpaque`), which writes each one
-   * whole instead of diffing inside it. Write the raw value: the store boxes it, and an `Opaque`
-   * written to a store isn't opened.
+   * key (`keyFunc`). Its tree must write each one whole instead of diffing inside it
+   * (`DiffTree.MarkOpaque`): a store with a tree of its own marks it; for a hub's tree, give the
+   * tree the same keys (`IObservableDiffTreeConfig.opaque`) from a file both import. Write the raw
+   * value: the store boxes it, and an `Opaque` written to a store isn't opened.
    */
   opaque?: readonly string[];
 }

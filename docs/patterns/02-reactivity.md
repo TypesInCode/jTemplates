@@ -301,7 +301,7 @@ Synchronous data store with diff-based updates. When a `keyFunc` is provided, ob
 ```typescript
 import { StoreSync } from "j-templates/Store";
 
-const store = new StoreSync((value) => value.id);
+const store = new StoreSync(undefined, { keyFunc: (value) => value.id });
 ```
 
 | Method | Signature | Description |
@@ -314,7 +314,7 @@ const store = new StoreSync((value) => value.id);
 | `Get` | `<O>(id: string, defaultValue: O): O` | Retrieve data, or `defaultValue` if key not found. |
 
 ```typescript
-const store = new StoreSync((value) => value.id);
+const store = new StoreSync(undefined, { keyFunc: (value) => value.id });
 
 store.Write({ id: "1", name: "Alice" });
 store.Patch("1", { name: "Bob" });
@@ -341,7 +341,7 @@ ConnectWorkerToDiffTree(diffTree, self as any as Worker);
 import { StoreAsync } from "j-templates/Store";
 
 const worker = new Worker(new URL("./diff-worker.ts", import.meta.url), { type: "module" });
-const store = new StoreAsync(worker, (value) => value.id);
+const store = new StoreAsync(worker, { keyFunc: (value) => value.id });
 await store.Write({ id: "1", name: "Alice" });
 store.Destroy(); // Stops the async queue and terminates the worker
 ```
@@ -353,7 +353,7 @@ The second argument to `StoreAsync` is used locally, by the base `Store` class, 
 When a `keyFunc` is provided to `StoreSync` or `StoreAsync`, objects that share the same key value are reconciled to a single instance:
 
 ```typescript
-const store = new StoreSync((value) => value.id);
+const store = new StoreSync(undefined, { keyFunc: (value) => value.id });
 
 store.Write({ id: "1", name: "Alice" });
 store.Write({ id: "1", name: "Alice", age: 30 }); // Same id — same object, diffed
@@ -403,7 +403,7 @@ ObservableScope.OnDestroyed(scope, () => console.log("destroyed"));
 - **Always clean up scopes.** Inside components, `Destroy()` handles this automatically. Outside components, call `ObservableScope.Destroy()` or `ObservableScope.DestroyAll()`.
 - **Use `Peek` for non-reactive reads.** When you need a value without creating a dependency.
 - **Use `StoreSync`/`StoreAsync` for shared data.** Key functions enable object sharing and efficient diff-based updates.
-- **Define key functions for stores.** `new StoreSync((value) => value.id)` enables identity tracking.
+- **Define key functions for stores.** `new StoreSync(undefined, { keyFunc: (value) => value.id })` enables identity tracking.
 
 ## Source
 

@@ -4,23 +4,32 @@ Branch `feature/diff-tree-push`. The model is in [docs/patterns/05-difftree-endp
 it was prototyped in procedures-engine's `sample-worker-stores/src-framework`, and the plan for moving
 the sample and builder-app onto it is that repo's `sample-worker-stores/INTEGRATION.md`.
 
-**Done:** `DiffTreeEndpoint` (`Define`, `FollowRoute`, `FollowRoutes`, `Host` with `onFollow` and `onConnect`, `Connect`);
+**Done:** `DiffTreeEndpoint` (`Define`, `FollowRoute`, `Host` with `onFollow` and `onConnect`, `Connect`);
+`new ObservableDiffTree({ endpoint, keyFunc, routes, opaque })`, a tree's configuration in one object;
 `DiffTreeHub.Register(endpoint, factory)`, a factory returning a worker or a tree, `Open` / `OpenLocal`,
 `KindOf`; both apps (the sample, builder-app) moved onto it; `StoreAsync` and `StoreSync` over leases, owning them; restart without reseed, unacknowledged
 changes rejected; `StoreSync.Destroy`; `@ComputedAsync` removed; `npm test` type-checks the tests
 (`tsconfig.test.json`).
 
 **Breaking:** `Register(name, factory, { sources })` is `Register(endpoint, factory)`;
-`new StoreAsync(lease, keyFunc?, options?)` takes the endpoint's keyFunc and `opaque` when they're left
-out, and the store releases the lease; `StoreAsync.Reconnect` is private (a store over a lease follows a restart by itself; over a plain channel, make a new store); `IWorkerOptions` is `IRegisterOptions`,
+`new StoreAsync(channel, keyFunc?, options?)` is `new StoreAsync(channel, { keyFunc?, roots?, opaque? })`, and
+`new StoreSync(keyFunc?, routes?, options?)` is `new StoreSync(tree?, { keyFunc?, roots?, opaque? })`, where
+`tree` is a local lease, an `ObservableDiffTree` (for routes; the store doesn't own it), or left out for an
+empty tree of the store's own: one signature each, keyFunc in the options. A store takes a lease's keyFunc
+from the endpoint and a given tree's from the tree (`ObservableDiffTree.KeyFunc`); a `keyFunc` given there
+too throws, as does a tree config with both `endpoint` and `keyFunc`. A store over a lease releases it; `new ObservableDiffTree(keyFunc?, routes?)` is
+`new ObservableDiffTree({ endpoint?, keyFunc?, routes?, opaque? })`, and the endpoint gives the tree its
+keyFunc and follow routes (`DiffTreeEndpoint.FollowRoutes` is gone); an endpoint has no `opaque`: the tree
+and its stores share theirs from a file both import, and `Host` checks the tree was built from the
+endpoint (or from none, for an endpoint with no sources) instead of marking it; `StoreAsync.Reconnect` is private (a store over a lease follows a restart by itself; over a plain channel, make a new store); `IWorkerOptions` is `IRegisterOptions`,
 `WorkerFactory` is `TreeFactory`; `@ComputedAsync` is gone; `DiffTreePublisher`
 (`Store/Diff/diffTreePublisher`) is `ObservableDiffTree` (`Store/Diff/observableDiffTree`), and extends
 `DiffTree` instead of wrapping it (every `DiffTree` change calls its protected `BeforeChange()`). `StoreSync.Publisher` is `StoreSync.Tree`. `WorkerHub` (`Store/Diff/workerHub`) is `DiffTreeHub`
 (`Store/Diff/diffTreeHub`).
 
 **Open:**
-- Opaque, the rest of it: `StoreAsync` stops sending `jt-markopaque` (the tree is marked from the
-  definition by `Host`), and `Store` applies records inside an opaque root by copying along each
+- Opaque, the rest of it: `StoreAsync` stops sending `jt-markopaque` (the tree is marked from its
+  config), and `Store` applies records inside an opaque root by copying along each
   record's path and boxing the new root, instead of throwing. Until then a store can hold fewer keys
   whole than its tree, not more (a `StoreAsync` holding more tells its tree, for every subscriber).
 - A reactive hub: [docs/proposals/reactive-hub.md](docs/proposals/reactive-hub.md). Deferred, not part of

@@ -68,10 +68,10 @@ describe("ChannelSubscription", () => {
   });
 
   it("keeps a following tree to the new tree's state: a read of the route holds nothing the old one left", async () => {
-    const follower = new ObservableDiffTree(undefined, {
+    const follower = new ObservableDiffTree({ routes: {
       "/": { projections: { tasks: { reads: ["/src/"], projection: (src: any) => Object.keys(src ?? {}).sort() } } },
       ...FollowRoutes({ src: undefined }),
-    });
+    } });
     const subscription = new ChannelSubscription({ roots: ["task_*"] }, (post: IDiffPost) => {
       follower.ApplyDiff(post.diff, "/src/");
       follower.RunProjections();

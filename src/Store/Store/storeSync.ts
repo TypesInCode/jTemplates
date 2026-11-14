@@ -1,10 +1,9 @@
 import type { JsonDiffResult } from "../../Utils/json";
 import type { ILocalLease } from "../Diff/diffTree.types";
 import { ObservableDiffTree } from "../Diff/observableDiffTree";
-import { IKeyFunc, IRouteDefinitions } from "../Diff/utils/diffTree.types";
 import { IStoreOptions, Store } from "./store";
 
-/** Options for a `StoreSync` over a lease */
+/** Options for a `StoreSync` */
 export interface IStoreSyncOptions extends IStoreOptions {
   /**
    * The tree's root keys the store holds: exact keys and patterns ending in `*`. Omitted, every
@@ -42,8 +41,10 @@ export interface IStoreSyncOptions extends IStoreOptions {
  * tree directly reaches the store too. A change runs the tree's projections and commits
  * before it returns.
  *
- * - **Its own tree** (`new StoreSync(keyFunc, routes)`): the store creates the tree, and it lives as
- *   long as the store.
+ * - **Its own tree** (`new StoreSync()`, `new StoreSync(undefined, { keyFunc })`): the store creates an
+ *   empty tree, and it lives as long as the store.
+ * - **A tree it's given** (`new StoreSync(new ObservableDiffTree({ keyFunc, routes }))`): for a tree
+ *   with routes and projections, whose keyFunc the store takes. Anything else on the thread may hold it too.
  * - **A hub's tree** (`new StoreSync(hub.OpenLocal(name))`): a tree on this thread a `DiffTreeHub` runs
  *   for an endpoint, shared by every store opened on it and followed into by the hub. A change from
  *   any of them reaches all of them, and the trees that follow it, before it returns. The store
@@ -74,40 +75,41 @@ export class StoreSync extends Store {
   private delivered = new Set<string>();
 
   /**
-   * Creates a store on a hub's tree on this thread, and subscribes to it: the tree's state is the
-   * store's when this returns. The store owns the lease from then on, and releases it when it's
-   * destroyed.
-   * @param lease From `DiffTreeHub.OpenLocal`. A lease on a worker's tree (`DiffTreeHub.Open`) is for a
-   *   `StoreAsync`, and doesn't compile here.
-   * @param options `roots` the store holds, and `opaque` in place of the endpoint's, for this store
-   *   alone: the shared tree isn't told. The keyFunc is the endpoint's.
+   * Creates a store and subscribes it to its tree: the tree's state is the store's when this returns.
+   * @param tree The tree:
+   *   - A lease from `DiffTreeHub.OpenLocal`, on a hub's tree on this thread. The store owns the
+   *     lease from then on, and releases it when it's destroyed, and follows the tree across
+   *     restarts. A lease on a worker's tree (`DiffTreeHub.Open`) is for a `StoreAsync`, and doesn't
+   *     compile here.
+   *   - An `ObservableDiffTree`, for a tree with routes (`new ObservableDiffTree({ keyFunc, routes })`).
+   *     A projection in the root route (`"/"`) is readable through `Get` at `$projection_<key>`. The
+   *     store doesn't own it: `Destroy` stops listening.
+   *   - Left out, the store creates an empty tree of its own, with the store's `keyFunc` and `opaque`.
+   * @param options `keyFunc`, `roots` and `opaque` (`IStoreSyncOptions`). `keyFunc` is for the tree the
+   *   store creates: a leased tree's is the endpoint's, and a given tree's its own. A tree given or
+   *   leased must write the `opaque` keys whole already (`IObservableDiffTreeConfig.opaque`): share
+   *   them from one file.
+   * @throws When `keyFunc` is given with a tree or a lease, which has its own.
    */
-  constructor(lease: ILocalLease, options?: IStoreSyncOptions);
-  /**
-   * Creates a store with a tree of its own.
-   * @param keyFunc Optional function to generate a key for a given data value.
-   * @param routes Optional route definitions. A projection in the root route (`"/"`) is
-   * readable through `Get` at `$projection_<key>`.
-   * @param options Optional settings; `opaque` lists the root keys held whole (`IStoreOptions`).
-   * @throws When projections depend on each other in a cycle.
-   */
-  constructor(keyFunc?: IKeyFunc, routes?: IRouteDefinitions, options?: IStoreOptions);
-  constructor(source?: ILocalLease | IKeyFunc, routesOrOptions?: IRouteDefinitions | IStoreSyncOptions, ownOptions: IStoreOptions = {}) {
-    const lease = IsLease(source) ? source : undefined;
-    const options: IStoreSyncOptions = lease ? { opaque: lease.endpoint.opaque, ...routesOrOptions as IStoreSyncOptions } : ownOptions;
-    super(lease ? lease.endpoint.keyFunc : source as IKeyFunc | undefined, options.opaque);
+  constructor(tree?: ObservableDiffTree | ILocalLease, options: IStoreSyncOptions = {}) {
+    const lease = tree && !(tree instanceof ObservableDiffTree) ? tree : undefined;
+    if (tree && options.keyFunc)
+      throw new Error(lease
+        ? `StoreSync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`
+        : "StoreSync: the tree has its keyFunc, which the store takes; leave it out of the options.");
+
+    super(lease ? lease.endpoint.keyFunc : tree ? (tree as ObservableDiffTree).KeyFunc : options.keyFunc, options.opaque);
+    this.roots = options.roots;
 
     if (lease) {
       this.lease = lease;
-      this.roots = options.roots;
       this.Attach(lease.tree, false);
       this.stopLease = lease.OnTree(tree => this.Attach(tree, true));
       return;
     }
 
-    this.diff = new ObservableDiffTree(source as IKeyFunc | undefined, routesOrOptions as IRouteDefinitions | undefined);
-    options.opaque && this.diff.MarkOpaque(options.opaque);
-    this.unsubscribe = this.diff.Subscribe({}, post => this.UpdateRootMap(post.diff));
+    this.diff = tree as ObservableDiffTree | undefined ?? new ObservableDiffTree({ keyFunc: options.keyFunc, opaque: options.opaque });
+    this.unsubscribe = this.diff.Subscribe({ roots: this.roots }, post => this.UpdateRootMap(post.diff));
   }
 
   /**
@@ -234,8 +236,4 @@ export class StoreSync extends Store {
     this.diff.RunProjections();
     this.diff.Commit();
   }
-}
-
-function IsLease(source: ILocalLease | IKeyFunc | undefined): source is ILocalLease {
-  return typeof (source as ILocalLease)?.OnTree === "function";
 }
