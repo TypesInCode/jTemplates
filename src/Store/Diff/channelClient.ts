@@ -1,3 +1,4 @@
+import { IsPattern } from "../../Utils/pattern";
 import { IChannel, IDiffMethodBatch, IDiffPost, IHostMessage, ISnapshotUpdate, ISubscribeOptions } from "./diffTree.types";
 
 /** Ids are unique across clients, so several can share one channel */
@@ -241,7 +242,7 @@ export function Subscribe(channel: IChannel, options: ISubscribeOptions, callbac
 export function Once(channel: IChannel, keys: readonly string[], options: { signal?: AbortSignal } = {}): Promise<{ [key: string]: unknown }> {
   const { signal } = options;
   return new Promise((resolve, reject) => {
-    if (keys.some(key => key.endsWith("*")))
+    if (keys.some(IsPattern))
       return reject(new Error(`Once takes exact keys, not patterns: ${keys.join(", ")}`));
 
     if (signal?.aborted)

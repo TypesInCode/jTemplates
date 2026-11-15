@@ -1,9 +1,16 @@
 import { _requestIdleCallback } from "./scheduling";
 
+export enum EmitterEvent {
+  SUBSCRIBED,
+  UNSUBSCRIBED
+}
+
+export type EmitterEventCallback = (event: EmitterEvent, emitter: Emitter) => void;
+
 export type EmitterCallback<T extends readonly any[] = any[]> = (
   ...args: T
 ) => void;
-export type Emitter = [[number, number], ...EmitterCallback[]];
+export type Emitter<T extends readonly any[] = any[]> = [[number, number, Emitter<[EmitterEvent, Emitter]> | undefined], ...EmitterCallback<T>[]];
 
 const pendingCompactEmitters = new Set<Emitter>();
 
@@ -42,16 +49,30 @@ function CompactEmitter(emitter: Emitter) {
 
 export namespace Emitter {
 
-  export function Create(): Emitter {
-    return [[0, -1]];
+  export function Create<T extends any[] = any[]>(): Emitter<T> {
+    return [[0, -1, undefined]];
   }
 
-  export function On(emitter: Emitter, callback: EmitterCallback) {
+  export function On<T extends any[]>(emitter: Emitter<T>, callback: EmitterCallback<T>) {
     emitter.push(callback);
+    if (emitter.length - emitter[0][0] === 2)
+      emitter[0][2] && Emitter.Emit(emitter[0][2], EmitterEvent.SUBSCRIBED, emitter);
+  }
+
+  export function Watch(emitter: Emitter, callback: EmitterCallback<[EmitterEvent, Emitter]>) {
+    emitter[0][2] ??= Emitter.Create();
+    On(emitter[0][2], callback);
+  }
+
+  export function Unwatch(emitter: Emitter, callback: EmitterCallback<[EmitterEvent, Emitter]>) {
+    if (!emitter[0][2])
+      return;
+
+    Remove(emitter[0][2], callback);
   }
 
   // Re-entry during emit is not supported and considered a bug in client code
-  export function Emit(emitter: Emitter, ...args: any[]) {
+  export function Emit<T extends any[]>(emitter: Emitter<T>, ...args: T) {
     if (emitter[0][1] !== -1)
       throw new Error("Emitter.Emit: re-entry during emit is not supported");
 
@@ -94,10 +115,17 @@ export namespace Emitter {
       RemoveFromBeginning(emitter, index);
     else
       RemoveFromEnd(emitter, index);
+
+    if (emitter.length - emitter[0][0] === 1)
+      emitter[0][2] && Emitter.Emit(emitter[0][2], EmitterEvent.UNSUBSCRIBED, emitter);
   }
 
   export function Clear(emitter: Emitter) {
-    emitter.length > 1 && emitter.splice(1);
+    if (emitter.length - emitter[0][0] === 1)
+      return;
+
+    emitter.splice(1);
     emitter[0][0] = 0;
+    emitter[0][2] && Emitter.Emit(emitter[0][2], EmitterEvent.UNSUBSCRIBED, emitter);
   }
 }

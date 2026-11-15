@@ -4,12 +4,14 @@
  * root route.
  */
 
+import { PatternMatches, WILDCARD } from "../../../Utils/pattern";
+
 export const ROOT_ROUTE = "/";
 export const PROJECTION_PREFIX = "$projection_";
 
 export const ROUTE_DELIMETER = "/";
 export const PROP_DELIMETER = ".";
-export const WILDCARD = "*";
+export { WILDCARD };
 
 export function SplitRouteAndPath(path: string) {
   const lastSlash = path.lastIndexOf(ROUTE_DELIMETER);
@@ -71,7 +73,7 @@ export function RouteMatches(pattern: string, route: string) {
     return false;
 
   for (let x = 0; x < patternParts.length; x++)
-    if (patternParts[x].endsWith(WILDCARD) ? !routeParts[x].startsWith(patternParts[x].slice(0, -1)) : patternParts[x] !== routeParts[x])
+    if (!PatternMatches(patternParts[x], routeParts[x]))
       return false;
 
   return true;

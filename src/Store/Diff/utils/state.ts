@@ -1,7 +1,8 @@
 import { JsonType } from "../../../Utils/json";
 import { ISnapshotState, Snapshot } from "../../Tree/snapshot";
 import { IRouteSource } from "./diffTree.types";
-import { PROP_DELIMETER, ROUTE_DELIMETER, RouteAndProperty, SplitRouteAndPath, WILDCARD } from "./paths";
+import { PROP_DELIMETER, ROUTE_DELIMETER, RouteAndProperty, SplitRouteAndPath } from "./paths";
+import { IsPattern, PatternPrefix } from "../../../Utils/pattern";
 
 /**
  * The raw state of a DiffTree's routes. A route's state hangs off its parent route's state under
@@ -168,8 +169,8 @@ function InvalidateState(snapshot: ISnapshotState, value: any) {
 export function ExpandWildcardPath(root: any, path: string) {
   const [route, property] = SplitRouteAndPath(path);
   const parts = route.split(ROUTE_DELIMETER);
-  const index = parts.findIndex(part => part.endsWith(WILDCARD));
-  const prefix = parts[index].slice(0, -1);
+  const index = parts.findIndex(part => IsPattern(part));
+  const prefix = PatternPrefix(parts[index]);
   const parent = RouteState(root, parts.slice(0, index).join(ROUTE_DELIMETER) + ROUTE_DELIMETER);
   const children = parent?.[ROUTE_STATE] ?? {};
 

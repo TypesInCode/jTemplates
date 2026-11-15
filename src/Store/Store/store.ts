@@ -2,6 +2,8 @@ import { JsonDeepClone, JsonDiff, JsonDiffResult, JsonType } from "../../Utils/j
 import { ObservableNode } from "../Tree/observableNode";
 import { Opaque } from "../Tree/opaque";
 import type { IKeyFunc } from "../Diff/utils/diffTree.types";
+import { PatternMatches } from "../../Utils/pattern";
+import { EmitterEvent } from "../../Utils/emitter";
 
 /** Options shared by `StoreSync` and `StoreAsync` */
 export interface IStoreOptions {
@@ -38,15 +40,22 @@ export abstract class ReadStore {
   private createNode: <T>(data: T, unwrapValue?: boolean) => T;
   /** Root keys held whole, see `IStoreOptions.opaque` */
   protected readonly opaque: ReadonlySet<string | number>;
-
+  protected readonly watch: readonly string[];
+  protected readonly watchCallback?: (rootProperty: string, event: EmitterEvent) => void;
   /**
    * Creates an instance of ReadStore.
    * @param keyFunc Optional function to generate a key for a given data value.
    * When provided, enables alias functionality where values can reference other root objects.
    * @param opaque Root keys held whole, see `IStoreOptions.opaque`.
    */
-  constructor(protected keyFunc?: (value: any) => string | undefined, opaque: readonly string[] = []) {
+  constructor(protected keyFunc?: (value: any) => string | undefined, opaque: readonly string[] = [], watch: readonly string[] = [], watchCallback?: (rootKey: string, event: EmitterEvent) => void) {
     this.opaque = new Set(opaque);
+    this.watch = watch;
+    if (this.watch.length > 0 && !watchCallback)
+      throw new Error("watchCallback must be provided when passing watch properties");
+
+    this.watchCallback = watchCallback;
+
     const aliasFunc =
       keyFunc &&
       ((value: unknown, reactive = true) => {
@@ -90,7 +99,8 @@ export abstract class ReadStore {
   Get<O>(id: string, defaultValue?: O): O | undefined {
     let result = this.rootMap.get(id);
     if (result === undefined) {
-      result = this.createNode({ [id]: this.opaque.has(id) ? Box(defaultValue) : defaultValue });
+      result = this.CreateRootNode(id, defaultValue);
+
       this.rootMap.set(id, result);
     }
 
@@ -168,7 +178,7 @@ export abstract class ReadStore {
         throw `Unable to initialize root path ${rootPath} with initial path ${results[0].path}`;
 
       const rootData = JsonDeepClone(results[0].value);
-      const newRootObject = this.createNode({ [rootPath]: rootData }, false);
+      const newRootObject = this.CreateRootNode(rootPath, rootData, false);
       this.rootMap.set(rootPath, newRootObject);
       // Later entries for the same root (e.g. route summaries written one instance at a time)
       // apply to the root just created
@@ -179,6 +189,17 @@ export abstract class ReadStore {
     }
 
     ObservableNode.ApplyDiff(rootObject, results);
+  }
+
+  private CreateRootNode(rootPath: string | number, data: any, unwrap?: boolean) {
+    const result = this.createNode({ [rootPath]: this.opaque.has(rootPath) ? Box(data) : data }, unwrap);
+    const rootPathStr = rootPath.toString();
+    if (this.watch.some(pattern => PatternMatches(pattern, rootPathStr)))
+      ObservableNode.WatchProperty(result, rootPath, (event) => {
+        this.watchCallback(rootPathStr, event);
+      });
+
+    return result;
   }
 }
 

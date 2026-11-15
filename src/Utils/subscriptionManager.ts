@@ -1,3 +1,5 @@
+import { IsPattern, PatternMatches, PatternPrefix } from "./pattern";
+
 /**
  * A key filter: exact keys, and patterns ending in `*` that match every key starting with the text
  * before it (`task_*` matches `task_1`). Undefined matches every key; an empty array matches none.
@@ -19,8 +21,6 @@ interface IEntry<S> {
   prefixes: string[];
   group: unknown;
 }
-
-const WILDCARD = "*";
 
 /**
  * Subscriptions to keys, for any use: it matches keys to subscriptions and counts who holds a
@@ -56,8 +56,8 @@ export class SubscriptionManager<S> {
     if (keys)
       for (let x = 0; x < keys.length; x++) {
         const key = keys[x];
-        if (key.endsWith(WILDCARD))
-          entry.prefixes.push(key.slice(0, -1));
+        if (IsPattern(key))
+          entry.prefixes.push(PatternPrefix(key));
         else
           entry.exact.add(key);
       }
@@ -196,10 +196,6 @@ function Matches(entry: IEntry<unknown>, key: string) {
       return true;
 
   return false;
-}
-
-function PatternMatches(pattern: string, key: string) {
-  return pattern.endsWith(WILDCARD) ? key.startsWith(pattern.slice(0, -1)) : pattern === key;
 }
 
 function Remove<T>(list: T[], item: T) {

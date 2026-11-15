@@ -1,4 +1,4 @@
-import { Emitter, EmitterCallback } from "../../Utils/emitter";
+import { Emitter, EmitterCallback, EmitterEventCallback } from "../../Utils/emitter";
 import { IsAsync } from "../../Utils/functions";
 import { _queueMicrotask } from "../../Utils/scheduling";
 
@@ -850,6 +850,24 @@ export namespace ObservableScope {
     if (!scope || scope.destroyed || scope.type === "static") return;
 
     Emitter.Remove(scope.emitter, callback);
+  }
+
+  export function WatchSubscribers<T = any>(
+    scope: IObservableScope<T> | IBasicObservableScope<T>,
+    callback: EmitterEventCallback
+  ) {
+    if (!scope || scope.destroyed || scope.type === "static") return;
+
+    Emitter.Watch(scope.emitter, callback);
+  }
+
+  export function UnwatchSubscribers<T = any>(
+    scope: IObservableScope<T> | IBasicObservableScope<T>,
+    callback: EmitterEventCallback
+  ) {
+    if (!scope || scope.destroyed || scope.type === "static") return;
+
+    Emitter.Unwatch(scope.emitter, callback);
   }
 
   /**

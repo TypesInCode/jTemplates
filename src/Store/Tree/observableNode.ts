@@ -1,3 +1,4 @@
+import { EmitterEventCallback } from "../../Utils/emitter";
 import { JsonApplyDiff, JsonDeepClone, JsonDiff, JsonDiffResult } from "../../Utils/json";
 import { JsonType } from "../../Utils/json";
 import { IBasicObservableScope, ObservableScope } from "./observableScope";
@@ -484,6 +485,29 @@ export namespace ObservableNode {
    */
   export function Create<T>(value: T, unwrapValue = true): T {
     return DefaultCreateProxy(value, unwrapValue);
+  }
+
+  export function WatchProperty<T>(proxy: T, prop: keyof T, callback: EmitterEventCallback) {
+    if (!(proxy as any)[IS_NODE])
+      throw new Error("Parameter proxy is not an ObservableNode");
+
+    const wrapper = (proxy as any)[NODE_WRAPPER] as ObservableNodeWrapper;
+    if (Array.isArray(wrapper))
+      throw new Error("Unable to watch individual property on array proxy");
+
+    const scope = GetPropertyScope(wrapper, prop as string);
+    ObservableScope.WatchSubscribers(scope, callback);
+  }
+
+  export function UnwatchProperty<T>(proxy: T, prop: keyof T, callback: EmitterEventCallback) {
+    if (!(proxy as any)[IS_NODE])
+      throw new Error("Parameter proxy is not an ObservableNode");
+
+    const wrapper = (proxy as any)[NODE_WRAPPER] as ObservableNodeWrapper;
+    if (Array.isArray(wrapper))
+      return;
+
+    Object.hasOwn(wrapper, prop) && ObservableScope.UnwatchSubscribers(wrapper[prop], callback);
   }
 
   /**

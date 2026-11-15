@@ -1,3 +1,4 @@
+import { EmitterEvent } from "../../Utils/emitter";
 import type { JsonDiffResult } from "../../Utils/json";
 import type { ILocalLease } from "../Diff/diffTree.types";
 import { ObservableDiffTree } from "../Diff/observableDiffTree";
@@ -91,14 +92,14 @@ export class StoreSync extends Store {
    *   them from one file.
    * @throws When `keyFunc` is given with a tree or a lease, which has its own.
    */
-  constructor(tree?: ObservableDiffTree | ILocalLease, options: IStoreSyncOptions = {}) {
+  constructor(tree?: ObservableDiffTree | ILocalLease, options: IStoreSyncOptions = {}, watch: readonly string[] = [], watchCallback?: (rootKey: string, event: EmitterEvent) => void) {
     const lease = tree && !(tree instanceof ObservableDiffTree) ? tree : undefined;
     if (tree && options.keyFunc)
       throw new Error(lease
         ? `StoreSync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`
         : "StoreSync: the tree has its keyFunc, which the store takes; leave it out of the options.");
 
-    super(lease ? lease.endpoint.keyFunc : tree ? (tree as ObservableDiffTree).KeyFunc : options.keyFunc, options.opaque);
+    super(lease ? lease.endpoint.keyFunc : tree ? (tree as ObservableDiffTree).KeyFunc : options.keyFunc, options.opaque, watch, watchCallback);
     this.roots = options.roots;
 
     if (lease) {

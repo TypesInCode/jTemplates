@@ -1,4 +1,5 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
+import { EmitterEvent } from "../../Utils/emitter";
 import { ChannelClient, ChannelSubscription } from "../Diff/channelClient";
 import { IChannel, IDiffMethod, IDiffMethodBatch, IDiffPost, IWorkerLease } from "../Diff/diffTree.types";
 import { IStoreOptions, RootOf, Store } from "./store";
@@ -94,13 +95,13 @@ export class StoreAsync extends Store {
    *   (`IObservableDiffTreeConfig.opaque`) from a file both import.
    * @throws When `keyFunc` is given with a lease, whose endpoint has its own.
    */
-  constructor(channel: IChannel | IWorkerLease, options: IStoreAsyncOptions = {}) {
+  constructor(channel: IChannel | IWorkerLease, options: IStoreAsyncOptions = {}, watch: readonly string[] = [], watchCallback?: (rootKey: string, event: EmitterEvent) => void) {
     const lease = IsLease(channel) ? channel : undefined;
     if (lease && options.keyFunc)
       throw new Error(`StoreAsync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`);
 
     const keyFunc = lease ? lease.endpoint.keyFunc : options.keyFunc;
-    super(keyFunc, options.opaque);
+    super(keyFunc, options.opaque, watch, watchCallback);
     this.options = options;
     this.lease = lease;
     if (lease)
