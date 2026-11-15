@@ -1,6 +1,8 @@
 # Proposal: a store receives a root while something reads it
 
-Status: draft, nothing built. Phase 1 (the emitter's watcher) is a prototype and a benchmark before anything else is decided.
+Status: phases 1–3 built, uncommitted: the emitter's watcher (`Emitter.Watch`, `EmitterEvent`), the store's root watch (`ReadStore`'s `watch` patterns and callback, `ObservableNode.WatchProperty`), and `StoreAsync`'s `demand` and `demandDebounce` options with `Hold`. Key patterns are one helper (`Utils/pattern.ts`). Open: the benchmark of `On`/`Remove` (phase 1), and builder-app (phase 4).
+
+What differs from the design below: the watch API is `Emitter.Watch(emitter, callback)` on an emitter of its own in the header slot, so an emitter takes several watchers, added after it's created; a store watches roots by pattern with one callback that's given the root key; and a demand root's release timer and microtask use the framework's scheduling (`_setTimeout`, `_queueMicrotask`), so they run at once under `SYNC_SCHEDULING`.
 
 ## Summary
 
@@ -74,7 +76,7 @@ export interface IStoreAsyncOptions extends IStoreOptions {
   /** Root keys received while read: exact keys and patterns ending in `*` */
   demand?: readonly string[];
   /** How long a root no one reads stays subscribed, in ms; default 1000 */
-  demandGrace?: number;
+  demandDebounce?: number;
 }
 ```
 

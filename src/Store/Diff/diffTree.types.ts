@@ -97,8 +97,6 @@ export type IHostRequest =
   | { type: "jt-unsubscribe", sub: number }
   /** Ends every subscription on the channel */
   | { type: "jt-disconnect" }
-  /** See `DiffTree.MarkOpaque` */
-  | { type: "jt-markopaque", keys: readonly string[] }
   /** From a `DiffTreeHub`, on the worker's own channel: serve `port`, a lease's channel, as `id` */
   | { type: "jt-serve", id: number, port: MessagePort }
   /** From a `DiffTreeHub`: stop serving lease `id`, ending its subscriptions */

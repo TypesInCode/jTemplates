@@ -221,7 +221,8 @@ tree.Commit();                      // posted to every subscriber, with no round
 - **`jt-batch`**: apply the calls, run projections, commit, then `jt-ack` on that channel.
 - **`jt-subscribe` / `jt-unsubscribe`**: a subscription by id, with its roots and form, grouped by the channel: the committed state first, then every commit, shaped for it. Or its end. Once the first state is posted (nothing, when no root matches), the host sends `jt-subscribed` with the id, and the error when subscribing failed.
 - **`jt-disconnect`**: from the hub, when the channel is replaced or ended: `Disconnect(channel)` ends every subscription on it.
-- **`jt-markopaque`**: the existing opaque keys, sent ahead of the store's subscription.
+- **`jt-markopaque`**: the existing opaque keys, sent ahead of the store's subscription. (Removed since: a
+  tree takes its opaque keys from its config, and a store never marks a tree.)
 
 `HostPublisher(publisher, self)` returns the host; `host.Serve(port)` serves another channel and returns a function that stops serving it, and `host.Stop()` stops them all. A subscription's id is chosen by the client, unique across clients, so several clients share one channel.
 

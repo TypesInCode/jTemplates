@@ -3,8 +3,8 @@ import { StoreAsync } from "../../src/Store/Store/storeAsync";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { CreateShimDiffWorker } from "./worker-shim";
 
-// Opaque roots over a worker: the store sends its opaque keys to the worker's DiffTree ahead
-// of the first change, so the worker posts each one as a single whole write.
+// Opaque roots over a worker: the worker's DiffTree has the keys in its own config, so it posts
+// each one as a single whole write, and the store holds it whole. A store never marks a tree.
 
 function drawing(label = "a") {
   return {
@@ -25,7 +25,8 @@ describe("StoreAsync opaque roots", () => {
 
   /** A store over a shim worker, recording the batches sent and the diffs posted back */
   function CreateStore(opaque: string[]) {
-    const worker = CreateShimDiffWorker();
+    // The tree writes the keys whole from its own config: a store never marks a tree
+    const worker = CreateShimDiffWorker(undefined, undefined, opaque);
     const store = new StoreAsync(worker, { opaque });
     stores.push(store);
 
@@ -40,11 +41,10 @@ describe("StoreAsync opaque roots", () => {
     return { store, sent, diffs };
   }
 
-  it("sends its opaque keys first, before it subscribes", async () => {
+  it("sends the tree nothing about its opaque keys: it subscribes, then writes", async () => {
     const { store, sent } = CreateStore(["view"]);
     await store.Write(drawing(), "view");
-    expect(sent.map((m: any) => m.type)).to.deep.eq(["jt-markopaque", "jt-subscribe", "jt-batch"]);
-    expect(sent[0].keys).to.deep.eq(["view"]);
+    expect(sent.map((m: any) => m.type)).to.deep.eq(["jt-subscribe", "jt-batch"]);
   });
 
   it("reads an opaque root as a raw value, never proxied", async () => {

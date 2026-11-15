@@ -51,11 +51,6 @@ export class ChannelClient {
     batches.forEach(batch => batch.reject(error));
   }
 
-  /** See `DiffTree.MarkOpaque` */
-  MarkOpaque(keys: readonly string[]) {
-    this.channel.postMessage({ type: "jt-markopaque", keys });
-  }
-
   /**
    * Subscribes to the host's tree. Deliveries arrive as the host posts them.
    * @param onSubscribed Called once the host has posted the first state, with its error when

@@ -53,9 +53,9 @@ function Sender(from: ShimPort, to: ShimPort) {
  * use with `StoreAsync` in tests. Mirrors what a bundler-built worker entry file does, minus the
  * actual thread. `tree` is the worker's side, for tests of the worker's own commits.
  */
-export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions) {
+export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions, opaque?: readonly string[]) {
   const [main, worker] = CreateShimChannel();
-  const tree = new ObservableDiffTree({ keyFunc, routes });
+  const tree = new ObservableDiffTree({ keyFunc, routes, opaque });
   const host: IHost = HostPublisher(tree, worker);
   // Terminating the worker ends what it serves, as a real worker's ports close with it
   main.terminate = () => {
@@ -66,8 +66,8 @@ export function CreateShimWorker(keyFunc?: (val: any) => string, routes?: IRoute
 }
 
 /** `CreateShimWorker`'s main-thread side alone, typed as a `Worker` */
-export function CreateShimDiffWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions): ShimPort & Worker {
-  return CreateShimWorker(keyFunc, routes).worker as ShimPort & Worker;
+export function CreateShimDiffWorker(keyFunc?: (val: any) => string, routes?: IRouteDefinitions, opaque?: readonly string[]): ShimPort & Worker {
+  return CreateShimWorker(keyFunc, routes, opaque).worker as ShimPort & Worker;
 }
 
 /** Waits for every shim message already scheduled, and the ones they schedule, to be delivered */

@@ -25,7 +25,6 @@ export interface IHost {
  * - `jt-subscribe` / `jt-unsubscribe`: a subscription for the channel. Its first state and every
  *   commit are posted as `jt-post`, then `jt-subscribed` once the first state is out.
  * - `jt-disconnect`: ends every subscription on the channel.
- * - `jt-markopaque`: see `DiffTree.MarkOpaque`.
  * - `jt-serve` / `jt-unserve`: from a `DiffTreeHub`, a lease's port to serve, or to stop serving.
  *
  * The worker's own work commits on the same publisher, and its commits reach every subscriber
@@ -84,9 +83,6 @@ export function HostPublisher(publisher: ObservableDiffTree, scope: IChannel): I
         case "jt-disconnect":
           publisher.Disconnect(channel);
           subscriptions.clear();
-          break;
-        case "jt-markopaque":
-          publisher.MarkOpaque(message.keys);
           break;
         case "jt-serve":
           leases.set(message.id, Serve(message.port));

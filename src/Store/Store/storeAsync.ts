@@ -1,5 +1,7 @@
 import { AsyncQueue } from "../../Utils/asyncQueue";
 import { EmitterEvent } from "../../Utils/emitter";
+import { PatternMatches } from "../../Utils/pattern";
+import { _queueMicrotask, _setTimeout } from "../../Utils/scheduling";
 import { ChannelClient, ChannelSubscription } from "../Diff/channelClient";
 import { IChannel, IDiffMethod, IDiffMethodBatch, IDiffPost, IWorkerLease } from "../Diff/diffTree.types";
 import { IStoreOptions, RootOf, Store } from "./store";
@@ -12,7 +14,20 @@ export interface IStoreAsyncOptions extends IStoreOptions {
    * `keyFunc`, include the entity roots the received roots refer to.
    */
   roots?: readonly string[];
+  /**
+   * Root keys the store receives only while something reads them: exact keys and patterns ending
+   * in `*`. A demand root is subscribed on its own once a reactive scope reads it with `Get` (or
+   * `Hold` holds it), and released `demandDebounce` ms after its last reader goes: unsubscribed and
+   * deleted from the store. Until its first post arrives it reads as its default. Needs `roots`:
+   * a store that receives every root has none left to demand. A key `roots` names is a `roots` root.
+   */
+  demand?: readonly string[];
+  /** How long a demand root no one reads stays subscribed, in ms; default 1000 */
+  demandDebounce?: number;
 }
+
+/** How long a demand root no one reads stays subscribed, by default */
+const DEMAND_GRACE = 1000;
 
 /**
  * StoreAsync class extends the base Store class to provide asynchronous data management operations.
@@ -27,6 +42,11 @@ export interface IStoreAsyncOptions extends IStoreOptions {
  *   flight. A change's promise resolves on its batch's `jt-ack`, which arrives after the commit's
  *   posts, so the change has been applied when it resolves.
  * - A failed batch rejects only its own changes; later batches carry on.
+ *
+ * **Demand roots** (`IStoreAsyncOptions.demand`) are received while they're read: the first reactive
+ * read of one subscribes to it alone, and its first post brings the tree's state of it; a grace
+ * period after the last reader goes, it's unsubscribed and deleted from the store. A read outside
+ * a scope neither subscribes nor keeps one; `Hold` does, for code that reads it that way.
  *
  * **Over a lease** (`DiffTreeHub.Open`), the store takes its keyFunc from the lease's endpoint, owns
  * the lease, and releases it when it's destroyed. When the hub restarts the worker,
@@ -81,6 +101,18 @@ export class StoreAsync extends Store {
   private currentBatchPromise: Promise<void> = Promise.resolve();
   /** Batches not yet acknowledged, for `Flush` */
   private inFlight = new Set<Promise<void>>();
+  /** Demand roots a reactive scope reads now, from their watchers */
+  private readonly demandRead = new Set<string>();
+  /** `Hold`s, by demand root */
+  private readonly demandHolds = new Map<string, number>();
+  /** A subscription for each demand root the store holds */
+  private readonly demandSubscriptions = new Map<string, ChannelSubscription>();
+  /** The release timers of demand roots no one reads, by key */
+  private readonly demandReleasing = new Map<string, number>();
+  /** Demand roots whose readers or holds changed since the last flush */
+  private readonly demandChanged = new Set<string>();
+  private demandFlushQueued = false;
+  private destroyed = false;
 
   /**
    * Creates an instance of StoreAsync and subscribes to the tree.
@@ -91,17 +123,19 @@ export class StoreAsync extends Store {
    *   (`DiffTreeHub.OpenLocal`) is for a `StoreSync`, and doesn't compile here.
    * @param options `keyFunc`, `roots` and `opaque` (`IStoreAsyncOptions`). `keyFunc` is for a plain
    *   channel: pass the key logic the worker's tree was built with. A lease's is the endpoint's.
-   *   `opaque` is sent to the tree before the store subscribes; over a lease, share it with the tree
-   *   (`IObservableDiffTreeConfig.opaque`) from a file both import.
+   *   `opaque` is the store's own: the tree must write those keys whole too, from its config
+   *   (`IObservableDiffTreeConfig.opaque`), so share them from a file both import.
    * @throws When `keyFunc` is given with a lease, whose endpoint has its own.
    */
-  constructor(channel: IChannel | IWorkerLease, options: IStoreAsyncOptions = {}, watch: readonly string[] = [], watchCallback?: (rootKey: string, event: EmitterEvent) => void) {
+  constructor(channel: IChannel | IWorkerLease, options: IStoreAsyncOptions = {}) {
     const lease = IsLease(channel) ? channel : undefined;
     if (lease && options.keyFunc)
       throw new Error(`StoreAsync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`);
+    if (options.demand && options.demand.length > 0 && !options.roots)
+      throw new Error("StoreAsync: demand roots need roots: a store that receives every root has none left to demand.");
 
     const keyFunc = lease ? lease.endpoint.keyFunc : options.keyFunc;
-    super(keyFunc, options.opaque, watch, watchCallback);
+    super(keyFunc, options.opaque, options.demand ?? [], (key: string, event: EmitterEvent) => this.DemandWatched(key, event));
     this.options = options;
     this.lease = lease;
     if (lease)
@@ -124,12 +158,135 @@ export class StoreAsync extends Store {
     this.client.Destroy();
     this.client = this.Connect(port);
     this.subscription.Connect(this.client);
+    for (const subscription of this.demandSubscriptions.values())
+      subscription.Connect(this.client);
   }
 
   private Connect(channel: IChannel) {
-    const client = new ChannelClient(channel);
-    this.options.opaque && this.options.opaque.length > 0 && client.MarkOpaque(this.options.opaque);
-    return client;
+    return new ChannelClient(channel);
+  }
+
+  /**
+   * Holds a demand root without reading it reactively, for code that reads it outside a scope: the
+   * store subscribes to it as for a reader, and keeps it until every hold is released. Its first
+   * post arrives later; until then it reads as its default.
+   * @returns What releases this hold; calling it again does nothing.
+   * @throws When the key is neither a demand root nor one of the store's `roots`. A `roots` root is
+   *   always received: its hold does nothing.
+   */
+  Hold(key: string): () => void {
+    if (this.IsRootsKey(key))
+      return () => {};
+    if (!this.IsDemandKey(key))
+      throw new Error(`StoreAsync: ${key} isn't a demand root or one of the store's roots.`);
+
+    this.demandHolds.set(key, (this.demandHolds.get(key) ?? 0) + 1);
+    this.DemandChanged(key);
+    let held = true;
+    return () => {
+      if (!held)
+        return;
+
+      held = false;
+      const holds = (this.demandHolds.get(key) ?? 1) - 1;
+      holds > 0 ? this.demandHolds.set(key, holds) : this.demandHolds.delete(key);
+      this.DemandChanged(key);
+    };
+  }
+
+  private IsRootsKey(key: string) {
+    return !this.options.roots || this.options.roots.some(pattern => PatternMatches(pattern, key));
+  }
+
+  private IsDemandKey(key: string) {
+    return !this.IsRootsKey(key) && (this.options.demand ?? []).some(pattern => PatternMatches(pattern, key));
+  }
+
+  /**
+   * A demand root's watcher: it gained its first reactive reader or lost its last. This runs inside
+   * a scope's update, so it only records the change for the next flush.
+   */
+  private DemandWatched(key: string, event: EmitterEvent) {
+    if (this.IsRootsKey(key))
+      return;
+
+    event === EmitterEvent.SUBSCRIBED ? this.demandRead.add(key) : this.demandRead.delete(key);
+    this.DemandChanged(key);
+  }
+
+  private DemandChanged(key: string) {
+    this.demandChanged.add(key);
+    if (this.demandFlushQueued)
+      return;
+
+    this.demandFlushQueued = true;
+    _queueMicrotask(() => this.FlushDemand());
+  }
+
+  /**
+   * Subscribes the demand roots read or held now and not yet subscribed, and starts the release of
+   * the ones no one reads or holds. A root read and dropped since the last flush is never subscribed.
+   */
+  private FlushDemand() {
+    this.demandFlushQueued = false;
+    if (this.destroyed)
+      return;
+
+    const keys = Array.from(this.demandChanged);
+    this.demandChanged.clear();
+    for (const key of keys) {
+      if (this.IsDemanded(key)) {
+        const timer = this.demandReleasing.get(key);
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          this.demandReleasing.delete(key);
+        }
+
+        !this.demandSubscriptions.has(key) && this.SubscribeDemand(key);
+      }
+      else if (this.demandSubscriptions.has(key) && !this.demandReleasing.has(key))
+        this.ReleaseLater(key);
+    }
+  }
+
+  private IsDemanded(key: string) {
+    return this.demandRead.has(key) || this.demandHolds.has(key);
+  }
+
+  private SubscribeDemand(key: string) {
+    // A post for a key released since is dropped: an unsubscribe and a commit can cross on the channel
+    const subscription: ChannelSubscription = new ChannelSubscription(
+      { roots: [key] },
+      (post: IDiffPost, first: boolean) => this.demandSubscriptions.get(key) === subscription && this.Apply(post, first),
+    );
+    this.demandSubscriptions.set(key, subscription);
+    subscription.Connect(this.client);
+  }
+
+  private ReleaseLater(key: string) {
+    const grace = this.options.demandDebounce ?? DEMAND_GRACE;
+    if (grace <= 0)
+      return this.ReleaseDemand(key);
+
+    let fired = false;
+    const timer = _setTimeout(() => {
+      fired = true;
+      this.demandReleasing.delete(key);
+      !this.destroyed && !this.IsDemanded(key) && this.ReleaseDemand(key);
+    }, grace);
+    // A timer that ran at once (synchronous scheduling) has nothing left to cancel
+    !fired && this.demandReleasing.set(key, timer);
+  }
+
+  /** Unsubscribes a demand root and deletes it from the store, so no later reader sees it stale */
+  private ReleaseDemand(key: string) {
+    const subscription = this.demandSubscriptions.get(key);
+    if (!subscription)
+      return;
+
+    this.demandSubscriptions.delete(key);
+    subscription.Stop();
+    this.Has(key) && this.UpdateRootMap([{ type: "delete", path: [key] }]);
   }
 
   /** Applies a post. A tree's first state is diffed into the roots in place, its deletes with it. */
@@ -265,9 +422,16 @@ export class StoreAsync extends Store {
    * channel stays open: whoever created the worker terminates it.
    */
   Destroy() {
+    this.destroyed = true;
     this.stopLease?.();
     this.asyncQueue.Stop();
     this.subscription.Stop();
+    for (const subscription of this.demandSubscriptions.values())
+      subscription.Stop();
+    this.demandSubscriptions.clear();
+    for (const timer of this.demandReleasing.values())
+      clearTimeout(timer);
+    this.demandReleasing.clear();
     this.client.Destroy();
     this.lease?.Release();
   }

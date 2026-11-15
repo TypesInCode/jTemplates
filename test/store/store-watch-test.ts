@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ReadStore } from "../../src/Store/Store/store";
+import { StoreSync } from "../../src/Store/Store/storeSync";
 import { ObservableNode } from "../../src/Store/Tree/observableNode";
 import { ObservableScope } from "../../src/Store/Tree/observableScope";
 import { EmitterEvent } from "../../src/Utils/emitter";
@@ -143,6 +144,41 @@ describe("ReadStore watch patterns", () => {
 
   it("needs a callback when it watches anything", () => {
     expect(() => new WatchingStore(["a"], undefined as never)).to.throw();
+  });
+});
+
+describe("StoreSync watch options", () => {
+  /** A StoreSync watching `patterns`, and the events its callback heard, by root key */
+  function syncWatching(...patterns: string[]) {
+    const events: Record<string, string[]> = {};
+    const store = new StoreSync(undefined, {
+      watch: patterns,
+      watchCallback: (key, event) => (events[key] ??= []).push(EmitterEvent[event]),
+    });
+    return { store, events };
+  }
+
+  it("reports a watched root's first reader and its last, a written root too", () => {
+    const { store, events } = syncWatching("type:*");
+    store.Write({ n: 1 }, "type:a");
+    const r = reader(() => store.Get<{ n: number }>("type:a")?.n);
+    expect(r.value()).to.eq(1);
+    expect(events).to.deep.eq({ "type:a": ["SUBSCRIBED"] });
+    store.Write({ n: 2 }, "type:a");
+    expect(r.value()).to.eq(2);
+    r.destroy();
+    expect(events).to.deep.eq({ "type:a": ["SUBSCRIBED", "UNSUBSCRIBED"] });
+  });
+
+  it("reports nothing for roots it doesn't watch", () => {
+    const { store, events } = syncWatching("type:*");
+    store.Write(1, "counts");
+    reader(() => store.Get("counts")).destroy();
+    expect(events).to.deep.eq({});
+  });
+
+  it("needs a callback when it watches anything", () => {
+    expect(() => new StoreSync(undefined, { watch: ["a"] })).to.throw();
   });
 });
 

@@ -1,4 +1,4 @@
-import { EmitterEvent } from "../../Utils/emitter";
+import type { EmitterEvent } from "../../Utils/emitter";
 import type { JsonDiffResult } from "../../Utils/json";
 import type { ILocalLease } from "../Diff/diffTree.types";
 import { ObservableDiffTree } from "../Diff/observableDiffTree";
@@ -11,6 +11,18 @@ export interface IStoreSyncOptions extends IStoreOptions {
    * root. With a `keyFunc`, include the entity roots the held roots refer to.
    */
   roots?: readonly string[];
+  /**
+   * Root keys whose readers the store reports to `watchCallback`: exact keys and patterns ending in
+   * `*`. A watched root reports when a reactive scope first reads it with `Get`, and when its last
+   * reader stops; a read outside a scope reports nothing.
+   */
+  watch?: readonly string[];
+  /**
+   * Told when a watched root gains its first reader or loses its last, with the root's key. It runs
+   * inside the scope update that caused it: record the change and act on it later, without reading
+   * or writing the store. Needed with `watch`.
+   */
+  watchCallback?: (rootKey: string, event: EmitterEvent) => void;
 }
 
 /**
@@ -86,20 +98,22 @@ export class StoreSync extends Store {
    *     A projection in the root route (`"/"`) is readable through `Get` at `$projection_<key>`. The
    *     store doesn't own it: `Destroy` stops listening.
    *   - Left out, the store creates an empty tree of its own, with the store's `keyFunc` and `opaque`.
-   * @param options `keyFunc`, `roots` and `opaque` (`IStoreSyncOptions`). `keyFunc` is for the tree the
+   * @param options `keyFunc`, `roots`, `opaque`, `watch` and `watchCallback` (`IStoreSyncOptions`).
+   *   `keyFunc` is for the tree the
    *   store creates: a leased tree's is the endpoint's, and a given tree's its own. A tree given or
    *   leased must write the `opaque` keys whole already (`IObservableDiffTreeConfig.opaque`): share
    *   them from one file.
-   * @throws When `keyFunc` is given with a tree or a lease, which has its own.
+   * @throws When `keyFunc` is given with a tree or a lease, which has its own; or `watch` without
+   *   `watchCallback`.
    */
-  constructor(tree?: ObservableDiffTree | ILocalLease, options: IStoreSyncOptions = {}, watch: readonly string[] = [], watchCallback?: (rootKey: string, event: EmitterEvent) => void) {
+  constructor(tree?: ObservableDiffTree | ILocalLease, options: IStoreSyncOptions = {}) {
     const lease = tree && !(tree instanceof ObservableDiffTree) ? tree : undefined;
     if (tree && options.keyFunc)
       throw new Error(lease
         ? `StoreSync: the endpoint ${lease.name} gives the store its keyFunc; leave it out of the options.`
         : "StoreSync: the tree has its keyFunc, which the store takes; leave it out of the options.");
 
-    super(lease ? lease.endpoint.keyFunc : tree ? (tree as ObservableDiffTree).KeyFunc : options.keyFunc, options.opaque, watch, watchCallback);
+    super(lease ? lease.endpoint.keyFunc : tree ? (tree as ObservableDiffTree).KeyFunc : options.keyFunc, options.opaque, options.watch, options.watchCallback);
     this.roots = options.roots;
 
     if (lease) {

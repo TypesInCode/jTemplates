@@ -28,10 +28,11 @@ endpoint (or from none, for an endpoint with no sources) instead of marking it; 
 (`Store/Diff/diffTreeHub`).
 
 **Open:**
-- Opaque, the rest of it: `StoreAsync` stops sending `jt-markopaque` (the tree is marked from its
-  config), and `Store` applies records inside an opaque root by copying along each
-  record's path and boxing the new root, instead of throwing. Until then a store can hold fewer keys
-  whole than its tree, not more (a `StoreAsync` holding more tells its tree, for every subscriber).
+- Opaque, the rest of it: `Store` applies records inside an opaque root by copying along each
+  record's path and boxing the new root, instead of throwing
+  ([docs/proposals/store-opaque-writes.md](docs/proposals/store-opaque-writes.md)). Until then a store
+  can hold fewer keys whole than its tree, not more. (`StoreAsync` no longer sends `jt-markopaque`:
+  a tree takes its opaque keys from its config alone.)
 - A reactive hub: [docs/proposals/reactive-hub.md](docs/proposals/reactive-hub.md). Deferred, not part of
   this round.
 - `@ComputedAsync`, rewritten over the hub once this settles, if wanted.

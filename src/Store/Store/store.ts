@@ -20,8 +20,9 @@ export interface IStoreOptions {
    * until the root is written again, and only that write updates its readers. Treat the value as
    * read-only: a change made inside it notifies no one. An opaque root can't be read through a
    * key (`keyFunc`). Its tree must write each one whole instead of diffing inside it
-   * (`DiffTree.MarkOpaque`): a store with a tree of its own marks it; for a hub's tree, give the
-   * tree the same keys (`IObservableDiffTreeConfig.opaque`) from a file both import. Write the raw
+   * (`DiffTree.MarkOpaque`): a store with a tree of its own marks it; any other tree, a hub's or a
+   * worker's, takes the same keys in its config (`IObservableDiffTreeConfig.opaque`), from a file
+   * both import. A store never marks a tree: opaque is local. Write the raw
    * value: the store boxes it, and an `Opaque` written to a store isn't opened.
    */
   opaque?: readonly string[];
