@@ -98,14 +98,35 @@ export abstract class ReadStore {
    */
   Get<O>(id: string, defaultValue: O): O;
   Get<O>(id: string, defaultValue?: O): O | undefined {
-    let result = this.rootMap.get(id);
-    if (result === undefined) {
-      result = this.CreateRootNode(id, defaultValue);
-
-      this.rootMap.set(id, result);
-    }
-
+    const result = this.GetRootNode(id, defaultValue);
     return result[id] as O | undefined;
+  }
+
+  /**
+   * Retrieves a root as plain data: its `ObservableNode.Snapshot`, cached and shared with the last
+   * snapshot where nothing changed. Treat it as read-only.
+   *
+   * The read is reactive. It reads the root as `Get` does, so a demand root is subscribed and a
+   * watched root sees a reader, and a scope that reads it re-runs once for each post that changes
+   * anything in the root, a keyed child's root included. For the same value without subscribing,
+   * read it in `peek()` or use `ObservableNode.JSON(store.Get(id))`.
+   * @template O - The type of the value to retrieve
+   * @param id - The id/key of the root
+   * @returns The snapshot; a value root or an opaque root's raw value as it is; undefined if absent
+   */
+  GetSnapshot<O>(id: string): O | undefined;
+  /**
+   * Retrieves a root as plain data, creating it with a default value if not found. See the
+   * overload above.
+   * @template O - The type of the value to retrieve
+   * @param id - The id/key of the root
+   * @param defaultValue - The value to create the root with if id doesn't exist
+   * @returns The snapshot, or the default's
+   */
+  GetSnapshot<O>(id: string, defaultValue: O): O;
+  GetSnapshot<O>(id: string, defaultValue?: O): O | undefined {
+    const result = this.Get(id, defaultValue);
+    return result && (ObservableNode.Snapshot(result) ?? result);
   }
 
   Has(id: string) {
@@ -190,6 +211,17 @@ export abstract class ReadStore {
     }
 
     ObservableNode.ApplyDiff(rootObject, results);
+  }
+
+  private GetRootNode(id: string, defaultValue: any) {
+    let result = this.rootMap.get(id);
+    if (result === undefined) {
+      result = this.CreateRootNode(id, defaultValue);
+
+      this.rootMap.set(id, result);
+    }
+
+    return result;
   }
 
   private CreateRootNode(rootPath: string | number, data: any, unwrap?: boolean) {

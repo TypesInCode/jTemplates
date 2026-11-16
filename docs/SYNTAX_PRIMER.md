@@ -1,14 +1,14 @@
 # j-templates Syntax Primer
 
-Oct 17, 2026 · @Jay Landrum
+Nov 15, 2026 · @Jay Landrum
 
-Reference for building apps with j-templates 8.1.0. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
+Reference for building apps with j-templates 10.0.2. Every behavioral claim was checked by running the library in jsdom; claims taken from type declarations or source alone are marked as such.
 
 ## How to use this document
 
 Read Mental model, then Templates and State decorators before writing a component. Check the Traps checklist before shipping.
 
-- **Version:** j-templates 8.1.0. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry. 8.0.23 moved `Bound()` after the first render and added `Connected()`. 8.0.24 fixed dotted projection reads through keyed entities. 8.0.27 batches `StoreAsync` changes. 8.1.0 added `PushStore` and `DiffTreeWriter`, and moved the diff types and `PROJECTION_PREFIX` to `j-templates/Store/Diff`. Unreleased (this branch): `ObservableDiffTree`, `HostPublisher` and a `StoreAsync` that applies the tree's commits replace `PushStore`, `DiffTreeWriter`, `WorkerQueue` and `ConnectWorkerToDiffTree`; those sections were verified against the test suite. Each of those sections was re-verified in jsdom against the version that changed it.
+- **Version:** j-templates 10.0.2. The 8.0.19 claims were tested in jsdom with TypeScript (`experimentalDecorators`). 8.0.21 changed `peek`, how `@Computed` notifies readers, and emitter re-entry. 8.0.23 moved `Bound()` after the first render and added `Connected()`. 8.0.24 fixed dotted projection reads through keyed entities. 8.0.27 batches `StoreAsync` changes. 8.1.0 moved the diff types and `PROJECTION_PREFIX` to `j-templates/Store/Diff`. 8.2.0 rewrote the DiffTree: routes, keyed projections, and projections called with their read values only. 9.0.0 reworked its diffs (`write`, `delete` and `splice` records; each keyed value at one home), and `Patch`, `Push` and `Splice` take a path inside a root. 10.0.0 added `ObservableDiffTree`, `HostPublisher`, `DiffTreeHub` and `DiffTreeEndpoint`, with one config object per tree and store; they replace `PushStore`, `DiffTreeWriter`, `WorkerQueue`, `ConnectWorkerToDiffTree` and `@ComputedAsync`. 10.0.1 added demand roots (`StoreAsync`'s `demand` and `Hold`) and root watches (`StoreSync`'s `watch`). 10.0.2 added promoted projection keys (a projection's `keyFunc`). Unreleased (this branch): `ObservableNode.Snapshot` is reactive, `ObservableNode.JSON` reads a snapshot without subscribing, and stores have `GetSnapshot(key)`; verified in Vitest. The claims for 8.2 on were checked against the test suite, and those marked verified by running them in Vitest with jsdom. Each earlier section was re-verified in jsdom against the version that changed it.
 - **Not verified:** a real browser `Worker` (a structured-clone shim stood in), real focus behavior, and the `docs/`, `examples/` and `src/` folders the package does not ship.
 - **Convention:** `this.x` in examples is a component field decorated with `@Value` or `@State` unless shown otherwise. Imports are omitted after the first example.
 
@@ -57,9 +57,9 @@ npm install j-templates
 | `j-templates/DOM` | element functions (below), `text`, `fragment`, `CreateRootPropertyAssignment`, `CreateEventAssignment`, `PropertyAssignment`, `EventAssignment` |
 | `j-templates/Utils` | `Value`, `State`, `Computed`, `Scope`, `Watch`, `Inject`, `Destroy`, `Bound`, `Animation`, `AnimationType`, `Injector`, `SubscriptionManager`; types `IDestroyable`, `KeyFilter`, `ISubscriptionMatch` |
 | `j-templates/Store` | `ReadStore`, `Store`, `StoreSync`, `StoreAsync`, `ObservableScope`, `ObservableNode`, `Opaque`; types `IStoreOptions`, `IStoreAsyncOptions`, `IStoreSyncOptions` |
-| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`; types `DiffTreeProjectionMap`, `DiffTreeProjectionDefinition`, `DiffTreeProjectionFunc`, `DiffSpliceResult`, `IDiffTree`, the batch types, the tree's `IObservableDiffTreeConfig`, `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, and the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `IWorkerLease`, `ILocalLease`, and the endpoint's `IDiffTreeEndpoint` and its option types; `FollowRoutes`, and `DiffTreeEndpoint`. Nothing that reads `window`, so a worker bundle can import it. |
+| `j-templates/Store/Diff` | `PROJECTION_PREFIX`, `MESSAGE_PREFIX`, `FollowRoutes`, `DiffTreeEndpoint`; types: the route and projection definitions (`IRouteDefinitions`, `IRouteDefinition`, `IProjectionDefinitions`, `IProjectionDefinition`, `IReadsProjectionDefinition`, `IKeyedProjectionDefinition`, `IKeyFunc`), the tree's `IObservableDiffTreeConfig`, the batch types (`IDiffMethod`, `IDiffMethodBatch`), `DeliveryForm`, `ISubscribeOptions`, `IDiffPost`, `ISnapshotUpdate`, the channel's `IChannel`, `IHostRequest`, `IHostMessage`, `IConnectMessage`, `ISourcesMessage`, `IWorkerLease`, `ILocalLease`, and the endpoint's `IDiffTreeEndpoint` and its option types. Nothing that reads `window`, so a worker bundle can import it. |
 
-**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/diffTreeEndpoint` (`DiffTreeEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
+**Deep imports used below:** `j-templates/Store/Diff/diffTree` (`DiffTree`), `j-templates/Store/Diff/observableDiffTree` (`ObservableDiffTree`), `j-templates/Store/Diff/hostPublisher` (`HostPublisher`), `j-templates/Store/Diff/channelClient` (`Subscribe`, `Once`, `ChannelClient`), `j-templates/Store/Diff/diffTreeHub` (`DiffTreeHub`), `j-templates/Store/Diff/diffTreeEndpoint` (`DiffTreeEndpoint`), `j-templates/Store/Diff/onConnect` (`OnConnect`), `j-templates/Utils/emitter` (`EmitterEvent`, for a store's `watchCallback`), `j-templates/Node/vNode` (`vNode.Destroy`). `j-templates/Store/Diff/defaultDiffTreeWorker` runs worker code on import and throws outside a worker (`self is not defined`).
 
 **Element functions** (all verified present):
 
@@ -524,7 +524,7 @@ A store holds reactive data under string keys and diffs every write into existin
 |  | `StoreSync` | `StoreAsync` |
 | --- | --- | --- |
 | Constructor | `new StoreSync(tree?, options?)`: `tree` is `hub.OpenLocal(name)`, an `ObservableDiffTree` (for routes), or left out for an empty tree of its own | `new StoreAsync(channel, options?)`; the channel may be `hub.Open(name)` |
-| Options | `{ keyFunc?, roots?, opaque? }`. `keyFunc` only for a tree with none to give: a lease's is the endpoint's and a given tree's its own, and giving one there too throws | `{ keyFunc?, roots?, opaque? }`. `keyFunc` only over a plain channel; a lease's is the endpoint's, and giving one too throws |
+| Options | `{ keyFunc?, roots?, opaque?, watch?, watchCallback? }`. `keyFunc` only for a tree with none to give: a lease's is the endpoint's and a given tree's its own, and giving one there too throws | `{ keyFunc?, roots?, opaque?, demand?, demandDebounce? }`. `keyFunc` only over a plain channel; a lease's is the endpoint's, and giving one too throws |
 | Diffing | main thread, synchronous | in the worker's `ObservableDiffTree`, served by `HostPublisher` |
 | Writes | `void`; readable immediately | `Promise`; batched per tick, readable once it resolves. Optional: without writes it's a read-only view of the tree |
 | Changes from elsewhere | commits made on `store.Tree` | every commit the worker's tree makes, whatever caused it |
@@ -535,14 +535,24 @@ A store holds reactive data under string keys and diffs every write into existin
 ```typescript
 Get<T>(key: string): T | undefined;          // reactive proxy; undefined if absent
 Get<T>(key: string, defaultValue: T): T;     // creates the key with the default if absent
+GetSnapshot<T>(key: string, defaultValue?: T): T | undefined; // the root as plain data, reactive (below)
 Has(key: string): boolean;
 Write(data: unknown, key?: string);          // replace/diff the value at key
-Patch(key: string, patch: unknown);          // deep merge; throws "Key not found in store"
-Push(key: string, ...items: unknown[]);      // append to the array at key
-Splice(key: string, start: number, deleteCount?: number, ...items: unknown[]); // returns removed items
+Patch(path: string, patch: unknown);         // deep merge; throws "Key not found in store"
+Push(path: string, ...items: unknown[]);     // append to the array at path
+Splice(path: string, start: number, deleteCount?: number, ...items: unknown[]); // returns nothing; deleteCount omitted: to the end
 ```
 
-`StoreAsync` has the same methods; the four writers return promises. It also has `Flush()` (see below).
+`Patch`, `Push` and `Splice` take a root key or a dotted path inside a root the store holds: `store.Splice("doc.list", 0, 1)`, `store.Patch("doc.nested", { b: 2 })` (verified). A path in a root the store doesn't hold throws `Key not found in store`.
+
+`GetSnapshot(key)` reads a root as plain data, for a reader that walks a large value or hands it to code that expects plain objects. It's `ObservableNode.Snapshot(store.Get(key))`, with a value root or an opaque root's raw value returned as it is (verified):
+
+- **It reads the root as `Get` does**, so a demand root is subscribed while a scope reads it and released after (verified), and a watched root sees the reader.
+- **A scope that reads it re-runs once for each post that changes anything in the root**, a keyed child's root included, and not for posts to other roots (verified). Readers through `Get`'s proxies still wake only for what they read.
+- **The snapshot is cached and shared**: the same object until a post changes the root, then a new one that keeps every unchanged part (`===`) (verified). It isn't frozen: never mutate it, and don't return it from a `@Computed`, which merges into a plain result in place.
+- To read it without subscribing, call it inside `peek()`, or use `ObservableNode.JSON(store.Get(key))`.
+
+`StoreAsync` has the same methods; the four writers return promises. It also has `Flush()` and `Hold(key)` (see below).
 
 ### keyFunc and flattening
 
@@ -591,6 +601,36 @@ Data crosses the worker boundary by structured clone. Class instances arrive as 
 - `await store.Flush()` waits for every batch sent before the call to be acknowledged, and resolves at once when none is in flight. It rejects with the first error among those batches. Changes made after it go in a later batch.
 - **A failed batch rejects only itself.** When a change fails in the worker (for example `Splice` on a value that isn't an array), the calls after it and the batch's projections are skipped, what the batch applied before it is committed, and every change in that batch rejects with the error. Later batches carry on, and the next one's projections catch up. A projection that throws fails its batch the same way.
 
+### Demand roots (10.0.1)
+
+A `StoreAsync` receives its `roots` for as long as it lives. A root matching a `demand` pattern is received only while something reads it: reading it is the request.
+
+```typescript
+const results = new StoreAsync(hub.Open("engine"), {
+  roots: ["counts", "revision"],   // always received
+  demand: ["type:*"],              // received while read; exact keys and patterns ending in *
+  demandDebounce: 1000,            // ms a root no one reads stays subscribed; the default
+});
+
+// In a children function, a @Computed getter or any reactive scope:
+results.Get<TypeResult>(`type:${name}`);   // subscribes type:<name>; undefined until its first post
+
+// Code that reads outside a scope holds the root instead:
+const release = results.Hold("type:a");
+// ... read results.Get("type:a") once it has arrived ...
+release();
+```
+
+- **The first reactive read subscribes the root, alone,** at the next microtask: a root read and dropped before then is never subscribed. Its first post brings the tree's committed state of it; until then it reads as its default, the same as a root that doesn't exist. After that its commits arrive like any other root's; the tree posts nothing for a demand root no one reads.
+- **The last reader going starts the release.** `demandDebounce` ms after the last scope that read it is destroyed, or stops reading it, the root is unsubscribed and deleted from the store. A reader that comes back first keeps it without subscribing again; one that comes after waits for a new first post.
+- **Only reactive reads count.** `Get` or `GetSnapshot` in a scope counts. `Peek`, `peek()`, an `on:` handler or any other read outside a scope neither subscribes a root nor keeps it. `Hold(key)` does, until every hold's release function has been called. Holding a `roots` root does nothing; holding a key neither option names throws.
+- `demand` needs `roots`: without it the constructor throws `StoreAsync: demand roots need roots…`, since a store that receives every root has none left to demand. A key both name is a `roots` root.
+- A restarted tree (`hub.Restart`) gets every held demand root subscribed again, with its new state.
+- **A reader of many demand roots re-runs once per root** as their first posts arrive, each its own message.
+- With promoted projection keys (Projections, below), the demand patterns name the promoted roots: `demand: ["$projection_people_*"]`.
+
+**Watching a root's readers.** Demand roots are built on a store watch any store can use: `StoreSync` takes `watch` (key patterns) and `watchCallback(rootKey, event)`, told when a watched root gains its first reactive reader (`EmitterEvent.SUBSCRIBED`, `0`) and when it loses its last (`EmitterEvent.UNSUBSCRIBED`, `1`; import `EmitterEvent` from `j-templates/Utils/emitter`). A read outside a scope reports nothing (verified). The callback runs inside the scope update that caused it: record the change and act on it later, without reading or writing the store. `watch` without a `watchCallback` throws. `StoreAsync` uses the watch for `demand`, so it takes neither option.
+
 ### Projections
 
 A projection is a derived value the store computes and stores under `$projection_<name>`. Give them to the tree's root route, and the tree to `StoreSync` (for `StoreAsync`, to the worker's tree). The store takes the tree's keyFunc.
@@ -601,20 +641,67 @@ import { PROJECTION_PREFIX } from "j-templates/Store/Diff"; // "$projection_"
 import { ObservableDiffTree } from "j-templates/Store/Diff/observableDiffTree";
 
 const store = new StoreSync(new ObservableDiffTree({ keyFunc: (v: any) => v?.id, routes: { "/": { projections: {
-  activeCount: { reads: ["todos"], projection: (keys, todos) => todos.filter((t) => !t.done).length },
-  doubled: { reads: [`${PROJECTION_PREFIX}activeCount`], projection: (keys, n) => n * 2 },
+  activeCount: { reads: ["todos"], projection: (todos) => todos.filter((t) => !t.done).length },
+  doubled: { reads: [`${PROJECTION_PREFIX}activeCount`], projection: (n) => n * 2 },
 } } } }));
 store.Write(todos, "todos");
 store.Get<number>(`${PROJECTION_PREFIX}activeCount`);
 ```
 
-- `projection(keys, ...values)`: `keys` lists the resolved read paths; values follow in `reads` order.
-- `reads` entries: a tree path (`"todos"`), an entity id from `keyFunc`, or another projection (chaining).
-- The last read may be a root wildcard such as `"task_*"`: each matching root's key is added to `keys` and its value appended (verified: `[["task_1","task_2"], v1, v2]`).
-- A projection has no value until every read resolves. It re-runs when a read's value changes.
-- A cycle or a read of an undefined projection throws at construction.
+- `projection(...values)`: one value per read, in `reads` order (verified). Before 8.2 a `keys` array came first; it's gone.
+- `reads` entries: a path in the projection's route (`"todos"`, `"doc.owner.name"`), a path from the root with a leading `/` (`"/factor"`), an entity id from `keyFunc`, or another projection (`$projection_<name>`, chaining).
+- A read that doesn't resolve passes `undefined`, and the projection still runs (verified: reads `["x", "y"]` with only `x` written pass `(1, undefined)`). A read of a projection that doesn't exist does the same. A projection re-runs when a read's value changes, and is skipped otherwise.
+- A cycle throws on the first `RunProjections()` (`DiffTree projection cycle detected: /$projection_a -> /$projection_b -> /$projection_a`), not at construction (verified).
 - A dotted read can pass through a keyed entity (`"doc.owner.name"`, where `owner` has an id). It reads the entity's own root, so a `Patch` to the entity reruns the projection with the new value (verified; before 8.0.24 such a read returned the stale embedded copy).
-- `StoreSync` and the `StoreAsync` worker run projections for each batch. An `ObservableDiffTree`'s `Commit()` doesn't run them. `DiffTree.DiffPath`, `PatchPath`, `PushPath` and `SplicePath` don't (8.0.27): code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
+- **Wildcards match route segments only.** One route segment of a read may end in `*`: `"/row/*/name"` passes an object keyed by the matched segment, `{ "1": "a", "2": "b" }` (verified). A root-key pattern such as `"task_*"` throws at construction: `Invalid wildcard read task_*: only one route segment may end in *.` To derive from many entities, keep them in routes, or in one record root read by a keyed projection.
+- `StoreSync` and the `StoreAsync` worker run projections for each batch. An `ObservableDiffTree`'s `Commit()` doesn't run them, nor do `DiffTree.WritePath`, `PatchPath`, `PushPath` and `SplicePath`: code that drives a `DiffTree` directly, such as a test, must call `tree.RunProjections()` after its writes (verified).
+
+**Keyed projections** map one record by key. The output is a record with the same keys:
+
+```typescript
+labels: { read: "people", projection: (person, key) => person.hidden ? undefined : `${key}:${person.name}` },
+// people { a: { name: "A" }, b: { name: "B", hidden: true } }  ->  $projection_labels { a: "a:A" }
+```
+
+- An entry the projection returns `undefined` for is left out. An entry whose value is the same object as on the last run keeps its output without a call: patching one of two entries calls the projection once (verified).
+- `read` is one record, relative to the route or from the root with `/`, with no wildcard; a missing record reads as empty. Left out, it's the route's own state, without its projections' outputs.
+
+**Promoted keys (10.0.2).** A projection's `keyFunc` gives each keyed value of its output a root of its own, so a subscriber can follow one entity instead of the whole output:
+
+```typescript
+people: {
+  reads: ["raw"],
+  projection: (raw) => raw.map((p) => ({ ...p, kind: "person" })),
+  keyFunc: (v) => (v?.kind === "person" ? v.id : undefined),
+},
+// roots: $projection_people, and $projection_people_p1, $projection_people_p2
+```
+
+- Each outermost value the `keyFunc` keys is held at `<output>_<key>` as the same object the output holds, so the tree keeps one copy (verified: `ReadPath("$projection_people_p1") === ReadPath("$projection_people")[0]`). A store receives it like any root: name it in `roots`, or in `demand` to receive it only while read.
+- A value that leaves the output has its root deleted, and a store then reads it as `undefined` (verified). An unchanged part of the output (the same object as last run) isn't walked, and keeps its roots.
+- The key becomes part of a root key, which is a path's first segment: it must not contain `.` or `/` (escape them; nothing checks), and `<output>_<key>` must not match another projection's output name. A key appears once per output: two changed values with one key throw `Duplicate keys found in projection output`.
+- Works on reads projections and keyed projections, in any route.
+
+**Routes.** A route is a slice of the tree's state with projections of its own, addressed by a path such as `/row/1/`. The tree takes its route definitions by pattern; `"/"` is the root route:
+
+```typescript
+const tree = new ObservableDiffTree({ routes: {
+  "/": { projections: { names: { reads: ["/row/*/name"], projection: (names) => names } } },
+  "/row/{id}": {
+    projections: { upper: { reads: ["name"], projection: (name) => name.toUpperCase() } },
+    // keyFunc?: the route's own; routes?: child routes, e.g. "/note/{noteId}"
+  },
+} });
+tree.WritePath("/row/1/name", "a");        // creates the /row/1/ instance
+tree.RunProjections();
+tree.ReadPath("/row/1/$projection_upper");  // "A"
+tree.ReadPath("$projection_names");         // { "1": "a" }
+tree.DeleteRoute("/row/1/");                // its state, child routes and outputs; wildcard reads drop it
+```
+
+- A route path is the route, then a dot path into its state after the last `/`: `/row/1/meta.name`. A write needs the dot path; `/row/1/` alone throws. An instance is created by the first write that matches its pattern.
+- **Route state never reaches a store.** `Commit()` diffs the root route's keys only (verified: a commit after the writes above holds `$projection_names`, nothing under `/row/`). Expose what subscribers need through a root route projection.
+- A route without a `keyFunc` uses its nearest parent's; the tree's is the root's.
 
 ### Opaque roots
 
@@ -796,20 +883,21 @@ class TodoService implements IDestroyable {
 ObservableNode.Create(value)          // deep reactive proxy (what @State uses)
 ObservableNode.Unwrap(proxy)          // raw underlying value
 ObservableNode.Apply(node, value)     // merge a full value in place; node identity kept
-ObservableNode.Snapshot(node)         // cached plain copy
+ObservableNode.Snapshot(node)         // cached plain copy; reactive
+ObservableNode.JSON(node)             // the same cached plain copy, without subscribing
 ObservableNode.Clone(value)           // replaces proxies with plain data, mutating plain containers in place; returns value
 ObservableNode.CreateFactory(alias?)  // proxy factory with aliasing (used by stores)
 ```
 
 - `Snapshot` returns the same object on repeated calls until a write. After a write, unchanged nested parts are shared (`===`) with the previous snapshot. Snapshots are **not frozen**; treat them as read-only.
-- `JSON.stringify(node)` and `node.toJSON()` use the cached snapshot.
+- `JSON(node)`, `JSON.stringify(node)` and `node.toJSON()` use the cached snapshot. `Snapshot` and `JSON` return `undefined` for a value that isn't a node, and throw for `undefined` or `null`.
 - **`Opaque`** (`j-templates/Store`) holds a value whole inside a node. Assign one (`node.view = new Opaque(view)`), push or splice it into a node's array, or return it inside a `@Computed` result. The node stores the box and every read opens it, so readers get the raw value, never proxied, and re-run only when the box is replaced. Array callbacks, `pop`, `shift`, `splice`'s removed items and a `sort` comparator get raw values too. Spread, `Object.assign`, property descriptors, snapshots and `JSON.stringify` give the raw value too, so an object composed from reads holds no box. `Unwrap` gives the node's storage, boxes included (`Create(Unwrap(node))` is `node` itself), and `Clone` keeps a box it's given: fine to write back into a node, not to a store.
 - `ApplyDiff`, `ApplySplice` and `Touch` also exist; they are internal to the stores. `ApplyDiff` and `ApplySplice` deep-clone what they write, so the node never shares objects with the caller.
 
-**Snapshot reads do not subscribe.** `JSON.stringify(node)`, `node.toJSON()` and `ObservableNode.Snapshot(node)` register no dependencies, so a scope that reads only through them never updates (verified). Read properties directly, or use `ObservableNode.Clone(node)`, which tracks every nested field and leaves the source untouched:
+**`Snapshot` subscribes to the whole node; `JSON` subscribes to nothing.** A scope that reads `ObservableNode.Snapshot(node)` re-runs when anything under the node changes, a keyed child's root included, and not for changes outside it: `Snapshot(store.Get("doc").section)` ignores `doc`'s other fields (verified). It's one dependency, however large the node, where reading the same fields through the proxy registers one per field read. `ObservableNode.JSON(node)`, `JSON.stringify(node)` and `node.toJSON()` register nothing, and nor does `Snapshot` inside `peek()` (verified). Before this release `Snapshot` registered nothing too: code that relied on that reads `JSON` instead.
 
 ```typescript
-const saver = ObservableScope.Gated(() => JSON.stringify(ObservableNode.Clone(state)));
+const saver = ObservableScope.Gated(() => JSON.stringify(ObservableNode.Snapshot(state)));
 ObservableScope.Watch(saver, (s) => localStorage.setItem("state", ObservableScope.Value(s)));
 ObservableScope.Value(saver); // first read starts tracking
 ```
@@ -1052,11 +1140,15 @@ Component.Attach(document.getElementById("app")!, app({}));
 22. **The package needs a bundler or TypeScript runner**; plain Node cannot import it.
 
 23) **Equal-value writes still notify.** Assigning the current value again re-runs every reader. Guard repeated writes or read through `gate()`.
-24) **`JSON.stringify(node)` and `ObservableNode.Snapshot(node)` don't subscribe.** Read properties directly, or `ObservableNode.Clone(node)` to track everything.
+24) **`ObservableNode.Snapshot(node)` in a scope re-runs it for any change under the node; `ObservableNode.JSON(node)` and `JSON.stringify(node)` never do.** Pick by intent: `Snapshot` (or a store's `GetSnapshot`) to wake on the whole node, `JSON` or `peek()` to read without subscribing. Code written before this release that used `Snapshot` as a non-reactive read should use `JSON`.
 25) **Don't update a scope from its own emit.** Calling `ObservableScope.Update(s)` from a `Watch(s, …)` callback, or any write that re-emits the emitter currently notifying, throws `Emitter.Emit: re-entry during emit is not supported` (verified). Defer the write (`queueMicrotask`) or restructure.
 26) **A worker's own writes reach no one until `Commit()`, and `Commit()` doesn't run projections.** Call `RunProjections()` before it when the change should update them.
 27) **An opaque value read and written elsewhere is plain data again.** A read opens the box, so writing the value into another node or returning it from `@Computed` proxies it there, and a `@Computed` result merges into it in place. Build from it, or box it again (`new Opaque(value)`). Never mutate it.
 28) **Don't write to an `ObservableDiffTree` (or its `StoreSync`) from its own delivery.** A subscriber that writes to, commits or runs projections on the tree delivering to it throws `ObservableDiffTree: a subscriber can't write to or commit the tree delivering to it.` Write to another tree, or defer the write.
+29) **Projections take only their read values** (`projection(todos)`, not `projection(keys, todos)`), and a read that doesn't resolve passes `undefined`: the projection runs anyway.
+30) **Projection wildcards match route segments, not root keys.** `"/row/*/name"` works; `"task_*"` throws at construction.
+31) **A demand root reads as undefined until its first post, and is deleted after its readers go.** Only reactive reads subscribe it; code outside a scope holds it with `Hold`.
+32) **A promoted key can't contain `.` or `/`**, and nothing checks: escape keys that might.
 
 ## Debugging
 
@@ -1081,7 +1173,8 @@ Component.Attach(document.getElementById("app")!, app({}));
 | Test sees old DOM after a write | asynchronous rendering | `SYNC_SCHEDULING=true` or await a timeout |
 | `ReferenceError: self is not defined` | importing `defaultDiffTreeWorker` on the main thread | write your own worker entry file |
 | A page or region rebuilds although nothing visibly changed | a write assigned the same value again (common in routers and sync code) | write only changed values, or read through gate() |
-| A watcher or scope over JSON.stringify/Snapshot never fires | snapshot reads register no dependencies | read properties directly, or JSON.stringify(ObservableNode.Clone(node)) |
+| A watcher or scope over `JSON.stringify(node)` or `ObservableNode.JSON(node)` never fires | they register no dependencies | read `ObservableNode.Snapshot(node)` instead |
+| A scope re-runs on every change to a node it only meant to read once | it reads `ObservableNode.Snapshot(node)`, which subscribes to the whole node (since this release) | read `ObservableNode.JSON(node)`, or the snapshot inside `peek()` |
 | `Emitter.Emit: re-entry during emit is not supported` | a `Watch`/`OnUpdated` callback updates the scope or value that is notifying it | defer the write, or move it out of the callback |
 | `scope() must be called within a watch context` inside `peek()` | tracking is off inside `peek` | call `scope()`/`gate()` outside the `peek` callback |
 | `Key not found in store` from `StoreAsync.Patch` right after a `Write` | the key is an entity id flattened out of a write that hasn't been applied yet | await the `Write` first |
@@ -1089,7 +1182,14 @@ Component.Attach(document.getElementById("app")!, app({}));
 | A test's projection never updates | the test drives a `DiffTree` directly | call `tree.RunProjections()` after each write |
 | `StoreAsync` never gets the worker's own data | the worker wrote but didn't call `Commit()` | call `Commit()` after the work |
 | A worker commit arrives but projections are stale | `Commit()` doesn't run projections | call `RunProjections()` before `Commit()` |
-| `StoreAsync.Destroy()` leaves the worker running | by design: the creator terminates it | call `worker.terminate()` |
+| `StoreAsync.Destroy()` leaves the worker running | by design: the creator terminates it | call `worker.terminate()` over a plain channel; over a hub lease, `Destroy()` releases it |
+| A projection's values are shifted by one: its first parameter holds the first read, its last is `undefined` | code written for 8.1's `projection(keys, ...values)` | drop the `keys` parameter |
+| `Invalid wildcard read task_*: only one route segment may end in *.` | a projection read names root keys by pattern | read a route wildcard (`"/task/*/"`), or keep the entities in one record and use a keyed projection |
+| `DiffTree projection cycle detected: …` on the first run | two projections read each other | break the cycle |
+| `StoreAsync: demand roots need roots…` | `demand` given without `roots` | list the roots the store always receives |
+| A demand root stays undefined | it's read outside a scope, or its first post hasn't arrived | read it in a scope, or `Hold` it; render a loading state until it arrives |
+| `Duplicate keys found in projection output` | a projection's `keyFunc` keys two values of one output the same | make the keys unique in the output |
+| `watchCallback must be provided when passing watch properties` | `StoreSync` given `watch` without `watchCallback` | pass both |
 
 ## Corrections from the v5 primer
 

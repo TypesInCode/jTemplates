@@ -5,6 +5,13 @@ result-index-worker-plan.md §4.2). Issues 1 and 2 are in `src/Store/Tree/observ
 store's object proxies, not only `PushStore`. Issue 3 is in `src/Store/Store/store.ts` and affects every store
 built with `cloneData = false`, `PushStore` by default.
 
+**Status (2026-11-15): fixed.** Issues 1 and 2 are fixed: `test/store/store-proxy-bugs-test.ts`, which
+asserts the fixed behaviour, passes on 10.0.2. Issue 3 went away with the option: applied diffs are always cloned (`8402af0`), there's no
+`cloneData` and no `PushStore` (a `StoreAsync` over a channel took its place), and the test checks that an
+update is cloned. One case of issue 2 is commented out because `ObservableNode.Update` and `Read` were
+removed from the API. builder-app's workaround below is no longer needed. The rest of this note is the
+original report.
+
 ## 1. `Object.hasOwn(proxy, key)` is true for every key
 
 `getOwnPropertyDescriptor` (and `getOwnPropertyDescriptorArray`) spread the target's descriptor into a new

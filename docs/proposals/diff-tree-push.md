@@ -1,6 +1,6 @@
 # Proposal: DiffTree pushes its commits
 
-Status: phases 1–4 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`; builder-app's three worker stores on them, measured: §Phase 4: builder-app). Open after the measurements: how the run's index crosses to the trace worker (§Phase 4 findings, 1), and `IsPending(root)`.
+Status: phases 1–4 implemented (the tree's commit state, `SubscriptionManager`, `DiffTreePublisher`, `StoreSync` over it; `HostPublisher`, `StoreAsync` over posts and acks, `Subscribe` and `Once` over a channel; `WorkerHub`, leases, `OnConnect`, `Reconnect`; builder-app's three worker stores on them, measured: §Phase 4: builder-app). Released in 10.0.0 under other names: `DiffTreePublisher` is `ObservableDiffTree`, `WorkerHub` is `DiffTreeHub`, `Register` takes an endpoint (`NEXT_STEPS.md`, "Breaking in 10.0.0"). The run's index now reaches the trace worker by a follow route on the engine's tree (`DiffTreeEndpoint`'s `remote`, worker to worker); carrying large roots as text (§Phase 4 findings, 1) wasn't taken up. Open: `IsPending(root)` (§Pending state).
 
 > **Superseded in part (2026-11-13):** the hub is now registered by endpoint (`DiffTreeEndpoint.Define`), a
 > key's factory may return a tree to run on the main thread, stores own their leases, and a restart no

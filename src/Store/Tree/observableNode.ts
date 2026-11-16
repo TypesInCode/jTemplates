@@ -24,7 +24,8 @@ function Property(value: any, prop: string) {
 
 type ObservableNodeWrapper = {
   [NODE_VALUE]: any,
-  [NODE_PROXY]: any,
+  [NODE_PROXY]: any | null,
+  [NODE_SNAPSHOT]: IBasicObservableScope<any> | null,
   [prop: string | symbol]: IBasicObservableScope<any>
 }
 
@@ -32,7 +33,10 @@ const wrapperCache = new WeakMap<any, ObservableNodeWrapper>();
 const snapshotState = Snapshot.Create();
 
 function InvalidateSnapshotForValue(value: object) {
-  Snapshot.Invalidate(snapshotState, value);
+  Snapshot.Invalidate(snapshotState, value, function (invalidated) {
+    const wrapper = wrapperCache.get(invalidated);
+    ObservableScope.Update(wrapper?.[NODE_SNAPSHOT]);
+  });
 }
 
 function getOwnPropertyDescriptor(target: ObservableNodeWrapper, prop: string | symbol) {
@@ -258,6 +262,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     const wrapper: ObservableNodeWrapper = Object.assign([] as any as ObservableNodeWrapper, {
       [NODE_VALUE]: value,
       [NODE_PROXY]: null,
+      [NODE_SNAPSHOT]: null,
       [ARRAY_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
     });
 
@@ -306,7 +311,10 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       case NODE_VALUE:
         return object[NODE_VALUE];
       case NODE_SNAPSHOT:
-        return CreateSnapshot(object[NODE_VALUE]);
+        object[NODE_SNAPSHOT] ??= ObservableScope.Basic(function () {
+          return CreateSnapshot(object[NODE_VALUE]);
+        });
+        return ObservableScope.Value(object[NODE_SNAPSHOT]);
       default: {
         const scope = object[ARRAY_SCOPE];
         const array = ObservableScope.Value(scope);
@@ -351,6 +359,7 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
     const wrapper: ObservableNodeWrapper = {
       [NODE_VALUE]: value,
       [NODE_PROXY]: null,
+      [NODE_SNAPSHOT]: null,
       [OBJECT_SCOPE]: ObservableScope.Basic(Identity.bind(null, value))
     };
 
@@ -382,7 +391,10 @@ function CreateProxyFactory(alias?: (value: any, reactive?: boolean) => any | un
       case NODE_WRAPPER:
         return object;
       case NODE_SNAPSHOT:
-        return CreateSnapshot(object[NODE_VALUE]);
+        object[NODE_SNAPSHOT] ??= ObservableScope.Basic(function () {
+          return CreateSnapshot(object[NODE_VALUE]);
+        });
+        return ObservableScope.Value(object[NODE_SNAPSHOT]);
       case toJSON:
         return function () {
           return CreateSnapshot(object[NODE_VALUE]);
@@ -515,6 +527,9 @@ export namespace ObservableNode {
    * objects/arrays, with keyed children read through their root). The same snapshot is
    * returned until a write invalidates it, and unchanged nested parts are shared between
    * snapshots, so `===` holds for any part that hasn't changed.
+   *
+   * The read is reactive: a scope that reads it re-runs when anything under the node changes,
+   * a keyed child's root included. For the same snapshot without subscribing, use `JSON`.
    * @param proxy The observable node to snapshot.
    * @returns The snapshot, or `undefined` if `proxy` is not an observable node.
    */
@@ -525,8 +540,22 @@ export namespace ObservableNode {
     return undefined;
   }
 
+  /**
+   * The node's snapshot, as `Snapshot` returns it, read without subscribing: the same cached
+   * object, registering nothing in the scope that reads it. What `node.toJSON()` and
+   * `JSON.stringify(node)` use.
+   * @param proxy The observable node to read.
+   * @returns The snapshot, or `undefined` if `proxy` is not an observable node.
+   */
+  export function JSON<T>(proxy: T): T | undefined {
+    if ((proxy as any)[IS_NODE])
+      return (proxy as any).toJSON();
+
+    return undefined;
+  }
+
   export function Touch<T>(value: T, prop?: keyof T) {
-    const wrapper = wrapperCache.get(value);
+    const wrapper = value && ((value as any)[NODE_WRAPPER] ?? wrapperCache.get(value));
     if (wrapper) {
       const scope = prop && GetPropertyScope(wrapper, prop as string) || wrapper[ARRAY_SCOPE] || wrapper[OBJECT_SCOPE];
       ObservableScope.Touch(scope);

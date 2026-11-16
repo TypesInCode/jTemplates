@@ -27,6 +27,10 @@ A store applies records inside an opaque root itself:
 - **Opaque is local.** Whether a tree diffs a key is the tree's choice: its commits cost less when it does. Whether a store holds it whole is the store's: its reads cost less when it does. The two are separate, and the subscription is only the transport.
 - **A store can hold more keys whole than its tree**, as when a view reads a large value whole and the tree that computes it diffs it for its other subscribers.
 
+## Not for reading a root's snapshot reactively
+
+builder-app's engine results need a reader to get a root as plain data and wake on any post inside it, with the tree still posting diffs. This change would do that, but eagerly per post and without key resolution; a reactive snapshot read fits better, and is built: `GetSnapshot(key)`, [store-snapshot-read.md](store-snapshot-read.md).
+
 ## To decide
 
 - **The cost of a deep path.** Copying along the path is linear in its depth plus the width of each level copied. A record deep in a wide array copies that array; fine for the views opaque is meant for (a drawing, a result list), but worth measuring on a large one.

@@ -1,6 +1,11 @@
 # Proposal: Structural Writes and Cached Snapshots for the Store
 
-Status: proposal 3 (cached snapshots) is implemented; proposals 1 and 2 are drafts, for discussion. Builds on the structural `Splice` (`DiffTree.SplicePath`, `ObservableNode.ApplySplice`).
+Status (updated 2026-11-15): proposal 3 (cached snapshots) is implemented. Proposals 1 and 2 are mostly done, in other forms, by 9.0:
+
+- **1, key-matched array diffs:** built as splices, not key lists. `Commit` splices a keyed array, matching a root-key entity by its key (`CommitStrategy`, `CommitIdentity`), and `JsonDiffArraySplice` keeps the longest run of matched elements in place, so a reorder is a few `splice` records of `MOVE`s and nothing inside the members: moving the last of 5,000 rows to the front is one record. Slots hold their homes' objects, so a restore of entities the tree still holds diffs nothing inside them.
+- **2, nested paths for `Push` and `Splice`:** the runtime half is done (`Push`, `Splice` and `Patch` take a dotted path into a held root, `RootOf`; `docs/bugs/diff-tree-8.2-regressions.md`, case 8). Typed paths aren't.
+
+Still open: typed paths, the debug consistency check ("Related findings"), and the snapshot follow-ups under "Deferred". Reactive snapshots are built, on every `Snapshot` read rather than behind a flag: [store-snapshot-read.md](store-snapshot-read.md). Builds on the structural `Splice` (`DiffTree.SplicePath`, `ObservableNode.ApplySplice`).
 
 ## Summary
 
@@ -163,7 +168,7 @@ A first version that walked every node on each read, checking child identity (co
 ### Deferred
 
 - **Freezing snapshots in development builds.** There is no development flag yet. The suggested one reads `process.env.NODE_ENV` inside a `try`/`catch` (bundlers replace it with a literal; without a bundler `process` doesn't exist and the checks stay on), with `SetDevMode` to override. A `typeof process` guard would not work in browser bundles, where `process` doesn't exist even though the bundler replaced `process.env.NODE_ENV`.
-- **Reactive snapshots**, behind a flag. A lazy way: a `Basic` scope per snapshotted node, created only for reactive reads and fired from `InvalidateSnapshotForValue`.
+- ~~**Reactive snapshots**, behind a flag.~~ Built as described here, without the flag: a `Basic` scope per snapshotted node, created on its first `Snapshot` read and fired from `InvalidateSnapshotForValue`; `ObservableNode.JSON` is the non-reactive read, and `GetSnapshot(key)` the store's ([store-snapshot-read.md](store-snapshot-read.md)).
 - **Per-container tracking of cleared children**, to make a rebuild proportional to what changed rather than to the container's size. Not needed at the measured cost.
 - **Self-referencing entities.** An entity that holds a reference to itself through a key would recurse without end.
 
@@ -172,15 +177,14 @@ A first version that walked every node on each read, checking child identity (co
 Smaller issues found while moving an app's state onto the store:
 
 - **Divergence goes undetected.** Every bug in the first structural `Splice` was the diff side and the node side disagreeing. A debug mode that compares the two after each operation, run in the test suite, would turn that class of bug into an immediate failure.
-- **Roots can't be deleted.** There is no way to drop a root, and removed keyed entities stay registered. Long-lived stores only grow. Stores of destroyed owners can also stay reachable (in tests, an injected `StoreSync` is never destroyed).
+- **Roots can't be deleted.** (Since 9.0 a tree deletes a root key with `DiffTree.DeleteRoot`, which commits a `delete` record, and a demand root is deleted from its store when released; a store still has no delete of its own.) There is no way to drop a root, and removed keyed entities stay registered. Long-lived stores only grow. Stores of destroyed owners can also stay reachable (in tests, an injected `StoreSync` is never destroyed).
 - **Modelling rules are learned by hitting them.** A keyed object must keep one shape (`null`, not a missing field), `Patch` can't carry keyed values, and `keyFunc` is serialized with `toString()` and `eval`'d in the worker, so a closure breaks silently. These belong in the syntax primer, with the cost model above.
 - **Errors are thrown as strings**, so they carry no stack. Throwing `Error` objects would make them easier to trace.
 
 ## Suggested order
 
-Cached snapshots (proposal 3) are done. For the rest:
+Cached snapshots (proposal 3) are done, and 1 and 2 are done in the forms the status line describes. For the rest:
 
-1. Key-matched array diffs (largest effect; makes whole-array writes as cheap as `Splice`).
-2. Nested paths for `Push` and `Splice` (removes the need to split data into roots).
-3. The debug consistency check, early, since 1 and 2 add new ways for the two sides to diverge.
-4. The snapshot follow-ups under "Deferred", starting with the development-build freeze.
+1. The debug consistency check, since splices and dotted paths added new ways for the two sides to diverge.
+2. Typed paths for `Push`, `Splice` and `Patch`.
+3. The snapshot follow-ups under "Deferred", starting with the development-build freeze.

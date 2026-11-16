@@ -3,8 +3,21 @@
 **Found:** 2026-10-23, j-templates 8.2.0, moving builder-app (procedures-engine, branch
 `feature/result-index-worker`) to the DiffTree rewrite. The result index's `ResultPushWriter` got faster
 on 8.2.0. The project store, which keeps every entity as a root key (about 20k on the TR-13 perf
-workload) and writes small edits, got 5–50× slower, and one reactivity bug came back. Every fix below is
-in the jTemplates working tree, uncommitted; the suite is at 491 tests.
+workload) and writes small edits, got 5–50× slower, and one reactivity bug came back.
+
+**Status (2026-11-15):** fixed and released in 9.0.0; builder-app runs on 10.0.2. The 9.0 JSON diff
+rework replaced several of the fixes below, so read them as history:
+
+- Cases 1, 5, 7, 8 and 9 hold as described, with the names of 9.0: `Snapshot.Child` takes no `path`,
+  and `PROP_DELIMETER` is in `Store/Diff/utils/paths.ts`.
+- Case 2: projections now keep their last output's objects wherever an output is unchanged
+  (`JsonMaintainUnchanged`, `utils/projections.ts`), which is next step 4's output reconciliation, built.
+  `JsonHasChanges` is still exported, unused by the tree.
+- Cases 3, 4 and 6 are gone with `move` records: arrays are diffed by position, or spliced by identity
+  (`JsonDiffArraySplice`); `JsonDiffOrder` and `NewIndexOf` are removed and records apply in order.
+- Case 10: `CreateKeyResolver` is removed; slots hold their homes' objects, so there is no resolver.
+
+What's still open is under "Open", at the end.
 
 The common thread: 8.1.0 scoped its work to what a write touched. It read each projection input by its
 own path, and diffed each write where it happened. 8.2.0 removed 8.1.0's costly part, diffing and cloning
@@ -238,7 +251,8 @@ with `/` or `.`, and children inside routes, take the general path.
 
 ## Builder-side changes
 
-These are in builder-app, uncommitted, and depend on case 8, so they need the release with these fixes:
+These were made in builder-app, and depended on case 8, so they needed the release with these fixes (they
+have since landed there):
 
 - **Projections moved to 8.2.0 routes.** `projectRoutes` holds the projections in the root route.
   `docProjection` takes reads by position, and a root the store doesn't hold yet reads as an empty
@@ -260,53 +274,25 @@ These are in builder-app, uncommitted, and depend on case 8, so they need the re
 
 ## Open
 
-- `rowsDigest` re-digests a Type's rows whole on any change to them: about 6 ms per row edit on 5,000 rows.
-  It's under budget, but it could skip unchanged rows.
-- `Commit()` still passes over every root key once per commit. That's cheap with the `Peek` check, about
-  4–5 ms at 20k keys, but still linear in the key count.
-- builder-app docs (TR-5.2, TR-5.3, TR-11.4 and `j-templates-practices.md`) still describe one root per
-  Type's rows, and pending-tasks §6 still has the 8.2.0 numbers.
-- Still open from 8.2.0, unrelated to these fixes: `JsonDeepClone` drops a `__proto__` key, and a route
-  segment named like an `Object.prototype` member (`constructor`) resolves to that member.
+Still open in jTemplates (also in `NEXT_STEPS.md`):
 
-## Next steps
+- **Two older bugs**, from before 8.2.0: `JsonDeepClone` turns a `__proto__` key into the prototype
+  (`SetOwnProperty` in `json.ts` handles it, and `JsonMaintainUnchanged` uses it), and a route segment
+  named like an `Object.prototype` member (`constructor`) resolves to that member in `RouteState`. The fix
+  for the second is prototype-free route state records.
+- **`Commit()`'s pass over every root key**, only if it shows up: about 4–5 ms at 20k keys with the
+  `Peek` check. Write tracking would remove it, but every write path, keyed-entity writes included, would
+  have to record the root keys it touches.
 
-In order; the first three are needed before builder-app runs on these fixes.
+builder-app's side, tracked there: `rowsDigest` re-digesting a Type's rows whole on any change (about 6 ms
+per row edit on 5,000 rows), splicing keyed arrays inside entities (`t_1.props`, written whole today), and
+its docs on the single `rows` root.
 
-1. **Release jTemplates.** Decide on case 8's behaviour change (dotted paths for Push, Splice and Patch,
-   reversing 05c1d4a). The builder's single `rows` root depends on it. Then commit and publish.
-2. **Upgrade builder-app and check the numbers on the published build.** Run the unit suite and the
-   `store-writes`, `result-push` and `inspector-props` perf specs. On 8.2.0 as published, the builder's
-   row inserts and deletes fail, because the store refuses a splice at `rows.<typeKey>`.
-3. **Bring the builder docs up to date.**
-   - TR-5.2 and TR-5.3: one `rows` root, rows spliced at `rows.<typeKey>`, restore writing the root
-     whole.
-   - TR-11.4: how an undo of a row change is written.
-   - TR-5.5's projection reads: no `rows:*` wildcard, `rowDigests` instead.
-   - `j-templates-practices.md`: the "one root per owner" advice for large row sets.
-   - pending-tasks §6: the regression entry closed with the numbers above.
-4. **Measure output reconciliation before deciding on it.** When an output changed in only some entries,
-   walk it against the last one and put the last one's objects back for the entries that didn't change.
-   Readers and the commit would then see only the real change. The walk visits only what the projection
-   newly built, but its cost is unproven. Prototype it with counters, with no setting:
-   - For each projection run: the projection's time, the walk's time, nodes walked and reused, and
-     downstream reruns avoided.
-   - Three variants: reference only, `JsonHasChanges` with early exit (as now), and full reconciliation.
-   - On the result-push workloads (projection, visibility-rules) and `store-writes-perf`.
+## Next steps (2026-10-23), resolved
 
-   Keep it if the walk stays well under the projection's own time, and the reruns and commit work it
-   saves outweigh it.
-5. **Make `rowsDigest` skip unchanged rows** (optional; about 6 ms per row edit on 5,000 rows). For
-   example, digest per object, so a row edit re-digests one object, not its whole Type.
-6. **Splice keyed arrays inside entities too.** Now that a dotted path is accepted, an entity's keyed array
-   (`t_1.props`) could be pushed or spliced like a Type's rows. Today the builder writes it whole; it's
-   small, so this matters only if one grows.
-7. **Fix the two older bugs.** Make `JsonDeepClone` keep a `__proto__` key, and keep route state in
-   prototype-free records so a `constructor` segment works. Then un-mark the builder writer test's
-   `constructor` case (`it.fails`).
-8. **Commit's pass over every root key: only if it shows up.** It's about 4–5 ms at 20k keys with the
-   `Peek` check. Write tracking would remove it, but it needs every write path, including keyed-entity
-   writes, to record the root keys it touches. No plan to do this unless a workload needs it.
-
-The result index's own edit costs (the writer's `writeObjectTypes` grouping, `check:ObjectPropValu`,
-`counts`) are a separate list, in builder-app's pending-tasks §6.
+1. Release jTemplates with case 8's behaviour change: done, 9.0.0.
+2. Upgrade builder-app and check the numbers: done; builder-app is on 10.0.2.
+3. The builder's docs: builder-app's side.
+4. Output reconciliation: built, as `JsonMaintainUnchanged` (see Status).
+5. and 6. builder-app's side (under "Open").
+7. and 8. Under "Open".

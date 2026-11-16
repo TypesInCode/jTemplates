@@ -29,13 +29,16 @@ function CreateSnapshotLink(state: ISnapshotState, child: object, parent: object
  * every parent whose own cached snapshot embedded it, so a write to a deeply nested value
  * invalidates every cached ancestor that still holds a snapshot.
  */
-function InvalidateValue(state: ISnapshotState, value: object) {
-  state.rawToSnapshotCache.delete(value);
+function InvalidateValue(state: ISnapshotState, value: object, invalidateCallback?: (value: any) => void) {
+  const deleted = state.rawToSnapshotCache.delete(value);
   const parents = state.hierarchy.get(value);
-  if (parents === undefined) return;
-  state.hierarchy.delete(value);
-  for (const parent of parents)
-    if (state.rawToSnapshotCache.has(parent)) InvalidateValue(state, parent);
+  if (parents !== undefined) {
+    state.hierarchy.delete(value);
+    for (const parent of parents)
+      if (state.rawToSnapshotCache.has(parent)) InvalidateValue(state, parent, invalidateCallback);
+  }
+
+  deleted && invalidateCallback?.(value);
 }
 
 /**
@@ -151,8 +154,8 @@ export namespace Snapshot {
    * @param state The snapshot cache to invalidate.
    * @param value The raw value that was written to.
    */
-  export function Invalidate(state: ISnapshotState, value: object) {
-    InvalidateValue(state, value);
+  export function Invalidate(state: ISnapshotState, value: object, invalidateCallback?: (value: any) => void) {
+    InvalidateValue(state, value, invalidateCallback);
   }
 
   /**
