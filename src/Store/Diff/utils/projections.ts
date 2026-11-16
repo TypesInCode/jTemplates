@@ -1,6 +1,6 @@
 import { JsonMaintainUnchanged, JsonType, SetOwnProperty } from "../../../Utils/json";
 import { ISnapshotState, Snapshot } from "../../Tree/snapshot";
-import { IKeyedState, IProjection, IReadSource, IRoute, IRouteSource, IWildcardMatch, IWildcardSource } from "./diffTree.types";
+import { IKeyedState, IKeyFunc, IProjection, IReadSource, IRoute, IRouteSource, IWildcardMatch, IWildcardSource } from "./diffTree.types";
 import { IsWildcardPath, PROJECTION_PREFIX, PropertiesOverlap, RouteAndProperty, RouteMatches, SplitRouteAndPath } from "./paths";
 import { RouteInstances } from "./routes";
 import { ExpandWildcardPath, KeyUnchanged, ReadPath, ReadSnapshot, Remove, RouteState, WritePath } from "./state";
@@ -76,6 +76,7 @@ export class Projections {
       if (!values || SameValues(projection.reads, values, projection.values))
         continue;
 
+      const last = ReadPath(this.rootState, projection.output);
       let output;
       if (projection.keyed) {
         output = RunKeyed(projection, projection.keyed, values[0]);
@@ -86,51 +87,8 @@ export class Projections {
         }
       }
       else {
-        const last = ReadPath(this.rootState, projection.output);
-
-        const next = projection.projection(...values)
         // The last output is its own snapshot, so it's never changed and its parts can be shared
-        output = JsonMaintainUnchanged(next, last);
-
-        if (projection.keyFunc) {
-          let nextMap: { [key: string]: any } = {};
-          let candidateKeys = new Set<string>();
-          WalkChanges(last, output, function (change) {
-            const key = projection.keyFunc(change);
-            if (key) {
-              if (Object.hasOwn(nextMap, key))
-                throw new Error("Duplicate keys found in projection output");
-
-              nextMap[key] = change;
-              return true;
-            }
-
-            return false;
-          });
-
-          WalkChanges(output, last, function (change) {
-            const key = projection.keyFunc(change);
-            if (key) {
-              candidateKeys.add(key);
-              return true;
-            }
-
-            return false;
-          });
-
-          for (let key in nextMap) {
-            candidateKeys.delete(key);
-            WritePath(this.snapshot, this.rootState, `${projection.output}_${key}`, nextMap[key]);
-            Snapshot.Register(this.snapshot, nextMap[key]);
-          }
-
-          // The output is a path, e.g. `/$projection_out`: a promoted root is a property of its route
-          const [route, property] = RouteAndProperty(projection.output);
-          const state = RouteState(this.rootState, route);
-          for (let key of candidateKeys)
-            Remove(this.snapshot, state, `${property}_${key}`);
-        }
-
+        output = JsonMaintainUnchanged(projection.projection(...values), last);
         // An output with no changes leaves the last one in place, so the projections reading it
         // see the same objects and are skipped
         if (projection.values !== undefined && output === last) {
@@ -138,6 +96,9 @@ export class Projections {
           continue;
         }
       }
+
+      if (projection.keyFunc)
+        this.Promote(projection, projection.keyFunc, last, output);
 
       WritePath(this.snapshot, this.rootState, projection.output, output);
       Snapshot.Register(this.snapshot, output);
@@ -152,6 +113,53 @@ export class Projections {
         this.RefreshSources(projection.sources, SplitRouteAndPath(projection.output)[0]);
       }
     }
+  }
+
+  /**
+   * Writes each keyed value of a projection's output that changed since `last` to a root of its
+   * own, `<output>_<key>`, as the same object the output holds, registered as its own snapshot;
+   * removes the root of each keyed value `last` held that the output no longer does. Only the
+   * outermost keyed value is promoted, and an unchanged part of the output (the same object as in
+   * `last`) isn't walked: a keyed value in it still has its root.
+   * @throws When two changed keyed values have the same key
+   */
+  private Promote(projection: IProjection, keyFunc: IKeyFunc, last: any, output: any) {
+    const nextMap: { [key: string]: any } = {};
+    const candidateKeys = new Set<string>();
+    WalkChanges(last, output, function (change) {
+      const key = keyFunc(change);
+      if (key) {
+        if (Object.hasOwn(nextMap, key))
+          throw new Error("Duplicate keys found in projection output");
+
+        nextMap[key] = change;
+        return true;
+      }
+
+      return false;
+    });
+
+    WalkChanges(output, last, function (change) {
+      const key = keyFunc(change);
+      if (key) {
+        candidateKeys.add(key);
+        return true;
+      }
+
+      return false;
+    });
+
+    for (let key in nextMap) {
+      candidateKeys.delete(key);
+      WritePath(this.snapshot, this.rootState, `${projection.output}_${key}`, nextMap[key]);
+      Snapshot.Register(this.snapshot, nextMap[key]);
+    }
+
+    // The output is a path, e.g. `/$projection_out`: a promoted root is a property of its route
+    const [route, property] = RouteAndProperty(projection.output);
+    const state = RouteState(this.rootState, route);
+    for (let key of candidateKeys)
+      Remove(this.snapshot, state, `${property}_${key}`);
   }
 
   /**

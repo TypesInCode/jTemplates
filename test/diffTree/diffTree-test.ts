@@ -1811,6 +1811,74 @@ describe("DiffTree", () => {
       expect(() => tree.RunProjections()).toThrow();
     });
 
+    // A tree whose keyed projection `byId` maps each entry of `people`, promoting each by its id
+    function KeyedPromotingTree() {
+      return new DiffTree(undefined, {
+        "/": {
+          projections: {
+            byId: {
+              read: "people",
+              projection: (person: { name: string, hidden?: boolean }, id: string) =>
+                person.hidden ? undefined : { id, name: person.name },
+              keyFunc: (value) => value.id
+            }
+          }
+        }
+      });
+    }
+
+    function RunPeople(tree: DiffTree, people: any) {
+      tree.WritePath("people", people);
+      tree.RunProjections();
+      return tree.Commit();
+    }
+
+    it("Promotes a keyed projection's entries, and diffs only the entry that changed", () => {
+      const tree = KeyedPromotingTree();
+      RunPeople(tree, { "1": { name: "a" }, "2": { name: "b" } });
+
+      const output = tree.ReadPath("$projection_byId");
+      expect(tree.ReadPath("$projection_byId_1")).toBe(output["1"]);
+      expect(tree.ReadPath("$projection_byId_2")).toBe(output["2"]);
+      expect(tree.Committed("$projection_byId_1")).toBe(output["1"]);
+
+      const first = tree.ReadPath("$projection_byId_1");
+      const diff = RunPeople(tree, { "1": { name: "a" }, "2": { name: "c" } });
+
+      expect(diff).toEqual(expect.arrayContaining([{ type: "write", path: ["$projection_byId_2", "name"], value: "c" }]));
+      expect(diff.some(record => record.path[0] === "$projection_byId_1")).toBe(false);
+      expect(tree.ReadPath("$projection_byId_1")).toBe(first);
+      expect(tree.ReadPath("$projection_byId_2")).toBe(tree.ReadPath("$projection_byId")["2"]);
+    });
+
+    it("Deletes the root of a keyed projection's entry that's gone, or that the projection leaves out", () => {
+      const tree = KeyedPromotingTree();
+      RunPeople(tree, { "1": { name: "a" }, "2": { name: "b" }, "3": { name: "c" } });
+
+      const diff = RunPeople(tree, { "1": { name: "a" }, "3": { name: "c", hidden: true } });
+
+      expect(tree.ReadPath("$projection_byId_2")).toBeUndefined();
+      expect(tree.ReadPath("$projection_byId_3")).toBeUndefined();
+      expect(tree.ReadPath("$projection_byId_1")).toBe(tree.ReadPath("$projection_byId")["1"]);
+      expect(diff).toEqual(expect.arrayContaining([
+        { type: "delete", path: ["$projection_byId_2"] },
+        { type: "delete", path: ["$projection_byId_3"] },
+      ]));
+      expect(diff.some(record => record.path[0] === "$projection_byId_1")).toBe(false);
+    });
+
+    it("Writes no promoted root when a keyed projection's entries all keep their output", () => {
+      const tree = KeyedPromotingTree();
+      RunPeople(tree, { "1": { name: "a" }, "2": { name: "b" } });
+      const first = tree.ReadPath("$projection_byId_1");
+
+      // An entry changed in a field the projection doesn't read: it reruns, and keeps its output
+      const diff = RunPeople(tree, { "1": { name: "a", note: "x" }, "2": { name: "b" } });
+
+      expect(diff).toEqual([{ type: "write", path: ["people", "1", "note"], value: "x" }]);
+      expect(tree.ReadPath("$projection_byId_1")).toBe(first);
+    });
+
     it("Promotes nothing for an output with no keyed values", () => {
       const tree = PromotingTree();
       Run(tree, { x: { v: 1 }, y: [1, 2] });

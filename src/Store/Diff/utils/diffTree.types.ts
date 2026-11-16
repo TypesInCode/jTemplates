@@ -7,6 +7,11 @@ export type IReadsProjectionDefinition = {
    */
   reads: string[],
   projection: { (...reads: any): any },
+  /**
+   * Promotes keyed values of the output to roots of their own: each outermost value this returns
+   * a key for is held at `<output>_<key>` (e.g. `$projection_people_111`) as the same object the
+   * output holds, so a subscriber can follow it alone. A key appears at most once in an output.
+   */
   keyFunc?: { (obj: any): string | undefined }
 };
 
@@ -24,7 +29,12 @@ export type IKeyedProjectionDefinition = {
    */
   read?: string,
   projection: { (entry: any, key: string): any },
-  keyFunc?: never
+  /**
+   * Promotes keyed values of the output to roots of their own: each outermost value this returns
+   * a key for is held at `<output>_<key>` (e.g. `$projection_people_111`) as the same object the
+   * output holds, so a subscriber can follow it alone. A key appears at most once in an output.
+   */
+  keyFunc?: { (obj: any): string | undefined }
 };
 
 export type IProjectionDefinition = IReadsProjectionDefinition | IKeyedProjectionDefinition;

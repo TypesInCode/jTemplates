@@ -167,7 +167,8 @@ function CreateRoute(parts: string[], routePath: string, definition: IRouteDefin
         projection,
         output,
         readsOutput: read !== undefined && PathsOverlap(routeRead, output),
-        keyed: { entries: new Map(), routeState: read === undefined }
+        keyed: { entries: new Map(), routeState: read === undefined },
+        keyFunc: projectionDefinition.keyFunc
       });
       continue;
     }
