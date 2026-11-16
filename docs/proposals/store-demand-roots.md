@@ -1,6 +1,11 @@
 # Proposal: a store receives a root while something reads it
 
-Status: phases 1–3 built, uncommitted: the emitter's watcher (`Emitter.Watch`, `EmitterEvent`), the store's root watch (`ReadStore`'s `watch` patterns and callback, `ObservableNode.WatchProperty`), and `StoreAsync`'s `demand` and `demandDebounce` options with `Hold`. Key patterns are one helper (`Utils/pattern.ts`). Open: the benchmark of `On`/`Remove` (phase 1), and builder-app (phase 4).
+Status: phases 1–3 shipped in 10.0.1: the emitter's watcher (`Emitter.Watch`, `EmitterEvent`), the store's root watch (`ReadStore`'s `watch` patterns and callback, `ObservableNode.WatchProperty`), and `StoreAsync`'s `demand` and `demandDebounce` options with `Hold`. Key patterns are one helper (`Utils/pattern.ts`). Phase 4 is built in builder-app (`docs/result-demand-proposal.md` there, with its measurements). Open: the benchmark of `On`/`Remove` (phase 1).
+
+What phase 4 found, for this side:
+
+- **A reader of many demand roots reruns once per root.** Each root's first post is its own message, so a view that reads 1,000 roots wakes 1,000 times as they arrive (builder-app's router case table did, until the router carried what it read). Open question 2 (several subscriptions in one `jt-subscribe`) and 3 (one post per commit) would let it wake once.
+- **Opaque roots by pattern** would suit demand roots: a store that holds an entity's root as plain data can't name the keys up front. builder-app writes `{ rev, value }` and reads a snapshot, waking on `rev`.
 
 What differs from the design below: the watch API is `Emitter.Watch(emitter, callback)` on an emitter of its own in the header slot, so an emitter takes several watchers, added after it's created; a store watches roots by pattern with one callback that's given the root key; and a demand root's release timer and microtask use the framework's scheduling (`_setTimeout`, `_queueMicrotask`), so they run at once under `SYNC_SCHEDULING`.
 

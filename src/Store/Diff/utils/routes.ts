@@ -175,7 +175,7 @@ function CreateRoute(parts: string[], routePath: string, definition: IRouteDefin
     const { reads, projection } = projectionDefinition;
     reads.forEach(ValidateWildcardPath);
     const routeReads = reads.map(read => JoinPaths(routePath, read));
-    projections.push({ key, reads: routeReads, projection, output, readsOutput: routeReads.some(read => PathsOverlap(read, output)) });
+    projections.push({ key, reads: routeReads, projection, output, readsOutput: routeReads.some(read => PathsOverlap(read, output)), keyFunc: definition.projections[key].keyFunc });
   }
 
   return {

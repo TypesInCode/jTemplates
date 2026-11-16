@@ -1,9 +1,43 @@
 import { JsonMaintainUnchanged, JsonType, SetOwnProperty } from "../../../Utils/json";
 import { ISnapshotState, Snapshot } from "../../Tree/snapshot";
 import { IKeyedState, IProjection, IReadSource, IRoute, IRouteSource, IWildcardMatch, IWildcardSource } from "./diffTree.types";
-import { IsWildcardPath, PROJECTION_PREFIX, PropertiesOverlap, RouteMatches, SplitRouteAndPath } from "./paths";
+import { IsWildcardPath, PROJECTION_PREFIX, PropertiesOverlap, RouteAndProperty, RouteMatches, SplitRouteAndPath } from "./paths";
 import { RouteInstances } from "./routes";
-import { ExpandWildcardPath, KeyUnchanged, ReadPath, ReadSnapshot, WritePath } from "./state";
+import { ExpandWildcardPath, KeyUnchanged, ReadPath, ReadSnapshot, Remove, RouteState, WritePath } from "./state";
+
+function WalkChanges(start: any, change: any, callback: (change: any) => boolean) {
+  if (start === change)
+    return;
+
+  const lastType = JsonType(start);
+  const nextType = JsonType(change);
+
+  switch (nextType) {
+    case "array": {
+      if (lastType === "array") {
+        for (let x = 0; x < change.length; x++)
+          WalkChanges(x < start.length ? start[x] : undefined, change[x], callback)
+      }
+      else
+        for (let x = 0; x < change.length; x++)
+          WalkChanges(undefined, change[x], callback);
+
+      break;
+    }
+    case "object": {
+      if (!callback(change)) {
+        const keys = Object.keys(change);
+        if (lastType === "object")
+          for (let x = 0; x < keys.length; x++)
+            WalkChanges(Object.hasOwn(start, keys[x]) ? start[keys[x]] : undefined, change[keys[x]], callback);
+        else
+          for (let x = 0; x < keys.length; x++)
+            WalkChanges(undefined, change[keys[x]], callback);
+      }
+      break;
+    }
+  }
+}
 
 /** Runs the projections of a DiffTree's route instances against its state */
 export class Projections {
@@ -53,8 +87,50 @@ export class Projections {
       }
       else {
         const last = ReadPath(this.rootState, projection.output);
+
+        const next = projection.projection(...values)
         // The last output is its own snapshot, so it's never changed and its parts can be shared
-        output = JsonMaintainUnchanged(projection.projection(...values), last);
+        output = JsonMaintainUnchanged(next, last);
+
+        if (projection.keyFunc) {
+          let nextMap: { [key: string]: any } = {};
+          let candidateKeys = new Set<string>();
+          WalkChanges(last, output, function (change) {
+            const key = projection.keyFunc(change);
+            if (key) {
+              if (Object.hasOwn(nextMap, key))
+                throw new Error("Duplicate keys found in projection output");
+
+              nextMap[key] = change;
+              return true;
+            }
+
+            return false;
+          });
+
+          WalkChanges(output, last, function (change) {
+            const key = projection.keyFunc(change);
+            if (key) {
+              candidateKeys.add(key);
+              return true;
+            }
+
+            return false;
+          });
+
+          for (let key in nextMap) {
+            candidateKeys.delete(key);
+            WritePath(this.snapshot, this.rootState, `${projection.output}_${key}`, nextMap[key]);
+            Snapshot.Register(this.snapshot, nextMap[key]);
+          }
+
+          // The output is a path, e.g. `/$projection_out`: a promoted root is a property of its route
+          const [route, property] = RouteAndProperty(projection.output);
+          const state = RouteState(this.rootState, route);
+          for (let key of candidateKeys)
+            Remove(this.snapshot, state, `${property}_${key}`);
+        }
+
         // An output with no changes leaves the last one in place, so the projections reading it
         // see the same objects and are skipped
         if (projection.values !== undefined && output === last) {
@@ -65,6 +141,7 @@ export class Projections {
 
       WritePath(this.snapshot, this.rootState, projection.output, output);
       Snapshot.Register(this.snapshot, output);
+
       if (projection.readsOutput) {
         // Its own output is one of its reads, so the output it just wrote isn't a change
         const read = projection.sources;

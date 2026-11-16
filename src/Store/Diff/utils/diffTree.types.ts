@@ -6,7 +6,8 @@ export type IReadsProjectionDefinition = {
    * keyed by matched segment.
    */
   reads: string[],
-  projection: { (...reads: any): any }
+  projection: { (...reads: any): any },
+  keyFunc?: { (obj: any): string | undefined }
 };
 
 /**
@@ -22,7 +23,8 @@ export type IKeyedProjectionDefinition = {
    * an empty one.
    */
   read?: string,
-  projection: { (entry: any, key: string): any }
+  projection: { (entry: any, key: string): any },
+  keyFunc?: never
 };
 
 export type IProjectionDefinition = IReadsProjectionDefinition | IKeyedProjectionDefinition;
@@ -73,7 +75,8 @@ export type IProjection = {
    */
   sources?: (IReadSource | undefined)[],
   /** Set for a keyed projection, whose one read is the record it maps */
-  keyed?: IKeyedState
+  keyed?: IKeyedState,
+  keyFunc?: { (obj: any): string | undefined }
 }
 
 export type IKeyFunc = { (val: any): string | undefined };

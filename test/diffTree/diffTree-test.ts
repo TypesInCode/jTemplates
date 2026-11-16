@@ -1645,5 +1645,178 @@ describe("DiffTree", () => {
       expect(tree.Commit()).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_byName", "b"] }]));
       expect(tree.Commit()).toEqual([]);
     });
+
+    it("A projection output with a keyFunc", () => {
+      const tree = new DiffTree(undefined, {
+        "/": {
+          projections: {
+            idMap: {
+              reads: ["people"],
+              projection: (people: { id: string, name: string, number: string }[]) =>
+                people.reduce((pre, curr) => {
+                  pre[curr.id] = curr;
+                  return pre;
+                }, {} as { [key: string]: any }),
+              keyFunc: (data) => data.id
+            }
+          }
+        }
+      });
+      tree.WritePath("people", [{ id: "111", name: "a", number: 'a1' }, { id: "222", name: "b", number: "b1" }]);
+      tree.RunProjections();
+      const diff = tree.Commit();
+
+      // Each keyed value is written to its own root key, under the projection's key
+      const output = tree.ReadPath("$projection_idMap");
+      expect(tree.ReadPath("$projection_idMap_111")).toEqual({ id: "111", name: "a", number: "a1" });
+      expect(tree.ReadPath("$projection_idMap_222")).toEqual({ id: "222", name: "b", number: "b1" });
+      expect(diff).toEqual(expect.arrayContaining([
+        { type: "write", path: ["$projection_idMap_111"], value: { id: "111", name: "a", number: "a1" } },
+        { type: "write", path: ["$projection_idMap_222"], value: { id: "222", name: "b", number: "b1" } },
+      ]));
+
+      // The output holds the keyed root's object, not a copy, and each is its own snapshot
+      expect(tree.ReadPath("$projection_idMap_111")).toBe(output["111"]);
+      expect(tree.ReadPath("$projection_idMap_222")).toBe(output["222"]);
+      expect(tree.Committed("$projection_idMap_111")).toBe(output["111"]);
+      expect(tree.Committed("$projection_idMap_222")).toBe(output["222"]);
+
+      // An edit to one keyed value diffs its root; the other keeps its object and commits nothing
+      const first = tree.ReadPath("$projection_idMap_111");
+      tree.WritePath("people", [{ id: "111", name: "a", number: 'a1' }, { id: "222", name: "b", number: "b2" }]);
+      tree.RunProjections();
+      const edit = tree.Commit();
+
+      expect(edit).toEqual(expect.arrayContaining([
+        { type: "write", path: ["$projection_idMap_222", "number"], value: "b2" },
+      ]));
+      expect(edit.some(record => record.path[0] === "$projection_idMap_111")).toBe(false);
+      expect(tree.ReadPath("$projection_idMap_111")).toBe(first);
+      expect(tree.ReadPath("$projection_idMap_222")).toBe(tree.ReadPath("$projection_idMap")["222"]);
+    });
+  });
+
+  describe("promoted keys", () => {
+    // A tree whose projection `out` passes `src` through, promoting each object with an id
+    function PromotingTree(projection: (src: any) => any = (src) => src) {
+      return new DiffTree(undefined, {
+        "/": { projections: { out: { reads: ["src"], projection, keyFunc: (value) => value.id } } }
+      });
+    }
+
+    function Run(tree: DiffTree, src: any) {
+      tree.WritePath("src", src);
+      tree.RunProjections();
+      return tree.Commit();
+    }
+
+    it("Promotes the keyed elements of an array output, and diffs only the one that changed", () => {
+      const tree = PromotingTree();
+      Run(tree, [{ id: "a", v: 1 }, { id: "b", v: 1 }]);
+
+      const output = tree.ReadPath("$projection_out");
+      expect(tree.ReadPath("$projection_out_a")).toBe(output[0]);
+      expect(tree.ReadPath("$projection_out_b")).toBe(output[1]);
+
+      const a = tree.ReadPath("$projection_out_a");
+      const diff = Run(tree, [{ id: "a", v: 1 }, { id: "b", v: 2 }]);
+
+      expect(diff).toEqual(expect.arrayContaining([{ type: "write", path: ["$projection_out_b", "v"], value: 2 }]));
+      expect(diff.some(record => record.path[0] === "$projection_out_a")).toBe(false);
+      expect(tree.ReadPath("$projection_out_a")).toBe(a);
+      expect(tree.ReadPath("$projection_out_b")).toBe(tree.ReadPath("$projection_out")[1]);
+    });
+
+    it("Deletes the root of a keyed value gone from the output", () => {
+      const tree = PromotingTree();
+      Run(tree, { a: { id: "a" }, b: { id: "b" } });
+
+      const diff = Run(tree, { a: { id: "a" } });
+
+      expect(tree.ReadPath("$projection_out_b")).toBeUndefined();
+      expect(tree.ReadPath("$projection_out_a")).toBe(tree.ReadPath("$projection_out").a);
+      expect(diff).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_out_b"] }]));
+      expect(diff.some(record => record.path[0] === "$projection_out_a")).toBe(false);
+    });
+
+    it("Deletes the root of a keyed value replaced by a value that isn't keyed", () => {
+      const tree = PromotingTree();
+      Run(tree, { a: { id: "a" } });
+
+      const diff = Run(tree, { a: 5 });
+
+      expect(tree.ReadPath("$projection_out_a")).toBeUndefined();
+      expect(diff).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_out_a"] }]));
+    });
+
+    it("Deletes the roots of the keyed values in an array that got shorter", () => {
+      const tree = PromotingTree();
+      Run(tree, [{ id: "a" }, { id: "b" }, { id: "c" }]);
+
+      const diff = Run(tree, [{ id: "a" }]);
+
+      expect(tree.ReadPath("$projection_out_b")).toBeUndefined();
+      expect(tree.ReadPath("$projection_out_c")).toBeUndefined();
+      expect(diff).toEqual(expect.arrayContaining([
+        { type: "delete", path: ["$projection_out_b"] },
+        { type: "delete", path: ["$projection_out_c"] },
+      ]));
+    });
+
+    it("Keeps the root of a keyed value that moved to another place in the output", () => {
+      const tree = PromotingTree();
+      Run(tree, { x: { id: "a", v: 1 } });
+
+      const diff = Run(tree, { y: { id: "a", v: 1 } });
+
+      expect(tree.ReadPath("$projection_out_a")).toBe(tree.ReadPath("$projection_out").y);
+      expect(tree.ReadPath("$projection_out_a")).toEqual({ id: "a", v: 1 });
+      // Its value is the same, so its root commits nothing
+      expect(diff.some(record => record.path[0] === "$projection_out_a")).toBe(false);
+    });
+
+    it("Keeps the root of a keyed value that moved within an array, and deletes the one removed before it", () => {
+      const tree = PromotingTree();
+      Run(tree, [{ id: "a", v: 1 }, { id: "b", v: 2 }]);
+
+      const diff = Run(tree, [{ id: "b", v: 2 }]);
+
+      expect(tree.ReadPath("$projection_out_a")).toBeUndefined();
+      expect(tree.ReadPath("$projection_out_b")).toBe(tree.ReadPath("$projection_out")[0]);
+      expect(tree.ReadPath("$projection_out_b")).toEqual({ id: "b", v: 2 });
+      expect(diff).toEqual(expect.arrayContaining([{ type: "delete", path: ["$projection_out_a"] }]));
+      expect(diff.some(record => record.path[0] === "$projection_out_b")).toBe(false);
+    });
+
+    it("Promotes only the outermost keyed value, and follows a change inside it", () => {
+      const tree = PromotingTree();
+      Run(tree, { g: { id: "g", members: { p: { id: "p", n: 1 } } } });
+
+      expect(tree.ReadPath("$projection_out_g")).toBe(tree.ReadPath("$projection_out").g);
+      expect(tree.ReadPath("$projection_out_p")).toBeUndefined();
+
+      const diff = Run(tree, { g: { id: "g", members: { p: { id: "p", n: 2 } } } });
+
+      expect(tree.ReadPath("$projection_out_g")).toBe(tree.ReadPath("$projection_out").g);
+      expect(tree.ReadPath("$projection_out_p")).toBeUndefined();
+      expect(diff).toEqual(expect.arrayContaining([
+        { type: "write", path: ["$projection_out_g", "members", "p", "n"], value: 2 },
+      ]));
+    });
+
+    it("Throws for two keyed values with the same key", () => {
+      const tree = PromotingTree();
+      tree.WritePath("src", { x: { id: "a" }, y: { id: "a" } });
+
+      expect(() => tree.RunProjections()).toThrow();
+    });
+
+    it("Promotes nothing for an output with no keyed values", () => {
+      const tree = PromotingTree();
+      Run(tree, { x: { v: 1 }, y: [1, 2] });
+
+      expect(Object.keys(tree.Committed("$projection_out") as object)).toEqual(["x", "y"]);
+      expect(tree.CommittedKeys().sort()).toEqual(["$projection_out", "src"]);
+    });
   });
 });
